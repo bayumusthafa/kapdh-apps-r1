@@ -67,6 +67,16 @@ describe("tab Banner (F-08, AC F08-2, F15-4; server tiruan)", () => {
     await user.click(screen.getByRole("button", { name: "Buat Banner" }));
     const dialog = await screen.findByRole("dialog", { name: "Buat banner" });
     expect(within(dialog).getByRole("textbox", { name: /^Judul banner/ })).toHaveFocus();
+    // Petunjuk gambar mengikuti tampilan aplikasi (ubin Beranda tepat 2,2:1, judul ditulis aplikasi), bukan 16:9.
+    const imageButton = within(dialog).getByRole("button", { name: /^Pilih gambar: Gambar banner/ });
+    expect(imageButton).toHaveAccessibleDescription(
+      /^Rasio 2,2:1, disarankan 1760 x 800 px\. Letakkan elemen penting di bagian atas .*judul banner tampil otomatis di aplikasi\. Ketentuan: JPG\/PNG maksimal 5 MB\./,
+    );
+    // Logo atau satu kata kunci boleh ada di gambar (aturan bersama konten-peluncuran.md); yang dilarang judul.
+    expect(imageButton).toHaveAccessibleDescription(
+      /jangan menulis judul di gambar \(cukup logo atau satu kata kunci\)/,
+    );
+    expect(imageButton).not.toHaveAccessibleDescription(/16:9/);
 
     await user.click(within(dialog).getByRole("button", { name: "Buat banner" }));
     expect(await within(dialog).findByText("Judul wajib diisi.")).toBeInTheDocument();

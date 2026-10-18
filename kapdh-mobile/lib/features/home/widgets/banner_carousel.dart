@@ -38,6 +38,13 @@ Future<void> openBannerTarget(BuildContext context, WidgetRef ref, HomeBannerTar
   }
 }
 
+/// Rasio tampil gambar banner (lebar : tinggi), sama dengan ukuran berkas yang disarankan 1760 x 800 px
+/// (docs/konten/konten-peluncuran.md). Ubin banner tepat berasio ini sehingga gambar 2,2:1 tampil utuh.
+const double bannerAspectRatio = 2.2;
+
+/// Bagian lebar karosel yang dipakai satu halaman banner; sisanya mengintip banner berikutnya.
+const double bannerViewportFraction = 0.92;
+
 /// Karosel banner aktif Beranda (PRD 3.8): geser manual (tanpa putar otomatis agar dapat dibaca pembaca layar dan
 /// tidak bergerak sendiri, N-11), titik penanda posisi, judul sebagai label gambar.
 class BannerCarousel extends ConsumerStatefulWidget {
@@ -50,7 +57,7 @@ class BannerCarousel extends ConsumerStatefulWidget {
 }
 
 class _BannerCarouselState extends ConsumerState<BannerCarousel> {
-  final _controller = PageController(viewportFraction: 0.92);
+  final _controller = PageController(viewportFraction: bannerViewportFraction);
   int _index = 0;
 
   @override
@@ -63,11 +70,23 @@ class _BannerCarouselState extends ConsumerState<BannerCarousel> {
   Widget build(BuildContext context) {
     final banners = widget.banners;
     if (banners.isEmpty) return const SizedBox.shrink();
-    final width = MediaQuery.sizeOf(context).width;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Tinggi dihitung dari lebar ubin yang sebenarnya, bukan lebar layar: Beranda memberi padding samping, dan
+        // setiap halaman PageView selebar [bannerViewportFraction] dari karosel dikurangi padding s1 kiri-kanan.
+        // Dengan lebar layar, ubin lebih pendek dari 2,2:1 sehingga BoxFit.cover memotong sisi kiri-kanan gambar.
+        final available = constraints.hasBoundedWidth ? constraints.maxWidth : MediaQuery.sizeOf(context).width;
+        final tileWidth = available * bannerViewportFraction - 2 * KapdhSpace.s1;
+        return _carousel(banners, height: tileWidth / bannerAspectRatio);
+      },
+    );
+  }
+
+  Widget _carousel(List<HomeBanner> banners, {required double height}) {
     return Column(
       children: [
         SizedBox(
-          height: (width * 0.92 - KapdhSpace.s2) / 2.2,
+          height: height,
           child: PageView.builder(
             key: const ValueKey('home-banners'),
             controller: _controller,
