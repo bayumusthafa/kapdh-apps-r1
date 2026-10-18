@@ -66,7 +66,7 @@ class _UpdateRequiredScreenState extends ConsumerState<UpdateRequiredScreen> {
               StatusHero(
                 status: const StatusBadgeStyle(
                   label: 'Wajib Update',
-                  icon: Icons.system_update,
+                  icon: KapdhIcons.systemUpdate,
                   foreground: KapdhColors.warning,
                   background: KapdhColors.warningBg,
                 ),
@@ -77,7 +77,7 @@ class _UpdateRequiredScreenState extends ConsumerState<UpdateRequiredScreen> {
               if (storeUrl != null)
                 KapdhButton(
                   label: 'Perbarui di $storeName',
-                  icon: Icons.open_in_new,
+                  icon: KapdhIcons.openInNew,
                   onPressed: () => _openStore(storeUrl),
                 )
               else

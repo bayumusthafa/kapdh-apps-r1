@@ -555,7 +555,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
                 const SizedBox(height: KapdhSpace.s3),
                 InfoBox(
                   tone: InfoBoxTone.warning,
-                  icon: Icons.timer_outlined,
+                  icon: KapdhIcons.timerOutlined,
                   message:
                       'Kirim bukti sebelum ${formatDateTime(hold, zone: payment.ticket!.eventTimezone)}. Setelah itu '
                       'reservasi berakhir dan kursi dilepas.',
@@ -655,7 +655,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
         const SizedBox(height: KapdhSpace.s2),
         InfoBox(
           key: const ValueKey('qris-amount'),
-          icon: Icons.payments_outlined,
+          icon: KapdhIcons.paymentsOutlined,
           message:
               'QRIS ini tanpa nominal. Masukkan nominal ${formatRupiah(payment.amount)} persis saat membayar agar '
               'pengurus dapat mencocokkannya.',
@@ -707,7 +707,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
           child: KapdhLinkButton(
             key: const ValueKey('qris-view'),
             label: 'Lihat QRIS',
-            icon: Icons.qr_code_2,
+            icon: KapdhIcons.qrCode2,
             onPressed: () => _openQris(method),
           ),
         ),
@@ -823,7 +823,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
           ..._refreshNotice(),
           StatusHero(
             status: paymentBadge(payment),
-            icon: Icons.error_outline,
+            icon: KapdhIcons.errorOutline,
             title: 'Bukti pembayaran belum dapat diterima',
             message:
                 'Anda tidak perlu transfer ulang bila dana sudah dikirim. Cukup perbaiki bukti sesuai catatan '
@@ -898,7 +898,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
       PaymentStage.rejectedFinal => (
         'Bukti pembayaran ditolak',
         'Reservasi tiket dibatalkan dan kursi dilepas. Anda dapat mendaftar ulang bila kuota masih tersedia.',
-        Icons.cancel_outlined,
+        KapdhIcons.cancelOutlined,
       ),
       _ => ('Status pembayaran', stageText(payment.stage), null),
     };
@@ -926,13 +926,13 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
             if (payment.stage == PaymentStage.paid && membership)
               KapdhButton.solid(
                 label: 'Lihat KTA',
-                icon: Icons.badge_outlined,
+                icon: KapdhIcons.badgeOutlined,
                 onPressed: () => context.go(AppRoutes.kta),
               ),
             if (payment.stage == PaymentStage.paid && ticket != null && !ticketCancelled)
               KapdhButton.solid(
                 label: 'Lihat tiket',
-                icon: Icons.confirmation_number_outlined,
+                icon: KapdhIcons.confirmationNumberOutlined,
                 onPressed: () => context.push(AppRoutes.ticket(ticket.ticketId)),
               ),
             if (payment.stage == PaymentStage.cancelled && membershipType != null)

@@ -57,7 +57,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     final ticketsAction = IconButton(
       key: const ValueKey('events-my-tickets'),
       tooltip: 'Tiket Saya',
-      icon: const Icon(Icons.confirmation_number_outlined),
+      icon: const Icon(KapdhIcons.confirmationNumberOutlined),
       onPressed: () => unawaited(context.push(AppRoutes.tickets)),
     );
     if (!isActiveMember(status)) {
@@ -122,7 +122,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
               itemBuilder: (context, event) =>
                   EventCard.summary(event, onTap: () => unawaited(context.push(AppRoutes.event(event.id)))),
               empty: EmptyState(
-                icon: Icons.event_busy_outlined,
+                icon: KapdhIcons.eventBusyOutlined,
                 title: filtered
                     ? 'Event tidak ditemukan'
                     : (_period == EventListPeriod.upcoming ? 'Belum ada event mendatang' : 'Belum ada event lampau'),
@@ -175,12 +175,12 @@ class _SearchField extends StatelessWidget {
         decoration: InputDecoration(
           hintText: 'Cari event…',
           counterText: '',
-          prefixIcon: const Icon(Icons.search),
+          prefixIcon: const Icon(KapdhIcons.search),
           isDense: true,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(KapdhRadius.md)),
           suffixIcon: value.text.isEmpty
               ? null
-              : IconButton(tooltip: 'Hapus pencarian', icon: const Icon(Icons.close), onPressed: onClear),
+              : IconButton(tooltip: 'Hapus pencarian', icon: const Icon(KapdhIcons.close), onPressed: onClear),
         ),
       ),
     );

@@ -7,6 +7,7 @@ import 'package:kapdh_api/kapdh_api.dart';
 import '../../../app/theme/kapdh_tokens.dart';
 import '../shared/links.dart';
 import '../shared/remote_image.dart';
+import '../../../design/kapdh_icons.dart';
 
 /// Membuka target banner yang sudah diselesaikan server (AC F08-2):
 /// - `none`: tidak dapat diketuk;
@@ -161,7 +162,7 @@ class _BannerTile extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              RemoteImage(url: banner.imageUrl, placeholderIcon: Icons.campaign_outlined),
+              RemoteImage(url: banner.imageUrl, placeholderIcon: KapdhIcons.campaignOutlined),
               const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -220,7 +221,7 @@ class _ExternalPill extends StatelessWidget {
             style: TextStyle(fontSize: KapdhFontSize.overline, fontWeight: FontWeight.w600, color: KapdhColors.primary),
           ),
           SizedBox(width: 2),
-          Icon(Icons.open_in_new, size: 12, color: KapdhColors.primary),
+          Icon(KapdhIcons.openInNew, size: 12, color: KapdhColors.primary),
         ],
       ),
     );

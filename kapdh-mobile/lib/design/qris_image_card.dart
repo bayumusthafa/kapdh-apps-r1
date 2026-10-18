@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../app/theme/kapdh_tokens.dart';
+import 'kapdh_icons.dart';
 
 /// Kode QRIS statis resmi organisasi pada instruksi pembayaran (ADR-026; `PaymentMethod.qr_image_url`, berkas publik
 /// purpose `payment_qr`). QRIS ini tanpa nominal: anggota memindainya lalu memasukkan nominal sendiri, kemudian
@@ -92,7 +93,7 @@ class _QrisImageCardState extends State<QrisImageCard> with _QrisImageLoad<QrisI
                   minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
                   textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
-                icon: const Icon(Icons.zoom_in, size: 18),
+                icon: const Icon(KapdhIcons.zoomIn, size: 18),
                 label: const Text('Perbesar QRIS'),
               ),
             ],
@@ -177,7 +178,7 @@ class _QrisImageViewerState extends State<QrisImageViewer> with _QrisImageLoad<Q
                       foregroundColor: KapdhColors.primary,
                       minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
                     ),
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(KapdhIcons.close),
                     label: const Text('Tutup'),
                   ),
                 ],
@@ -262,7 +263,7 @@ mixin _QrisImageLoad<T extends StatefulWidget> on State<T> {
     frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
       if (wasSynchronouslyLoaded || frame != null) return child;
       // Tempat kosong statis (tanpa animasi) selama gambar dimuat.
-      return const Center(child: Icon(Icons.qr_code_2, size: 48, color: KapdhColors.neutral300));
+      return const Center(child: Icon(KapdhIcons.qrCode2, size: 48, color: KapdhColors.neutral300));
     },
     errorBuilder: (context, error, stackTrace) {
       _markFailed();
@@ -285,7 +286,7 @@ class _QrisLoadError extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.qr_code_2, size: 40, color: KapdhColors.neutral300),
+        const Icon(KapdhIcons.qrCode2, size: 40, color: KapdhColors.neutral300),
         const SizedBox(height: KapdhSpace.s2),
         Semantics(
           liveRegion: true,
@@ -309,7 +310,7 @@ class _QrisLoadError extends StatelessWidget {
             foregroundColor: KapdhColors.primary,
             minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
           ),
-          icon: const Icon(Icons.refresh),
+          icon: const Icon(KapdhIcons.refresh),
           label: Text(retrying ? 'Memuat ulang...' : 'Muat ulang'),
         ),
       ],

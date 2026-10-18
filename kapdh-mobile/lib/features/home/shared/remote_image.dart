@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/kapdh_tokens.dart';
+import '../../../design/kapdh_icons.dart';
 
 /// Pembuat [ImageProvider] untuk gambar PUBLIK dari server (cover berita/event, banner, gambar isi berita).
 typedef RemoteImageProviderFactory = ImageProvider<Object> Function(String url);
@@ -40,7 +41,7 @@ class RemoteImage extends ConsumerWidget {
     this.height,
     this.fit = BoxFit.cover,
     this.borderRadius = BorderRadius.zero,
-    this.placeholderIcon = Icons.image_outlined,
+    this.placeholderIcon = KapdhIcons.imageOutlined,
   });
 
   final String? url;

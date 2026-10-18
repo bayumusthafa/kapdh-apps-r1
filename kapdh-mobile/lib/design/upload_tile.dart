@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../app/theme/kapdh_tokens.dart';
 import '../core/format/formatters.dart';
+import 'kapdh_icons.dart';
 
 /// Garis tepi putus-putus 1 px bersudut membulat (prototipe layar 3: `border: 1px dashed`). Dipasang sebagai
 /// `foregroundPainter` agar tidak tertutup isian latar tile.
@@ -111,10 +112,10 @@ class UploadTile extends StatelessWidget {
                         ),
                         child: Icon(
                           hasError
-                              ? Icons.error_outline
+                              ? KapdhIcons.errorOutline
                               : (hasFile
-                                    ? (isPdf ? Icons.picture_as_pdf_outlined : Icons.image_outlined)
-                                    : Icons.upload_file),
+                                    ? (isPdf ? KapdhIcons.pictureAsPdfOutlined : KapdhIcons.imageOutlined)
+                                    : KapdhIcons.uploadFile),
                           color: hasError ? KapdhColors.danger : KapdhColors.primary,
                         ),
                       ),

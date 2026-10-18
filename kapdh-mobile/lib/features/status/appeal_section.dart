@@ -183,7 +183,7 @@ class _AppealSectionState extends ConsumerState<AppealSection> {
             label: 'Kirim banding',
             busyLabel: 'Mengirim...',
             busy: _submitting,
-            icon: Icons.send_outlined,
+            icon: KapdhIcons.sendOutlined,
             onPressed: _submit,
           ),
         ],

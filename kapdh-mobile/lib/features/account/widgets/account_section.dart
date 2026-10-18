@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/kapdh_tokens.dart';
+import '../../../design/kapdh_icons.dart';
 
 /// Kelompok menu/pengaturan Akun: judul bagian lalu kartu putih bergaris (gaya kartu prototipe layar 2, 4) dengan
 /// pemisah antarbaris.
@@ -157,10 +158,10 @@ class AccountMenuTile extends StatelessWidget {
                 const SizedBox(width: KapdhSpace.s2),
                 Icon(
                   paused
-                      ? Icons.build_outlined
+                      ? KapdhIcons.buildOutlined
                       : locked
-                      ? Icons.lock_outline
-                      : Icons.chevron_right,
+                      ? KapdhIcons.lockOutline
+                      : KapdhIcons.chevronRight,
                   size: 20,
                   color: KapdhColors.textMuted,
                 ),

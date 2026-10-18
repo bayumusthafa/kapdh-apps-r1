@@ -195,7 +195,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
         padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s8),
         children: [
           const InfoBox(
-            icon: Icons.shield_outlined,
+            icon: KapdhIcons.shieldOutlined,
             message:
                 'Keluarkan perangkat yang tidak Anda kenali, lalu ganti password Anda. Mengganti password juga '
                 'mengeluarkan semua perangkat lain.',
@@ -231,7 +231,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
             label: 'Keluar dari semua perangkat',
             busyLabel: 'Mengeluarkan...',
             busy: _signingOutAll,
-            icon: Icons.logout,
+            icon: KapdhIcons.logout,
             onPressed: _signOutAll,
           ),
         ],
@@ -257,7 +257,10 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(session.platform == SessionPlatform.web ? Icons.computer : Icons.smartphone, color: KapdhColors.primary),
+          Icon(
+            session.platform == SessionPlatform.web ? KapdhIcons.computer : KapdhIcons.smartphone,
+            color: KapdhColors.primary,
+          ),
           const SizedBox(width: KapdhSpace.s3),
           Expanded(
             child: Column(

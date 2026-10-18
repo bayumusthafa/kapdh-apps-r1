@@ -125,7 +125,7 @@ class _ChatInvitationsScreenState extends ConsumerState<ChatInvitationsScreen> {
       body = ErrorState.fromException(state.error!, onRetry: controller.refresh);
     } else if (state.isEmpty) {
       body = const EmptyState(
-        icon: Icons.mail_outline,
+        icon: KapdhIcons.mailOutline,
         title: 'Tidak ada undangan',
         message: 'Undangan grup dari admin grup akan tampil di sini.',
       );
@@ -163,7 +163,7 @@ class _ChatInvitationsScreenState extends ConsumerState<ChatInvitationsScreen> {
                           name: invitation.roomName,
                           url: invitation.roomAvatarUrl,
                           size: 48,
-                          icon: invitation.roomAvatarUrl == null ? Icons.groups : null,
+                          icon: invitation.roomAvatarUrl == null ? KapdhIcons.groups : null,
                         ),
                         const SizedBox(width: KapdhSpace.s3),
                         Expanded(

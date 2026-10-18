@@ -7,6 +7,7 @@ import '../../../app/theme/kapdh_tokens.dart';
 import '../../../core/api/api_providers.dart';
 import '../../../core/format/formatters.dart';
 import '../../events/event_format.dart';
+import '../../../design/kapdh_icons.dart';
 
 /// Hitung mundur batas kirim bukti reservasi (D5: 24 jam atau sampai pendaftaran ditutup). `hold_expires_at` adalah
 /// stempel server, jadi dibandingkan dengan perkiraan jam server (`ServerClock.now()`), bukan jam perangkat yang bisa
@@ -95,7 +96,7 @@ class _HoldCountdownState extends ConsumerState<HoldCountdown> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  expired ? Icons.timer_off_outlined : Icons.timer_outlined,
+                  expired ? KapdhIcons.timerOffOutlined : KapdhIcons.timerOutlined,
                   size: 18,
                   color: expired ? KapdhColors.danger : KapdhColors.warning,
                 ),

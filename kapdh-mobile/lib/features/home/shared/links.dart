@@ -8,6 +8,7 @@ import '../../../app/theme/kapdh_tokens.dart';
 import '../../../core/deep_link/deep_links.dart';
 import '../../../core/ui/app_keys.dart';
 import '../../../core/ui/external_links.dart';
+import '../../../design/kapdh_icons.dart';
 
 /// Pesan seragam untuk target konten yang sudah tidak tersedia (AC F08-2, AC F13-3).
 const String unavailableTargetMessage = 'Konten tujuan sudah tidak tersedia. Mungkin sudah diarsipkan atau dibatalkan.';
@@ -91,7 +92,7 @@ Future<bool> confirmExternalLink(BuildContext context, Uri uri) async {
   final result = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      icon: const Icon(Icons.open_in_new, color: KapdhColors.primary),
+      icon: const Icon(KapdhIcons.openInNew, color: KapdhColors.primary),
       title: const Text('Buka tautan luar?'),
       content: Text.rich(
         TextSpan(
@@ -124,6 +125,6 @@ class ExternalLinkMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     label: 'tautan luar',
-    child: Icon(Icons.open_in_new, size: size, color: color),
+    child: Icon(KapdhIcons.openInNew, size: size, color: color),
   );
 }

@@ -123,23 +123,50 @@ Dipilih dari perbandingan di [`ikon.html`](ikon.html) (Phosphor, Solar, Hugeicon
 Phosphor adalah set yang dikurasi skill ui-ux-pro-max, berlisensi MIT tanpa atribusi wajib, dan menyediakan gaya
 regular, fill dan duotone dalam satu keluarga.
 
-| Tempat | Gaya | Material lama -> Phosphor | Dart (`phosphor_flutter`) |
+| Tempat | Gaya | Material lama -> Phosphor | Dart |
 | --- | --- | --- | --- |
-| Akses cepat KTA | Duotone | `badge_outlined` -> `identification-card-duotone` | `PhosphorIcons.identificationCard(PhosphorIconsStyle.duotone)` |
-| Akses cepat Notifikasi | Duotone | `notifications_outlined` -> `bell-simple-ringing-duotone` | `PhosphorIcons.bellSimpleRinging(PhosphorIconsStyle.duotone)` |
-| Akses cepat Tiket Saya | Duotone | `confirmation_number_outlined` -> `ticket-duotone` | `PhosphorIcons.ticket(PhosphorIconsStyle.duotone)` |
-| Akses cepat Berita | Duotone | `article_outlined` -> `newspaper-clipping-duotone` | `PhosphorIcons.newspaperClipping(PhosphorIconsStyle.duotone)` |
-| Tab Beranda | Regular / Fill | `home_outlined` / `home` -> `house-simple` / `house-simple-fill` | `PhosphorIcons.houseSimple()` / `(PhosphorIconsStyle.fill)` |
-| Tab Event | Regular / Fill | `event_outlined` / `event` -> `calendar-dots` / `calendar-dots-fill` | `PhosphorIcons.calendarDots()` |
-| Tab KTA (tengah) | Fill | `badge_outlined` / `badge` -> `identification-card-fill` | `PhosphorIcons.identificationCard(PhosphorIconsStyle.fill)` |
-| Tab Jejaring | Regular / Fill | `school_outlined` / `school` -> `graduation-cap` / `graduation-cap-fill` | `PhosphorIcons.graduationCap()` |
-| Tab Akun | Regular / Fill | `person_outline` / `person` -> `user-circle` / `user-circle-fill` | `PhosphorIcons.userCircle()` |
-| Gembok tab terkunci | Fill | `lock` -> `lock-simple-fill` | `PhosphorIcons.lockSimple(PhosphorIconsStyle.fill)` |
+| Akses cepat KTA | Duotone | `badge_outlined` -> `identification-card-duotone` | `KapdhIcons.identificationCardDuotone` |
+| Akses cepat Notifikasi | Duotone | `notifications_outlined` -> `bell-simple-ringing-duotone` | `KapdhIcons.bellSimpleRingingDuotone` |
+| Akses cepat Tiket Saya | Duotone | `confirmation_number_outlined` -> `ticket-duotone` | `KapdhIcons.ticketDuotone` |
+| Akses cepat Berita | Duotone | `article_outlined` -> `newspaper-clipping-duotone` | `KapdhIcons.newspaperClippingDuotone` |
+| Tab Beranda | Regular / Fill | `home_outlined` / `home` -> `house-simple` / `house-simple-fill` | `KapdhIcons.homeOutlined / KapdhIcons.home` |
+| Tab Event | Regular / Fill | `event_outlined` / `event` -> `calendar-dots` / `calendar-dots-fill` | `KapdhIcons.eventOutlined / KapdhIcons.event` |
+| Tab KTA (tengah) | Fill | `badge_outlined` / `badge` -> `identification-card-fill` | `KapdhIcons.badgeOutlined / KapdhIcons.badge` |
+| Tab Jejaring | Regular / Fill | `school_outlined` / `school` -> `graduation-cap` / `graduation-cap-fill` | `KapdhIcons.schoolOutlined / KapdhIcons.school` |
+| Tab Akun | Regular / Fill | `person_outline` / `person` -> `user-circle` / `user-circle-fill` | `KapdhIcons.personOutline / KapdhIcons.person` |
+| Gembok tab terkunci | Fill | `lock` -> `lock-simple-fill` | `KapdhIcons.lock` |
+
+Pembaruan audit: Phosphor kini dipakai untuk SEMUA ikon (lihat bagian Audit di bawah). Di Flutter font Phosphor dibundel
+langsung (`assets/fonts/phosphor`), bukan lewat paket `phosphor_flutter` yang tidak kompatibel dengan Flutter 3.47;
+nama Dart di tabel ini menjadi `KapdhIcons.<namaMaterial>` dan duotone memakai `DuotoneIcon` (ADR-027).
 
 Di mockup ikon ini memakai kelas `.ph-<nama>` dari `css/icons-phosphor.css`, dibangkitkan oleh
 `tools/build-icons-phosphor.mjs` dari `tools/icon-list-phosphor.txt`. Cara pakainya sama dengan ikon Material: duotone
-tetap dua nada karena mask memakai alfa. Ikon lain (app bar, field, kartu) masih Material Icons. Di Flutter, tambahkan
-`phosphor_flutter` ke `pubspec.yaml` dan ganti ikon di `QuickAccessRow` dan `AppShell.tabs`.
+tetap dua nada karena mask memakai alfa. Ikon lain (app bar, field, kartu) masih Material Icons. 
+
+## Audit standar desain Flutter (18 Oktober 2026)
+
+Seluruh mockup diaudit otomatis di browser (52 halaman, sekitar 10.800 teks, semua kontrol) dan manual terhadap
+checklist `flutter-ui-design`, alur `flutter-ui-ux` dan *Pre-Delivery Checklist* `ui-ux-pro-max`. Tujuh temuan
+diperbaiki di mockup DAN aplikasi Flutter:
+
+| # | Temuan | Perbaikan |
+| --- | --- | --- |
+| 1 | Teks KTA ringkas 10 px dan 9 px (di bawah labelSmall Material 11) | Semua teks kartu minimal 11 px; label tanpa letter-spacing agar tetap satu baris (rasio kartu tetap 1,49) |
+| 2 | Dua keluarga ikon dalam satu layar (Phosphor + Material) | Semua ikon aplikasi Phosphor lewat `KapdhIcons` (ADR-027); 444 pemakaian di 96 berkas Flutter dan 4.037 ikon mockup dari satu pemetaan |
+| 3 | Tab KTA tengah terpilih hanya cincin emas (1,5:1 di bilah putih) | Terpilih: isi emas, ikon gelap, cincin primary 2 px (11:1), label w700 |
+| 4 | Radius 18 di luar skala | Tombol KTA tengah radius 16 |
+| 5 | Pil belum dibaca percakapan dibisukan 3,3:1 | `neutral700` (9,3:1) |
+| 6 | Chip reaksi chat 32 dp tanpa target 48 | Padding vertikal 8 ikut menerima ketukan (target 48) |
+| 7 | Hapus chip filter/undangan/pilihan hanya ikon 16-18 px (area ketuk terukur 32 x 40) | Seluruh chip menghapus (`onPressed`), kepadatan standar, baris pemilih padding 4 agar chip setinggi 48 |
+
+Hasil audit ulang: 0 ikon Material di dalam layar (kecuali status bar sistem), tidak ada teks di bawah 11 px,
+radius hanya 8/12/16/24 (+ badge 9, segmen 20), tidak ada kontras teks gagal selain teks di atas foto/gradasi yang
+memang berscrim. Target sentuh di bawah 48 yang tersisa adalah tautan di dalam paragraf berita (pengecualian WCAG
+2.5.8) dan komponen Material yang targetnya diperluas margin (ChoiceChip, SegmentedButton, TabBar).
+
+Belum dikerjakan: mode gelap (aplikasi belum punya tema gelap) dan pemindahan seluruh usulan v2 lain (token warna,
+header Beranda, tombol KTA tengah) ke Flutter; daftarnya di bagian sebelumnya.
 
 ## Verifikasi
 

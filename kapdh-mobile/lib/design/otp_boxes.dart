@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import '../app/theme/kapdh_tokens.dart';
 import 'design_constants.dart';
 import 'kapdh_button.dart';
+import 'kapdh_icons.dart';
 
 /// Digit pertama sebanyak [length] dari teks tempelan ("Kode Anda: 482 913" menjadi "482913").
 String otpDigits(String text, int length) {
@@ -285,7 +286,7 @@ class _OtpBoxesState extends State<OtpBoxes> {
             child: KapdhLinkButton(
               key: const ValueKey('otp-paste'),
               label: OtpBoxes.pasteLabel,
-              icon: Icons.content_paste,
+              icon: KapdhIcons.contentPaste,
               onPressed: widget.enabled ? _paste : null,
             ),
           ),

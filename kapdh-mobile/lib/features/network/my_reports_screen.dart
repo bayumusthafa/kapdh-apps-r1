@@ -37,31 +37,31 @@ final myReportDetailProvider = FutureProvider.autoDispose.family<ModerationRepor
 StatusBadgeStyle reportStatusStyle(ModerationReportStatus status) => switch (status) {
   ModerationReportStatus.open => const StatusBadgeStyle(
     label: 'Menunggu tinjauan',
-    icon: Icons.hourglass_top,
+    icon: KapdhIcons.hourglassTop,
     foreground: KapdhColors.info,
     background: KapdhColors.infoBg,
   ),
   ModerationReportStatus.inReview => const StatusBadgeStyle(
     label: 'Sedang ditinjau',
-    icon: Icons.visibility_outlined,
+    icon: KapdhIcons.visibilityOutlined,
     foreground: KapdhColors.warning,
     background: KapdhColors.warningBg,
   ),
   ModerationReportStatus.resolved => const StatusBadgeStyle(
     label: 'Selesai',
-    icon: Icons.check_circle,
+    icon: KapdhIcons.checkCircle,
     foreground: KapdhColors.success,
     background: KapdhColors.successBg,
   ),
   ModerationReportStatus.dismissed => const StatusBadgeStyle(
     label: 'Ditutup',
-    icon: Icons.do_not_disturb_on_outlined,
+    icon: KapdhIcons.doNotDisturbOnOutlined,
     foreground: KapdhColors.neutral,
     background: KapdhColors.neutralBg,
   ),
   ModerationReportStatus.unknown => const StatusBadgeStyle(
     label: 'Status tidak dikenal',
-    icon: Icons.help_outline,
+    icon: KapdhIcons.helpOutline,
     foreground: KapdhColors.neutral,
     background: KapdhColors.neutralBg,
   ),
@@ -107,7 +107,7 @@ class MyReportsScreen extends ConsumerWidget {
       body = ErrorState.fromException(state.error!, onRetry: controller.refresh);
     } else if (state.isEmpty) {
       body = const EmptyState(
-        icon: Icons.flag_outlined,
+        icon: KapdhIcons.flagOutlined,
         title: 'Belum ada laporan',
         message:
             'Laporan pengguna, pesan atau grup yang Anda kirim tampil di sini beserta statusnya. Laporan tidak '

@@ -286,7 +286,7 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
               ),
               const SizedBox(height: KapdhSpace.s3),
               const InfoBox(
-                icon: Icons.shield_outlined,
+                icon: KapdhIcons.shieldOutlined,
                 message:
                     'Laporan tidak dibuka kepada pihak yang dilaporkan. Pantau statusnya di Akun > Laporan Saya. '
                     'Dalam keadaan darurat, hubungi pihak berwenang.',
@@ -294,7 +294,7 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
               const SizedBox(height: KapdhSpace.s4),
               KapdhButton(
                 label: 'Kirim laporan',
-                icon: Icons.flag_outlined,
+                icon: KapdhIcons.flagOutlined,
                 busy: _busy,
                 busyLabel: 'Mengirim laporan',
                 onPressed: _busy ? null : _submit,

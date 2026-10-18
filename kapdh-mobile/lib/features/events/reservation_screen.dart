@@ -104,7 +104,7 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
           const SizedBox(height: KapdhSpace.s4),
           const _Label('Peserta'),
           const InfoBox(
-            icon: Icons.person_outline,
+            icon: KapdhIcons.personOutline,
             message:
                 'Satu tiket untuk Anda sendiri. Satu anggota hanya dapat memiliki satu tiket aktif per event; tidak '
                 'ada pemesanan untuk rombongan atau tamu.',
@@ -162,7 +162,7 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
           ),
           const SizedBox(height: KapdhSpace.s3),
           InfoBox(
-            icon: Icons.timer_outlined,
+            icon: KapdhIcons.timerOutlined,
             message:
                 'Kursi ditahan maksimal ${event.holdHours} jam atau sampai pendaftaran ditutup '
                 '(${formatDateTime(event.registrationClosesAt, zone: event.timezone)}), mana yang lebih dahulu. '
@@ -170,7 +170,7 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
           ),
           const SizedBox(height: KapdhSpace.s3),
           InfoBox(
-            icon: Icons.policy_outlined,
+            icon: KapdhIcons.policyOutlined,
             title: 'Pembatalan dan refund',
             message: event.cancellationPolicy.summary,
           ),
@@ -330,7 +330,7 @@ class _EventSummaryCard extends StatelessWidget {
             width: 88,
             height: 64,
             borderRadius: BorderRadius.circular(KapdhRadius.md),
-            placeholderIcon: Icons.event,
+            placeholderIcon: KapdhIcons.event,
           ),
           const SizedBox(width: KapdhSpace.s3),
           Expanded(
@@ -343,7 +343,7 @@ class _EventSummaryCard extends StatelessWidget {
                 ),
                 const SizedBox(height: KapdhSpace.s1),
                 IconLine(
-                  icon: Icons.calendar_today_outlined,
+                  icon: KapdhIcons.calendarTodayOutlined,
                   text: formatEventSchedule(event.startsAt, event.endsAt, event.timezone),
                 ),
               ],

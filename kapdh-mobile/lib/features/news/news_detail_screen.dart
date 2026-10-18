@@ -48,7 +48,7 @@ class NewsDetailScreen extends ConsumerWidget {
     } else if (post == null && error != null) {
       body = error.code == ErrorCode.notFound
           ? EmptyState(
-              icon: Icons.search_off,
+              icon: KapdhIcons.searchOff,
               title: 'Berita tidak lagi tersedia',
               message: 'Berita ini sudah diarsipkan atau belum diterbitkan pengurus.',
               actionLabel: 'Lihat berita lain',
@@ -110,7 +110,7 @@ class _PostContent extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: KapdhSpace.s2),
-              IconLine(icon: Icons.calendar_today_outlined, text: 'Terbit ${formatDateTime(post.publishedAt)}'),
+              IconLine(icon: KapdhIcons.calendarTodayOutlined, text: 'Terbit ${formatDateTime(post.publishedAt)}'),
               const SizedBox(height: KapdhSpace.s4),
               PostBody(html: post.bodyHtml),
               const SizedBox(height: KapdhSpace.s5),
@@ -157,7 +157,7 @@ class _LikeBar extends StatelessWidget {
             ),
             icon: busy
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : Icon(liked ? Icons.favorite : Icons.favorite_border, size: 20),
+                : Icon(liked ? KapdhIcons.favorite : KapdhIcons.favoriteBorder, size: 20),
             label: Text(liked ? 'Disukai' : 'Suka'),
           ),
         ),

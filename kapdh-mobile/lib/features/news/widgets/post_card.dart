@@ -5,6 +5,7 @@ import '../../../app/theme/kapdh_tokens.dart';
 import '../../../core/format/formatters.dart';
 import '../../home/shared/content_widgets.dart';
 import '../../home/shared/remote_image.dart';
+import '../../../design/kapdh_icons.dart';
 
 /// Kartu berita: cover, kategori, judul, ringkasan, tanggal terbit (WIB) dan jumlah like (F-08).
 class PostCard extends StatelessWidget {
@@ -34,7 +35,7 @@ class PostCard extends StatelessWidget {
           if (post.coverUrl != null)
             AspectRatio(
               aspectRatio: 16 / 9,
-              child: RemoteImage(url: post.coverUrl, placeholderIcon: Icons.article_outlined),
+              child: RemoteImage(url: post.coverUrl, placeholderIcon: KapdhIcons.articleOutlined),
             ),
           Padding(
             padding: const EdgeInsets.all(KapdhSpace.s3),
@@ -61,10 +62,10 @@ class PostCard extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: IconLine(icon: Icons.calendar_today_outlined, text: date),
+                      child: IconLine(icon: KapdhIcons.calendarTodayOutlined, text: date),
                     ),
                     Icon(
-                      post.likedByMe ? Icons.favorite : Icons.favorite_border,
+                      post.likedByMe ? KapdhIcons.favorite : KapdhIcons.favoriteBorder,
                       size: 14,
                       color: post.likedByMe ? KapdhColors.danger : KapdhColors.textMuted,
                     ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app/theme/kapdh_tokens.dart';
 import 'app_scaffold.dart';
 import 'info_box.dart';
+import 'kapdh_icons.dart';
 
 /// Penanda layar yang rutenya sudah terdaftar tetapi isinya dibangun pada irisan fitur berikutnya (BUILD_PLAN fase
 /// C). Ditandai jelas "Sedang dibangun" agar tidak dikira fitur yang gagal.
@@ -40,7 +41,7 @@ class UnderConstructionScreen extends StatelessWidget {
         padding: const EdgeInsets.all(KapdhSpace.s5),
         children: [
           const SizedBox(height: KapdhSpace.s6),
-          const ExcludeSemantics(child: Icon(Icons.construction, size: 56, color: KapdhColors.primary)),
+          const ExcludeSemantics(child: Icon(KapdhIcons.construction, size: 56, color: KapdhColors.primary)),
           const SizedBox(height: KapdhSpace.s4),
           Text('Sedang dibangun', textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: KapdhSpace.s2),

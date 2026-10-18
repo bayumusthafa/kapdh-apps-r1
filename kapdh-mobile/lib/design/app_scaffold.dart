@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../app/theme/kapdh_tokens.dart';
 import '../core/ui/back_navigation.dart';
+import 'kapdh_icons.dart';
 
 /// Pita status global (Offline, Pemeliharaan) yang dipasang aplikasi di atas Navigator (`MaterialApp.builder`).
 ///
@@ -91,7 +92,7 @@ class AppScaffold extends StatelessWidget {
                 tooltip: 'Kembali',
                 // Panah kiri di app bar (prototipe layar 6, 7; guideline hal. 6). Chevron hanya untuk baris judul di
                 // dalam lembar (prototipe layar 1, 3).
-                icon: const Icon(Icons.arrow_back, size: 24),
+                icon: const Icon(KapdhIcons.arrowBack, size: 24),
                 onPressed: () => unawaited(_back(context)),
               )
             : null,

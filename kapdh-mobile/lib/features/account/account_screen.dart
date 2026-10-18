@@ -95,11 +95,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               StatusHero(
                 status: const StatusBadgeStyle(
                   label: 'Pemeliharaan',
-                  icon: Icons.build_outlined,
+                  icon: KapdhIcons.buildOutlined,
                   foreground: KapdhColors.warning,
                   background: KapdhColors.warningBg,
                 ),
-                icon: Icons.build_outlined,
+                icon: KapdhIcons.buildOutlined,
                 title: '$label ditunda sementara',
                 message:
                     '${gate.maintenanceMessage ?? 'Layanan sedang dalam pemeliharaan.'} Perubahan data belum dapat '
@@ -107,7 +107,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               ),
               const SizedBox(height: KapdhSpace.s4),
               InfoBox(
-                icon: Icons.schedule,
+                icon: KapdhIcons.schedule,
                 message: until != null
                     ? 'Perkiraan selesai: ${formatDateTime(until)}. Waktu dapat berubah.'
                     : 'Perkiraan waktu selesai belum tersedia. Silakan coba lagi beberapa saat lagi.',
@@ -182,13 +182,13 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                       tile(
                         AppRoutes.accountProfile,
                         'Ubah profil',
-                        Icons.person_outline,
+                        KapdhIcons.personOutline,
                         subtitle: 'Foto, kota, profesi, keahlian, kontak',
                       ),
                       tile(
                         AppRoutes.accountPrivacy,
                         'Privasi profil',
-                        Icons.visibility_outlined,
+                        KapdhIcons.visibilityOutlined,
                         subtitle: 'Atur data yang terlihat anggota lain',
                       ),
                     ],
@@ -200,45 +200,45 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                       tile(
                         AppRoutes.notifications,
                         'Notifikasi',
-                        Icons.notifications_outlined,
+                        KapdhIcons.notificationsOutlined,
                         subtitle: 'Kotak masuk resmi',
                         badge: unread != null && unread > 0 ? (unread > 99 ? '99+' : '$unread') : null,
                       ),
-                      tile(AppRoutes.payments, 'Riwayat pembayaran', Icons.receipt_long_outlined),
-                      tile(AppRoutes.tickets, 'Tiket saya', Icons.confirmation_number_outlined),
+                      tile(AppRoutes.payments, 'Riwayat pembayaran', KapdhIcons.receiptLongOutlined),
+                      tile(AppRoutes.tickets, 'Tiket saya', KapdhIcons.confirmationNumberOutlined),
                     ],
                   ),
                   const SizedBox(height: KapdhSpace.s5),
                   AccountSection(
                     title: 'KEAMANAN DAN NOTIFIKASI',
                     children: [
-                      tile(AppRoutes.accountNotifications, 'Preferensi notifikasi', Icons.tune),
+                      tile(AppRoutes.accountNotifications, 'Preferensi notifikasi', KapdhIcons.tune),
                       tile(
                         AppRoutes.accountSessions,
                         'Sesi perangkat',
-                        Icons.devices_outlined,
+                        KapdhIcons.devicesOutlined,
                         subtitle: 'Perangkat yang masuk ke akun Anda',
                       ),
-                      tile(AppRoutes.accountPassword, 'Ganti password', Icons.lock_reset),
+                      tile(AppRoutes.accountPassword, 'Ganti password', KapdhIcons.lockReset),
                     ],
                   ),
                   const SizedBox(height: KapdhSpace.s5),
                   AccountSection(
                     title: 'KOMUNITAS',
                     children: [
-                      tile(AppRoutes.accountBlocked, 'Anggota diblokir', Icons.block),
-                      tile(AppRoutes.accountReports, 'Laporan saya', Icons.flag_outlined),
+                      tile(AppRoutes.accountBlocked, 'Anggota diblokir', KapdhIcons.block),
+                      tile(AppRoutes.accountReports, 'Laporan saya', KapdhIcons.flagOutlined),
                     ],
                   ),
                   const SizedBox(height: KapdhSpace.s5),
                   AccountSection(
                     title: 'INFORMASI',
                     children: [
-                      legal(AppRoutes.privacySlug, 'Kebijakan privasi', Icons.privacy_tip_outlined),
-                      legal(AppRoutes.termsSlug, 'Ketentuan layanan', Icons.description_outlined),
-                      legal(AppRoutes.communitySlug, 'Ketentuan komunitas', Icons.gavel_outlined),
-                      legal(AppRoutes.helpSlug, 'Bantuan', Icons.help_outline),
-                      legal(AppRoutes.aboutSlug, 'Tentang KAPDH', Icons.info_outline),
+                      legal(AppRoutes.privacySlug, 'Kebijakan privasi', KapdhIcons.privacyTipOutlined),
+                      legal(AppRoutes.termsSlug, 'Ketentuan layanan', KapdhIcons.descriptionOutlined),
+                      legal(AppRoutes.communitySlug, 'Ketentuan komunitas', KapdhIcons.gavelOutlined),
+                      legal(AppRoutes.helpSlug, 'Bantuan', KapdhIcons.helpOutline),
+                      legal(AppRoutes.aboutSlug, 'Tentang KAPDH', KapdhIcons.infoOutline),
                     ],
                   ),
                   const SizedBox(height: KapdhSpace.s5),
@@ -247,12 +247,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                     children: [
                       AccountMenuTile(
                         key: const ValueKey('account-menu-delete'),
-                        icon: Icons.delete_outline,
+                        icon: KapdhIcons.deleteOutline,
                         label: 'Hapus akun',
                         subtitle: 'Hapus akun dan data pribadi Anda',
                         danger: true,
                         paused: paused(AppRoutes.accountDelete),
-                        onTap: () => _open(AppRoutes.accountDelete, label: 'Hapus akun', icon: Icons.delete),
+                        onTap: () => _open(AppRoutes.accountDelete, label: 'Hapus akun', icon: KapdhIcons.delete),
                       ),
                     ],
                   ),
@@ -262,7 +262,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                     label: 'Keluar',
                     busyLabel: 'Keluar...',
                     busy: _signingOut,
-                    icon: Icons.logout,
+                    icon: KapdhIcons.logout,
                     onPressed: _signOut,
                   ),
                   const SizedBox(height: KapdhSpace.s4),

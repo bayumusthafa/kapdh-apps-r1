@@ -8,6 +8,7 @@ import 'brand_header.dart';
 import 'design_constants.dart';
 import 'kapdh_button.dart';
 import 'status_badge.dart';
+import 'kapdh_icons.dart';
 
 /// Data tampilan KTA (F-05). Nilai berasal dari GET /me/card atau cache offline; klien tidak menghitung status,
 /// nomor maupun QR (PRD 2.2, 3.5).
@@ -133,7 +134,13 @@ class KtaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const label = TextStyle(fontSize: 10, height: 1.2, color: KapdhExtraColors.mutedOnDark);
+    // Minimum skala tipografi Material (labelSmall 11) untuk semua teks kartu.
+    const label = TextStyle(
+      fontSize: KapdhFontSize.overline,
+      height: 1.2,
+      letterSpacing: 0,
+      color: KapdhExtraColors.mutedOnDark,
+    );
     Widget field(String title, String value, TextStyle style) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -289,7 +296,12 @@ class _CardHeader extends StatelessWidget {
 
   static const _tag = Text(
     'KTA DIGITAL',
-    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, letterSpacing: 1.1, color: KapdhExtraColors.mutedOnDark),
+    style: TextStyle(
+      fontSize: KapdhFontSize.overline,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 1,
+      color: KapdhExtraColors.mutedOnDark,
+    ),
   );
 
   @override
@@ -405,7 +417,7 @@ class _QrBox extends StatelessWidget {
         children: [
           // Gembok emas 28 px (prototipe layar 6, diringkas untuk kartu landscape): QR terkunci sampai KTA aktif atau
           // tersinkron.
-          const ExcludeSemantics(child: Icon(Icons.lock_outline, size: 28, color: KapdhColors.accent)),
+          const ExcludeSemantics(child: Icon(KapdhIcons.lockOutline, size: 28, color: KapdhColors.accent)),
           const SizedBox(height: 6),
           Text(
             placeholder,

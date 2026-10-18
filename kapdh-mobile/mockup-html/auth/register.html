@@ -12,7 +12,7 @@
 <body>
   <header class="page-header">
     <nav class="page-header__nav" aria-label="Navigasi mockup">
-      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../index.html"><span class="ic ph-arrow-left ic-s16" aria-hidden="true"></span> Semua layar</a>
       <a href="../components.html">Komponen</a>
     </nav>
     <h1 class="page-header__title">Daftar Alumni: Data Diri</h1>
@@ -52,20 +52,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <div class="field">
                       <label class="field__label" for="r1-name">Nama Lengkap</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-user-circle"></span></span>
                         <input class="input__control" id="r1-name" type="text" placeholder="Masukkan nama lengkap" autocomplete="name">
                       </div>
                     </div>
@@ -73,14 +73,14 @@
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r1-gender-l">Jenis Kelamin</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r1-gender-l r1-gender-v"><span class="input__value input__hint" id="r1-gender-v">Pilih Jenis Kelamin</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r1-gender-l r1-gender-v"><span class="input__value input__hint" id="r1-gender-v">Pilih Jenis Kelamin</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="field">
                       <label class="field__label" for="r1-email">Email</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-envelope-simple"></span></span>
                         <input class="input__control" id="r1-email" type="email" placeholder="Masukkan email" autocomplete="email">
                       </div>
                     </div>
@@ -90,32 +90,32 @@
                       <label class="field__label" for="r1-pw">Password</label>
                       <div class="input">
                         <input class="input__control" id="r1-pw" type="password" placeholder="Masukkan password" autocomplete="new-password">
-                        <span class="input__suffix"><span class="input__trailing-text c-danger" aria-hidden="true">0/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                        <span class="input__suffix"><span class="input__trailing-text c-danger" aria-hidden="true">0/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ph-eye-slash" aria-hidden="true"></span></button></span>
                       </div>
                     </div>
                   </div>
                   <ul class="rules" aria-label="Aturan password">
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf besar<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Angka<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Simbol<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Angka<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Simbol<span class="sr-only">, belum terpenuhi</span></li>
                   </ul>
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r1-cohort-l">Angkatan</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r1-cohort-l r1-cohort-v"><span class="input__value input__hint" id="r1-cohort-v">Pilih angkatan</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r1-cohort-l r1-cohort-v"><span class="input__value input__hint" id="r1-cohort-v">Pilih angkatan</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="auth-class-row">
                       <div class="field">
                         <span class="field__label" id="r1-cin-l">Kelas Masuk</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r1-cin-l r1-cin-v"><span class="input__value input__hint auth-value-clip" id="r1-cin-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r1-cin-l r1-cin-v"><span class="input__value input__hint auth-value-clip" id="r1-cin-v">Pilih kelas</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                       <div class="field">
                         <span class="field__label" id="r1-cout-l">Kelas Keluar</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r1-cout-l r1-cout-v"><span class="input__value input__hint auth-value-clip" id="r1-cout-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r1-cout-l r1-cout-v"><span class="input__value input__hint auth-value-clip" id="r1-cout-v">Pilih kelas</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                     </div>
                   </div>
@@ -152,20 +152,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <div class="field">
                       <label class="field__label" for="r2-name">Nama Lengkap</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-user-circle"></span></span>
                         <input class="input__control" id="r2-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad Fauzi" autocomplete="name">
                       </div>
                     </div>
@@ -173,14 +173,14 @@
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r2-gender-l">Jenis Kelamin</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r2-gender-l r2-gender-v"><span class="input__value" id="r2-gender-v">Laki-laki</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r2-gender-l r2-gender-v"><span class="input__value" id="r2-gender-v">Laki-laki</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="field">
                       <label class="field__label" for="r2-email">Email</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-envelope-simple"></span></span>
                         <input class="input__control" id="r2-email" type="email" placeholder="Masukkan email" value="ahmad.fauzi@contoh.id" autocomplete="email">
                       </div>
                     </div>
@@ -190,32 +190,32 @@
                       <label class="field__label" for="r2-pw">Password</label>
                       <div class="input">
                         <input class="input__control" id="r2-pw" type="password" placeholder="Masukkan password" value="Rahasia#2026" autocomplete="new-password">
-                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ph-eye-slash" aria-hidden="true"></span></button></span>
                       </div>
                     </div>
                   </div>
                   <ul class="rules" aria-label="Aturan password">
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
                   </ul>
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r2-cohort-l">Angkatan</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r2-cohort-l r2-cohort-v"><span class="input__value" id="r2-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r2-cohort-l r2-cohort-v"><span class="input__value" id="r2-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="auth-class-row">
                       <div class="field">
                         <span class="field__label" id="r2-cin-l">Kelas Masuk</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r2-cin-l r2-cin-v"><span class="input__value auth-value-clip" id="r2-cin-v">Kelas 1 (1 MTs)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r2-cin-l r2-cin-v"><span class="input__value auth-value-clip" id="r2-cin-v">Kelas 1 (1 MTs)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                       <div class="field">
                         <span class="field__label" id="r2-cout-l">Kelas Keluar</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r2-cout-l r2-cout-v"><span class="input__value auth-value-clip" id="r2-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r2-cout-l r2-cout-v"><span class="input__value auth-value-clip" id="r2-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                     </div>
                   </div>
@@ -262,20 +262,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <div class="field">
                       <label class="field__label" for="r3-name">Nama Lengkap</label>
                       <div class="input is-error">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-user-circle"></span></span>
                         <input class="input__control" id="r3-name" type="text" placeholder="Masukkan nama lengkap" autocomplete="name" aria-invalid="true" aria-describedby="r3-name-err">
                       </div>
                       <p class="field__error" id="r3-name-err">Isi nama lengkap</p>
@@ -284,7 +284,7 @@
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r3-gender-l">Jenis Kelamin</span>
-                      <button class="input input--dropdown is-error" type="button" aria-haspopup="listbox" aria-labelledby="r3-gender-l r3-gender-v" aria-describedby="r3-gender-err"><span class="input__value input__hint" id="r3-gender-v">Pilih Jenis Kelamin</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown is-error" type="button" aria-haspopup="listbox" aria-labelledby="r3-gender-l r3-gender-v" aria-describedby="r3-gender-err"><span class="input__value input__hint" id="r3-gender-v">Pilih Jenis Kelamin</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       <p class="field__error" id="r3-gender-err">Pilih jenis kelamin</p>
                     </div>
                   </div>
@@ -292,7 +292,7 @@
                     <div class="field">
                       <label class="field__label" for="r3-email">Email</label>
                       <div class="input is-error">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-envelope-simple"></span></span>
                         <input class="input__control" id="r3-email" type="email" placeholder="Masukkan email" autocomplete="email" aria-invalid="true" aria-describedby="r3-email-err">
                       </div>
                       <p class="field__error" id="r3-email-err">Masukkan email yang valid</p>
@@ -303,22 +303,22 @@
                       <label class="field__label" for="r3-pw">Password</label>
                       <div class="input is-error">
                         <input class="input__control" id="r3-pw" type="password" placeholder="Masukkan password" autocomplete="new-password" aria-invalid="true" aria-describedby="r3-pw-err">
-                        <span class="input__suffix"><span class="input__trailing-text c-danger" aria-hidden="true">0/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                        <span class="input__suffix"><span class="input__trailing-text c-danger" aria-hidden="true">0/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ph-eye-slash" aria-hidden="true"></span></button></span>
                       </div>
                       <p class="field__error" id="r3-pw-err">Belum memenuhi aturan password</p>
                     </div>
                   </div>
                   <ul class="rules" aria-label="Aturan password">
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf besar<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Angka<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Simbol<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Angka<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Simbol<span class="sr-only">, belum terpenuhi</span></li>
                   </ul>
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r3-cohort-l">Angkatan</span>
-                      <button class="input input--dropdown is-error" type="button" aria-haspopup="listbox" aria-labelledby="r3-cohort-l r3-cohort-v" aria-describedby="r3-cohort-err"><span class="input__value input__hint" id="r3-cohort-v">Pilih angkatan</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown is-error" type="button" aria-haspopup="listbox" aria-labelledby="r3-cohort-l r3-cohort-v" aria-describedby="r3-cohort-err"><span class="input__value input__hint" id="r3-cohort-v">Pilih angkatan</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       <p class="field__error" id="r3-cohort-err">Pilih angkatan</p>
                     </div>
                   </div>
@@ -326,12 +326,12 @@
                     <div class="auth-class-row">
                       <div class="field">
                         <span class="field__label" id="r3-cin-l">Kelas Masuk</span>
-                        <button class="input input--dropdown is-error" type="button" aria-haspopup="listbox" aria-labelledby="r3-cin-l r3-cin-v" aria-describedby="r3-cin-err"><span class="input__value input__hint auth-value-clip" id="r3-cin-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown is-error" type="button" aria-haspopup="listbox" aria-labelledby="r3-cin-l r3-cin-v" aria-describedby="r3-cin-err"><span class="input__value input__hint auth-value-clip" id="r3-cin-v">Pilih kelas</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                         <p class="field__error" id="r3-cin-err">Pilih kelas</p>
                       </div>
                       <div class="field">
                         <span class="field__label" id="r3-cout-l">Kelas Keluar</span>
-                        <button class="input input--dropdown is-error" type="button" aria-haspopup="listbox" aria-labelledby="r3-cout-l r3-cout-v" aria-describedby="r3-cout-err"><span class="input__value input__hint auth-value-clip" id="r3-cout-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown is-error" type="button" aria-haspopup="listbox" aria-labelledby="r3-cout-l r3-cout-v" aria-describedby="r3-cout-err"><span class="input__value input__hint auth-value-clip" id="r3-cout-v">Pilih kelas</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                         <p class="field__error" id="r3-cout-err">Pilih kelas</p>
                       </div>
                     </div>
@@ -370,20 +370,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <div class="field">
                       <label class="field__label" for="r4-name">Nama Lengkap</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-user-circle"></span></span>
                         <input class="input__control" id="r4-name" type="text" placeholder="Masukkan nama lengkap" autocomplete="name">
                       </div>
                     </div>
@@ -392,7 +392,7 @@
                     <div class="auth-anchor">
                       <div class="field">
                         <span class="field__label" id="r4-gender-l">Jenis Kelamin</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r4-gender-l r4-gender-v"><span class="input__value input__hint" id="r4-gender-v">Pilih Jenis Kelamin</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r4-gender-l r4-gender-v"><span class="input__value input__hint" id="r4-gender-v">Pilih Jenis Kelamin</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                       <div class="auth-dropdown-pop">
                         <div class="dropdown-menu" role="listbox" aria-label="Jenis Kelamin">
@@ -406,7 +406,7 @@
                     <div class="field">
                       <label class="field__label" for="r4-email">Email</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-envelope-simple"></span></span>
                         <input class="input__control" id="r4-email" type="email" placeholder="Masukkan email" autocomplete="email">
                       </div>
                     </div>
@@ -416,32 +416,32 @@
                       <label class="field__label" for="r4-pw">Password</label>
                       <div class="input">
                         <input class="input__control" id="r4-pw" type="password" placeholder="Masukkan password" autocomplete="new-password">
-                        <span class="input__suffix"><span class="input__trailing-text c-danger" aria-hidden="true">0/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                        <span class="input__suffix"><span class="input__trailing-text c-danger" aria-hidden="true">0/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ph-eye-slash" aria-hidden="true"></span></button></span>
                       </div>
                     </div>
                   </div>
                   <ul class="rules" aria-label="Aturan password">
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf besar<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Angka<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Simbol<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Angka<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Simbol<span class="sr-only">, belum terpenuhi</span></li>
                   </ul>
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r4-cohort-l">Angkatan</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r4-cohort-l r4-cohort-v"><span class="input__value input__hint" id="r4-cohort-v">Pilih angkatan</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r4-cohort-l r4-cohort-v"><span class="input__value input__hint" id="r4-cohort-v">Pilih angkatan</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="auth-class-row">
                       <div class="field">
                         <span class="field__label" id="r4-cin-l">Kelas Masuk</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r4-cin-l r4-cin-v"><span class="input__value input__hint auth-value-clip" id="r4-cin-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r4-cin-l r4-cin-v"><span class="input__value input__hint auth-value-clip" id="r4-cin-v">Pilih kelas</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                       <div class="field">
                         <span class="field__label" id="r4-cout-l">Kelas Keluar</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r4-cout-l r4-cout-v"><span class="input__value input__hint auth-value-clip" id="r4-cout-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r4-cout-l r4-cout-v"><span class="input__value input__hint auth-value-clip" id="r4-cout-v">Pilih kelas</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                     </div>
                   </div>
@@ -478,20 +478,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <div class="field">
                       <label class="field__label" for="r5-name">Nama Lengkap</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-user-circle"></span></span>
                         <input class="input__control" id="r5-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad Fauzi" autocomplete="name">
                       </div>
                     </div>
@@ -499,14 +499,14 @@
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r5-gender-l">Jenis Kelamin</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r5-gender-l r5-gender-v"><span class="input__value" id="r5-gender-v">Laki-laki</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r5-gender-l r5-gender-v"><span class="input__value" id="r5-gender-v">Laki-laki</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="field">
                       <label class="field__label" for="r5-email">Email</label>
                       <div class="input is-error">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-envelope-simple"></span></span>
                         <input class="input__control" id="r5-email" type="email" placeholder="Masukkan email" value="ahmad.fauzi@contoh.id" autocomplete="email" aria-invalid="true" aria-describedby="r5-email-err">
                       </div>
                       <p class="field__error" id="r5-email-err">Email sudah terdaftar</p>
@@ -517,32 +517,32 @@
                       <label class="field__label" for="r5-pw">Password</label>
                       <div class="input">
                         <input class="input__control" id="r5-pw" type="password" placeholder="Masukkan password" value="Rahasia#2026" autocomplete="new-password">
-                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ph-eye-slash" aria-hidden="true"></span></button></span>
                       </div>
                     </div>
                   </div>
                   <ul class="rules" aria-label="Aturan password">
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
                   </ul>
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r5-cohort-l">Angkatan</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r5-cohort-l r5-cohort-v"><span class="input__value" id="r5-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r5-cohort-l r5-cohort-v"><span class="input__value" id="r5-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="auth-class-row">
                       <div class="field">
                         <span class="field__label" id="r5-cin-l">Kelas Masuk</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r5-cin-l r5-cin-v"><span class="input__value auth-value-clip" id="r5-cin-v">Kelas 1 (1 MTs)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r5-cin-l r5-cin-v"><span class="input__value auth-value-clip" id="r5-cin-v">Kelas 1 (1 MTs)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                       <div class="field">
                         <span class="field__label" id="r5-cout-l">Kelas Keluar</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r5-cout-l r5-cout-v"><span class="input__value auth-value-clip" id="r5-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r5-cout-l r5-cout-v"><span class="input__value auth-value-clip" id="r5-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                     </div>
                   </div>
@@ -589,20 +589,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <div class="field">
                       <label class="field__label" for="r6-name">Nama Lengkap</label>
                       <div class="input is-focused">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-user-circle"></span></span>
                         <input class="input__control" id="r6-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad F" autocomplete="name">
                       </div>
                     </div>
@@ -610,14 +610,14 @@
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r6-gender-l">Jenis Kelamin</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r6-gender-l r6-gender-v"><span class="input__value input__hint" id="r6-gender-v">Pilih Jenis Kelamin</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r6-gender-l r6-gender-v"><span class="input__value input__hint" id="r6-gender-v">Pilih Jenis Kelamin</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="field">
                       <label class="field__label" for="r6-email">Email</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-envelope-simple"></span></span>
                         <input class="input__control" id="r6-email" type="email" placeholder="Masukkan email" autocomplete="email">
                       </div>
                     </div>
@@ -627,32 +627,32 @@
                       <label class="field__label" for="r6-pw">Password</label>
                       <div class="input">
                         <input class="input__control" id="r6-pw" type="password" placeholder="Masukkan password" autocomplete="new-password">
-                        <span class="input__suffix"><span class="input__trailing-text c-danger" aria-hidden="true">0/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                        <span class="input__suffix"><span class="input__trailing-text c-danger" aria-hidden="true">0/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ph-eye-slash" aria-hidden="true"></span></button></span>
                       </div>
                     </div>
                   </div>
                   <ul class="rules" aria-label="Aturan password">
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf besar<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Angka<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Simbol<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Angka<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Simbol<span class="sr-only">, belum terpenuhi</span></li>
                   </ul>
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r6-cohort-l">Angkatan</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r6-cohort-l r6-cohort-v"><span class="input__value input__hint" id="r6-cohort-v">Pilih angkatan</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r6-cohort-l r6-cohort-v"><span class="input__value input__hint" id="r6-cohort-v">Pilih angkatan</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="auth-class-row">
                       <div class="field">
                         <span class="field__label" id="r6-cin-l">Kelas Masuk</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r6-cin-l r6-cin-v"><span class="input__value input__hint auth-value-clip" id="r6-cin-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r6-cin-l r6-cin-v"><span class="input__value input__hint auth-value-clip" id="r6-cin-v">Pilih kelas</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                       <div class="field">
                         <span class="field__label" id="r6-cout-l">Kelas Keluar</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r6-cout-l r6-cout-v"><span class="input__value input__hint auth-value-clip" id="r6-cout-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r6-cout-l r6-cout-v"><span class="input__value input__hint auth-value-clip" id="r6-cout-v">Pilih kelas</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                     </div>
                   </div>
@@ -695,20 +695,20 @@
             <div class="scroll-viewport scroll-end">
               <div class="scroll-offset">
                 <div class="auth-body">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <div class="field">
                       <label class="field__label" for="r7-name">Nama Lengkap</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-user-circle"></span></span>
                         <input class="input__control" id="r7-name" type="text" placeholder="Masukkan nama lengkap" autocomplete="name">
                       </div>
                     </div>
@@ -716,14 +716,14 @@
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r7-gender-l">Jenis Kelamin</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r7-gender-l r7-gender-v"><span class="input__value input__hint" id="r7-gender-v">Pilih Jenis Kelamin</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r7-gender-l r7-gender-v"><span class="input__value input__hint" id="r7-gender-v">Pilih Jenis Kelamin</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="field">
                       <label class="field__label" for="r7-email">Email</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-envelope-simple"></span></span>
                         <input class="input__control" id="r7-email" type="email" placeholder="Masukkan email" autocomplete="email">
                       </div>
                     </div>
@@ -733,32 +733,32 @@
                       <label class="field__label" for="r7-pw">Password</label>
                       <div class="input">
                         <input class="input__control" id="r7-pw" type="password" placeholder="Masukkan password" autocomplete="new-password">
-                        <span class="input__suffix"><span class="input__trailing-text c-danger" aria-hidden="true">0/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                        <span class="input__suffix"><span class="input__trailing-text c-danger" aria-hidden="true">0/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ph-eye-slash" aria-hidden="true"></span></button></span>
                       </div>
                     </div>
                   </div>
                   <ul class="rules" aria-label="Aturan password">
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf besar<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Angka<span class="sr-only">, belum terpenuhi</span></li>
-                    <li class="rules__item"><span class="ic ic-radio_button_unchecked" aria-hidden="true"></span>Simbol<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Angka<span class="sr-only">, belum terpenuhi</span></li>
+                    <li class="rules__item"><span class="ic ph-circle" aria-hidden="true"></span>Simbol<span class="sr-only">, belum terpenuhi</span></li>
                   </ul>
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r7-cohort-l">Angkatan</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r7-cohort-l r7-cohort-v"><span class="input__value input__hint" id="r7-cohort-v">Pilih angkatan</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r7-cohort-l r7-cohort-v"><span class="input__value input__hint" id="r7-cohort-v">Pilih angkatan</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="auth-class-row">
                       <div class="field">
                         <span class="field__label" id="r7-cin-l">Kelas Masuk</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r7-cin-l r7-cin-v"><span class="input__value input__hint auth-value-clip" id="r7-cin-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r7-cin-l r7-cin-v"><span class="input__value input__hint auth-value-clip" id="r7-cin-v">Pilih kelas</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                       <div class="field">
                         <span class="field__label" id="r7-cout-l">Kelas Keluar</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r7-cout-l r7-cout-v"><span class="input__value input__hint auth-value-clip" id="r7-cout-v">Pilih kelas</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r7-cout-l r7-cout-v"><span class="input__value input__hint auth-value-clip" id="r7-cout-v">Pilih kelas</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                     </div>
                   </div>
@@ -766,7 +766,7 @@
                     <div class="auth-consent">
                       <div class="list-tile list-tile--control-leading is-disabled" role="checkbox" aria-checked="false" aria-disabled="true" aria-labelledby="r7-consent-t"><span class="checkbox" aria-hidden="true"></span><div class="list-tile__body"><div class="list-tile__title auth-consent__title" id="r7-consent-t">Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH</div></div></div>
                       <div class="auth-links"><button class="btn-link" type="button">Baca Kebijakan Privasi</button><button class="btn-link" type="button">Baca Ketentuan</button></div>
-                      <div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Versi kebijakan belum dapat dimuat. Periksa koneksi Anda.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+                      <div class="info-box info-box--warning"><span class="ic ph-warning" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Versi kebijakan belum dapat dimuat. Periksa koneksi Anda.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
                     </div>
                   </div>
                   <div class="mt-5">
@@ -795,20 +795,20 @@
             <div class="scroll-viewport scroll-end">
               <div class="scroll-offset">
                 <div class="auth-body">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <div class="field">
                       <label class="field__label" for="r8-name">Nama Lengkap</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-user-circle"></span></span>
                         <input class="input__control" id="r8-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad Fauzi" autocomplete="name">
                       </div>
                     </div>
@@ -816,14 +816,14 @@
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r8-gender-l">Jenis Kelamin</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r8-gender-l r8-gender-v"><span class="input__value" id="r8-gender-v">Laki-laki</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r8-gender-l r8-gender-v"><span class="input__value" id="r8-gender-v">Laki-laki</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="field">
                       <label class="field__label" for="r8-email">Email</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-envelope-simple"></span></span>
                         <input class="input__control" id="r8-email" type="email" placeholder="Masukkan email" value="ahmad.fauzi@contoh.id" autocomplete="email">
                       </div>
                     </div>
@@ -833,32 +833,32 @@
                       <label class="field__label" for="r8-pw">Password</label>
                       <div class="input">
                         <input class="input__control" id="r8-pw" type="password" placeholder="Masukkan password" value="Rahasia#2026" autocomplete="new-password">
-                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ph-eye-slash" aria-hidden="true"></span></button></span>
                       </div>
                     </div>
                   </div>
                   <ul class="rules" aria-label="Aturan password">
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
                   </ul>
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r8-cohort-l">Angkatan</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r8-cohort-l r8-cohort-v"><span class="input__value" id="r8-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r8-cohort-l r8-cohort-v"><span class="input__value" id="r8-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="auth-class-row">
                       <div class="field">
                         <span class="field__label" id="r8-cin-l">Kelas Masuk</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r8-cin-l r8-cin-v"><span class="input__value auth-value-clip" id="r8-cin-v">Kelas 1 (1 MTs)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r8-cin-l r8-cin-v"><span class="input__value auth-value-clip" id="r8-cin-v">Kelas 1 (1 MTs)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                       <div class="field">
                         <span class="field__label" id="r8-cout-l">Kelas Keluar</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r8-cout-l r8-cout-v"><span class="input__value auth-value-clip" id="r8-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r8-cout-l r8-cout-v"><span class="input__value auth-value-clip" id="r8-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                     </div>
                   </div>
@@ -876,11 +876,11 @@
                     <div class="auth-consent">
                       <div class="list-tile list-tile--control-leading is-disabled" role="checkbox" aria-checked="false" aria-disabled="true" aria-labelledby="r8-consent-t"><span class="checkbox" aria-hidden="true"></span><div class="list-tile__body"><div class="list-tile__title auth-consent__title" id="r8-consent-t">Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH</div></div></div>
                       <div class="auth-links"><button class="btn-link" type="button">Baca Kebijakan Privasi</button><button class="btn-link" type="button">Baca Ketentuan</button></div>
-                      <div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Pendaftaran belum dibuka karena Kebijakan Privasi atau Ketentuan belum diterbitkan pengurus. Coba lagi nanti.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+                      <div class="info-box info-box--warning"><span class="ic ph-warning" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Pendaftaran belum dibuka karena Kebijakan Privasi atau Ketentuan belum diterbitkan pengurus. Coba lagi nanti.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
                     </div>
                   </div>
                   <div class="mt-3">
-                    <div class="info-box info-box--danger" role="status"><span class="ic ic-error_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Pendaftaran belum dibuka karena Kebijakan Privasi atau Ketentuan belum diterbitkan pengurus. Coba lagi nanti.</p></div></div>
+                    <div class="info-box info-box--danger" role="status"><span class="ic ph-warning-circle" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Pendaftaran belum dibuka karena Kebijakan Privasi atau Ketentuan belum diterbitkan pengurus. Coba lagi nanti.</p></div></div>
                   </div>
                   <div class="mt-5">
                     <button class="btn btn--primary" type="button">Lanjut verifikasi email</button>
@@ -908,20 +908,20 @@
             <div class="scroll-viewport scroll-end">
               <div class="scroll-offset">
                 <div class="auth-body">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <div class="field">
                       <label class="field__label" for="r9-name">Nama Lengkap</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-user-circle"></span></span>
                         <input class="input__control" id="r9-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad Fauzi" autocomplete="name">
                       </div>
                     </div>
@@ -929,14 +929,14 @@
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r9-gender-l">Jenis Kelamin</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r9-gender-l r9-gender-v"><span class="input__value" id="r9-gender-v">Laki-laki</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r9-gender-l r9-gender-v"><span class="input__value" id="r9-gender-v">Laki-laki</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="field">
                       <label class="field__label" for="r9-email">Email</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-envelope-simple"></span></span>
                         <input class="input__control" id="r9-email" type="email" placeholder="Masukkan email" value="ahmad.fauzi@contoh.id" autocomplete="email">
                       </div>
                     </div>
@@ -946,32 +946,32 @@
                       <label class="field__label" for="r9-pw">Password</label>
                       <div class="input">
                         <input class="input__control" id="r9-pw" type="password" placeholder="Masukkan password" value="Rahasia#2026" autocomplete="new-password">
-                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ph-eye-slash" aria-hidden="true"></span></button></span>
                       </div>
                     </div>
                   </div>
                   <ul class="rules" aria-label="Aturan password">
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
                   </ul>
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r9-cohort-l">Angkatan</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r9-cohort-l r9-cohort-v"><span class="input__value" id="r9-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r9-cohort-l r9-cohort-v"><span class="input__value" id="r9-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="auth-class-row">
                       <div class="field">
                         <span class="field__label" id="r9-cin-l">Kelas Masuk</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r9-cin-l r9-cin-v"><span class="input__value auth-value-clip" id="r9-cin-v">Kelas 1 (1 MTs)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r9-cin-l r9-cin-v"><span class="input__value auth-value-clip" id="r9-cin-v">Kelas 1 (1 MTs)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                       <div class="field">
                         <span class="field__label" id="r9-cout-l">Kelas Keluar</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r9-cout-l r9-cout-v"><span class="input__value auth-value-clip" id="r9-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r9-cout-l r9-cout-v"><span class="input__value auth-value-clip" id="r9-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                     </div>
                   </div>
@@ -993,7 +993,7 @@
                     </div>
                   </div>
                   <div class="mt-3">
-                    <div class="info-box info-box--danger" role="status"><span class="ic ic-error_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kebijakan Privasi atau Ketentuan baru saja diperbarui. Baca ulang lalu setujui kembali.</p></div></div>
+                    <div class="info-box info-box--danger" role="status"><span class="ic ph-warning-circle" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kebijakan Privasi atau Ketentuan baru saja diperbarui. Baca ulang lalu setujui kembali.</p></div></div>
                   </div>
                   <div class="mt-5">
                     <button class="btn btn--primary" type="button">Lanjut verifikasi email</button>
@@ -1021,20 +1021,20 @@
             <div class="scroll-viewport scroll-end">
               <div class="scroll-offset">
                 <div class="auth-body">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <div class="field">
                       <label class="field__label" for="r10-name">Nama Lengkap</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-user-circle"></span></span>
                         <input class="input__control" id="r10-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad Fauzi" autocomplete="name">
                       </div>
                     </div>
@@ -1042,14 +1042,14 @@
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r10-gender-l">Jenis Kelamin</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r10-gender-l r10-gender-v"><span class="input__value" id="r10-gender-v">Laki-laki</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r10-gender-l r10-gender-v"><span class="input__value" id="r10-gender-v">Laki-laki</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="field">
                       <label class="field__label" for="r10-email">Email</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-envelope-simple"></span></span>
                         <input class="input__control" id="r10-email" type="email" placeholder="Masukkan email" value="ahmad.fauzi@contoh.id" autocomplete="email">
                       </div>
                     </div>
@@ -1059,32 +1059,32 @@
                       <label class="field__label" for="r10-pw">Password</label>
                       <div class="input">
                         <input class="input__control" id="r10-pw" type="password" placeholder="Masukkan password" value="Rahasia#2026" autocomplete="new-password">
-                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ph-eye-slash" aria-hidden="true"></span></button></span>
                       </div>
                     </div>
                   </div>
                   <ul class="rules" aria-label="Aturan password">
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
                   </ul>
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r10-cohort-l">Angkatan</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r10-cohort-l r10-cohort-v"><span class="input__value" id="r10-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r10-cohort-l r10-cohort-v"><span class="input__value" id="r10-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="auth-class-row">
                       <div class="field">
                         <span class="field__label" id="r10-cin-l">Kelas Masuk</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r10-cin-l r10-cin-v"><span class="input__value auth-value-clip" id="r10-cin-v">Kelas 1 (1 MTs)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r10-cin-l r10-cin-v"><span class="input__value auth-value-clip" id="r10-cin-v">Kelas 1 (1 MTs)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                       <div class="field">
                         <span class="field__label" id="r10-cout-l">Kelas Keluar</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r10-cout-l r10-cout-v"><span class="input__value auth-value-clip" id="r10-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r10-cout-l r10-cout-v"><span class="input__value auth-value-clip" id="r10-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                     </div>
                   </div>
@@ -1130,20 +1130,20 @@
             <div class="scroll-viewport scroll-end">
               <div class="scroll-offset">
                 <div class="auth-body">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <div class="field">
                       <label class="field__label" for="r11-name">Nama Lengkap</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-user-circle"></span></span>
                         <input class="input__control" id="r11-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad Fauzi" autocomplete="name">
                       </div>
                     </div>
@@ -1151,14 +1151,14 @@
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r11-gender-l">Jenis Kelamin</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r11-gender-l r11-gender-v"><span class="input__value" id="r11-gender-v">Laki-laki</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r11-gender-l r11-gender-v"><span class="input__value" id="r11-gender-v">Laki-laki</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="field">
                       <label class="field__label" for="r11-email">Email</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-envelope-simple"></span></span>
                         <input class="input__control" id="r11-email" type="email" placeholder="Masukkan email" value="ahmad.fauzi@contoh.id" autocomplete="email">
                       </div>
                     </div>
@@ -1168,32 +1168,32 @@
                       <label class="field__label" for="r11-pw">Password</label>
                       <div class="input">
                         <input class="input__control" id="r11-pw" type="password" placeholder="Masukkan password" value="Rahasia#2026" autocomplete="new-password">
-                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ph-eye-slash" aria-hidden="true"></span></button></span>
                       </div>
                     </div>
                   </div>
                   <ul class="rules" aria-label="Aturan password">
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
                   </ul>
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r11-cohort-l">Angkatan</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r11-cohort-l r11-cohort-v"><span class="input__value" id="r11-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r11-cohort-l r11-cohort-v"><span class="input__value" id="r11-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="auth-class-row">
                       <div class="field">
                         <span class="field__label" id="r11-cin-l">Kelas Masuk</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r11-cin-l r11-cin-v"><span class="input__value auth-value-clip" id="r11-cin-v">Kelas 1 (1 MTs)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r11-cin-l r11-cin-v"><span class="input__value auth-value-clip" id="r11-cin-v">Kelas 1 (1 MTs)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                       <div class="field">
                         <span class="field__label" id="r11-cout-l">Kelas Keluar</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r11-cout-l r11-cout-v"><span class="input__value auth-value-clip" id="r11-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r11-cout-l r11-cout-v"><span class="input__value auth-value-clip" id="r11-cout-v">Kelas 6 (3 Aliyah)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                     </div>
                   </div>
@@ -1215,7 +1215,7 @@
                     </div>
                   </div>
                   <div class="mt-3">
-                    <div class="info-box info-box--danger" role="status"><span class="ic ic-error_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Terlalu banyak percobaan. Coba lagi nanti.</p></div></div>
+                    <div class="info-box info-box--danger" role="status"><span class="ic ph-warning-circle" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Terlalu banyak percobaan. Coba lagi nanti.</p></div></div>
                   </div>
                   <div class="mt-5">
                     <button class="btn btn--primary" type="button" disabled>Coba lagi dalam 0:42</button>
@@ -1243,20 +1243,20 @@
             <div class="scroll-viewport" style="--scroll:380px">
               <div class="scroll-offset">
                 <div class="auth-body">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 1 dari 4: Data Diri">
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <div class="field">
                       <label class="field__label" for="r12-name">Nama Lengkap</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-person_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-user-circle"></span></span>
                         <input class="input__control" id="r12-name" type="text" placeholder="Masukkan nama lengkap" value="Ahmad Fauzi" autocomplete="name">
                       </div>
                     </div>
@@ -1264,14 +1264,14 @@
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r12-gender-l">Jenis Kelamin</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r12-gender-l r12-gender-v"><span class="input__value" id="r12-gender-v">Laki-laki</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r12-gender-l r12-gender-v"><span class="input__value" id="r12-gender-v">Laki-laki</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="field">
                       <label class="field__label" for="r12-email">Email</label>
                       <div class="input">
-                        <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                        <span class="input__prefix" aria-hidden="true"><span class="ic ph-envelope-simple"></span></span>
                         <input class="input__control" id="r12-email" type="email" placeholder="Masukkan email" value="ahmad.fauzi@contoh.id" autocomplete="email">
                       </div>
                     </div>
@@ -1281,32 +1281,32 @@
                       <label class="field__label" for="r12-pw">Password</label>
                       <div class="input">
                         <input class="input__control" id="r12-pw" type="password" placeholder="Masukkan password" value="Rahasia#2026" autocomplete="new-password">
-                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                        <span class="input__suffix"><span class="input__trailing-text" aria-hidden="true">8/8</span><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ph-eye-slash" aria-hidden="true"></span></button></span>
                       </div>
                     </div>
                   </div>
                   <ul class="rules" aria-label="Aturan password">
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
-                    <li class="rules__item is-ok"><span class="ic ic-check_circle" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>8 sampai 72 byte<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Huruf besar<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Huruf kecil<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Angka<span class="sr-only">, terpenuhi</span></li>
+                    <li class="rules__item is-ok"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Simbol<span class="sr-only">, terpenuhi</span></li>
                   </ul>
                   <div class="mt-4">
                     <div class="field">
                       <span class="field__label" id="r12-cohort-l">Angkatan</span>
-                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r12-cohort-l r12-cohort-v"><span class="input__value" id="r12-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                      <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r12-cohort-l r12-cohort-v"><span class="input__value" id="r12-cohort-v">Angkatan 12 (lulus 2008)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                     </div>
                   </div>
                   <div class="mt-4">
                     <div class="auth-class-row">
                       <div class="field">
                         <span class="field__label" id="r12-cin-l">Kelas Masuk</span>
-                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r12-cin-l r12-cin-v"><span class="input__value auth-value-clip" id="r12-cin-v">Kelas 4 (1 Aliyah)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown" type="button" aria-haspopup="listbox" aria-labelledby="r12-cin-l r12-cin-v"><span class="input__value auth-value-clip" id="r12-cin-v">Kelas 4 (1 Aliyah)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                       </div>
                       <div class="field">
                         <span class="field__label" id="r12-cout-l">Kelas Keluar</span>
-                        <button class="input input--dropdown is-error" type="button" aria-haspopup="listbox" aria-labelledby="r12-cout-l r12-cout-v" aria-describedby="r12-cout-err"><span class="input__value auth-value-clip" id="r12-cout-v">Kelas 3 (3 MTs)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                        <button class="input input--dropdown is-error" type="button" aria-haspopup="listbox" aria-labelledby="r12-cout-l r12-cout-v" aria-describedby="r12-cout-err"><span class="input__value auth-value-clip" id="r12-cout-v">Kelas 3 (3 MTs)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button>
                         <p class="field__error" id="r12-cout-err">Tidak boleh sebelum kelas masuk</p>
                       </div>
                     </div>

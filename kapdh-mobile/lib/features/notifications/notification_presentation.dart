@@ -5,18 +5,19 @@ import 'package:kapdh_api/kapdh_api.dart';
 import '../../app/redirect.dart';
 import '../../app/routes.dart';
 import '../../core/deep_link/deep_links.dart';
+import '../../design/kapdh_icons.dart';
 
 /// Label dan ikon kategori notifikasi (ARCHITECTURE §4.7). Kategori selalu ditampilkan sebagai teks, bukan warna saja
 /// (PRD 4.5).
 ({String label, IconData icon}) notificationCategoryStyle(NotificationCategory category) => switch (category) {
-  NotificationCategory.payment => (label: 'Pembayaran', icon: Icons.payments_outlined),
-  NotificationCategory.membership => (label: 'Keanggotaan', icon: Icons.badge_outlined),
-  NotificationCategory.event => (label: 'Event', icon: Icons.event_outlined),
-  NotificationCategory.news => (label: 'Berita', icon: Icons.article_outlined),
-  NotificationCategory.chat => (label: 'Chat', icon: Icons.chat_bubble_outline),
-  NotificationCategory.security => (label: 'Keamanan akun', icon: Icons.shield_outlined),
-  NotificationCategory.account => (label: 'Akun', icon: Icons.manage_accounts_outlined),
-  NotificationCategory.unknown => (label: 'Informasi', icon: Icons.notifications_none),
+  NotificationCategory.payment => (label: 'Pembayaran', icon: KapdhIcons.paymentsOutlined),
+  NotificationCategory.membership => (label: 'Keanggotaan', icon: KapdhIcons.badgeOutlined),
+  NotificationCategory.event => (label: 'Event', icon: KapdhIcons.eventOutlined),
+  NotificationCategory.news => (label: 'Berita', icon: KapdhIcons.articleOutlined),
+  NotificationCategory.chat => (label: 'Chat', icon: KapdhIcons.chatBubbleOutline),
+  NotificationCategory.security => (label: 'Keamanan akun', icon: KapdhIcons.shieldOutlined),
+  NotificationCategory.account => (label: 'Akun', icon: KapdhIcons.manageAccountsOutlined),
+  NotificationCategory.unknown => (label: 'Informasi', icon: KapdhIcons.notificationsNone),
 };
 
 /// Lokasi internal dari `deep_link` (`kapdh://app/<rute>`, kontrak C7). Null bila notifikasi hanya informasi, tautan

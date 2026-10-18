@@ -44,7 +44,7 @@ void main() {
       final lock = tester.widget<Icon>(
         find.descendant(of: find.byKey(const ValueKey('kta-qr-placeholder')), matching: find.byType(Icon)),
       );
-      expect(lock.icon, Icons.lock_outline);
+      expect(lock.icon, KapdhIcons.lockOutline);
       expect(lock.size, 28);
       expect(lock.color, KapdhColors.accent);
     });
@@ -154,7 +154,7 @@ void main() {
       expect(find.text('bukti-transfer.jpg'), findsOneWidget);
       expect(find.text('1,2 MB'), findsOneWidget);
       expect(find.text('Ganti'), findsOneWidget);
-      expect(find.byIcon(Icons.image_outlined), findsOneWidget);
+      expect(find.byIcon(KapdhIcons.imageOutlined), findsOneWidget);
     });
 
     testWidgets('garis putus-putus hijau terlihat di atas isian tile (prototipe layar 3)', (tester) async {
@@ -213,7 +213,7 @@ void main() {
       expect(find.text('Mengunggah 40%'), findsOneWidget);
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
       expect(find.text('Berkas lebih dari 5 MB.'), findsOneWidget);
-      expect(find.byIcon(Icons.error_outline), findsOneWidget);
+      expect(find.byIcon(KapdhIcons.errorOutline), findsOneWidget);
     });
   });
 

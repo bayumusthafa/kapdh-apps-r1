@@ -28,9 +28,14 @@ Future<ProofSource?> showProofSourceSheet(BuildContext context) {
               child: PaymentSectionTitle('Pilih bukti transfer'),
             ),
             for (final (source, icon, title, subtitle) in const [
-              (ProofSource.camera, Icons.photo_camera_outlined, 'Ambil foto', 'Foto bukti transfer dengan kamera'),
-              (ProofSource.gallery, Icons.photo_library_outlined, 'Pilih dari galeri', 'Tangkapan layar aplikasi bank'),
-              (ProofSource.pdf, Icons.picture_as_pdf_outlined, 'Pilih PDF', 'Bukti transfer PDF maks 10 MB'),
+              (ProofSource.camera, KapdhIcons.photoCameraOutlined, 'Ambil foto', 'Foto bukti transfer dengan kamera'),
+              (
+                ProofSource.gallery,
+                KapdhIcons.photoLibraryOutlined,
+                'Pilih dari galeri',
+                'Tangkapan layar aplikasi bank',
+              ),
+              (ProofSource.pdf, KapdhIcons.pictureAsPdfOutlined, 'Pilih PDF', 'Bukti transfer PDF maks 10 MB'),
             ])
               ListTile(
                 minTileHeight: KapdhSize.touchTargetMin + KapdhSpace.s2,
@@ -115,7 +120,7 @@ class ProofUploadSection extends StatelessWidget {
           InfoBox(
             key: const ValueKey('proof-checking-status'),
             tone: InfoBoxTone.warning,
-            icon: Icons.sync_problem,
+            icon: KapdhIcons.syncProblem,
             title: 'Memeriksa status',
             message:
                 'Koneksi terputus saat mengirim bukti. Anda tidak perlu transfer ulang. Status pengiriman diperiksa '

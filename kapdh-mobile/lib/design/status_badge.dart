@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
 import '../app/theme/kapdh_tokens.dart';
+import 'kapdh_icons.dart';
 
 /// Gaya badge status: label + ikon + warna. Status tidak pernah dibedakan dengan warna saja (PRD 4.5, N-11).
 @immutable
@@ -22,12 +23,12 @@ class StatusBadgeStyle {
   final Color background;
 
   static IconData _iconFor(String name) => switch (name) {
-    'check_circle' => Icons.check_circle,
-    'schedule' => Icons.schedule,
-    'cancel' => Icons.cancel,
-    'hourglass_top' => Icons.hourglass_top,
-    'block' => Icons.block,
-    _ => Icons.info_outline,
+    'check_circle' => KapdhIcons.checkCircle,
+    'schedule' => KapdhIcons.schedule,
+    'cancel' => KapdhIcons.cancel,
+    'hourglass_top' => KapdhIcons.hourglassTop,
+    'block' => KapdhIcons.block,
+    _ => KapdhIcons.infoOutline,
   };
 
   @override
@@ -99,10 +100,10 @@ abstract final class StatusStyles {
       EffectiveStatus.expired => StatusBadgeStyle.fromToken(KapdhMembershipStatus.expired, label: label),
       EffectiveStatus.unverified => StatusBadgeStyle.fromToken(KapdhMembershipStatus.unverified, label: label),
       EffectiveStatus.suspended => StatusBadgeStyle.fromToken(KapdhMembershipStatus.suspended, label: label),
-      EffectiveStatus.pendingOtp => _make(label, Icons.mark_email_unread_outlined, _info),
-      EffectiveStatus.disabled => _make(label, Icons.person_off_outlined, _neutral),
-      EffectiveStatus.deletionPending => _make(label, Icons.delete_outline, _neutral),
-      EffectiveStatus.unknown => _make(label, Icons.help_outline, _neutral),
+      EffectiveStatus.pendingOtp => _make(label, KapdhIcons.markEmailUnreadOutlined, _info),
+      EffectiveStatus.disabled => _make(label, KapdhIcons.personOffOutlined, _neutral),
+      EffectiveStatus.deletionPending => _make(label, KapdhIcons.deleteOutline, _neutral),
+      EffectiveStatus.unknown => _make(label, KapdhIcons.helpOutline, _neutral),
     };
   }
 
@@ -113,7 +114,7 @@ abstract final class StatusStyles {
     MemberCardStatus.inactive => StatusBadgeStyle.fromToken(KapdhMembershipStatus.unverified),
     MemberCardStatus.expired => StatusBadgeStyle.fromToken(KapdhMembershipStatus.expired),
     MemberCardStatus.suspended => StatusBadgeStyle.fromToken(KapdhMembershipStatus.suspended),
-    MemberCardStatus.unknown => _make('Status Tidak Dikenal', Icons.help_outline, _neutral),
+    MemberCardStatus.unknown => _make('Status Tidak Dikenal', KapdhIcons.helpOutline, _neutral),
   };
 
   /// Pembayaran (PRD 3.3, 4.3). [proofSubmitted]: bukti sudah dikirim dan menunggu pengurus. [correctable]: penolakan
@@ -121,47 +122,47 @@ abstract final class StatusStyles {
   static StatusBadgeStyle payment(PaymentStatus status, {bool proofSubmitted = false, bool correctable = true}) =>
       switch (status) {
         PaymentStatus.pending when proofSubmitted => StatusBadgeStyle.fromToken(KapdhMembershipStatus.pendingReview),
-        PaymentStatus.pending => _make('Menunggu Pembayaran', Icons.schedule, _warning),
-        PaymentStatus.paid => _make('Lunas', Icons.check_circle, _success),
-        PaymentStatus.rejected when correctable => _make('Perlu Perbaikan', Icons.error_outline, _danger),
-        PaymentStatus.rejected => _make('Ditolak', Icons.cancel, _danger),
-        PaymentStatus.cancelled => _make('Dibatalkan', Icons.block, _neutral),
-        PaymentStatus.unknown => _make('Status Tidak Dikenal', Icons.help_outline, _neutral),
+        PaymentStatus.pending => _make('Menunggu Pembayaran', KapdhIcons.schedule, _warning),
+        PaymentStatus.paid => _make('Lunas', KapdhIcons.checkCircle, _success),
+        PaymentStatus.rejected when correctable => _make('Perlu Perbaikan', KapdhIcons.errorOutline, _danger),
+        PaymentStatus.rejected => _make('Ditolak', KapdhIcons.cancel, _danger),
+        PaymentStatus.cancelled => _make('Dibatalkan', KapdhIcons.block, _neutral),
+        PaymentStatus.unknown => _make('Status Tidak Dikenal', KapdhIcons.helpOutline, _neutral),
       };
 
   /// Tiket event (F-09).
   static StatusBadgeStyle ticket(TicketBadgeStatus status) => switch (status) {
-    TicketBadgeStatus.awaitingPayment => _make('Menunggu Pembayaran', Icons.schedule, _warning),
+    TicketBadgeStatus.awaitingPayment => _make('Menunggu Pembayaran', KapdhIcons.schedule, _warning),
     TicketBadgeStatus.awaitingReview => StatusBadgeStyle.fromToken(KapdhMembershipStatus.pendingReview),
-    TicketBadgeStatus.paid => _make('Terkonfirmasi', Icons.confirmation_number_outlined, _success),
-    TicketBadgeStatus.checkedIn => _make('Sudah Check-in', Icons.how_to_reg, _success),
-    TicketBadgeStatus.expired => _make('Kedaluwarsa', Icons.timer_off_outlined, _neutral),
-    TicketBadgeStatus.cancelled => _make('Dibatalkan', Icons.block, _neutral),
-    TicketBadgeStatus.unknown => _make('Status Tidak Dikenal', Icons.help_outline, _neutral),
+    TicketBadgeStatus.paid => _make('Terkonfirmasi', KapdhIcons.confirmationNumberOutlined, _success),
+    TicketBadgeStatus.checkedIn => _make('Sudah Check-in', KapdhIcons.howToReg, _success),
+    TicketBadgeStatus.expired => _make('Kedaluwarsa', KapdhIcons.timerOffOutlined, _neutral),
+    TicketBadgeStatus.cancelled => _make('Dibatalkan', KapdhIcons.block, _neutral),
+    TicketBadgeStatus.unknown => _make('Status Tidak Dikenal', KapdhIcons.helpOutline, _neutral),
   };
 
   /// Event (F-09; guideline hal. 8 "Pendaftaran di Buka/Tutup").
   static StatusBadgeStyle event(EventBadgeStatus status) => switch (status) {
-    EventBadgeStatus.draft => _make('Draf', Icons.edit_note, _neutral),
-    EventBadgeStatus.open => _make('Pendaftaran Dibuka', Icons.event_available, _success),
-    EventBadgeStatus.closed => _make('Pendaftaran Ditutup', Icons.event_busy, _danger),
-    EventBadgeStatus.done => _make('Selesai', Icons.event_note, _neutral),
-    EventBadgeStatus.cancelled => _make('Dibatalkan', Icons.cancel, _danger),
-    EventBadgeStatus.unknown => _make('Status Tidak Dikenal', Icons.help_outline, _neutral),
+    EventBadgeStatus.draft => _make('Draf', KapdhIcons.editNote, _neutral),
+    EventBadgeStatus.open => _make('Pendaftaran Dibuka', KapdhIcons.eventAvailable, _success),
+    EventBadgeStatus.closed => _make('Pendaftaran Ditutup', KapdhIcons.eventBusy, _danger),
+    EventBadgeStatus.done => _make('Selesai', KapdhIcons.eventNote, _neutral),
+    EventBadgeStatus.cancelled => _make('Dibatalkan', KapdhIcons.cancel, _danger),
+    EventBadgeStatus.unknown => _make('Status Tidak Dikenal', KapdhIcons.helpOutline, _neutral),
   };
 
   /// Penghapusan akun (F-14).
   static StatusBadgeStyle deletion(AccountDeletionStatus status) => switch (status) {
-    AccountDeletionStatus.pending => _make('Permintaan Diterima', Icons.inbox_outlined, _info),
-    AccountDeletionStatus.processing => _make('Sedang Diproses', Icons.hourglass_top, _warning),
+    AccountDeletionStatus.pending => _make('Permintaan Diterima', KapdhIcons.inboxOutlined, _info),
+    AccountDeletionStatus.processing => _make('Sedang Diproses', KapdhIcons.hourglassTop, _warning),
     // Langkah terakhir gagal dan dicoba ulang otomatis tanpa mengulang langkah selesai (AC F14-2, kontrak account).
-    AccountDeletionStatus.failed => _make('Sedang Diproses Ulang', Icons.autorenew, _warning),
-    AccountDeletionStatus.completed => _make('Selesai', Icons.check_circle, _neutral),
-    AccountDeletionStatus.unknown => _make('Status Tidak Dikenal', Icons.help_outline, _neutral),
+    AccountDeletionStatus.failed => _make('Sedang Diproses Ulang', KapdhIcons.autorenew, _warning),
+    AccountDeletionStatus.completed => _make('Selesai', KapdhIcons.checkCircle, _neutral),
+    AccountDeletionStatus.unknown => _make('Status Tidak Dikenal', KapdhIcons.helpOutline, _neutral),
   };
 
   /// Data dari cache saat tanpa koneksi (AC F05-2, prototipe layar 7).
-  static final StatusBadgeStyle offline = _make('Offline', Icons.cloud_off, _warning);
+  static final StatusBadgeStyle offline = _make('Offline', KapdhIcons.cloudOff, _warning);
 }
 
 /// Badge status berbentuk pil: ikon + label (prototipe layar 2, 4, 5, 6, 7).

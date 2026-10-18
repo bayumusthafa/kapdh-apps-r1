@@ -101,7 +101,7 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
             SizedBox(
               height: 320,
               child: EmptyState(
-                icon: Icons.description_outlined,
+                icon: KapdhIcons.descriptionOutlined,
                 title: 'Halaman belum tersedia',
                 message: 'Halaman ini belum diterbitkan pengurus. Hubungi pengurus bila Anda membutuhkan informasinya.',
               ),

@@ -529,7 +529,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     if (challenge == null) {
       return BrandSheetScaffold(
         body: EmptyState(
-          icon: Icons.mark_email_unread_outlined,
+          icon: KapdhIcons.markEmailUnreadOutlined,
           title: 'Kode verifikasi belum tersedia',
           message: 'Masuk kembali dengan email dan password Anda untuk menerima kode verifikasi baru.',
           actionLabel: 'Ke halaman masuk',
