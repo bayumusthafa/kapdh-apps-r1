@@ -164,10 +164,24 @@
 .jj-phone { display: inline-flex; align-items: center; gap: var(--s2); min-height: 48px; color: var(--color-primary); }
 .jj-phone .ic { --ic-size: var(--ic-btn); }
 .jj-phone__text { text-decoration: underline; }
-/* _SocialLink: Wrap jarak 16/4, tiap tautan min 140 x 48, ikon 18 abu + celah 8 */
-.jj-social { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); }
-.jj-social__item { display: inline-flex; align-items: center; gap: var(--s2); min-height: 48px; min-width: 140px; color: var(--color-text-muted); }
-.jj-social__item .ic { --ic-size: var(--ic-btn); }
+/* _SocialLink (dulu Wrap 16/4, tautan min 140 x 48, ikon 18 abu) -> daftar baris v2 di bawah. */
+/* [v2, usulan] Riwayat Pendidikan dan Media Sosial mengikuti data Ubah Profil (education[], social_links[]). Tiap baris:
+   ikon 20 dalam kotak tint 36 radius 12, teks dua baris. Pendidikan: nama institusi 14 w600 + "Strata · Jurusan ·
+   Tamat tahun" 12 abu, urut terbaru. Media sosial: nama platform 12 abu + nama pengguna/tautan 14 primary, ikon tautan
+   luar; seluruh baris 56 dapat diketuk (membuka aplikasi/peramban). */
+.jj-edu { display: flex; flex-direction: column; gap: var(--s3); }
+.jj-edu__item { display: flex; align-items: flex-start; gap: var(--s3); }
+.jj-edu__icon { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--r-md); background: var(--color-tint); color: var(--color-primary); }
+.jj-edu__icon .ic { --ic-size: var(--ic-md); }
+.jj-edu__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.jj-edu__name { font-weight: var(--fw-semibold); line-height: 1.4; }
+.jj-edu__meta { font-size: var(--fs-caption); line-height: var(--lh-normal); color: var(--color-text-muted); }
+.jj-social { display: flex; flex-direction: column; }
+.jj-social__item { display: flex; align-items: center; gap: var(--s3); min-height: 56px; color: var(--color-text); border-radius: var(--r-md); }
+.jj-social__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.jj-social__platform { font-size: var(--fs-caption); line-height: 1.4; color: var(--color-text-muted); }
+.jj-social__handle { font-weight: 500; color: var(--color-primary); }
+.jj-social__out { --ic-size: var(--ic-sm); flex: none; color: var(--color-text-muted); }
 /* Area pesan di bawah (SafeArea): padding 20/8/20/16 di atas inset gestur, latar surface */
 .jj-profile-bottom { position: relative; z-index: 2; flex: none; padding: var(--s2) var(--s5) calc(var(--s4) + var(--inset-bottom)); background: var(--color-surface); box-shadow: var(--shadow-bar-top); } /* [v2: + bayangan atas] */
 /* PopupMenuButton di kepala: menu menempel tombol (atas sama), 8 dari tepi kanan, lebar kelipatan 56 (min 112) */
