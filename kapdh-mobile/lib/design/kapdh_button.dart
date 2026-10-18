@@ -12,6 +12,12 @@ enum KapdhButtonVariant {
 
   /// Garis hijau 48 px (prototipe layar 4 "Ganti bukti", layar 7 "Sinkronkan").
   outlined,
+
+  /// Emas 52 px untuk aksi utama di atas permukaan hijau gelap (layar Welcome "Daftar KAPDH Apps").
+  accent,
+
+  /// Garis putih 48 px di atas permukaan hijau gelap (layar Welcome "Sudah Punya Akun? Masuk").
+  outlinedOnDark,
 }
 
 /// Tombol KAPDH. Tinggi minimum mengikuti prototipe dan bertambah saat teks diperbesar sampai 200 % (N-11);
@@ -51,6 +57,28 @@ class KapdhButton extends StatelessWidget {
     this.semanticsHint,
   }) : variant = KapdhButtonVariant.outlined;
 
+  const KapdhButton.accent({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.busy = false,
+    this.busyLabel,
+    this.expand = true,
+    this.semanticsHint,
+  }) : variant = KapdhButtonVariant.accent;
+
+  const KapdhButton.outlinedOnDark({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.busy = false,
+    this.busyLabel,
+    this.expand = true,
+    this.semanticsHint,
+  }) : variant = KapdhButtonVariant.outlinedOnDark;
+
   final String label;
 
   /// Null = nonaktif.
@@ -68,9 +96,8 @@ class KapdhButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final minHeight = variant == KapdhButtonVariant.primary
-        ? KapdhComponentSize.primaryButtonHeight
-        : KapdhSize.buttonHeight;
+    final tall = variant == KapdhButtonVariant.primary || variant == KapdhButtonVariant.accent;
+    final minHeight = tall ? KapdhComponentSize.primaryButtonHeight : KapdhSize.buttonHeight;
     final radius = BorderRadius.circular(KapdhRadius.md);
     final enabled = _enabled;
 
@@ -94,17 +121,25 @@ class KapdhButton extends StatelessWidget {
           border: Border.all(color: enabled ? KapdhColors.primary : KapdhColors.divider),
           borderRadius: radius,
         );
+      case KapdhButtonVariant.accent:
+        foreground = enabled ? KapdhColors.onAccent : KapdhColors.disabledText;
+        decoration = BoxDecoration(color: enabled ? KapdhColors.accent : KapdhColors.disabledBg, borderRadius: radius);
+      case KapdhButtonVariant.outlinedOnDark:
+        foreground = enabled ? KapdhColors.textOnDark : KapdhExtraColors.mutedOnDark;
+        decoration = BoxDecoration(
+          color: KapdhColors.textOnDark.withValues(alpha: 0.06),
+          border: Border.all(
+            color: enabled ? KapdhColors.textOnDark.withValues(alpha: 0.7) : KapdhExtraColors.mutedOnDark,
+          ),
+          borderRadius: radius,
+        );
     }
 
     final text = busy ? (busyLabel ?? label) : label;
     final labelText = Text(
       text,
       textAlign: TextAlign.center,
-      style: TextStyle(
-        color: foreground,
-        fontWeight: FontWeight.w600,
-        fontSize: variant == KapdhButtonVariant.primary ? 15 : KapdhFontSize.label,
-      ),
+      style: TextStyle(color: foreground, fontWeight: FontWeight.w600, fontSize: tall ? 15 : KapdhFontSize.label),
     );
     final content = Row(
       mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,

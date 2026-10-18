@@ -518,6 +518,10 @@ a { color: inherit; text-decoration: none; }
 .btn--solid { background: var(--color-primary); color: var(--color-on-primary); }                                                             /* KapdhButton.solid */
 .btn--outline { background: var(--color-surface); color: var(--color-primary); border: 1px solid var(--color-primary); }                     /* KapdhButton.outlined */
 .btn--inline { display: inline-flex; width: auto; min-width: 48px; }  /* expand: false */
+/* [v2] Permukaan hijau gelap (Welcome): KapdhButton.accent (emas 52, teks onAccent) dan KapdhButton.outlinedOnDark
+   (garis putih 70 %, isi putih 6 %, teks putih) */
+.btn--accent { --elev: 0 4px 12px rgba(0, 0, 0, .22); min-height: var(--size-primary-button); font-size: 15px; background: var(--color-accent); color: var(--color-on-accent); }
+.btn--outline-on-dark { background: rgba(255, 255, 255, .06); color: var(--color-text-on-dark); border: 1px solid rgba(255, 255, 255, .7); }
 .btn:disabled, .btn.is-disabled { --elev: none; background: var(--color-disabled-bg); color: var(--color-disabled-text); cursor: not-allowed; }
 .btn--outline:disabled, .btn--outline.is-disabled { background: var(--color-surface); border-color: var(--color-divider); color: var(--color-disabled-text); }
 .btn.is-busy { --elev: none; background: var(--color-disabled-bg); color: var(--color-disabled-text); }
