@@ -23,7 +23,7 @@ export function AuthLayout({
           <span className="font-heading text-sm font-semibold leading-tight text-text-on-dark">
             Keluarga Alumni
             <br />
-            Ponpes Darel Hikmah
+            Pesantren Darel Hikmah
           </span>
         </div>
 
