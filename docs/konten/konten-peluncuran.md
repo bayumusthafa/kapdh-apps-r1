@@ -104,8 +104,8 @@ event diumumkan lewat Berita 1 dan Banner 3.
 | Pemakaian | Ukuran file yang dibuat | Rasio tampil di aplikasi | Area aman |
 | --------- | ----------------------- | ------------------------ | --------- |
 | Cover berita | **1600 x 900 px**, JPG | 16:9 di kartu dan detail berita (dipotong dari tengah) | Seluruh bidang terlihat. Beri jarak tepi 64 px. |
-| Gambar banner | **1760 x 800 px**, JPG | 2,2:1, dipotong dari tengah. Gradien gelap mulai 45% tinggi (y 360) ke bawah. Judul banner ditulis aplikasi dengan huruf putih, maksimal 2 baris, rata kiri di bagian bawah, dan barisnya dapat membentang hampir selebar banner (kira-kira x 65-1695) | Elemen penting di **bagian atas (y 40-460)**. Kosongkan **pita bawah selebar penuh (y 460-800)** untuk judul, termasuk di sisi kanan. |
-| Cover event | **1600 x 900 px**, JPG | 16:9 di detail event. Thumbnail kartu 92 x 76 px (sekitar 1,21:1) hanya menampilkan **x 255-1345** | Subjek utama di tengah, di dalam lebar 1090 px. |
+| Gambar banner | **1760 x 800 px**, JPG | Tepat 2,2:1 di Beranda: tinggi ubin dihitung dari lebar ubin yang sebenarnya, sehingga gambar 1760 x 800 tampil utuh tanpa potongan kiri-kanan di semua lebar layar. Gradien gelap mulai 45% tinggi (y 360) ke bawah. Judul banner ditulis aplikasi dengan huruf putih, maksimal 2 baris, rata kiri di bagian bawah, dan barisnya dapat membentang hampir selebar banner (kira-kira x 65-1695) | Elemen penting di **bagian atas (y 40-460)**. Kosongkan **pita bawah selebar penuh (y 460-800)** untuk judul, termasuk di sisi kanan. Batas y 460 berlaku untuk layar 345 dp ke atas dengan teks 100%; untuk aset baru, letakkan elemen penting di **y 40-420** (lihat catatan posisi judul banner di bawah). |
+| Cover event | **1600 x 900 px**, JPG | 16:9 di detail event. Thumbnail kartu 92 x 76 px (sekitar 1,21:1) hanya menampilkan **x 255-1345**. Thumbnail Tiket Saya 72 x 72 px (1:1) hanya menampilkan **x 350-1250**; thumbnail detail tiket 88 x 72 px menampilkan x 250-1350 | Subjek utama di tengah, di dalam lebar 1090 px. Di Tiket Saya hanya lebar 900 px di tengah yang terlihat, jadi tepi luar subjek yang lebih lebar terpotong di sana. |
 
 Aturan bersama:
 
@@ -118,8 +118,20 @@ Aturan bersama:
 - Jangan menulis ulang judul di dalam gambar, karena judul sudah tampil di kartu. Teks di gambar cukup berupa logo
   KAPDH atau satu kata kunci pendek.
 - Huruf (bila ada teks): **Poppins** SemiBold/Bold.
-- Form banner admin menampilkan petunjuk "Disarankan rasio 16:9". Ikuti ukuran 2,2:1 di atas. Bila terpaksa
-  memakai 16:9 (1600 x 900), sekitar 9,5% bagian atas dan bawah akan terpotong.
+- Form banner admin menampilkan petunjuk yang sama: rasio 2,2:1, disarankan 1760 x 800 px, elemen penting di bagian
+  atas, dan judul tidak ditulis di gambar (cukup logo atau satu kata kunci) karena tampil otomatis. Gambar berasio
+  lain tetap diisi dari tengah (sisi yang berlebih terpotong). Bila terpaksa memakai 16:9 (1600 x 900), sekitar 9,5%
+  bagian atas dan bawah terpotong.
+- Posisi judul banner bergantung pada lebar layar dan ukuran teks. Ubin selalu tepat 2,2:1 (tinggi sekitar 113 dp di
+  layar 320 dp, 130 dp di 360 dp, dan 152 dp di 412 dp), sedangkan tinggi judul tetap: 2 baris sekitar 40 dp ditambah
+  jarak bawah 12 dp. Dengan teks 100%, judul 2 baris mulai di sekitar y 480 (360 dp), y 511 (393 dp), dan y 526
+  (412 dp). Di ponsel 320 dp judul naik ke sekitar y 433. Dengan teks 130%, judul mulai di sekitar y 407 (360 dp) atau
+  y 349 (320 dp). Karena itu, untuk aset baru letakkan elemen penting di y 40-420. Ketiga banner peluncuran tidak perlu
+  diubah: di layar 320 dp hanya pita kuning bawah kartu di Banner 2 (sekitar y 435, sisi kanan) yang nyaris tersentuh
+  baris judul.
+- APK uji push 1.0.0+1 yang pertama menghitung tinggi banner dari lebar layar, bukan lebar ubin, sehingga ubin
+  sekitar 1,95:1 dan gambar 2,2:1 terpotong sekitar 5-6% di kiri dan kanan. APK yang dibangun ulang menampilkan
+  tepat 2,2:1; ketiga gambar banner tidak perlu diubah.
 
 ### Palet merek (packages/design-tokens/tokens.json)
 

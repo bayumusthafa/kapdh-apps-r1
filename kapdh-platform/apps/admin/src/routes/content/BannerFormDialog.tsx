@@ -31,6 +31,14 @@ import { BannerStateBadge } from "./labels";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Petunjuk gambar banner sesuai tampilan aplikasi: ubin Beranda tepat 2,2:1 (tanpa potongan samping) dan judul banner
+ * ditulis aplikasi di pita bawah gambar. Teks di gambar cukup logo atau satu kata kunci, sama dengan aturan bersama di
+ * docs/konten/konten-peluncuran.md.
+ */
+export const BANNER_IMAGE_HINT =
+  "Rasio 2,2:1, disarankan 1760 x 800 px. Letakkan elemen penting di bagian atas dan jangan menulis judul di gambar (cukup logo atau satu kata kunci); judul banner tampil otomatis di aplikasi.";
+
 /** Nilai formulir banner; nama field sama dengan kontrak agar `field_errors` server terpasang di tempatnya. */
 export interface BannerFormValues {
   title: string;
@@ -296,7 +304,7 @@ export function BannerFormDialog({ banner, onClose }: { banner: AdminBanner | nu
           buttonRef={image.field.ref}
           error={image.fieldState.error?.message}
           previewAlt={`Gambar banner ${values.title || "baru"}`}
-          hint="Disarankan rasio 16:9."
+          hint={BANNER_IMAGE_HINT}
           disabled={save.isPending}
           onUploadingChange={setImageUploading}
         />
