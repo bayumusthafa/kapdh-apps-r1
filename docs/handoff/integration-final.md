@@ -261,8 +261,8 @@ or GitHub runner). Each is an explicit go-live gate item in `docs/runbooks/go-li
 - **Store submission** (`docs/runbooks/app-store-submission.md`): organisation accounts (D-U-N-S), signing keys,
   listings, privacy forms, reviewer demo account; the D13 mitigation-1 copy changes in the app (texts tying dues to
   unlocking features, listed in that runbook section 2) are still a submit blocker; `assetlinks.json` /
-  `apple-app-site-association` and the `/.well-known/` exception in `nginx-web.conf` are not done; app version is
-  `0.1.0+1`, below the seeded `min_app_version` 1.0.0.
+  `apple-app-site-association` and the `/.well-known/` exception in `nginx-web.conf` are not done; app version was
+  `0.1.0+1`, below the seeded `min_app_version` 1.0.0 (raised to `1.0.0+1` on 18 October 2026).
 - Carried over: BullMQ Lua paths against a real Redis; the `embedded-postgres@17.6.0-beta.15` teardown message
   ("done is not a function", exit code 0); Flutter against the merged API (the device smoke uses an in-process fake
   API).

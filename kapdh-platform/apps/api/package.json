@@ -21,6 +21,7 @@
     "test:pg": "vitest run --config vitest.pg.config.ts",
     "admin:bootstrap": "node dist/cli/bootstrap-admin.js",
     "golive:check": "node dist/cli/golive-check.js",
+    "push:selftest": "node dist/cli/push-selftest.js",
     "account:ledger-reapply": "node dist/modules/account/ledger-reapply.cli.js",
     "account:status": "node dist/modules/account/account-status.cli.js",
     "loadtest:seed": "node dist/cli/loadtest-seed.js"

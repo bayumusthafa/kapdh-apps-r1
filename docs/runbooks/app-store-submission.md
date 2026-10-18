@@ -14,13 +14,13 @@ Payments. Keputusan teknis: ADR-015 (fallback iOS), ADR-016 (konfigurasi build),
 | Akun | Apple Developer Program (USD 99/tahun) dan Google Play Console (USD 25 sekali) atas nama organisasi dengan D-U-N-S (D10) | Di luar repo; PP |
 | ID aplikasi | `id.or.kapdh.app` (Android `applicationId`, iOS `PRODUCT_BUNDLE_IDENTIFIER`) | Ada |
 | OS minimum | Android 8.0 (`minSdk = 26`), iOS 15.0 (D7) | Ada |
-| Signing Android | `android/key.properties` + keystore (tidak di-commit); aktifkan Play App Signing | Belum; tanpa berkas itu build rilis memakai kunci debug |
+| Signing Android | `android/key.properties` + keystore (tidak di-commit); aktifkan Play App Signing | Belum; tanpa berkas itu (atau kunci suntikan Android Studio) build AAB rilis (`bundle*Release`, `package*ReleaseBundle`, `sign*ReleaseBundle`) gagal dengan pesan yang merujuk `kapdh-mobile/docs/BUILD.md` 3.1, sedangkan APK rilis untuk uji internal tetap ditandatangani kunci debug |
 | Signing iOS | Sertifikat distribusi, provisioning profile App Store, tim Apple | Belum |
 | Push | Capability Push Notifications (`aps-environment`) + kunci APNs di Firebase production; `POST_NOTIFICATIONS` Android 13+ sudah dideklarasikan | Entitlement iOS belum ada |
 | Deep link | `kapdh://app/...` sudah; HTTPS `https://kapdh.or.id/app/...` butuh `assetlinks.json` dan `apple-app-site-association` di `/.well-known/` serta Associated Domains iOS | Belum: berkas tidak ada di `apps/web/public`, dan `infra/nginx-web.conf` menolak semua path berawalan titik (`location ~ /\.` → 404), sehingga verifikasi App Links/Universal Links gagal sampai nginx mengecualikan `/.well-known/` |
 | Font | ARCHITECTURE §8.1 meminta Poppins dibundel; aplikasi masih memuat Poppins lewat `google_fonts` saat runtime (permintaan ke server Google) | Selesaikan sebelum submit atau ungkapkan di formulir privasi |
 | Konfigurasi build | `flutter build appbundle` / `flutter build ipa` dengan `--dart-define-from-file=<berkas production dari secret CI>` yang memuat `KAPDH_ENV=production`, `API_BASE_URL=https://api.kapdh.or.id/api/v1`, `PUSH_ENABLED=true` dan `FIREBASE_*` | `config/production.json` di repo sengaja kosong untuk Firebase |
-| Versi | `pubspec.yaml` `version: x.y.z+n`; `min_app_version` di web admin sama dengan versi rilis pertama | `0.1.0+1` saat ini; naikkan ke `1.0.0+n` |
+| Versi | `pubspec.yaml` `version: x.y.z+n`; `min_app_version` di web admin sama dengan versi rilis pertama | `1.0.0+1` saat ini (sama dengan `min_app_version` seed); naikkan `+n` setiap unggahan |
 
 Listing (keduanya):
 

@@ -31,9 +31,10 @@ ada di `docs/runbooks/rilis-dan-gerbang-go-live.md` bagian 5.4.
 | Peramban (dua versi terakhir) | Chrome, Edge, Firefox, Safari desktop |
 
 Sebelum langkah mobile mana pun: versi build (`pubspec.yaml` `version`, dikirim sebagai `X-App-Version`) harus >=
-`min_app_version` lingkungan. Seed referensi mengisi `1.0.0`, sedangkan pubspec saat ini `0.1.0+1`, sehingga semua
-mutasi dari build itu ditolak 426 `UPGRADE_REQUIRED`. Pakai build `1.0.0+n` atau lebih, atau (staging saja) samakan
-`min_app_version` dengan versi build lewat Pengaturan dan catat nilainya di tabel ini. U-13 13.7 menguji penolakan ini
+`min_app_version` lingkungan. Seed referensi mengisi `1.0.0` dan pubspec saat ini `1.0.0+1`, sehingga build dari
+`main` lolos gerbang versi; build di bawah `1.0.0` ditolak 426 `UPGRADE_REQUIRED` pada setiap mutasi. Bila
+`min_app_version` lingkungan pernah dinaikkan di atas versi build, pakai build yang lebih baru atau (staging saja)
+samakan `min_app_version` dengan versi build lewat Pengaturan dan catat nilainya di tabel ini. U-13 13.7 menguji penolakan ini
 secara sengaja.
 
 ### Peran dan akun uji

@@ -7,6 +7,7 @@
 #
 # - target `api`     : runtime API (`node dist/main.js`), juga memuat CLI satu kali pakai: bootstrap Super Admin
 #                      (`node dist/cli/bootstrap-admin.js`), gerbang go-live (`node dist/cli/golive-check.js`),
+#                      uji mandiri push FCM validate_only (`node dist/cli/push-selftest.js`, runbook push-fcm),
 #                      ledger penghapusan (`node dist/modules/account/ledger-reapply.cli.js`), CLI paket database
 #                      (`node node_modules/@kapdh/database/dist/bin/{migrate,seed-reference}.js`) dan `db/roles.sql`
 #                      yang disalin job migrasi CI (infra/ci/remote-migrate.sh, docker cp dari digest yang sama).
@@ -46,6 +47,7 @@ RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
   && test -f dist/main.js \
   && test -f dist/cli/golive-check.js \
   && test -f dist/cli/bootstrap-admin.js \
+  && test -f dist/cli/push-selftest.js \
   && test -f node_modules/@kapdh/database/dist/bin/migrate.js \
   && test -f node_modules/@kapdh/database/dist/bin/seed-reference.js \
   && test -f node_modules/@kapdh/database/migrations/meta/_journal.json
