@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/session/session_controller.dart';
@@ -248,7 +249,7 @@ class _Progress extends StatelessWidget {
                 Text(
                   detail!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhColors.textMuted),
+                  style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: context.kc.textMuted),
                 ),
               ],
             ],

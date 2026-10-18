@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
+import '../../app/theme/kapdh_theme.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/format/formatters.dart';
@@ -234,9 +236,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               if (blocked > Duration.zero) ...[
                 const SizedBox(height: KapdhSpace.s2),
                 // PRD 2.5: cooldown kegagalan login tidak menutup jalur pemulihan.
-                const Text(
+                Text(
                   'Sambil menunggu, Anda tetap dapat memulihkan akun lewat Lupa Password.',
-                  style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                  style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
                 ),
               ],
               const SizedBox(height: KapdhSpace.s5),
@@ -252,7 +254,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 alignment: WrapAlignment.center,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  const Text('Belum ada akun?', style: TextStyle(fontSize: 13, color: KapdhColors.primary)),
+                  Text('Belum ada akun?', style: TextStyle(fontSize: 13, color: context.kc.primary)),
                   KapdhLinkButton(label: 'Daftar', onPressed: () => context.go(AppRoutes.register)),
                 ],
               ),
@@ -287,14 +289,14 @@ class _ForgotPasswordLink extends StatelessWidget {
       key: const ValueKey('login-forgot'),
       onPressed: onPressed,
       style: TextButton.styleFrom(
-        foregroundColor: KapdhColors.primary,
+        foregroundColor: context.kc.primary,
         padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s1),
         minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
-        textStyle: const TextStyle(
+        textStyle: KapdhTheme.font(
           fontSize: KapdhFontSize.caption,
           fontWeight: FontWeight.w600,
           decoration: TextDecoration.underline,
-          decorationColor: KapdhColors.primary,
+          decorationColor: context.kc.primary,
         ),
       ),
       child: const Text('Lupa Password'),

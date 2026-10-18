@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
 import '../../app/routes.dart';
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
 import '../../core/ui/external_links.dart';
@@ -23,12 +24,12 @@ final memberProfileProvider = FutureProvider.autoDispose.family<NetworkMemberPro
   retry: (_, _) => null,
 );
 
-/// Jaringan sosial di profil (guideline hal. 7 "Social Media").
+/// Jaringan sosial di profil ("Media Sosial"; v2 berlogo platform Phosphor).
 enum SocialNetwork {
-  instagram('Instagram', KapdhIcons.cameraAltOutlined, 'https://instagram.com/'),
-  x('X', KapdhIcons.alternateEmail, 'https://x.com/'),
+  instagram('Instagram', KapdhIcons.instagramLogo, 'https://instagram.com/'),
+  x('X (Twitter)', KapdhIcons.xLogo, 'https://x.com/'),
   facebook('Facebook', KapdhIcons.facebook, 'https://facebook.com/'),
-  linkedin('LinkedIn', KapdhIcons.workOutline, 'https://www.linkedin.com/in/');
+  linkedin('LinkedIn', KapdhIcons.linkedinLogo, 'https://www.linkedin.com/in/');
 
   const SocialNetwork(this.label, this.icon, this.baseUrl);
 
@@ -52,8 +53,8 @@ enum SocialNetwork {
   }
 }
 
-/// Profil alumni (guideline hal. 7): kepala hijau bermotif, avatar, nama, email dan kota; Angkatan, Lulusan
-/// Terakhir, Profesi, Skill, Nomor Telpon, Tentang, Social Media; tombol "Kirim Pesan". Kontak hanya tampil bila
+/// Profil alumni (guideline hal. 7; v2): pita zamrud, avatar bercincin emas, nama, email dan kota; Angkatan, Riwayat
+/// Pendidikan, Profesi, Keahlian, Nomor Telpon, Tentang, Media Sosial; tombol "Kirim Pesan". Kontak hanya tampil bila
 /// pemiliknya mengizinkan, karena field yang disembunyikan tidak dikirim server (AC F10-2).
 class MemberProfileScreen extends ConsumerWidget {
   const MemberProfileScreen({super.key, required this.userId});
@@ -103,7 +104,24 @@ enum _ProfileAction { block, unblock, report }
 class _ProfileViewState extends ConsumerState<_ProfileView> {
   bool _opening = false;
 
+  /// [v2] Piksel gulir isi untuk [BrandStatusBarFill]: pengisi status bar memudar masuk saat pita tergulir.
+  final _scrollOffset = ValueNotifier<double>(0);
+
   NetworkMemberProfile get profile => widget.profile;
+
+  @override
+  void dispose() {
+    _scrollOffset.dispose();
+    super.dispose();
+  }
+
+  bool _onScroll(ScrollNotification notification) {
+    // Hanya scroll view langsung (depth 0) dan vertikal; gulir bersarang tidak memengaruhi pengisi.
+    if (notification.depth == 0 && notification.metrics.axis == Axis.vertical) {
+      _scrollOffset.value = notification.metrics.pixels;
+    }
+    return false;
+  }
 
   /// "Kirim Pesan": buka room direct yang sudah ada, atau buat/ambil room kanonik lewat POST /chat/direct
   /// (AC F11-1).
@@ -185,12 +203,15 @@ class _ProfileViewState extends ConsumerState<_ProfileView> {
     final sections = <Widget>[
       _Section(
         title: 'Angkatan',
-        child: Text('${cohortTag(p.cohortCode)} · Lulus ${p.graduationYear}', style: _valueStyle),
+        child: Text('${cohortTag(p.cohortCode)} · Lulus ${p.graduationYear}', style: _valueStyle(context)),
       ),
       if (education.isNotEmpty)
         _Section(
-          title: 'Lulusan Terakhir',
-          child: Text(education, style: _valueStyle),
+          title: 'Riwayat Pendidikan',
+          child: _EducationItem(
+            name: p.lastEducationInstitution?.trim().isNotEmpty == true ? p.lastEducationInstitution! : education,
+            meta: p.lastEducationInstitution?.trim().isNotEmpty == true ? p.lastEducationCity : null,
+          ),
         ),
       if (p.profession != null)
         _Section(
@@ -202,7 +223,7 @@ class _ProfileViewState extends ConsumerState<_ProfileView> {
         ),
       if (p.skills.isNotEmpty)
         _Section(
-          title: 'Skill',
+          title: 'Keahlian',
           child: Wrap(
             spacing: KapdhSpace.s2,
             runSpacing: KapdhSpace.s2,
@@ -222,14 +243,13 @@ class _ProfileViewState extends ConsumerState<_ProfileView> {
       if (p.bio != null && p.bio!.trim().isNotEmpty)
         _Section(
           title: 'Tentang',
-          child: Text(p.bio!, style: _valueStyle.copyWith(height: 1.5)),
+          child: Text(p.bio!, style: _valueStyle(context).copyWith(height: 1.5)),
         ),
       if (socialEntries.isNotEmpty)
         _Section(
-          title: 'Social Media',
-          child: Wrap(
-            spacing: KapdhSpace.s4,
-            runSpacing: KapdhSpace.s1,
+          title: 'Media Sosial',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (final (network, value) in socialEntries)
                 _SocialLink(
@@ -242,127 +262,231 @@ class _ProfileViewState extends ConsumerState<_ProfileView> {
         ),
     ];
 
-    return Scaffold(
-      backgroundColor: KapdhColors.surface,
-      body: Column(
-        children: [
-          Expanded(
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Stack(
-                    children: [
-                      BrandHeader(
-                        minHeight: 112,
-                        padding: const EdgeInsets.fromLTRB(KapdhSpace.s1, KapdhSpace.s1, KapdhSpace.s1, 0),
-                        child: Row(
-                          children: [
-                            IconButton(
-                              tooltip: 'Kembali',
-                              color: KapdhColors.onPrimary,
-                              icon: const Icon(KapdhIcons.arrowBack),
-                              onPressed: _back,
+    // [v2] Ikon status bar terang di atas pita hijau; area status bar tetap hijau saat pita tergulir.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: kBrandStatusBarOverlay,
+      child: Scaffold(
+        backgroundColor: context.kc.surface,
+        body: Column(
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: _onScroll,
+                      child: CustomScrollView(
+                        slivers: [
+                          // [v2] Pita zamrud 132 bersudut bawah 24 (sama dengan header Beranda): tombol kaca, judul
+                          // "Profil Alumni", avatar 96 bercincin emas menumpuk tepi pita sejauh 48; nama dan kontak
+                          // terpusat di bawahnya. Pita global Offline/Pemeliharaan, bila ada, tampil tepat di bawah
+                          // pita dan avatar tidak menumpuk.
+                          SliverToBoxAdapter(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    BrandHeader(
+                                      rounded: true,
+                                      minHeight: 132,
+                                      padding: const EdgeInsets.fromLTRB(
+                                        KapdhSpace.s1,
+                                        KapdhSpace.s1,
+                                        KapdhSpace.s1,
+                                        0,
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          BrandIconButton(
+                                            icon: KapdhIcons.arrowBack,
+                                            tooltip: 'Kembali',
+                                            onPressed: _back,
+                                          ),
+                                          Expanded(
+                                            // Min 48 (setinggi tombol), judul di tengah; tumbuh ke bawah bila
+                                            // baris > 48 (mockup: min-height 48 + align-items center), jadi tetap
+                                            // sejajar tombol pada teks 200 %.
+                                            child: ConstrainedBox(
+                                              constraints: const BoxConstraints(minHeight: KapdhSize.touchTargetMin),
+                                              child: const Align(
+                                                heightFactor: 1,
+                                                child: Text(
+                                                  'Profil Alumni',
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontSize: 17,
+                                                    fontWeight: FontWeight.w700,
+                                                    height: 1.3,
+                                                    color: KapdhColors.textOnDark,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          if (!p.isMe)
+                                            // MenuAnchor (bukan PopupMenuButton) agar InkWell kaca BrandIconButton
+                                            // sendiri yang menangani ketukan: state layer tekan/fokus tampil di
+                                            // tombol, sama dengan Kembali.
+                                            MenuAnchor(
+                                              menuChildren: [
+                                                if (p.isBlockedByMe)
+                                                  MenuItemButton(
+                                                    onPressed: () => _onAction(_ProfileAction.unblock),
+                                                    child: const Text('Buka blokir'),
+                                                  )
+                                                else
+                                                  MenuItemButton(
+                                                    onPressed: () => _onAction(_ProfileAction.block),
+                                                    child: const Text('Blokir'),
+                                                  ),
+                                                MenuItemButton(
+                                                  onPressed: () => _onAction(_ProfileAction.report),
+                                                  child: const Text('Laporkan'),
+                                                ),
+                                              ],
+                                              builder: (context, controller, _) => BrandIconButton(
+                                                icon: KapdhIcons.moreVert,
+                                                tooltip: 'Tindakan lain',
+                                                onPressed: () =>
+                                                    controller.isOpen ? controller.close() : controller.open(),
+                                              ),
+                                            )
+                                          else
+                                            const SizedBox(width: KapdhSize.touchTargetMin),
+                                        ],
+                                      ),
+                                    ),
+                                    if (banner == null)
+                                      Positioned(
+                                        left: 0,
+                                        right: 0,
+                                        bottom: -48,
+                                        child: Center(
+                                          child: _ProfileAvatarRing(name: p.fullName, url: p.avatarUrl),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                if (banner != null) ...[
+                                  banner,
+                                  const SizedBox(height: KapdhSpace.s4),
+                                  Center(
+                                    child: _ProfileAvatarRing(name: p.fullName, url: p.avatarUrl),
+                                  ),
+                                ] else
+                                  const SizedBox(height: 48),
+                                Padding(
+                                  padding: EdgeInsets.fromLTRB(
+                                    ContentWidth.inset(context, KapdhSpace.s5),
+                                    KapdhSpace.s3,
+                                    ContentWidth.inset(context, KapdhSpace.s5),
+                                    KapdhSpace.s4,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Semantics(
+                                        header: true,
+                                        child: Text(
+                                          p.fullName,
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: KapdhFontSize.h2,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                      // Kunci email hanya ada bila show_email=true (AC F10-2).
+                                      if (p.email != null && p.email!.isNotEmpty)
+                                        _IconLine(
+                                          icon: KapdhIcons.mailOutline,
+                                          text: p.email!,
+                                          onTap: () => _open(Uri(scheme: 'mailto', path: p.email)),
+                                        ),
+                                      if (p.city != null && p.city!.isNotEmpty)
+                                        _IconLine(icon: KapdhIcons.placeOutlined, text: p.city!),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                            const Spacer(),
-                            if (!p.isMe)
-                              PopupMenuButton<_ProfileAction>(
-                                tooltip: 'Tindakan lain',
-                                iconColor: KapdhColors.onPrimary,
-                                onSelected: _onAction,
-                                itemBuilder: (_) => [
-                                  if (p.isBlockedByMe)
-                                    const PopupMenuItem(value: _ProfileAction.unblock, child: Text('Buka blokir'))
-                                  else
-                                    const PopupMenuItem(value: _ProfileAction.block, child: Text('Blokir')),
-                                  const PopupMenuItem(value: _ProfileAction.report, child: Text('Laporkan')),
-                                ],
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (banner != null) SliverToBoxAdapter(child: banner),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AlumniAvatar(name: p.fullName, url: p.avatarUrl, size: 72),
-                        const SizedBox(width: KapdhSpace.s4),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Semantics(
-                                header: true,
-                                child: Text(
-                                  p.fullName,
-                                  style: const TextStyle(fontSize: KapdhFontSize.h2, fontWeight: FontWeight.w700),
-                                ),
-                              ),
-                              // Kunci email hanya ada bila show_email=true (AC F10-2).
-                              if (p.email != null && p.email!.isNotEmpty)
-                                _IconLine(
-                                  icon: KapdhIcons.mailOutline,
-                                  text: p.email!,
-                                  onTap: () => _open(Uri(scheme: 'mailto', path: p.email)),
-                                ),
-                              if (p.city != null && p.city!.isNotEmpty)
-                                _IconLine(icon: KapdhIcons.placeOutlined, text: p.city!),
-                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (p.isMe)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, 0, KapdhSpace.s5, KapdhSpace.s3),
-                      child: InfoBox(
-                        message: 'Ini pratinjau profil Anda seperti dilihat alumni lain.',
-                        trailing: TextButton(
-                          onPressed: () => context.push(AppRoutes.accountPrivacy),
-                          child: const Text('Atur privasi'),
-                        ),
+                          if (p.isMe)
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: EdgeInsets.fromLTRB(
+                                  ContentWidth.inset(context, KapdhSpace.s5),
+                                  0,
+                                  ContentWidth.inset(context, KapdhSpace.s5),
+                                  KapdhSpace.s3,
+                                ),
+                                child: InfoBox(
+                                  message: 'Ini pratinjau profil Anda seperti dilihat alumni lain.',
+                                  trailing: TextButton(
+                                    onPressed: () => context.push(AppRoutes.accountPrivacy),
+                                    child: const Text('Atur privasi'),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          SliverPadding(
+                            padding: EdgeInsets.fromLTRB(
+                              ContentWidth.inset(context, KapdhSpace.s5),
+                              0,
+                              ContentWidth.inset(context, KapdhSpace.s5),
+                              KapdhSpace.s4,
+                            ),
+                            sliver: SliverList.separated(
+                              itemCount: sections.length,
+                              separatorBuilder: (_, _) => const Divider(height: KapdhSpace.s6),
+                              itemBuilder: (_, index) => sections[index],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, 0, KapdhSpace.s5, KapdhSpace.s4),
-                  sliver: SliverList.separated(
-                    itemCount: sections.length,
-                    separatorBuilder: (_, _) => const Divider(height: KapdhSpace.s6),
-                    itemBuilder: (_, index) => sections[index],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (!p.isMe)
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s2, KapdhSpace.s5, KapdhSpace.s4),
-                child: _MessageArea(
-                  profile: p,
-                  opening: _opening,
-                  onMessage: _message,
-                  onUnblock: () => _onAction(_ProfileAction.unblock),
-                ),
+                  BrandStatusBarFill(scrollOffset: _scrollOffset),
+                ],
               ),
             ),
-        ],
+            if (!p.isMe)
+              // [v2] Bilah pesan bawah: permukaan + garis rambut divider + bayangan atas (--shadow-bar-top). Container
+              // (bukan DecoratedBox) agar lebar border menjadi padding: isi dimulai di bawah garis 1 px.
+              Container(
+                decoration: BoxDecoration(
+                  color: context.kc.surface,
+                  border: Border(top: BorderSide(color: context.kc.divider)),
+                  boxShadow: context.kc.shadowBarTop,
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      ContentWidth.inset(context, KapdhSpace.s5),
+                      KapdhSpace.s2,
+                      ContentWidth.inset(context, KapdhSpace.s5),
+                      KapdhSpace.s4,
+                    ),
+                    child: _MessageArea(
+                      profile: p,
+                      opening: _opening,
+                      onMessage: _message,
+                      onUnblock: () => _onAction(_ProfileAction.unblock),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 }
 
-const _valueStyle = TextStyle(fontSize: KapdhFontSize.body, color: KapdhColors.textMuted);
+TextStyle _valueStyle(BuildContext context) => TextStyle(fontSize: KapdhFontSize.body, color: context.kc.textMuted);
 
 class _MessageArea extends StatelessWidget {
   const _MessageArea({required this.profile, required this.opening, required this.onMessage, required this.onUnblock});
@@ -421,6 +545,27 @@ class _Section extends StatelessWidget {
   }
 }
 
+/// Avatar 96 dengan cincin permukaan 4 (memisahkan dari pita) dan cincin emas 2 serta bayangan (v2).
+class _ProfileAvatarRing extends StatelessWidget {
+  const _ProfileAvatarRing({required this.name, this.url});
+
+  final String name;
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      boxShadow: [
+        const BoxShadow(offset: Offset(0, 12), blurRadius: 24, spreadRadius: -6, color: Color(0x730E280C)),
+        const BoxShadow(color: KapdhColors.accent, spreadRadius: 6),
+        BoxShadow(color: context.kc.surface, spreadRadius: 4),
+      ],
+    ),
+    child: AlumniAvatar(name: name, url: url, size: 96),
+  );
+}
+
 class _IconLine extends StatelessWidget {
   const _IconLine({required this.icon, required this.text, this.onTap});
 
@@ -433,19 +578,34 @@ class _IconLine extends StatelessWidget {
     final row = Padding(
       padding: const EdgeInsets.only(top: KapdhSpace.s1),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 16, color: KapdhColors.textMuted),
+          Icon(icon, size: 16, color: context.kc.textMuted),
           const SizedBox(width: KapdhSpace.s1),
           Flexible(
             child: Text(
               text,
-              style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
             ),
           ),
         ],
       ),
     );
-    return onTap == null ? row : InkWell(onTap: onTap, child: row);
+    if (onTap == null) return row;
+    // Baris email: target sentuh minimal 48 dp (sama dengan _PhoneLink), selebar isi baris, dan peran tautan.
+    return Semantics(
+      link: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(KapdhRadius.sm),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: KapdhSize.touchTargetMin),
+          child: Center(widthFactor: 1, child: row),
+        ),
+      ),
+    );
   }
 }
 
@@ -478,12 +638,12 @@ class _PhoneLink extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(KapdhIcons.callOutlined, size: 18, color: KapdhColors.primary),
+              Icon(KapdhIcons.callOutlined, size: 18, color: context.kc.primary),
               const SizedBox(width: KapdhSpace.s2),
               Flexible(
                 child: Text(
                   phone,
-                  style: _valueStyle.copyWith(color: KapdhColors.primary, decoration: TextDecoration.underline),
+                  style: _valueStyle(context).copyWith(color: context.kc.primary, decoration: TextDecoration.underline),
                 ),
               ),
             ],
@@ -494,6 +654,8 @@ class _PhoneLink extends StatelessWidget {
   }
 }
 
+/// Baris media sosial (v2): logo platform dalam kotak tint 36, nama platform 12 abu + nama pengguna/tautan 14 primary,
+/// ikon tautan luar; seluruh baris 56 dapat diketuk bila tautannya aman (https).
 class _SocialLink extends StatelessWidget {
   const _SocialLink({required this.network, required this.value, required this.onTap});
 
@@ -503,26 +665,101 @@ class _SocialLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.kc;
+    // Bentuk ringkas tanpa skema/www dan garis miring akhir (mockup: "linkedin.com/in/…"), agar nama pengguna
+    // tidak terpotong lebih dulu; nama pengguna seperti "@nama" tidak berubah.
+    final display = value
+        .trim()
+        .replaceFirst(RegExp(r'^https?://(www\.)?', caseSensitive: false), '')
+        .replaceFirst(RegExp(r'/+$'), '');
     return Semantics(
       label: '${network.label}: $value',
       link: onTap != null,
       excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(KapdhRadius.md),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: KapdhSize.touchTargetMin, minWidth: 140),
+          constraints: const BoxConstraints(minHeight: 56),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(network.icon, size: 18, color: KapdhColors.textMuted),
-              const SizedBox(width: KapdhSpace.s2),
-              Flexible(
-                child: Text(value, style: _valueStyle, overflow: TextOverflow.ellipsis),
+              _TintIcon(icon: network.icon),
+              const SizedBox(width: KapdhSpace.s3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      network.label,
+                      style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.4, color: p.textMuted),
+                    ),
+                    Text(
+                      display,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w500, color: p.primary),
+                    ),
+                  ],
+                ),
               ),
+              if (onTap != null) Icon(KapdhIcons.openInNew, size: KapdhIconSize.sm, color: p.textMuted),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Ikon 20 dalam kotak tint 36 radius 12 (baris Riwayat Pendidikan dan Media Sosial v2).
+class _TintIcon extends StatelessWidget {
+  const _TintIcon({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 36,
+    height: 36,
+    decoration: BoxDecoration(color: context.kc.tint, borderRadius: BorderRadius.circular(KapdhRadius.md)),
+    child: Icon(icon, size: KapdhIconSize.md, color: context.kc.primary),
+  );
+}
+
+/// Satu pendidikan (v2): ikon toga, nama institusi 14 w600, keterangan 12 abu (kota). Riwayat berulang menunggu
+/// kontrak education[].
+class _EducationItem extends StatelessWidget {
+  const _EducationItem({required this.name, this.meta});
+
+  final String name;
+  final String? meta;
+
+  @override
+  Widget build(BuildContext context) {
+    final extra = meta;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _TintIcon(icon: KapdhIcons.schoolOutlined),
+        const SizedBox(width: KapdhSpace.s3),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600, height: 1.4),
+              ),
+              if (extra != null && extra.trim().isNotEmpty)
+                Text(
+                  extra,
+                  style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.45, color: context.kc.textMuted),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

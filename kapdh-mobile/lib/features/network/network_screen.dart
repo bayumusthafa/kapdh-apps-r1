@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../design/design.dart';
 import '../chat/chat_list_controller.dart';
@@ -15,6 +16,19 @@ import 'directory_controller.dart';
 import 'directory_filter.dart';
 import 'directory_filter_sheet.dart';
 import 'directory_tab.dart';
+
+/// Tab Jejaring yang diminta dibuka berikutnya (mis. ubin Pesan di Beranda membuka tab Pesan): 0 Jejaring, 1 Pesan,
+/// 2 Pesan Grup. Dikosongkan lagi setelah dipakai.
+final networkTabRequestProvider = NotifierProvider<NetworkTabRequest, int?>(NetworkTabRequest.new);
+
+class NetworkTabRequest extends Notifier<int?> {
+  @override
+  int? build() => null;
+
+  void request(int index) => state = index;
+
+  void clear() => state = null;
+}
 
 /// Jeda pencarian saat mengetik agar tidak setiap ketukan menjadi request (direktori dibatasi laju, 429).
 const Duration directorySearchDebounce = Duration(milliseconds: 400);
@@ -39,6 +53,13 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen> with SingleTicker
   void initState() {
     super.initState();
     _presence.start();
+    final requested = ref.read(networkTabRequestProvider);
+    if (requested != null) {
+      _tabs.index = requested;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.read(networkTabRequestProvider.notifier).clear();
+      });
+    }
   }
 
   @override
@@ -92,7 +113,7 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen> with SingleTicker
         isLabelVisible: unread > 0 || invitations > 0,
         smallSize: 8,
         offset: const Offset(10, -2),
-        backgroundColor: KapdhColors.primary,
+        backgroundColor: context.kc.primary,
         child: Text(label),
       ),
     ),
@@ -109,6 +130,11 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int?>(networkTabRequestProvider, (_, next) {
+      if (next == null) return;
+      _tabs.animateTo(next);
+      ref.read(networkTabRequestProvider.notifier).clear();
+    });
     ref.listen<String?>(directoryFilterProvider.select((f) => f.query), _syncSearchBox);
     final filter = ref.watch(directoryFilterProvider);
     final directUnread = unreadRoomsIn(ref.watch(chatRoomListProvider(ChatRoomKind.direct)));
@@ -118,92 +144,95 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen> with SingleTicker
     final queryTooShort = _search.text.trim().isNotEmpty && _search.text.trim().length < directoryMinQueryLength;
 
     return Scaffold(
-      backgroundColor: KapdhColors.background,
+      backgroundColor: context.kc.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(KapdhSpace.s4, KapdhSpace.s3, KapdhSpace.s4, KapdhSpace.s2),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _search,
-                      onChanged: _onSearchChanged,
-                      onSubmitted: _submitSearch,
-                      textInputAction: TextInputAction.search,
-                      inputFormatters: [LengthLimitingTextInputFormatter(directoryMaxQueryLength)],
-                      decoration: InputDecoration(
-                        hintText: 'Cari relasi dengan alumni ...',
-                        prefixIcon: const Icon(KapdhIcons.search),
-                        suffixIcon: _search.text.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: 'Hapus pencarian',
-                                icon: const Icon(KapdhIcons.close),
-                                onPressed: _clearSearch,
-                              ),
-                        isDense: true,
+        // Tablet: isi selebar 600 di tengah (v2).
+        child: ContentWidth(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(KapdhSpace.s4, KapdhSpace.s3, KapdhSpace.s4, KapdhSpace.s2),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _search,
+                        onChanged: _onSearchChanged,
+                        onSubmitted: _submitSearch,
+                        textInputAction: TextInputAction.search,
+                        inputFormatters: [LengthLimitingTextInputFormatter(directoryMaxQueryLength)],
+                        decoration: InputDecoration(
+                          hintText: 'Cari relasi dengan alumni ...',
+                          prefixIcon: const Icon(KapdhIcons.search, size: KapdhIconSize.lg),
+                          suffixIcon: _search.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Hapus pencarian',
+                                  icon: const Icon(KapdhIcons.close, size: KapdhIconSize.lg),
+                                  onPressed: _clearSearch,
+                                ),
+                          isDense: true,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: KapdhSpace.s2),
-                  Badge(
-                    isLabelVisible: filter.activeFilterCount > 0,
-                    label: Text('${filter.activeFilterCount}'),
-                    child: IconButton.filledTonal(
-                      tooltip: filter.activeFilterCount > 0
-                          ? 'Filter alumni, ${filter.activeFilterCount} aktif'
-                          : 'Filter alumni',
-                      style: IconButton.styleFrom(
-                        backgroundColor: KapdhColors.green50,
-                        foregroundColor: KapdhColors.primary,
-                        minimumSize: const Size(48, 48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KapdhRadius.md)),
+                    const SizedBox(width: KapdhSpace.s2),
+                    Badge(
+                      isLabelVisible: filter.activeFilterCount > 0,
+                      label: Text('${filter.activeFilterCount}'),
+                      child: IconButton.filledTonal(
+                        tooltip: filter.activeFilterCount > 0
+                            ? 'Filter alumni, ${filter.activeFilterCount} aktif'
+                            : 'Filter alumni',
+                        style: IconButton.styleFrom(
+                          backgroundColor: context.kc.tint,
+                          foregroundColor: context.kc.primary,
+                          minimumSize: const Size(48, 48),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KapdhRadius.md)),
+                        ),
+                        icon: const Icon(KapdhIcons.tune),
+                        onPressed: _openFilter,
                       ),
-                      icon: const Icon(KapdhIcons.tune),
-                      onPressed: _openFilter,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            if (queryTooShort)
-              const Padding(
-                padding: EdgeInsets.fromLTRB(KapdhSpace.s4, 0, KapdhSpace.s4, KapdhSpace.s1),
-                child: Text(
-                  'Ketik minimal 2 huruf untuk mencari nama.',
-                  style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                  ],
                 ),
               ),
-            ?banner,
-            TabBar(
-              controller: _tabs,
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              labelColor: KapdhColors.primary,
-              unselectedLabelColor: KapdhColors.textMuted,
-              indicatorColor: KapdhColors.primary,
-              tabs: [
-                const Tab(text: 'Jejaring'),
-                _tabLabel('Pesan', directUnread),
-                _tabLabel('Pesan Grup', groupUnread, invitations: pendingInvitations),
-              ],
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: TabBarView(
+              if (queryTooShort)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(KapdhSpace.s4, 0, KapdhSpace.s4, KapdhSpace.s1),
+                  child: Text(
+                    'Ketik minimal 2 huruf untuk mencari nama.',
+                    style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
+                  ),
+                ),
+              ?banner,
+              TabBar(
                 controller: _tabs,
-                children: const [
-                  DirectoryTab(),
-                  ChatRoomListView(kind: ChatRoomKind.direct),
-                  ChatRoomListView(kind: ChatRoomKind.group),
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                labelColor: context.kc.primary,
+                unselectedLabelColor: context.kc.textMuted,
+                indicatorColor: context.kc.primary,
+                tabs: [
+                  const Tab(text: 'Jejaring'),
+                  _tabLabel('Pesan', directUnread),
+                  _tabLabel('Pesan Grup', groupUnread, invitations: pendingInvitations),
                 ],
               ),
-            ),
-          ],
+              const Divider(height: 1),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabs,
+                  children: const [
+                    DirectoryTab(),
+                    ChatRoomListView(kind: ChatRoomKind.direct),
+                    ChatRoomListView(kind: ChatRoomKind.group),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

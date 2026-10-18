@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
 import '../../core/format/formatters.dart';
@@ -146,8 +147,8 @@ class _AppealSectionState extends ConsumerState<AppealSection> {
     return Container(
       padding: const EdgeInsets.all(KapdhSpace.s4),
       decoration: BoxDecoration(
-        color: KapdhColors.surface,
-        border: Border.all(color: KapdhColors.divider),
+        color: context.kc.surface,
+        border: Border.all(color: context.kc.divider),
         borderRadius: BorderRadius.circular(KapdhRadius.lg),
       ),
       child: Column(
@@ -161,9 +162,9 @@ class _AppealSectionState extends ConsumerState<AppealSection> {
             ),
           ),
           const SizedBox(height: KapdhSpace.s1),
-          const Text(
+          Text(
             'Jelaskan mengapa pembatasan ini perlu ditinjau ulang. Pengurus menanggapi paling lambat 2 hari kerja.',
-            style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.5, color: KapdhColors.textMuted),
+            style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.5, color: context.kc.textMuted),
           ),
           const SizedBox(height: KapdhSpace.s3),
           KapdhTextField(

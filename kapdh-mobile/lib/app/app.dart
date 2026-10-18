@@ -29,6 +29,7 @@ class KapdhApp extends ConsumerStatefulWidget {
 class _KapdhAppState extends ConsumerState<KapdhApp> {
   late final AppLifecycleListener _lifecycle;
   late final ThemeData _theme = KapdhTheme.light();
+  late final ThemeData _darkTheme = KapdhTheme.dark();
 
   @override
   void initState() {
@@ -61,10 +62,24 @@ class _KapdhAppState extends ConsumerState<KapdhApp> {
       title: 'KAPDH',
       debugShowCheckedModeBanner: false,
       theme: _theme,
+      // [v2] Mode gelap mengikuti pengaturan sistem (palet KapdhPalette.dark).
+      darkTheme: _darkTheme,
+      themeMode: ThemeMode.system,
       // Tombol kembali sistem melewati redirect lagi sesudah halaman tertutup (PRD 2.2).
       routerConfig: ref.watch(routerConfigProvider),
       // Pita Offline/Pemeliharaan untuk semua layar AppScaffold, tepat di bawah app bar.
-      builder: (context, child) => AppStatusBanners(child: child ?? const SizedBox.shrink()),
+      builder: (context, child) {
+        // [v2] Reduce motion: riak InkWell dimatikan (NoSplash); lapisan sorotan/hover/fokus tetap. Theme selalu
+        // terpasang agar Router/Navigator di bawahnya tidak dibangun ulang saat pengaturan sistem berubah.
+        final theme = Theme.of(context);
+        final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+        return AppStatusBanners(
+          child: Theme(
+            data: reduceMotion ? theme.copyWith(splashFactory: NoSplash.splashFactory) : theme,
+            child: child ?? const SizedBox.shrink(),
+          ),
+        );
+      },
       scaffoldMessengerKey: ref.watch(scaffoldMessengerKeyProvider),
       locale: const Locale('id'),
       supportedLocales: const [Locale('id')],

@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../../app/theme/kapdh_focus.dart';
+import '../../../app/theme/kapdh_palette.dart';
 import '../../../app/theme/kapdh_tokens.dart';
 import '../../../design/design.dart';
 
 /// Chip kategori hijau muda (guideline hal. 8 "Reuni", "Workshop").
 class CategoryChip extends StatelessWidget {
-  const CategoryChip(this.label, {super.key});
+  const CategoryChip(this.label, {super.key, this.onImage = false});
 
   final String label;
+
+  /// Di atas gambar berscrim (kartu berita hero v2): latar primary 92 % dengan teks putih.
+  final bool onImage;
 
   @override
   Widget build(BuildContext context) {
@@ -17,13 +22,16 @@ class CategoryChip extends StatelessWidget {
       excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s2, vertical: 2),
-        decoration: BoxDecoration(color: KapdhColors.green100, borderRadius: BorderRadius.circular(KapdhRadius.sm)),
+        decoration: BoxDecoration(
+          color: onImage ? const Color(0xEB1A4B17) : context.kc.tintStrong,
+          borderRadius: BorderRadius.circular(KapdhRadius.sm),
+        ),
         child: Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: KapdhFontSize.overline,
             fontWeight: FontWeight.w600,
-            color: KapdhColors.primary,
+            color: onImage ? KapdhColors.textOnDark : context.kc.primary,
           ),
         ),
       ),
@@ -33,17 +41,16 @@ class CategoryChip extends StatelessWidget {
 
 /// Baris ikon kecil + teks (tanggal, lokasi, kuota) pada kartu dan detail.
 class IconLine extends StatelessWidget {
-  const IconLine({
-    super.key,
-    required this.icon,
-    required this.text,
-    this.color = KapdhColors.textMuted,
-    this.size = 12,
-  });
+  const IconLine({super.key, required this.icon, required this.text, this.color, this.iconColor, this.size = 12});
 
   final IconData icon;
   final String text;
-  final Color color;
+
+  /// Warna teks dan ikon; bawaan teks redup palet.
+  final Color? color;
+
+  /// Warna ikon bila berbeda dari teks (mis. ikon meta hijau kartu event v2).
+  final Color? iconColor;
   final double size;
 
   @override
@@ -54,14 +61,14 @@ class IconLine extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(top: 1),
           child: ExcludeSemantics(
-            child: Icon(icon, size: size + 2, color: color),
+            child: Icon(icon, size: size + 2, color: iconColor ?? color ?? context.kc.textMuted),
           ),
         ),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
             text,
-            style: TextStyle(fontSize: size, color: color, height: 1.35),
+            style: TextStyle(fontSize: size, color: color ?? context.kc.textMuted, height: 1.35),
           ),
         ),
       ],
@@ -69,7 +76,8 @@ class IconLine extends StatelessWidget {
   }
 }
 
-/// Kartu putih bergaris tipis yang dapat diketuk (daftar event, berita, tiket).
+/// Kartu putih yang dapat diketuk (daftar event, berita, tiket): [v2] garis rambut cardBorder + --shadow-sm; cincin
+/// fokus 3 px saat difokuskan keyboard/akses saklar (WCAG 1.4.11).
 class TappableCard extends StatelessWidget {
   const TappableCard({super.key, required this.child, this.onTap, this.semanticsLabel, this.padding});
 
@@ -83,16 +91,25 @@ class TappableCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(KapdhRadius.lg);
-    final card = Material(
-      color: KapdhColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: radius,
-        side: const BorderSide(color: KapdhColors.divider),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(padding: padding ?? const EdgeInsets.all(KapdhSpace.s3), child: child),
+    final p = context.kc;
+    // [v2] Cincin fokus di luar klip Material (lapisan depan pembungkus), menimpa garis rambut saat terfokus.
+    final card = KapdhFocusRing(
+      radius: radius,
+      builder: (onFocusChange) => DecoratedBox(
+        decoration: BoxDecoration(borderRadius: radius, boxShadow: p.shadowSm),
+        child: Material(
+          color: p.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: radius,
+            side: BorderSide(color: p.cardBorder),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            onFocusChange: onFocusChange,
+            child: Padding(padding: padding ?? const EdgeInsets.all(KapdhSpace.s3), child: child),
+          ),
+        ),
       ),
     );
     if (semanticsLabel == null) return card;
@@ -100,7 +117,8 @@ class TappableCard extends StatelessWidget {
   }
 }
 
-/// Judul bagian dengan tautan "Lihat semua" (Beranda).
+/// Judul bagian dengan tautan "Lihat semua" (Beranda). [v2] Judul 17 w700; "Lihat semua" pil tonal + chevron (area
+/// sentuh tetap 48).
 class HomeSectionTitle extends StatelessWidget {
   const HomeSectionTitle({super.key, required this.title, this.actionLabel = 'Lihat semua', this.onAction});
 
@@ -110,22 +128,38 @@ class HomeSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    // Wrap: pada teks besar pil "Lihat semua" turun ke baris berikut, judul tidak terpotong per huruf (N-11).
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: KapdhSpace.s2,
       children: [
-        Expanded(
-          child: Semantics(
-            header: true,
-            child: Text(
-              title,
-              style: const TextStyle(fontSize: KapdhFontSize.bodyLg, fontWeight: FontWeight.w600),
+        ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: KapdhSize.touchTargetMin),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            widthFactor: 1,
+            child: Semantics(
+              header: true,
+              child: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
             ),
           ),
         ),
         if (onAction != null)
-          TextButton(
+          TextButton.icon(
             onPressed: onAction,
-            style: TextButton.styleFrom(minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin)),
-            child: Text(actionLabel),
+            iconAlignment: IconAlignment.end,
+            icon: const Icon(KapdhIcons.chevronRight, size: KapdhIconSize.sm),
+            label: Text(actionLabel),
+            style: TextButton.styleFrom(
+              backgroundColor: context.kc.tint,
+              foregroundColor: context.kc.primary,
+              minimumSize: const Size(KapdhSize.touchTargetMin, 32),
+              tapTargetSize: MaterialTapTargetSize.padded,
+              padding: const EdgeInsets.fromLTRB(KapdhSpace.s3, 0, 6, 0),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KapdhRadius.md)),
+              textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
           ),
       ],
     );

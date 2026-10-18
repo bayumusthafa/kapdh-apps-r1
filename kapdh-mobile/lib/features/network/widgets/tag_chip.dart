@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/theme/kapdh_palette.dart';
 import '../../../app/theme/kapdh_tokens.dart';
 import '../../../design/kapdh_icons.dart';
 
@@ -29,9 +30,9 @@ class TagChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (Color fg, Color bg) = switch (tone) {
-      TagChipTone.green => (KapdhColors.success, KapdhColors.successBg),
-      TagChipTone.blue => (KapdhColors.info, KapdhColors.infoBg),
-      TagChipTone.neutral => (KapdhColors.neutral, KapdhColors.neutralBg),
+      TagChipTone.green => (context.kc.success, context.kc.successBg),
+      TagChipTone.blue => (context.kc.info, context.kc.infoBg),
+      TagChipTone.neutral => (context.kc.neutral, context.kc.neutralBg),
     };
     final text = Text(
       label,

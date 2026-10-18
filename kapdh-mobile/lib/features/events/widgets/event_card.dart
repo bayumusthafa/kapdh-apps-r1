@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../../app/theme/kapdh_palette.dart';
 import '../../../app/theme/kapdh_tokens.dart';
 import '../../../design/design.dart';
 import '../../home/shared/content_widgets.dart';
@@ -9,6 +10,7 @@ import '../event_format.dart';
 
 /// Kartu event (guideline hal. 8 daftar event): cover di kiri, chip kategori, judul, tanggal dalam zona event dan
 /// label pendaftaran berikon (status tidak dibedakan dengan warna saja, PRD 4.5). Dipakai daftar Event dan Beranda.
+/// [v2] Sampul 80 x 80, ikon meta hijau, footer bergaris: status pendaftaran di kiri, harga tebal di kanan.
 class EventCard extends StatelessWidget {
   const EventCard({
     super.key,
@@ -77,58 +79,79 @@ class EventCard extends StatelessWidget {
       registration.label,
       if (ticket != null) 'Tiket Anda: ${ticket.label}',
     ].join(', ');
+    final p = context.kc;
+    // Teks besar (> 130 %): harga turun ke baris sendiri, rata kanan, seperti mockup (.event-card__foot flex-wrap,
+    // .price margin-left:auto), agar label lencana tidak terpecah di tengah kata.
+    final stackFoot = MediaQuery.textScalerOf(context).scale(KapdhFontSize.caption) > KapdhFontSize.caption * 1.3;
+    final badges = Wrap(
+      spacing: KapdhSpace.s2,
+      runSpacing: KapdhSpace.s1,
+      children: [StatusBadge(registration), if (ticket != null) StatusBadge(ticket)],
+    );
+    final price = Text(
+      priceLabel,
+      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: p.primary),
+    );
     return TappableCard(
       onTap: onTap,
       semanticsLabel: label,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          RemoteImage(
-            url: coverUrl,
-            width: 92,
-            height: 76,
-            borderRadius: BorderRadius.circular(KapdhRadius.md),
-            placeholderIcon: KapdhIcons.event,
-          ),
-          const SizedBox(width: KapdhSpace.s3),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (categoryLabel != null) ...[CategoryChip(categoryLabel!), const SizedBox(height: 6)],
-                Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: KapdhSpace.s1),
-                IconLine(icon: KapdhIcons.calendarTodayOutlined, text: day),
-                if (locationName != null) ...[
-                  const SizedBox(height: 2),
-                  IconLine(icon: KapdhIcons.placeOutlined, text: locationName!),
-                ],
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: KapdhSpace.s2,
-                  runSpacing: KapdhSpace.s1,
-                  crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RemoteImage(
+                url: coverUrl,
+                width: 80,
+                height: 80,
+                borderRadius: BorderRadius.circular(KapdhRadius.md),
+                placeholderIcon: KapdhIcons.event,
+              ),
+              const SizedBox(width: KapdhSpace.s3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    StatusBadge(registration),
+                    if (categoryLabel != null) ...[CategoryChip(categoryLabel!), const SizedBox(height: 6)],
                     Text(
-                      priceLabel,
-                      style: const TextStyle(
-                        fontSize: KapdhFontSize.caption,
-                        fontWeight: FontWeight.w600,
-                        color: KapdhColors.primary,
-                      ),
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
                     ),
-                    if (ticket != null) StatusBadge(ticket),
+                    const SizedBox(height: KapdhSpace.s1),
+                    IconLine(icon: KapdhIcons.calendarTodayOutlined, text: day, iconColor: p.iconAccent),
+                    if (locationName != null) ...[
+                      const SizedBox(height: 2),
+                      IconLine(icon: KapdhIcons.placeOutlined, text: locationName!, iconColor: p.iconAccent),
+                    ],
                   ],
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: KapdhSpace.s3),
+          Divider(height: 1, color: p.divider),
+          const SizedBox(height: 10),
+          if (stackFoot)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                badges,
+                const SizedBox(height: KapdhSpace.s1),
+                Align(alignment: AlignmentDirectional.centerEnd, child: price),
+              ],
+            )
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: badges),
+                const SizedBox(width: KapdhSpace.s2),
+                price,
               ],
             ),
-          ),
         ],
       ),
     );

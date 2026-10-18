@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
@@ -396,7 +397,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
           TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Kembali')),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: TextButton.styleFrom(foregroundColor: KapdhColors.danger),
+            style: TextButton.styleFrom(foregroundColor: context.kc.danger),
             child: const Text('Batalkan instruksi'),
           ),
         ],
@@ -547,7 +548,7 @@ class _PaymentDetailScreenState extends ConsumerState<PaymentDetailScreen> {
               ],
               if (payment.type != PaymentType.registration) ...[
                 const SizedBox(height: KapdhSpace.s2),
-                Text(paymentTitle(payment), style: const TextStyle(fontSize: 13, color: KapdhColors.textMuted)),
+                Text(paymentTitle(payment), style: TextStyle(fontSize: 13, color: context.kc.textMuted)),
               ],
               const SizedBox(height: KapdhSpace.s4),
               AmountCopyBox(amount: payment.amount, onCopied: () => _snack('Nominal disalin')),

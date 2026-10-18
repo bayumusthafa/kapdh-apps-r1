@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../app/theme/kapdh_focus.dart';
+import '../app/theme/kapdh_theme.dart';
 import '../app/theme/kapdh_tokens.dart';
 import '../core/format/formatters.dart';
 import 'design_constants.dart';
@@ -31,49 +33,75 @@ class AmountCopyBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Teks diperbesar: tombol "Salin" pindah ke bawah nominal agar angka tidak terpecah per karakter.
+    final stacked = MediaQuery.textScalerOf(context).scale(KapdhFontSize.body) > KapdhFontSize.body * 1.3;
     final formatted = formatRupiah(amount);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: 14),
-      decoration: BoxDecoration(color: KapdhColors.surfaceDark, borderRadius: BorderRadius.circular(KapdhRadius.lg)),
-      child: Row(
+    final info = Semantics(
+      label: '$label $formatted',
+      excludeSemantics: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Semantics(
-              label: '$label $formatted',
-              excludeSemantics: true,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhExtraColors.mutedOnDark),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    formatted,
-                    style: const TextStyle(
-                      fontSize: KapdhFontSize.h1,
-                      fontWeight: FontWeight.w700,
-                      color: KapdhColors.accent,
-                    ),
-                  ),
-                ],
+          Text(
+            label,
+            style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhExtraColors.mutedOnDark),
+          ),
+          const SizedBox(height: 2),
+          // Nominal selalu satu baris; bila tetap tidak muat, diperkecil (bukan dipotong) agar tidak salah baca.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              formatted,
+              maxLines: 1,
+              softWrap: false,
+              style: const TextStyle(
+                fontSize: KapdhFontSize.h1,
+                fontWeight: FontWeight.w700,
+                color: KapdhColors.accent,
               ),
             ),
           ),
-          const SizedBox(width: KapdhSpace.s3),
-          OutlinedButton(
-            onPressed: () => _copy(context),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: KapdhColors.accent,
-              side: const BorderSide(color: KapdhColors.accent),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-            ),
-            child: Semantics(label: 'Salin nominal $formatted', excludeSemantics: true, child: const Text('Salin')),
-          ),
         ],
       ),
+    );
+    final button = OutlinedButton(
+      onPressed: () => _copy(context),
+      // [v2] Side tingkat widget menimpa garis fokus tema; lewat ringedSide garis emas tetap dan saat fokus jadi
+      // cincin 3 px emas (focusRingOnDark) yang terbaca di latar surfaceDark.
+      style:
+          OutlinedButton.styleFrom(
+            foregroundColor: KapdhColors.accent,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            textStyle: KapdhTheme.font(fontWeight: FontWeight.w600, fontSize: 13),
+          ).copyWith(
+            side: KapdhFocusTheme.ringedSide(
+              context,
+              const BorderSide(color: KapdhColors.accent),
+              ring: KapdhColors.focusRingOnDark,
+            ),
+          ),
+      child: Semantics(label: 'Salin nominal $formatted', excludeSemantics: true, child: const Text('Salin')),
+    );
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: 14),
+      decoration: BoxDecoration(color: KapdhColors.surfaceDark, borderRadius: BorderRadius.circular(KapdhRadius.lg)),
+      child: stacked
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                info,
+                const SizedBox(height: KapdhSpace.s3),
+                button,
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(child: info),
+                const SizedBox(width: KapdhSpace.s3),
+                button,
+              ],
+            ),
     );
   }
 }

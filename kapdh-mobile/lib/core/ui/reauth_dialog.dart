@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../design/kapdh_button.dart';
 import '../../design/kapdh_text_field.dart';
@@ -64,7 +65,7 @@ class _ReauthDialogState extends ConsumerState<_ReauthDialog> {
           children: [
             Text(
               widget.reason ?? 'Masukkan password Anda untuk melanjutkan tindakan ini.',
-              style: const TextStyle(fontSize: KapdhFontSize.body, color: KapdhColors.textMuted),
+              style: TextStyle(fontSize: KapdhFontSize.body, color: context.kc.textMuted),
             ),
             const SizedBox(height: KapdhSpace.s4),
             KapdhTextField(

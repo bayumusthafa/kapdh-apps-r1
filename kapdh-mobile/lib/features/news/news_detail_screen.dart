@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
 import '../../app/routes.dart';
+import '../../app/theme/kapdh_focus.dart';
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
 import '../../core/format/formatters.dart';
@@ -150,11 +152,21 @@ class _LikeBar extends StatelessWidget {
           child: OutlinedButton.icon(
             key: const ValueKey('post-like'),
             onPressed: busy ? null : onPressed,
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
-              foregroundColor: liked ? KapdhColors.danger : KapdhColors.primary,
-              side: BorderSide(color: liked ? KapdhColors.danger : KapdhColors.primary),
-            ),
+            style:
+                OutlinedButton.styleFrom(
+                  minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
+                  // Padding tetap 16/24 (.btn-m3--icon di mockup v2): menimpa scaledPadding bawaan Material yang
+                  // mengecil ke 8/12 pada teks 200 % sehingga ikon dan label menempel ke garis tepi.
+                  padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 24, 0),
+                  foregroundColor: liked ? context.kc.danger : context.kc.primary,
+                ).copyWith(
+                  // [v2] side tingkat widget menang atas side bertingkat-fokus dari tema: pakai ringedSide agar
+                  // cincin fokus 3 px tetap tampil.
+                  side: KapdhFocusTheme.ringedSide(
+                    context,
+                    BorderSide(color: liked ? context.kc.danger : context.kc.primary),
+                  ),
+                ),
             icon: busy
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                 : Icon(liked ? KapdhIcons.favorite : KapdhIcons.favoriteBorder, size: 20),
@@ -166,7 +178,7 @@ class _LikeBar extends StatelessWidget {
           child: Text(
             countLabel,
             key: const ValueKey('post-like-count'),
-            style: const TextStyle(fontSize: KapdhFontSize.body, color: KapdhColors.textMuted),
+            style: TextStyle(fontSize: KapdhFontSize.body, color: context.kc.textMuted),
           ),
         ),
       ],

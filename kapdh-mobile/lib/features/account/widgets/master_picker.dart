@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../../app/theme/kapdh_palette.dart';
 import '../../../app/theme/kapdh_tokens.dart';
 import '../../../design/design.dart';
 
@@ -144,7 +146,10 @@ class _MasterSheetState extends State<_MasterSheet> {
         if (query.isEmpty || item.label.toLowerCase().contains(query)) item,
     ];
     final full = widget.multi && _selected.length >= maxSkills;
-    final height = MediaQuery.sizeOf(context).height * 0.85;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    // Jaga lembar tetap di atas keyboard; jarak atas tetap karena padding.top sudah dihapus rute lembar (useSafeArea: false).
+    final height = math.min(screenHeight * 0.85, screenHeight - keyboard - KapdhSpace.s12);
 
     Widget body;
     if (_error != null) {
@@ -195,65 +200,68 @@ class _MasterSheetState extends State<_MasterSheet> {
       );
     }
 
-    return SafeArea(
-      child: SizedBox(
-        height: height,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s2, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Semantics(
-                      header: true,
-                      child: Text(
-                        widget.title,
-                        style: const TextStyle(fontSize: KapdhFontSize.h3, fontWeight: FontWeight.w600),
+    return Padding(
+      padding: EdgeInsets.only(bottom: keyboard),
+      child: SafeArea(
+        child: SizedBox(
+          height: height,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s2, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Semantics(
+                        header: true,
+                        child: Text(
+                          widget.title,
+                          style: const TextStyle(fontSize: KapdhFontSize.h3, fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    tooltip: 'Tutup',
-                    icon: const Icon(KapdhIcons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s5, vertical: KapdhSpace.s2),
-              child: TextField(
-                controller: _search,
-                decoration: const InputDecoration(hintText: 'Cari', prefixIcon: Icon(KapdhIcons.search)),
-                onChanged: (_) => setState(() {}),
-              ),
-            ),
-            if (widget.multi)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s5),
-                child: Text(
-                  full
-                      ? 'Maksimal $maxSkills keahlian. Lepas salah satu untuk memilih yang lain.'
-                      : 'Dipilih ${_selected.length} dari maksimal $maxSkills.',
-                  style: TextStyle(
-                    fontSize: KapdhFontSize.caption,
-                    color: full ? KapdhColors.warning : KapdhColors.textMuted,
-                  ),
+                    IconButton(
+                      tooltip: 'Tutup',
+                      icon: const Icon(KapdhIcons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
                 ),
               ),
-            Expanded(child: body),
-            if (widget.multi)
               Padding(
-                padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s2, KapdhSpace.s5, KapdhSpace.s4),
-                child: KapdhButton.solid(
-                  key: const ValueKey('master-done'),
-                  label: 'Simpan pilihan',
-                  onPressed: items == null ? null : () => widget.onDone(context, _selected),
+                padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s5, vertical: KapdhSpace.s2),
+                child: TextField(
+                  controller: _search,
+                  decoration: const InputDecoration(hintText: 'Cari', prefixIcon: Icon(KapdhIcons.search)),
+                  onChanged: (_) => setState(() {}),
                 ),
               ),
-          ],
+              if (widget.multi)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s5),
+                  child: Text(
+                    full
+                        ? 'Maksimal $maxSkills keahlian. Lepas salah satu untuk memilih yang lain.'
+                        : 'Dipilih ${_selected.length} dari maksimal $maxSkills.',
+                    style: TextStyle(
+                      fontSize: KapdhFontSize.caption,
+                      color: full ? context.kc.warning : context.kc.textMuted,
+                    ),
+                  ),
+                ),
+              Expanded(child: body),
+              if (widget.multi)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s2, KapdhSpace.s5, KapdhSpace.s4),
+                  child: KapdhButton.solid(
+                    key: const ValueKey('master-done'),
+                    label: 'Simpan pilihan',
+                    onPressed: items == null ? null : () => widget.onDone(context, _selected),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -276,8 +284,8 @@ class _SingleTile extends StatelessWidget {
       child: ListTile(
         title: Text(label),
         selected: selected,
-        selectedColor: KapdhColors.primary,
-        trailing: selected ? const Icon(KapdhIcons.check, color: KapdhColors.primary) : null,
+        selectedColor: context.kc.primary,
+        trailing: selected ? Icon(KapdhIcons.check, color: context.kc.primary) : null,
         onTap: onTap,
       ),
     );

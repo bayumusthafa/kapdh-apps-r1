@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
@@ -359,7 +360,7 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
       Text(
         group ? 'Grup · ${room.memberCount} anggota' : 'Percakapan langsung',
         textAlign: TextAlign.center,
-        style: const TextStyle(color: KapdhColors.textMuted),
+        style: TextStyle(color: context.kc.textMuted),
       ),
       if (group && room.canManage) ...[
         const SizedBox(height: KapdhSpace.s2),
@@ -472,8 +473,8 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
         if (!closed)
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(KapdhIcons.logout, color: KapdhColors.danger),
-            title: const Text('Keluar grup', style: TextStyle(color: KapdhColors.danger)),
+            leading: Icon(KapdhIcons.logout, color: context.kc.danger),
+            title: Text('Keluar grup', style: TextStyle(color: context.kc.danger)),
             onTap: _busy ? null : () => _leave(state),
           ),
       ]);
@@ -514,6 +515,8 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
           ? null
           : PopupMenuButton<_MemberAction>(
               tooltip: 'Tindakan untuk ${member.fullName}',
+              // [v2] Ikon tiga titik Phosphor, bukan Icons.adaptive.more bawaan.
+              icon: const Icon(KapdhIcons.moreVert),
               enabled: !_busy,
               onSelected: (action) => _memberAction(member, action),
               itemBuilder: (_) => actions,

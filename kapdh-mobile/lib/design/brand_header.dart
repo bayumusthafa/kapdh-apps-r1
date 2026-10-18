@@ -1,8 +1,13 @@
-import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
-import '../app/theme/kapdh_tokens.dart';
-import 'design_constants.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
 import '../app/theme/kapdh_focus.dart';
+import '../app/theme/kapdh_palette.dart';
+import '../app/theme/kapdh_tokens.dart';
+import 'app_scaffold.dart';
 
 /// Motif geometris tipis pada pita hijau (guideline hal. 5 latar login): kisi lingkaran bertumpuk yang membentuk
 /// pola quatrefoil, garis putih transparan.
@@ -34,9 +39,61 @@ class BrandPatternPainter extends CustomPainter {
   bool shouldRepaint(BrandPatternPainter oldDelegate) => oldDelegate.color != color || oldDelegate.cell != cell;
 }
 
-/// Motif pita hijau [BrandHeader].
+/// Latar "mesh" zamrud semua pita hijau (redesain v2, sama dengan header Beranda; mockup `--gradient-brand-mesh`):
+/// gradasi diagonal green950 -> green800 -> green700, cahaya emas di kanan atas (radius 46 % sudut terjauh), cahaya
+/// hijau di kiri bawah (55 %), dan dua cincin dekoratif: putih 4 % (200 px, garis 26) di kanan atas dan emas 6 %
+/// (170 px, garis 16) di kiri bawah. Ukuran mengikuti CSS mockup sehingga pita tipis maupun tinggi tampak sama.
+class BrandMeshPainter extends CustomPainter {
+  const BrandMeshPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final rect = Offset.zero & size;
+    canvas.drawRect(rect, Paint()..shader = KapdhGradients.brandMeshBase.createShader(rect));
+
+    double farthest(Offset c) => [
+      c.distance,
+      (c - Offset(size.width, 0)).distance,
+      (c - Offset(0, size.height)).distance,
+      (c - Offset(size.width, size.height)).distance,
+    ].reduce(math.max);
+    void glow(Offset center, double fraction, Color color) {
+      final r = farthest(center) * fraction;
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [color, color.withValues(alpha: 0)],
+          ).createShader(Rect.fromCircle(center: center, radius: r)),
+      );
+    }
+
+    glow(Offset(size.width * 0.92, 0), 0.46, const Color(0x33E6D312));
+    glow(Offset(size.width * 0.06, size.height), 0.55, const Color(0x573F9A38));
+
+    void ring(Offset center, double outerRadius, double width, Color color) => canvas.drawCircle(
+      center,
+      outerRadius - width / 2,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = width
+        ..color = color,
+    );
+    ring(Offset(size.width + 56 - 100, -70 + 100), 100, 26, const Color(0x0AFFFFFF));
+    ring(Offset(-48 + 85, size.height + 96 - 85), 85, 16, const Color(0x0FE6D312));
+  }
+
+  @override
+  bool shouldRepaint(BrandMeshPainter oldDelegate) => false;
+}
+
+/// Motif tambahan di atas mesh [BrandHeader].
 enum BrandMotif {
-  /// Lingkaran bertumpuk tipis ([BrandPatternPainter]), bawaan.
+  /// Tanpa motif (bawaan v2: Akun, Profil Alumni, sapaan; sama dengan header Beranda).
+  none,
+
+  /// Lingkaran bertumpuk tipis ([BrandPatternPainter]).
   quatrefoil,
 
   /// Pita gelombang diagonal berkilau ([BrandWavePainter]); layar Masuk.
@@ -103,17 +160,20 @@ class BrandWavePainter extends CustomPainter {
   bool shouldRepaint(BrandWavePainter oldDelegate) => false;
 }
 
-/// Pita hijau bergradasi bermotif (guideline hal. 5; prototipe layar 1 sampai 5). Konten di dalamnya memakai warna
-/// teks terang. Inset status bar ditambahkan otomatis bila [includeTopInset].
+/// Pita hijau merek (guideline hal. 5; prototipe layar 1 sampai 5): mesh zamrud [BrandMeshPainter] + motif opsional.
+/// Konten di dalamnya memakai warna teks terang. Inset status bar ditambahkan otomatis bila [includeTopInset].
+/// [rounded] memberi sudut bawah 24, bayangan hijau dan garis emas tipis seperti header Beranda, untuk pita yang
+/// berdiri sendiri (tidak ditumpuk lembar terang).
 class BrandHeader extends StatelessWidget {
   const BrandHeader({
     super.key,
     this.child,
     this.padding = const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5),
     this.pattern = true,
-    this.motif = BrandMotif.quatrefoil,
+    this.motif = BrandMotif.none,
     this.includeTopInset = true,
     this.minHeight = 0,
+    this.rounded = false,
   });
 
   final Widget? child;
@@ -124,17 +184,20 @@ class BrandHeader extends StatelessWidget {
   final BrandMotif motif;
   final bool includeTopInset;
   final double minHeight;
+  final bool rounded;
 
   @override
   Widget build(BuildContext context) {
     final top = includeTopInset ? MediaQuery.paddingOf(context).top : 0.0;
-    return Container(
-      constraints: BoxConstraints(minHeight: minHeight + top),
-      decoration: const BoxDecoration(gradient: KapdhExtraColors.bandGradient),
+    const radius = BorderRadius.vertical(bottom: Radius.circular(KapdhRadius.xl));
+    final band = ConstrainedBox(
+      constraints: BoxConstraints(minHeight: minHeight + top, minWidth: double.infinity),
       child: CustomPaint(
-        painter: !pattern
+        painter: const BrandMeshPainter(),
+        foregroundPainter: !pattern
             ? null
             : switch (motif) {
+                BrandMotif.none => null,
                 BrandMotif.quatrefoil => const BrandPatternPainter(),
                 BrandMotif.waves => const BrandWavePainter(),
               },
@@ -145,7 +208,162 @@ class BrandHeader extends StatelessWidget {
         ),
       ),
     );
+    if (!rounded) return ClipRect(child: band);
+    return DecoratedBox(
+      decoration: BoxDecoration(borderRadius: radius, boxShadow: context.kc.shadowBrandBand),
+      child: ClipRRect(
+        borderRadius: radius,
+        // passthrough (bukan loose): batasan ketat induk, mis. Positioned.fill di kepala Akun, diteruskan ke pita
+        // sehingga mesh mengisi seluruh tinggi yang diberikan. Bukan expand: Profil Alumni memberi tinggi tak terbatas.
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            band,
+            // Garis emas tipis di tepi bawah (inset 0 -1px 0 emas 22 %).
+            const Positioned(left: 0, right: 0, bottom: 0, height: 1, child: ColoredBox(color: Color(0x38E6D312))),
+          ],
+        ),
+      ),
+    );
   }
+}
+
+/// Gaya status bar di atas pita hijau (sama di mode terang dan gelap): ikon selalu terang. Hanya status bar yang
+/// diatur (navigasi sistem tidak diubah, seperti AppBar M3), supaya gaya layar sebelumnya (mis. Splash terang) tidak
+/// terbawa. Dipakai [BrandSheetScaffold] dan layar berpita sendiri (Beranda, Akun, Profil Alumni).
+const kBrandStatusBarOverlay = SystemUiOverlayStyle(
+  statusBarColor: Colors.transparent,
+  statusBarIconBrightness: Brightness.light,
+  statusBarBrightness: Brightness.dark,
+);
+
+/// Area status bar yang tetap hijau saat pita hijau tergulir ke atas, agar ikon status bar terang
+/// ([kBrandStatusBarOverlay]) tetap terbaca. Ditaruh sebagai anak terakhir [Stack] di atas isi yang menggulir.
+///
+/// Dengan [scrollOffset] (piksel gulir isi), pengisi baru muncul saat pita mulai tergulir sehingga mesh pita (cahaya
+/// emas kanan atas) tetap utuh di posisi awal; tanpa itu pengisi selalu tampak.
+class BrandStatusBarFill extends StatelessWidget {
+  const BrandStatusBarFill({super.key, this.scrollOffset});
+
+  final ValueListenable<double>? scrollOffset;
+
+  static const _fill = IgnorePointer(
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        // [v2] Mengikuti tepi atas mesh (green950 -> green800 -> green700).
+        gradient: LinearGradient(
+          colors: [KapdhColors.green950, KapdhColors.green800, KapdhColors.green700],
+          stops: [0, 0.6, 1],
+        ),
+      ),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.paddingOf(context).top;
+    final offset = scrollOffset;
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      height: height,
+      child: offset == null || height <= 0
+          ? _fill
+          : ValueListenableBuilder<double>(
+              valueListenable: offset,
+              // Nilai mutlak: overscroll iOS di puncak (piksel negatif) menurunkan pita; pengisi menutup celahnya.
+              builder: (context, px, child) => Opacity(opacity: (px.abs() / height).clamp(0.0, 1.0), child: child),
+              child: _fill,
+            ),
+    );
+  }
+}
+
+/// Tombol ikon kaca 48 x 48 radius 16 di atas pita hijau (header Beranda v2, Profil Alumni): putih 16 -> 6 %, garis
+/// putih 18 %, ikon putih.
+class BrandIconButton extends StatelessWidget {
+  const BrandIconButton({super.key, required this.icon, required this.tooltip, required this.onPressed, this.child});
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  /// Pengganti ikon (mis. ikon dengan lencana).
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(KapdhRadius.lg),
+      side: const BorderSide(color: Color(0x2EFFFFFF)),
+    );
+    // Cincin fokus di luar klip Material; emas karena pita hijau memasang DarkSurfaceFocus, dan dipaksa emas bila
+    // tombol dipakai di luar pita.
+    final button = KapdhFocusRing(
+      radius: BorderRadius.circular(KapdhRadius.lg),
+      ring: KapdhColors.focusRingOnDark,
+      builder: (onFocusChange) => DecoratedBox(
+        decoration: const BoxDecoration(
+          borderRadius: BorderRadius.all(Radius.circular(KapdhRadius.lg)),
+          boxShadow: [BoxShadow(offset: Offset(0, 4), blurRadius: 12, spreadRadius: -2, color: Color(0x38000000))],
+        ),
+        child: Material(
+          shape: shape,
+          clipBehavior: Clip.antiAlias,
+          color: Colors.transparent,
+          child: Ink(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0x29FFFFFF), Color(0x0FFFFFFF)],
+              ),
+            ),
+            child: InkWell(
+              onTap: onPressed,
+              onFocusChange: onFocusChange,
+              customBorder: shape,
+              child: SizedBox(
+                width: KapdhSize.touchTargetMin,
+                height: KapdhSize.touchTargetMin,
+                child: Center(
+                  child: child ?? Icon(icon, size: KapdhIconSize.lg, color: KapdhColors.textOnDark),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    // Tooltip kosong: tombol dipakai sebagai tampilan di dalam pemicu lain (mis. PopupMenuButton bertooltip sendiri).
+    return tooltip.isEmpty ? button : Tooltip(message: tooltip, child: button);
+  }
+}
+
+/// Logo KAPDH dalam bingkai kaca bercincin emas (header Beranda v2 dan pita sapaan): 48 x 48 radius 16, padding 5.
+class BrandLogoFrame extends StatelessWidget {
+  const BrandLogoFrame({super.key, this.size = 48});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    padding: const EdgeInsets.all(5),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(KapdhRadius.lg),
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0x29FFFFFF), Color(0x0DFFFFFF)],
+      ),
+      border: Border.all(color: const Color(0x8CE6D312), width: 1.5),
+      boxShadow: const [BoxShadow(offset: Offset(0, 6), blurRadius: 16, spreadRadius: -4, color: Color(0x59000000))],
+    ),
+    child: Image.asset('assets/logo-kapdh.png', semanticLabel: 'Logo KAPDH', fit: BoxFit.contain),
+  );
 }
 
 /// Kepala sapaan (prototipe layar 4, 5): logo, "Assalamu'alaikum," dan nama anggota.
@@ -162,7 +380,7 @@ class GreetingHeader extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5 + bottomOverlap),
       child: Row(
         children: [
-          Image.asset('assets/logo-kapdh.png', width: 44, height: 44, semanticLabel: 'Logo KAPDH'),
+          const BrandLogoFrame(),
           const SizedBox(width: KapdhSpace.s3),
           Expanded(
             child: Column(
@@ -170,15 +388,16 @@ class GreetingHeader extends StatelessWidget {
               children: [
                 const Text(
                   "Assalamu'alaikum,",
-                  style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.green100),
+                  style: TextStyle(
+                    fontSize: KapdhFontSize.caption,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.3,
+                    color: KapdhColors.green100,
+                  ),
                 ),
                 Text(
                   name,
-                  style: const TextStyle(
-                    fontSize: KapdhFontSize.bodyLg,
-                    fontWeight: FontWeight.w600,
-                    color: KapdhColors.textOnDark,
-                  ),
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: KapdhColors.textOnDark),
                 ),
               ],
             ),
@@ -220,14 +439,14 @@ class BrandSheetScaffold extends StatelessWidget {
   final Widget? bottomBar;
   final bool resizeToAvoidBottomInset;
 
-  Widget _sheet({required Widget content}) => Transform.translate(
+  Widget _sheet(BuildContext context, {required Widget content}) => Transform.translate(
     offset: Offset(0, -overlap),
     // Material (bukan DecoratedBox) agar efek sentuh ListTile/InkWell di dalam lembar tetap terlihat.
     child: Material(
-      color: KapdhColors.background,
+      color: context.kc.background,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(KapdhRadius.xl))),
       clipBehavior: Clip.antiAlias,
-      child: SafeArea(top: false, child: content),
+      child: SafeArea(top: false, child: ContentWidth(child: content)),
     ),
   );
 
@@ -249,57 +468,57 @@ class BrandSheetScaffold extends StatelessWidget {
     final band = header ?? BrandHeader(pattern: false, padding: EdgeInsets.only(bottom: overlap), minHeight: 28);
     if (scrollable) {
       final bar = _bottomBar();
-      final topInset = MediaQuery.paddingOf(context).top;
-      return Scaffold(
-        // Sewarna lembar: ruang di bawah lembar yang pendek tampak menyatu dengan lembar.
-        backgroundColor: KapdhColors.background,
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: kBrandStatusBarOverlay,
+        child: Scaffold(
+          // Sewarna lembar: ruang di bawah lembar yang pendek tampak menyatu dengan lembar.
+          backgroundColor: context.kc.background,
+          resizeToAvoidBottomInset: resizeToAvoidBottomInset,
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      band,
+                      _sheet(
+                        context,
+                        content: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [body, ?bar]),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const BrandStatusBarFill(),
+            ],
+          ),
+        ),
+      );
+    }
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: kBrandStatusBarOverlay,
+      child: Scaffold(
+        backgroundColor: context.kc.background,
         resizeToAvoidBottomInset: resizeToAvoidBottomInset,
-        body: Stack(
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Positioned.fill(
-              child: SingleChildScrollView(
-                child: Column(
+            band,
+            Expanded(
+              child: _sheet(
+                context,
+                content: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    band,
-                    _sheet(
-                      content: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [body, ?bar]),
-                    ),
+                    Expanded(child: body),
+                    ?_bottomBar(),
                   ],
                 ),
               ),
             ),
-            // Area status bar tetap hijau saat pita tergulir ke atas, agar ikon status bar terang tetap terbaca.
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: topInset,
-              child: ColoredBox(color: KapdhExtraColors.bandGradient.colors.first),
-            ),
           ],
         ),
-      );
-    }
-    return Scaffold(
-      backgroundColor: KapdhColors.background,
-      resizeToAvoidBottomInset: resizeToAvoidBottomInset,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          band,
-          Expanded(
-            child: _sheet(
-              content: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(child: body),
-                  ?_bottomBar(),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
@@ -144,64 +145,70 @@ class _ChatInvitationsScreenState extends ConsumerState<ChatInvitationsScreen> {
             final invitation = state.items[index];
             final busy = _busy.contains(invitation.roomId);
             final inviter = invitation.invitedBy?.fullName;
-            return Card(
-              margin: EdgeInsets.zero,
-              elevation: 0,
-              color: KapdhColors.surface,
-              shape: RoundedRectangleBorder(
+            return DecoratedBox(
+              decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(KapdhRadius.md),
-                side: const BorderSide(color: KapdhColors.divider),
+                boxShadow: context.kc.shadowSm,
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(KapdhSpace.s4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        AlumniAvatar(
-                          name: invitation.roomName,
-                          url: invitation.roomAvatarUrl,
-                          size: 48,
-                          icon: invitation.roomAvatarUrl == null ? KapdhIcons.groups : null,
-                        ),
-                        const SizedBox(width: KapdhSpace.s3),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(invitation.roomName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                              Text(
-                                '${invitation.memberCount} anggota · ${inviter == null ? 'Diundang' : 'Diundang oleh $inviter'}'
-                                ' · ${formatRelative(invitation.invitedAt, now: now)}',
-                                style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
-                              ),
-                            ],
+              child: Card(
+                margin: EdgeInsets.zero,
+                elevation: 0,
+                color: context.kc.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(KapdhRadius.md),
+                  side: BorderSide(color: context.kc.cardBorder),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(KapdhSpace.s4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          AlumniAvatar(
+                            name: invitation.roomName,
+                            url: invitation.roomAvatarUrl,
+                            size: 48,
+                            icon: invitation.roomAvatarUrl == null ? KapdhIcons.groups : null,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: KapdhSpace.s3),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: KapdhButton.outlined(
-                            label: 'Tolak',
-                            onPressed: busy ? null : () => _decline(invitation),
+                          const SizedBox(width: KapdhSpace.s3),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(invitation.roomName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                Text(
+                                  '${invitation.memberCount} anggota · ${inviter == null ? 'Diundang' : 'Diundang oleh $inviter'}'
+                                  ' · ${formatRelative(invitation.invitedAt, now: now)}',
+                                  style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: KapdhSpace.s3),
-                        Expanded(
-                          child: KapdhButton.solid(
-                            label: 'Terima',
-                            busy: busy,
-                            busyLabel: 'Memproses',
-                            onPressed: busy ? null : () => _accept(invitation),
+                        ],
+                      ),
+                      const SizedBox(height: KapdhSpace.s3),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: KapdhButton.outlined(
+                              label: 'Tolak',
+                              onPressed: busy ? null : () => _decline(invitation),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(width: KapdhSpace.s3),
+                          Expanded(
+                            child: KapdhButton.solid(
+                              label: 'Terima',
+                              busy: busy,
+                              busyLabel: 'Memproses',
+                              onPressed: busy ? null : () => _accept(invitation),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );

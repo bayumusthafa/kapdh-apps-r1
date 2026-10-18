@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../design/design.dart';
 import '../membership/academic.dart';
@@ -114,7 +115,7 @@ class _DirectoryFilterSheetState extends ConsumerState<DirectoryFilterSheet> {
       ),
       loading: () => Padding(
         padding: const EdgeInsets.symmetric(vertical: KapdhSpace.s3),
-        child: Text('Memuat daftar ${label.toLowerCase()}…', style: const TextStyle(color: KapdhColors.textMuted)),
+        child: Text('Memuat daftar ${label.toLowerCase()}…', style: TextStyle(color: context.kc.textMuted)),
       ),
       error: (_, _) => InfoBox(
         tone: InfoBoxTone.warning,

@@ -15,6 +15,10 @@ dari DOM dan CSS terkompilasi, bukan perkiraan.
   audit 10.218 teks 0 gagal), pratinjau teks 200 % dan tablet 800 x 1280, token ikon `--ic-xs`…`--ic-xl`.
   Tombol Tema / Teks / Perangkat di strip kepala (`js/theme.js`). Rincian, kontras dan temuan 200 % di
   `kapdh-mobile/mockup-html/REDESAIN.md` bagian *Mode gelap, teks 200 %, tablet dan token ikon*.
+- **P1-1, P1-2, P2-1, P2-2 dan P2-3 selesai di Flutter** (18 Oktober 2026): token v2 di `tokens.json`
+  (termasuk palet gelap, bayangan, gerak, ukuran ikon), `KapdhPalette` + `KapdhTheme.dark()` + `ThemeMode.system`,
+  judul w700, Beranda v2, pita mesh seragam, teks 200 % dan tablet. Rincian: `kapdh-mobile/mockup-html/REDESAIN.md`
+  bagian *Implementasi Flutter*. Kontrak profil berulang menyusul.
 - Proyek tidak punya uji golden; perubahan warna/radius tertangkap uji widget.
 
 ## Konteks branch

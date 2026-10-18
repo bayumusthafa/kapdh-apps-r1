@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../design/design.dart';
 import '../network/directory_filter.dart';
@@ -225,7 +226,7 @@ class _MemberPickerPageState extends ConsumerState<MemberPickerPage> {
     }
 
     return Scaffold(
-      backgroundColor: KapdhColors.background,
+      backgroundColor: context.kc.background,
       appBar: AppBar(
         title: Text(widget.title),
         leading: IconButton(
@@ -240,46 +241,50 @@ class _MemberPickerPageState extends ConsumerState<MemberPickerPage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(KapdhSpace.s4, KapdhSpace.s3, KapdhSpace.s4, 0),
-            child: TextField(
-              controller: _search,
-              onChanged: _onSearch,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (_) => unawaited(_load()),
-              decoration: const InputDecoration(
-                hintText: 'Cari nama alumni (minimal 2 huruf)',
-                prefixIcon: Icon(KapdhIcons.search),
-                isDense: true,
+      body: ContentWidth(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(KapdhSpace.s4, KapdhSpace.s3, KapdhSpace.s4, 0),
+              child: TextField(
+                controller: _search,
+                onChanged: _onSearch,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => unawaited(_load()),
+                decoration: const InputDecoration(
+                  hintText: 'Cari nama alumni (minimal 2 huruf)',
+                  prefixIcon: Icon(KapdhIcons.search, size: KapdhIconSize.lg),
+                  isDense: true,
+                ),
               ),
             ),
-          ),
-          if (_selected.isNotEmpty)
-            SizedBox(
-              height: 56,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                // Padding vertikal 4: chip mendapat target sentuh penuh 48 dp di baris setinggi 56.
-                padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: KapdhSpace.s1),
-                children: [
-                  for (final member in _selected.values)
-                    Padding(
-                      padding: const EdgeInsets.only(right: KapdhSpace.s2),
-                      child: InputChip(
-                        label: Text(member.fullName),
-                        onDeleted: () => _toggle(member),
-                        // Seluruh chip membatalkan pilihan, bukan hanya ikon silang.
-                        onPressed: () => _toggle(member),
-                        deleteButtonTooltipMessage: 'Hapus ${member.fullName}',
+            if (_selected.isNotEmpty)
+              SizedBox(
+                height: 56,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  // Padding vertikal 4: chip mendapat target sentuh penuh 48 dp di baris setinggi 56.
+                  padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: KapdhSpace.s1),
+                  children: [
+                    for (final member in _selected.values)
+                      Padding(
+                        padding: const EdgeInsets.only(right: KapdhSpace.s2),
+                        child: InputChip(
+                          label: Text(member.fullName),
+                          // [v2] Ikon silang Phosphor, bukan ikon Material bawaan InputChip.
+                          deleteIcon: const Icon(KapdhIcons.close, size: KapdhIconSize.button),
+                          onDeleted: () => _toggle(member),
+                          // Seluruh chip membatalkan pilihan, bukan hanya ikon silang.
+                          onPressed: () => _toggle(member),
+                          deleteButtonTooltipMessage: 'Hapus ${member.fullName}',
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          Expanded(child: body),
-        ],
+            Expanded(child: body),
+          ],
+        ),
       ),
     );
   }

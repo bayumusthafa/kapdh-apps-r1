@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../app/theme/kapdh_focus.dart';
+import '../app/theme/kapdh_palette.dart';
 import '../app/theme/kapdh_tokens.dart';
 import '../core/format/formatters.dart';
 import 'brand_header.dart';
@@ -83,8 +85,8 @@ class KtaCardData {
 /// Kartu Tanda Anggota digital (prototipe layar 6, 7; guideline hal. 6; desain KTA v2): gradasi hijau gelap berpita
 /// gelombang dengan tata letak ringkas mendekati kartu identitas landscape (sekitar 1,5 : 1 pada lebar 320). Kepala
 /// logo + "KELUARGA ALUMNI / PESANTREN DAREL HIKMAH" + "KTA DIGITAL", garis pemisah, avatar dan nama selebar kartu,
-/// lalu kolom data (kode angkatan dan nomor anggota bersebelahan, kota, masa berlaku) berdampingan dengan QR atau
-/// kotak QR tertutup.
+/// lalu kolom data (kode angkatan dan nomor anggota bersebelahan, bertumpuk saat teks diperbesar; kota; masa berlaku)
+/// berdampingan dengan QR atau kotak QR tertutup.
 ///
 /// Nama SELALU di barisnya sendiri di atas QR sehingga nama panjang tidak pernah terhalang QR: ukuran hurufnya turun
 /// bertahap (20 sampai 16) sampai muat dua baris. QR berukuran 33 % lebar isi kartu (96 sampai 112 px); batas bawah
@@ -98,7 +100,8 @@ class KtaCard extends StatelessWidget {
   /// acuan [fillContentWidth] lalu diskalakan sebesar mungkin di dalam kartu.
   final bool fill;
 
-  /// Ketukan pada kartu (membuka pratinjau layar penuh).
+  /// Ketukan pada kartu (membuka pratinjau layar penuh). Bila diisi, kartu juga dapat difokus keyboard/akses saklar
+  /// (cincin emas) dan diaktifkan dengan Enter/Spasi; null = kartu statis yang tidak dapat difokus.
   final VoidCallback? onTap;
 
   /// Lebar isi acuan pada mode [fill] (isi kartu 320 dp tanpa padding).
@@ -132,6 +135,9 @@ class KtaCard extends StatelessWidget {
   /// Sisi QR untuk lebar isi kartu [innerWidth].
   static double qrSize(double innerWidth) => (innerWidth * 0.33).clamp(96.0, 112.0);
 
+  /// Teks diperbesar (> 115 %): ambang bersama kepala kartu dan baris data.
+  static bool _largeText(TextScaler scaler) => scaler.scale(11) > 11 * 1.15;
+
   @override
   Widget build(BuildContext context) {
     // Minimum skala tipografi Material (labelSmall 11) untuk semua teks kartu.
@@ -162,121 +168,141 @@ class KtaCard extends StatelessWidget {
       data.qrData != null ? 'QR verifikasi tersedia' : data.qrPlaceholder,
     ].join('. ');
 
+    final content = CustomPaint(
+      painter: const BrandWavePainter(),
+      child: Padding(
+        padding: const EdgeInsets.all(_padding),
+        child: _fit(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final inner = constraints.maxWidth;
+              final scaler = MediaQuery.textScalerOf(context);
+              final nameSize = nameFontSize(data.fullName, inner - _Avatar.size - 10, scaler);
+              final qr = qrSize(inner);
+              // Teks diperbesar: kode angkatan dan nomor anggota bertumpuk agar nomor tidak terpecah di tengah
+              // angka (kolom berdampingan hanya sekitar 89 dp pada teks 200 % di layar 360 dp).
+              final largeText = _largeText(scaler);
+              final cohortField = field('Kode Angkatan', data.cohortCode, value);
+              final numberField = field('Nomor Anggota', data.memberNumber, value.copyWith(letterSpacing: 0.3));
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _CardHeader(),
+                  const SizedBox(height: 6),
+                  const Divider(height: 1, thickness: 1, color: Color(0x40FFFFFF)),
+                  const SizedBox(height: KapdhSpace.s2),
+                  Row(
+                    children: [
+                      _Avatar(name: data.fullName, image: data.avatar),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              data.fullName,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: _nameStyle(nameSize),
+                            ),
+                            Text(
+                              data.subtitle,
+                              style: const TextStyle(fontSize: 11, height: 1.3, color: KapdhColors.green100),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: KapdhSpace.s2),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (largeText) ...[
+                              cohortField,
+                              const SizedBox(height: 6),
+                              numberField,
+                            ] else
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(child: cohortField),
+                                  const SizedBox(width: KapdhSpace.s2),
+                                  Expanded(child: numberField),
+                                ],
+                              ),
+                            if (data.city != null) ...[
+                              const SizedBox(height: 6),
+                              field('Kota', data.city!, value.copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
+                            ],
+                            const SizedBox(height: 6),
+                            Text(
+                              data.validityText,
+                              style: const TextStyle(fontSize: 11, height: 1.3, color: KapdhExtraColors.mutedOnDark),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: KapdhSpace.s3),
+                      _QrBox(data: data.qrData, placeholder: data.qrPlaceholder, size: qr),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    // [v2] Bayangan dari palet (KapdhShadowsDark.kta di mode gelap), bukan literal terang.
+    final radius = BorderRadius.circular(KapdhRadius.lg);
+    Widget card(Widget child) => Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        gradient: KapdhGradients.ktaCard,
+        borderRadius: radius,
+        boxShadow: context.kc.shadowKta,
+      ),
+      child: child,
+    );
+
+    final tap = onTap;
     return Semantics(
       container: true,
       label: semantics,
       excludeSemantics: true,
-      button: onTap != null,
-      hint: onTap != null ? 'Ketuk untuk tampilan layar penuh' : null,
-      onTap: onTap,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            gradient: KapdhGradients.ktaCard,
-            borderRadius: BorderRadius.circular(KapdhRadius.lg + 2),
-            boxShadow: const [
-              BoxShadow(color: Color(0x24020702), blurRadius: 8, offset: Offset(0, 4)),
-              BoxShadow(color: Color(0x470E280C), blurRadius: 32, offset: Offset(0, 14)),
-            ],
-          ),
-          child: CustomPaint(
-            painter: const BrandWavePainter(),
-            child: Padding(
-              padding: const EdgeInsets.all(_padding),
-              child: _fit(
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final inner = constraints.maxWidth;
-                    final scaler = MediaQuery.textScalerOf(context);
-                    final nameSize = nameFontSize(data.fullName, inner - _Avatar.size - 10, scaler);
-                    final qr = qrSize(inner);
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const _CardHeader(),
-                        const SizedBox(height: 6),
-                        const Divider(height: 1, thickness: 1, color: Color(0x40FFFFFF)),
-                        const SizedBox(height: KapdhSpace.s2),
-                        Row(
-                          children: [
-                            _Avatar(name: data.fullName, image: data.avatar),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    data.fullName,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: _nameStyle(nameSize),
-                                  ),
-                                  Text(
-                                    data.subtitle,
-                                    style: const TextStyle(fontSize: 11, height: 1.3, color: KapdhColors.green100),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: KapdhSpace.s2),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(child: field('Kode Angkatan', data.cohortCode, value)),
-                                      const SizedBox(width: KapdhSpace.s2),
-                                      Expanded(
-                                        child: field(
-                                          'Nomor Anggota',
-                                          data.memberNumber,
-                                          value.copyWith(letterSpacing: 0.3),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  if (data.city != null) ...[
-                                    const SizedBox(height: 6),
-                                    field(
-                                      'Kota',
-                                      data.city!,
-                                      value.copyWith(fontSize: 13, fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    data.validityText,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      height: 1.3,
-                                      color: KapdhExtraColors.mutedOnDark,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: KapdhSpace.s3),
-                            _QrBox(data: data.qrData, placeholder: data.qrPlaceholder, size: qr),
-                          ],
-                        ),
-                      ],
-                    );
-                  },
+      button: tap != null,
+      hint: tap != null ? 'Ketuk untuk tampilan layar penuh' : null,
+      onTap: tap,
+      // [v2] Kartu berketuk dapat difokus keyboard/akses saklar dengan cincin emas di atas tepi kartu (WCAG 2.4.7,
+      // 1.4.11). Riak di atas gradasi (Material di dalam Container) tetapi di bawah gelombang dan isi; putih halus agar
+      // teks dan QR tetap terbaca. Tanpa onTap kartu tetap polos: tidak dapat difokus dan tampilannya sama.
+      child: tap == null
+          ? card(content)
+          : KapdhFocusRing(
+              ring: KapdhColors.focusRingOnDark,
+              radius: radius,
+              builder: (onFocusChange) => card(
+                Material(
+                  type: MaterialType.transparency,
+                  child: InkWell(
+                    onTap: tap,
+                    onFocusChange: onFocusChange,
+                    borderRadius: radius,
+                    splashColor: const Color(0x1FFFFFFF),
+                    highlightColor: const Color(0x0FFFFFFF),
+                    hoverColor: const Color(0x0AFFFFFF),
+                    focusColor: KapdhColors.focusRingOnDark.withValues(alpha: 0.12),
+                    child: content,
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -324,7 +350,7 @@ class _CardHeader extends StatelessWidget {
     );
     // Teks diperbesar: label di barisnya sendiri. Ukuran normal: label di pojok kanan atas sejajar baris pertama
     // ("KELUARGA ALUMNI" lebih pendek), sehingga "PESANTREN DAREL HIKMAH" tetap satu baris di layar 360 dp.
-    final large = MediaQuery.textScalerOf(context).scale(11) > 11 * 1.15;
+    final large = KtaCard._largeText(MediaQuery.textScalerOf(context));
     if (large) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -359,13 +385,20 @@ class _Avatar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(KapdhRadius.md),
-        color: KapdhColors.green50,
+        color: context.kc.tint,
         image: image == null ? null : DecorationImage(image: image!, fit: BoxFit.cover),
       ),
+      // Inisial ikut skala teks (mockup: 16px x --ts) tetapi selalu satu baris dan mengecil bila tidak muat di ubin
+      // 40 x 40, sehingga tidak pecah atau meluap menimpa nama pada teks 200 %.
       child: image == null
-          ? Text(
-              initialsOf(name),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: KapdhColors.primary),
+          ? FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                initialsOf(name),
+                maxLines: 1,
+                softWrap: false,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, height: 1, color: context.kc.primary),
+              ),
             )
           : null,
     );
@@ -387,7 +420,7 @@ class _QrBox extends StatelessWidget {
         width: size,
         height: size,
         padding: const EdgeInsets.all(KapdhSpace.s2),
-        decoration: BoxDecoration(color: KapdhColors.surface, borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(color: KapdhColors.surface, borderRadius: BorderRadius.circular(KapdhRadius.md)),
         child: QrImageView(
           key: const ValueKey('kta-qr'),
           data: value,
@@ -410,14 +443,16 @@ class _QrBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: KapdhExtraColors.qrPlaceholderFill,
         border: Border.all(color: KapdhExtraColors.qrPlaceholderBorder),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(KapdhRadius.md),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Gembok emas 28 px (prototipe layar 6, diringkas untuk kartu landscape): QR terkunci sampai KTA aktif atau
           // tersinkron.
-          const ExcludeSemantics(child: Icon(KapdhIcons.lockOutline, size: 28, color: KapdhColors.accent)),
+          const ExcludeSemantics(
+            child: Icon(KapdhIcons.lockOutline, size: KapdhIconSize.xl, color: KapdhColors.accent),
+          ),
           const SizedBox(height: 6),
           Text(
             placeholder,
@@ -449,7 +484,11 @@ class KtaMiniCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(KapdhSpace.s4),
-      decoration: BoxDecoration(gradient: KapdhGradients.ktaCard, borderRadius: BorderRadius.circular(KapdhRadius.lg)),
+      decoration: BoxDecoration(
+        gradient: KapdhGradients.ktaCard,
+        borderRadius: BorderRadius.circular(KapdhRadius.lg),
+        boxShadow: context.kc.shadowKta,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -473,7 +512,9 @@ class KtaMiniCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: KapdhSpace.s3),
-              Flexible(child: StatusBadge(status)),
+              Flexible(
+                child: Align(alignment: AlignmentDirectional.topEnd, child: StatusBadge(status)),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -530,7 +571,7 @@ class StatusActionCard extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           message,
-          style: const TextStyle(fontSize: KapdhFontSize.caption, height: 1.45, color: KapdhColors.textMuted),
+          style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.45, color: context.kc.textMuted),
         ),
       ],
     );
@@ -545,9 +586,10 @@ class StatusActionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: 14),
       decoration: BoxDecoration(
-        color: KapdhColors.surface,
-        border: Border.all(color: KapdhColors.divider),
+        color: context.kc.surface,
+        border: Border.all(color: context.kc.cardBorder),
         borderRadius: BorderRadius.circular(KapdhRadius.lg),
+        boxShadow: context.kc.shadowSm,
       ),
       child: action == null
           ? Align(alignment: Alignment.centerLeft, child: info)

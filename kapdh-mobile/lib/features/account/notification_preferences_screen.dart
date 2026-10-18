@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
@@ -284,6 +285,25 @@ class _MandatoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Teks > 130 %: label "Selalu aktif" pindah ke bawah subjudul agar trailing tidak menyempitkan judul.
+    final big = MediaQuery.textScalerOf(context).scale(KapdhFontSize.caption) > KapdhFontSize.caption * 1.3;
+    final alwaysOn = Semantics(
+      label: 'Selalu aktif',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(KapdhIcons.lockOutline, size: 16, color: context.kc.textMuted),
+          const SizedBox(width: KapdhSpace.s1),
+          ExcludeSemantics(
+            child: Text(
+              'Selalu aktif',
+              style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
+            ),
+          ),
+        ],
+      ),
+    );
+    final subtitleText = Text(subtitle, style: const TextStyle(fontSize: KapdhFontSize.caption));
     return MergeSemantics(
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4),
@@ -291,23 +311,17 @@ class _MandatoryRow extends StatelessWidget {
           title,
           style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w500),
         ),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: KapdhFontSize.caption)),
-        trailing: Semantics(
-          label: 'Selalu aktif',
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(KapdhIcons.lockOutline, size: 16, color: KapdhColors.textMuted),
-              SizedBox(width: KapdhSpace.s1),
-              ExcludeSemantics(
-                child: Text(
-                  'Selalu aktif',
-                  style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
-                ),
-              ),
-            ],
-          ),
-        ),
+        subtitle: big
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  subtitleText,
+                  const SizedBox(height: KapdhSpace.s1),
+                  alwaysOn,
+                ],
+              )
+            : subtitleText,
+        trailing: big ? null : alwaysOn,
       ),
     );
   }

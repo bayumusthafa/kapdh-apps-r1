@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/format/formatters.dart';
@@ -54,7 +55,7 @@ class DeletionStatusScreen extends ConsumerWidget {
               Text(
                 'Status per ${formatDateTime(checked)}',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
               ),
             ],
             const SizedBox(height: KapdhSpace.s5),
@@ -114,7 +115,7 @@ class _PortalHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5 + KapdhSpace.s4),
       child: Row(
         children: [
-          Image.asset('assets/logo-kapdh.png', width: 44, height: 44, semanticLabel: 'Logo KAPDH'),
+          const BrandLogoFrame(),
           const SizedBox(width: KapdhSpace.s3),
           Expanded(
             child: Semantics(

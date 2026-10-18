@@ -6,11 +6,15 @@ import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
 import '../../app/routes.dart';
+import '../../app/theme/kapdh_palette.dart';
+import '../../app/theme/kapdh_theme.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/format/formatters.dart';
 import '../../core/session/session_controller.dart';
 import '../../design/design.dart';
+import '../chat/chat_list_controller.dart';
 import '../events/widgets/event_card.dart';
+import '../network/network_screen.dart' show networkTabRequestProvider;
 import '../news/widgets/post_card.dart';
 import '../notifications/notification_unread_count.dart';
 import 'home_controller.dart';
@@ -46,7 +50,7 @@ class HomeScreen extends ConsumerWidget {
     // Beranda tidak memakai AppScaffold; pita global Offline/Pemeliharaan dipasang sendiri tepat di bawah kepala.
     final banner = AppBannerScope.of(context);
     return Scaffold(
-      backgroundColor: KapdhColors.background,
+      backgroundColor: context.kc.background,
       appBar: HomeHeader(
         name: name,
         unreadCount: unread,
@@ -59,7 +63,9 @@ class HomeScreen extends ConsumerWidget {
           Expanded(
             child: SafeArea(
               top: false,
-              child: active ? const _ActiveHome() : _GatedHome(status: status, unread: liveUnread),
+              child: ContentWidth(
+                child: active ? const _ActiveHome() : _GatedHome(status: status, unread: liveUnread),
+              ),
             ),
           ),
         ],
@@ -95,11 +101,12 @@ class _ActiveHome extends ConsumerWidget {
           ),
         );
       }
-      return ListView(children: const [LoadingSkeleton(lines: 6, semanticsLabel: 'Memuat Beranda')]);
+      return ListView(children: const [_HomeSkeleton()]);
     }
 
     final allEmpty = home.banners.isEmpty && home.upcomingEvents.isEmpty && home.posts.isEmpty;
     final unread = ref.watch(notificationUnreadCountProvider) ?? home.quickAccess.unreadNotificationCount;
+    final chatUnread = ref.watch(chatBadgeCountsProvider.select((badge) => badge.unreadRooms));
     return RefreshIndicator(
       onRefresh: controller.refresh,
       child: ListView(
@@ -120,11 +127,10 @@ class _ActiveHome extends ConsumerWidget {
             ),
             const SizedBox(height: KapdhSpace.s4),
           ],
-          if (home.banners.isNotEmpty) ...[
-            BannerCarousel(banners: home.banners),
-            const SizedBox(height: KapdhSpace.s4),
-          ],
-          _QuickAccess(quickAccess: home.quickAccess, unread: unread),
+          // [v2] Akses cepat tepat di bawah kepala, sebelum banner.
+          _QuickAccess(unread: unread, chatUnread: chatUnread),
+          const SizedBox(height: KapdhSpace.s4),
+          if (home.banners.isNotEmpty) BannerCarousel(banners: home.banners),
           if (home.quickAccess.effectiveStatus == EffectiveStatus.expiring) ...[
             const SizedBox(height: KapdhSpace.s3),
             _RenewalReminder(expiresAt: home.quickAccess.expiresAt),
@@ -162,8 +168,13 @@ class _ActiveHome extends ConsumerWidget {
                 message: 'Belum ada berita terbit. Berita resmi pengurus akan tampil di sini.',
               )
             else
-              for (final post in home.posts) ...[
-                PostCard(post: post, onTap: () => unawaited(context.push(AppRoutes.newsDetail(post.slug)))),
+              for (final (index, post) in home.posts.indexed) ...[
+                // [v2] Berita pertama sebagai kartu hero, sisanya baris ringkas 80 x 80.
+                PostCard(
+                  post: post,
+                  variant: index == 0 ? PostCardVariant.hero : PostCardVariant.compact,
+                  onTap: () => unawaited(context.push(AppRoutes.newsDetail(post.slug))),
+                ),
                 const SizedBox(height: KapdhSpace.s3),
               ],
           ],
@@ -203,48 +214,94 @@ class _CacheNotice extends StatelessWidget {
   }
 }
 
-/// Keterangan jumlah belum dibaca pada akses cepat Notifikasi.
-String _unreadDetail(int unread) => unread > 0 ? '$unread belum dibaca' : 'Semua terbaca';
+/// Akses cepat anggota aktif (v2): Pesan menggantikan KTA karena KTA sudah ada di tombol tengah navigasi bawah.
+/// Jumlah belum dibaca tampil sebagai lencana emas di lingkaran ikon.
+class _QuickAccess extends ConsumerWidget {
+  const _QuickAccess({required this.unread, required this.chatUnread});
 
-class _QuickAccess extends StatelessWidget {
-  const _QuickAccess({required this.quickAccess, required this.unread});
-
-  final HomeQuickAccess quickAccess;
-
-  /// Jumlah belum dibaca dari penghitung bersama (cadangan: angka GET /home).
+  /// Jumlah notifikasi belum dibaca dari penghitung bersama (cadangan: angka GET /home).
   final int unread;
 
+  /// Jumlah percakapan berpesan belum dibaca (lencana tab Jejaring).
+  final int chatUnread;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return QuickAccessRow(
       actions: [
         QuickAction(
-          key: const ValueKey('quick-kta'),
-          icon: KapdhIcons.identificationCardDuotone,
-          label: 'KTA',
-          detail: quickAccess.memberNumber ?? membershipLabel(quickAccess.effectiveStatus),
-          onTap: () => context.go(AppRoutes.kta),
+          key: const ValueKey('quick-messages'),
+          icon: KapdhIcons.chatBubble,
+          label: 'Pesan',
+          badgeCount: chatUnread,
+          onTap: () {
+            ref.read(networkTabRequestProvider.notifier).request(1);
+            context.go(AppRoutes.network);
+          },
         ),
         QuickAction(
           key: const ValueKey('quick-notifications'),
-          icon: KapdhIcons.bellSimpleRingingDuotone,
+          icon: KapdhIcons.notificationsActive,
           label: 'Notifikasi',
-          detail: _unreadDetail(unread),
+          badgeCount: unread,
           onTap: () => unawaited(context.push(AppRoutes.notifications)),
         ),
         QuickAction(
           key: const ValueKey('quick-tickets'),
-          icon: KapdhIcons.ticketDuotone,
+          icon: KapdhIcons.confirmationNumber,
           label: 'Tiket Saya',
           onTap: () => unawaited(context.push(AppRoutes.tickets)),
         ),
         QuickAction(
           key: const ValueKey('quick-news'),
-          icon: KapdhIcons.newspaperClippingDuotone,
+          icon: KapdhIcons.newspaper,
           label: 'Berita',
           onTap: () => unawaited(context.push(AppRoutes.news)),
         ),
       ],
+    );
+  }
+}
+
+/// Kerangka Beranda (v2): bentuk mengikuti isi (akses cepat, banner, judul bagian, kartu event), berkilau.
+class _HomeSkeleton extends StatelessWidget {
+  const _HomeSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Memuat Beranda',
+      liveRegion: true,
+      excludeSemantics: true,
+      child: KapdhShimmer(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s5),
+          child: LayoutBuilder(
+            builder: (context, constraints) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    SkeletonBlock(width: 56, height: 56, circle: true),
+                    SkeletonBlock(width: 56, height: 56, circle: true),
+                    SkeletonBlock(width: 56, height: 56, circle: true),
+                    SkeletonBlock(width: 56, height: 56, circle: true),
+                  ],
+                ),
+                const SizedBox(height: KapdhSpace.s6),
+                SkeletonBlock(height: constraints.maxWidth / 2.2, radius: KapdhRadius.lg),
+                const SizedBox(height: KapdhSpace.s6),
+                const SkeletonBlock(width: 160, height: 18),
+                const SizedBox(height: KapdhSpace.s3),
+                const SkeletonBlock(height: 128, radius: KapdhRadius.lg),
+                const SizedBox(height: KapdhSpace.s3),
+                const SkeletonBlock(height: 128, radius: KapdhRadius.lg),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -263,7 +320,20 @@ class _RenewalReminder extends StatelessWidget {
       icon: KapdhIcons.schedule,
       title: 'Masa aktif KTA segera berakhir',
       message: 'KTA Anda berakhir$until. Perpanjang sekarang agar akses event, jejaring dan chat tidak terputus.',
-      trailing: TextButton(onPressed: () => context.go(AppRoutes.renewal), child: const Text('Perpanjang')),
+      centerTrailing: true,
+      // [v2] Tombol berisi warna peringatan dengan teks putih (5,9:1), bukan tautan teks.
+      trailing: FilledButton(
+        onPressed: () => context.go(AppRoutes.renewal),
+        style: FilledButton.styleFrom(
+          backgroundColor: context.kc.warning,
+          foregroundColor: context.kc.isDark ? KapdhColors.green950 : KapdhColors.onPrimary,
+          minimumSize: const Size(KapdhSize.touchTargetMin, 36),
+          tapTargetSize: MaterialTapTargetSize.padded,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          textStyle: KapdhTheme.font(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+        child: const Text('Perpanjang'),
+      ),
     );
   }
 }
@@ -303,40 +373,53 @@ class _GatedHome extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s6, KapdhSpace.s5, KapdhSpace.s8),
       children: [
-        StatusHero(
-          status: StatusStyles.membership(current),
-          icon: KapdhIcons.lockOutline,
-          title: title,
-          message: message,
+        // [v2] Status dan tombol aksi dalam satu kartu.
+        Container(
+          padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s6, KapdhSpace.s5, KapdhSpace.s5),
+          decoration: BoxDecoration(
+            color: context.kc.surface,
+            border: Border.all(color: context.kc.rejectionBorder),
+            borderRadius: BorderRadius.circular(KapdhRadius.xl),
+            boxShadow: context.kc.shadowSm,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              StatusHero(
+                status: StatusStyles.membership(current),
+                icon: KapdhIcons.lockOutline,
+                title: title,
+                message: message,
+              ),
+              if (actionLabel != null && actionRoute != null) ...[
+                const SizedBox(height: KapdhSpace.s5),
+                KapdhButton(label: actionLabel, onPressed: () => context.go(actionRoute)),
+              ],
+            ],
+          ),
         ),
-        if (actionLabel != null && actionRoute != null) ...[
-          const SizedBox(height: KapdhSpace.s5),
-          KapdhButton(label: actionLabel, onPressed: () => context.go(actionRoute)),
-        ],
         const SizedBox(height: KapdhSpace.s5),
         QuickAccessRow(
           actions: [
+            // KTA tetap di Beranda terkunci: statusnya penting di sini dan Jejaring (Pesan) terkunci.
             QuickAction(
               key: const ValueKey('quick-kta'),
-              icon: KapdhIcons.identificationCardDuotone,
+              icon: KapdhIcons.badge,
               label: 'KTA',
               detail: membershipLabel(current),
               onTap: () => context.go(AppRoutes.kta),
             ),
             QuickAction(
               key: const ValueKey('quick-notifications'),
-              icon: KapdhIcons.bellSimpleRingingDuotone,
+              icon: KapdhIcons.notificationsActive,
               label: 'Notifikasi',
-              detail: switch (unread) {
-                final count? => _unreadDetail(count),
-                null => null,
-              },
+              badgeCount: unread,
               onTap: () => unawaited(context.push(AppRoutes.notifications)),
             ),
             if (expired)
               QuickAction(
                 key: const ValueKey('quick-tickets'),
-                icon: KapdhIcons.ticketDuotone,
+                icon: KapdhIcons.confirmationNumber,
                 label: 'Tiket Saya',
                 onTap: () => unawaited(context.push(AppRoutes.tickets)),
               ),
