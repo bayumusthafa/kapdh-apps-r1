@@ -51,7 +51,8 @@
 .skeleton--home { padding: var(--s4) var(--s5); }
 .skh-banner { aspect-ratio: var(--banner-aspect); border-radius: var(--r-lg); }
 .skh-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s3); margin: var(--s5) 0 var(--s6); }
-.skh-tiles > .skeleton__block { height: 72px; border-radius: var(--r-lg); }
+.skh-tiles { justify-items: center; }
+.skh-tiles > .skeleton__block { width: 56px; height: 56px; border-radius: 50%; } /* [v2] bentuk lingkaran ikon akses cepat */
 .skh-title { width: 46%; height: 18px; }
 .skh-card { height: 120px; margin-bottom: var(--s3); }
 
