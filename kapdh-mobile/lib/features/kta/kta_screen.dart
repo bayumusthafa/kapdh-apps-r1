@@ -12,6 +12,7 @@ import '../../core/format/formatters.dart';
 import '../../core/session/session_controller.dart';
 import '../../core/session/session_state.dart';
 import '../../design/design.dart';
+import 'kta_fullscreen.dart';
 import '../payments/payment_updates.dart';
 import 'kta_presentation.dart';
 import 'kta_sync.dart';
@@ -200,7 +201,7 @@ class _KtaScreenState extends ConsumerState<KtaScreen> {
       child: ListView(
         padding: const EdgeInsets.all(KapdhSpace.s5),
         children: [
-          KtaCard(data: KtaCardData.fromMemberCard(card, avatar: _avatar(card))),
+          _TappableKta(data: KtaCardData.fromMemberCard(card, avatar: _avatar(card))),
           const SizedBox(height: KapdhSpace.s2),
           _SyncedAt(syncedAt: card.syncedAt),
           const SizedBox(height: KapdhSpace.s4),
@@ -249,7 +250,7 @@ class _KtaScreenState extends ConsumerState<KtaScreen> {
       child: ListView(
         padding: const EdgeInsets.all(KapdhSpace.s5),
         children: [
-          KtaCard(
+          _TappableKta(
             data: KtaCardData.fromMemberCard(card, qrUsable: view.qrUsable, avatar: _avatar(card)),
           ),
           const SizedBox(height: KapdhSpace.s4),
@@ -421,4 +422,14 @@ class _LockedFeatures extends StatelessWidget {
       ),
     );
   }
+}
+
+/// KTA yang membuka pratinjau layar penuh landscape saat diketuk.
+class _TappableKta extends StatelessWidget {
+  const _TappableKta({required this.data});
+
+  final KtaCardData data;
+
+  @override
+  Widget build(BuildContext context) => KtaCard(data: data, onTap: () => unawaited(showKtaFullScreen(context, data)));
 }
