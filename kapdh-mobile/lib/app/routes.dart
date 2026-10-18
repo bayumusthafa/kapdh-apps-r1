@@ -7,6 +7,9 @@ abstract final class AppRoutes {
   static const updateRequired = '/update-required';
   static const maintenance = '/maintenance';
 
+  /// Pilihan Daftar/Masuk setelah splash saat aplikasi baru dipasang atau diperbarui (core/welcome).
+  static const welcome = '/welcome';
+
   // Auth.
   static const login = '/login';
   static const register = '/register';
