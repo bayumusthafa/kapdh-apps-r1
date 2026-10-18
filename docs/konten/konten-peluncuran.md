@@ -241,6 +241,7 @@ dan ponsel belakang menampilkan kartu KTA digital dengan nama "Nama Anggota" ser
 yang dapat dipindai. Di belakang ponsel, lingkaran cahaya emas `#E6D312` dengan opasitas 30%, dan ornamen geometris
 bintang delapan tipis berwarna emas di sudut kanan atas. Logo KAPDH berwarna krem `#FCF8F5` di kiri atas (lebar
 sekitar 220 px, jarak tepi 64 px). Tanpa teks lain.
+Berkas: `docs/konten/gambar/berita-1-peluncuran.jpg`.
 
 ---
 
@@ -324,6 +325,7 @@ berwarna `#E3F0E1` di seluruh bidang. Di tengah, logo KAPDH berukuran besar (tin
 lingkaran hijau `#1A4B17`. Di kanan bawah logo, ikon perisai bergaris emas `#E6D312` dengan simbol gembok sederhana
 sebagai lambang pelindungan data. Garis bingkai emas tipis 6 px dengan jarak 48 px dari tepi. Jangan memotret akta
 atau SK pengesahan, karena dokumen itu memuat nama dan tanda tangan pejabat. Tanpa teks selain logo.
+Berkas: `docs/konten/gambar/berita-2-legalitas.jpg`.
 
 ---
 
@@ -423,6 +425,7 @@ di kanan. Di tengah, kartu KTA digital ukuran besar (lebar sekitar 760 px, mirin
 dan kotak QR berupa ikon bergaya garis, bukan kode yang dapat dipindai. Di kiri kartu, ilustrasi datar ponsel yang
 menampilkan ikon unggah dokumen dan tanda centang. Di kanan, ikon kalender kecil berangka "12". Tanpa nominal
 iuran, nomor rekening, atau gambar QRIS.
+Berkas: `docs/konten/gambar/berita-3-iuran-kta.jpg`.
 
 ---
 
@@ -468,6 +471,7 @@ tanpa batas)
 yang masing-masing menampilkan avatar siluet alumni, dihubungkan garis lengkung emas `#E6D312` sebagai lambang
 silaturahmi. Logo KAPDH berwarna krem `#FCF8F5` di kiri atas (x 64, y 64, lebar sekitar 200 px). Pita bawah selebar
 penuh (y 460-800) dibiarkan polos gelap untuk judul. Tanpa tombol toko, tanpa tulisan "Unduh", dan tanpa teks lain.
+Berkas: `docs/konten/gambar/banner-1-gabung.jpg`.
 
 ---
 
@@ -500,6 +504,7 @@ masanya Segera Berakhir.
 garis aksen emas `#E6D312`, teks samaran "NAMA ANGGOTA", lencana "KTA Aktif", dan ikon QR bergaya garis yang tidak
 dapat dipindai. Di belakang kartu, lingkaran emas pucat `#FBF6C9` dengan opasitas 25%. Pita bawah selebar penuh
 (y 460-800) dibiarkan polos untuk judul. Tanpa nominal, nomor rekening, atau gambar QRIS.
+Berkas: `docs/konten/gambar/banner-2-iuran-kta.jpg`.
 
 ---
 
@@ -534,6 +539,7 @@ y 40-450), jaringan enam lingkaran avatar ilustrasi siluet (tanpa wajah nyata) b
 dihubungkan garis emas `#E6D312`. Di dalam atau di samping lingkaran terdapat ikon profesi bergaya garis krem
 `#FCF8F5`, misalnya tas kerja, laptop, stetoskop, timbangan, dan daun padi. Pita bawah selebar penuh (y 460-800)
 dibiarkan polos untuk judul. Tanpa teks.
+Berkas: `docs/konten/gambar/banner-3-jejaring.jpg`.
 
 ---
 
@@ -633,6 +639,7 @@ x 255-1345), ponsel tegak dengan layar menampilkan logo KAPDH di atas latar krem
 `#E6D312` dan percikan ornamen bintang delapan berwarna emas pucat `#FBF6C9`. Di kiri dan kanan ponsel, siluet
 tangan memegang ponsel lain yang menampilkan kotak video pertemuan berisi avatar ilustrasi, sebagai tanda acara
 daring. Tanpa teks selain logo.
+Berkas: `docs/konten/gambar/event-1-peluncuran.jpg`.
 
 ---
 
@@ -730,6 +737,7 @@ event selesai). Bila panitia ingin check-in dibuka lebih singkat, nyalakan sakel
 sederhana kubah dan atap gedung pertemuan berwarna `#0E280C` dengan opasitas 15%. Tanpa wajah nyata dan tanpa teks.
 Bila memakai foto acara alumni sebelumnya, pakai foto yang orang-orangnya tidak dapat dikenali atau yang sudah
 mendapat izin, lalu letakkan titik fokusnya di tengah.
+Berkas: `docs/konten/gambar/event-2-halal-bihalal.jpg`.
 
 ---
 
@@ -817,6 +825,7 @@ acara daring.
 `#2D7A28`, dihubungkan garis emas `#E6D312`. Lingkaran pusat sedikit lebih besar dan memuat logo KAPDH. Di sekitar
 jaringan terdapat ikon profesi bergaya garis krem `#FCF8F5`: tas kerja, laptop, stetoskop, timbangan, helm proyek,
 dan daun padi. Tanpa teks.
+Berkas: `docs/konten/gambar/event-3-temu-jejaring.jpg`.
 
 ---
 
