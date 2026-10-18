@@ -66,6 +66,50 @@ void main() {
       }
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('permukaan gelap: emas 52 px dan garis putih 48 px, nonaktif abu-abu', (tester) async {
+      var taps = 0;
+      await pumpDesign(
+        tester,
+        Column(
+          children: [
+            KapdhButton.accent(label: 'Daftar KAPDH Apps', onPressed: () => taps++),
+            KapdhButton.outlinedOnDark(label: 'Sudah Punya Akun? Masuk', onPressed: () => taps++),
+            const KapdhButton.accent(label: 'Nonaktif', onPressed: null),
+          ],
+        ),
+      );
+      BoxDecoration decorationOf(String label) =>
+          tester
+                  .widget<DecoratedBox>(
+                    find
+                        .descendant(
+                          of: find.ancestor(of: find.text(label), matching: find.byType(KapdhButton)),
+                          matching: find.byType(DecoratedBox),
+                        )
+                        .first,
+                  )
+                  .decoration
+              as BoxDecoration;
+
+      expect(decorationOf('Daftar KAPDH Apps').color, KapdhColors.accent);
+      expect(decorationOf('Nonaktif').color, KapdhColors.disabledBg);
+      expect(decorationOf('Sudah Punya Akun? Masuk').border, isNotNull);
+      expect(
+        tester.getSize(find.ancestor(of: find.text('Daftar KAPDH Apps'), matching: find.byType(KapdhButton))).height,
+        greaterThanOrEqualTo(52),
+      );
+      expect(
+        tester
+            .getSize(find.ancestor(of: find.text('Sudah Punya Akun? Masuk'), matching: find.byType(KapdhButton)))
+            .height,
+        greaterThanOrEqualTo(48),
+      );
+      await tester.tap(find.text('Daftar KAPDH Apps'));
+      await tester.tap(find.text('Sudah Punya Akun? Masuk'));
+      await tester.tap(find.text('Nonaktif'));
+      expect(taps, 2);
+    });
   });
 
   group('KapdhTextField', () {

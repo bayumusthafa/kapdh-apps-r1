@@ -7,10 +7,11 @@ import '../../app/theme/kapdh_tokens.dart';
 import '../../core/app_gate/app_gate.dart';
 import '../../core/session/session_controller.dart';
 import '../../core/session/session_state.dart';
+import '../../core/welcome/welcome_gate.dart';
 import '../../design/design.dart';
 
-/// Splash (PRD 4.6 Flutter sistem): memeriksa gerbang aplikasi (GET /public/config: versi minimum, maintenance)
-/// dan memulihkan sesi secara paralel. Router berpindah sendiri saat keduanya siap (redirect.dart). Tanpa koneksi
+/// Splash (PRD 4.6 Flutter sistem): memeriksa gerbang aplikasi (GET /public/config: versi minimum, maintenance),
+/// memulihkan sesi dan membaca penanda Welcome (pemasangan baru/pembaruan) secara paralel. Router berpindah sendiri saat keduanya siap (redirect.dart). Tanpa koneksi
 /// dan tanpa snapshot sesi, layar menampilkan "Tanpa koneksi" dengan tombol coba lagi; pengguna tidak dikeluarkan.
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -30,7 +31,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   Future<void> _start() async {
     if (!mounted) return;
-    await Future.wait([ref.read(appGateProvider.notifier).check(), ref.read(sessionProvider.notifier).bootstrap()]);
+    await Future.wait([
+      ref.read(appGateProvider.notifier).check(),
+      ref.read(sessionProvider.notifier).bootstrap(),
+      ref.read(welcomeProvider.notifier).load(),
+    ]);
   }
 
   Future<void> _retry() async {
