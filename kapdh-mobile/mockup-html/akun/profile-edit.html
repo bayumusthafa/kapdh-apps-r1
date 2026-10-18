@@ -1,0 +1,1826 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ubah Profil - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Ubah Profil aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/akun.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <nav class="page-header__nav" aria-label="Layar grup Akun">
+      <a href="account.html">Akun</a>
+      <a href="profile-edit.html" aria-current="page">Ubah Profil</a>
+      <a href="privacy.html">Privasi Profil</a>
+      <a href="notification-preferences.html">Preferensi Notifikasi</a>
+      <a href="sessions.html">Sesi Perangkat</a>
+      <a href="change-password.html">Ganti Password</a>
+      <a href="delete-account.html">Hapus Akun</a>
+      <a href="blocked-users.html">Pengguna Diblokir</a>
+      <a href="my-reports.html">Laporan Saya</a>
+    </nav>
+    <h1 class="page-header__title">Ubah Profil</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/account/profile_edit_screen.dart</code> (ProfileEditScreen, _ReadOnlyRow, _PickerField) + <code>widgets/master_picker.dart</code> (lembar profesi/keahlian), <code>widgets/profile_avatar.dart</code>, <code>avatar_image.dart</code></dd>
+      <dt>Rute</dt><dd><code>/account/profile</code> (di atas cangkang, tanpa navigasi bawah)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama: belum ada perubahan</li>
+        <li>Gulir penuh: tombol Simpan profil nonaktif</li>
+        <li>Foto baru dipilih (Hapus foto muncul)</li>
+        <li>Galat validasi setelah Simpan (digulir)</li>
+        <li>Menyimpan (digulir ke dasar)</li>
+        <li>Lembar sumber foto (Ganti foto)</li>
+        <li>Dialog foto tidak dapat dipakai</li>
+        <li>Lembar Pilih profesi</li>
+        <li>Lembar profesi: pencarian tanpa hasil</li>
+        <li>Lembar Pilih keahlian (3 dipilih)</li>
+        <li>Lembar keahlian penuh + keahlian tidak aktif</li>
+        <li>Lembar pilihan sedang memuat</li>
+        <li>Dialog konflik versi (409)</li>
+        <li>Dialog buang perubahan (kembali)</li>
+        <li>Memuat</li>
+        <li>Galat memuat</li>
+      </ol>
+    </div>
+    <p class="page-header__note">AppScaffold "Ubah Profil", isi ScrollColumn padding (20, 20, 20, 32). Identitas keanggotaan hanya dibaca; hanya field yang berubah dikirim (PATCH). "Simpan profil" nonaktif sampai ada perubahan. Data dan foto tiruan (bukan foto orang). Galat per field dari server memakai posisi yang sama dengan galat lokal.</p>
+  </header>
+
+  <main class="frames">
+
+    <h2 class="frames__group-title">Formulir</h2>
+
+    <figure class="frame" id="frame-1">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Utama: belum ada perubahan</figcaption>
+      <div class="device" role="group" aria-label="Ubah Profil, keadaan utama">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-5 pb-8">
+                <div class="akun-avatar-block">
+                  <div class="avatar avatar--96 avatar--profile" role="img" aria-label="Foto profil Ahmad Fauzi">AF</div>
+                  <div class="akun-avatar-actions"><button class="btn-link" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ganti foto</button></div>
+                  <p class="akun-avatar-hint">JPG, PNG atau WebP maksimal 5 MB. Data lokasi foto dihapus otomatis.</p>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-1">
+                    <h3 class="account-section__title" id="sec-1">DATA KEANGGOTAAN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nama lengkap</span><span class="akun-ro-row__value">Ahmad Fauzi</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Email</span><span class="akun-ro-row__value">ahmad.fauzi@example.com</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nomor anggota</span><span class="akun-ro-row__value">12.01.01.7</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Angkatan</span><span class="akun-ro-row__value">KAPDH 12 · lulus 2014</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Tahun masuk - keluar</span><span class="akun-ro-row__value">2008 - 2014</span></div>
+                    </div>
+                    <p class="account-section__footnote">Data keanggotaan hanya dapat dikoreksi pengurus. Hubungi pengurus bila ada yang keliru; email diubah lewat alur verifikasi email.</p>
+                  </section>
+                </div>
+                <div class="akun-fields mt-5">
+                  <div class="field">
+                    <label class="field__label" for="f-2">Kota domisili</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-location_on_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-2" placeholder="Mis. Pekanbaru" aria-describedby="f-2-help" type="text" value="Pekanbaru"></div>
+                    <p class="field__helper" id="f-2-help">Hanya kota, bukan alamat lengkap. Tampil di KTA.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-3">Nomor telepon</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-phone_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-3" placeholder="+62 812 3456 7890" aria-describedby="f-3-help" autocomplete="tel" type="tel" value="+62 812 0000 1122"></div>
+                    <p class="field__helper" id="f-3-help">Disembunyikan dari anggota lain kecuali Anda mengizinkannya di Privasi.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-4">Tentang saya</label>
+                    <div class="input input--multiline akun-lines-3"><textarea class="input__control" id="f-4" placeholder="Ceritakan singkat tentang Anda" aria-describedby="f-4-help" rows="3">Alumni KAPDH angkatan 12. Mengajar bahasa Arab di Pekanbaru dan aktif di kegiatan dakwah.</textarea></div>
+                    <p class="field__helper" id="f-4-help">89/500 karakter</p>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Profesi</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Profesi, Guru"><span class="input__value">Guru</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Keahlian (maksimal 10)</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Keahlian (maksimal 10), 3 keahlian dipilih"><span class="input__value">3 keahlian dipilih</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    <div class="akun-chips"><span class="akun-chip">Bahasa Arab</span><span class="akun-chip">Pendidikan dan Pengajaran</span><span class="akun-chip">Dakwah dan Public Speaking</span></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-7">
+                    <h3 class="account-section__title" id="sec-7">LULUSAN TERAKHIR</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-5">Institusi</label>
+                          <div class="input"><input class="input__control" id="f-5" placeholder="Mis. Universitas Indonesia" type="text" value="Universitas Riau"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-6">Kota</label>
+                          <div class="input"><input class="input__control" id="f-6" placeholder="Mis. Jakarta" type="text" value="Pekanbaru"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-12">
+                    <h3 class="account-section__title" id="sec-12">MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-8">Instagram</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-8" placeholder="nama pengguna" type="text" value="ahmad.fauzi"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-9">X</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-alternate_email" aria-hidden="true"></span></span><input class="input__control" id="f-9" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-10">Facebook</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-facebook" aria-hidden="true"></span></span><input class="input__control" id="f-10" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-11">LinkedIn</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-work_outline" aria-hidden="true"></span></span><input class="input__control" id="f-11" placeholder="https://www.linkedin.com/in/..." type="text"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Isi nama pengguna (mis. ahmad.islam) atau tautan https://. Disembunyikan kecuali diizinkan.</p>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--primary" type="button" disabled>Simpan profil</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-2">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Gulir penuh: tombol Simpan profil nonaktif</figcaption>
+      <div class="device device--tall" role="group" aria-label="Ubah Profil, seluruh isi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-5 pb-8">
+                <div class="akun-avatar-block">
+                  <div class="avatar avatar--96 avatar--profile" role="img" aria-label="Foto profil Ahmad Fauzi">AF</div>
+                  <div class="akun-avatar-actions"><button class="btn-link" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ganti foto</button></div>
+                  <p class="akun-avatar-hint">JPG, PNG atau WebP maksimal 5 MB. Data lokasi foto dihapus otomatis.</p>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-13">
+                    <h3 class="account-section__title" id="sec-13">DATA KEANGGOTAAN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nama lengkap</span><span class="akun-ro-row__value">Ahmad Fauzi</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Email</span><span class="akun-ro-row__value">ahmad.fauzi@example.com</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nomor anggota</span><span class="akun-ro-row__value">12.01.01.7</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Angkatan</span><span class="akun-ro-row__value">KAPDH 12 · lulus 2014</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Tahun masuk - keluar</span><span class="akun-ro-row__value">2008 - 2014</span></div>
+                    </div>
+                    <p class="account-section__footnote">Data keanggotaan hanya dapat dikoreksi pengurus. Hubungi pengurus bila ada yang keliru; email diubah lewat alur verifikasi email.</p>
+                  </section>
+                </div>
+                <div class="akun-fields mt-5">
+                  <div class="field">
+                    <label class="field__label" for="f-14">Kota domisili</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-location_on_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-14" placeholder="Mis. Pekanbaru" aria-describedby="f-14-help" type="text" value="Pekanbaru"></div>
+                    <p class="field__helper" id="f-14-help">Hanya kota, bukan alamat lengkap. Tampil di KTA.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-15">Nomor telepon</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-phone_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-15" placeholder="+62 812 3456 7890" aria-describedby="f-15-help" autocomplete="tel" type="tel" value="+62 812 0000 1122"></div>
+                    <p class="field__helper" id="f-15-help">Disembunyikan dari anggota lain kecuali Anda mengizinkannya di Privasi.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-16">Tentang saya</label>
+                    <div class="input input--multiline akun-lines-3"><textarea class="input__control" id="f-16" placeholder="Ceritakan singkat tentang Anda" aria-describedby="f-16-help" rows="3">Alumni KAPDH angkatan 12. Mengajar bahasa Arab di Pekanbaru dan aktif di kegiatan dakwah.</textarea></div>
+                    <p class="field__helper" id="f-16-help">89/500 karakter</p>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Profesi</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Profesi, Guru"><span class="input__value">Guru</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Keahlian (maksimal 10)</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Keahlian (maksimal 10), 3 keahlian dipilih"><span class="input__value">3 keahlian dipilih</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    <div class="akun-chips"><span class="akun-chip">Bahasa Arab</span><span class="akun-chip">Pendidikan dan Pengajaran</span><span class="akun-chip">Dakwah dan Public Speaking</span></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-19">
+                    <h3 class="account-section__title" id="sec-19">LULUSAN TERAKHIR</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-17">Institusi</label>
+                          <div class="input"><input class="input__control" id="f-17" placeholder="Mis. Universitas Indonesia" type="text" value="Universitas Riau"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-18">Kota</label>
+                          <div class="input"><input class="input__control" id="f-18" placeholder="Mis. Jakarta" type="text" value="Pekanbaru"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-24">
+                    <h3 class="account-section__title" id="sec-24">MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-20">Instagram</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-20" placeholder="nama pengguna" type="text" value="ahmad.fauzi"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-21">X</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-alternate_email" aria-hidden="true"></span></span><input class="input__control" id="f-21" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-22">Facebook</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-facebook" aria-hidden="true"></span></span><input class="input__control" id="f-22" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-23">LinkedIn</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-work_outline" aria-hidden="true"></span></span><input class="input__control" id="f-23" placeholder="https://www.linkedin.com/in/..." type="text"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Isi nama pengguna (mis. ahmad.islam) atau tautan https://. Disembunyikan kecuali diizinkan.</p>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--primary" type="button" disabled>Simpan profil</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-3">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Foto baru dipilih (Hapus foto muncul)</figcaption>
+      <div class="device" role="group" aria-label="Ubah Profil, pratinjau foto baru">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-5 pb-8">
+                <div class="akun-avatar-block">
+                  <div class="avatar avatar--96 avatar--profile akun-photo" role="img" aria-label="Foto profil Ahmad Fauzi"><span class="ic ic-person"></span></div>
+                  <div class="akun-avatar-actions"><button class="btn-link" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ganti foto</button><button class="btn-link" type="button"><span class="ic ic-delete_outline" aria-hidden="true"></span>Hapus foto</button></div>
+                  <p class="akun-avatar-hint">JPG, PNG atau WebP maksimal 5 MB. Data lokasi foto dihapus otomatis.</p>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-25">
+                    <h3 class="account-section__title" id="sec-25">DATA KEANGGOTAAN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nama lengkap</span><span class="akun-ro-row__value">Ahmad Fauzi</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Email</span><span class="akun-ro-row__value">ahmad.fauzi@example.com</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nomor anggota</span><span class="akun-ro-row__value">12.01.01.7</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Angkatan</span><span class="akun-ro-row__value">KAPDH 12 · lulus 2014</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Tahun masuk - keluar</span><span class="akun-ro-row__value">2008 - 2014</span></div>
+                    </div>
+                    <p class="account-section__footnote">Data keanggotaan hanya dapat dikoreksi pengurus. Hubungi pengurus bila ada yang keliru; email diubah lewat alur verifikasi email.</p>
+                  </section>
+                </div>
+                <div class="akun-fields mt-5">
+                  <div class="field">
+                    <label class="field__label" for="f-26">Kota domisili</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-location_on_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-26" placeholder="Mis. Pekanbaru" aria-describedby="f-26-help" type="text" value="Pekanbaru"></div>
+                    <p class="field__helper" id="f-26-help">Hanya kota, bukan alamat lengkap. Tampil di KTA.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-27">Nomor telepon</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-phone_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-27" placeholder="+62 812 3456 7890" aria-describedby="f-27-help" autocomplete="tel" type="tel" value="+62 812 0000 1122"></div>
+                    <p class="field__helper" id="f-27-help">Disembunyikan dari anggota lain kecuali Anda mengizinkannya di Privasi.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-28">Tentang saya</label>
+                    <div class="input input--multiline akun-lines-3"><textarea class="input__control" id="f-28" placeholder="Ceritakan singkat tentang Anda" aria-describedby="f-28-help" rows="3">Alumni KAPDH angkatan 12. Mengajar bahasa Arab di Pekanbaru dan aktif di kegiatan dakwah.</textarea></div>
+                    <p class="field__helper" id="f-28-help">89/500 karakter</p>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Profesi</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Profesi, Guru"><span class="input__value">Guru</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Keahlian (maksimal 10)</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Keahlian (maksimal 10), 3 keahlian dipilih"><span class="input__value">3 keahlian dipilih</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    <div class="akun-chips"><span class="akun-chip">Bahasa Arab</span><span class="akun-chip">Pendidikan dan Pengajaran</span><span class="akun-chip">Dakwah dan Public Speaking</span></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-31">
+                    <h3 class="account-section__title" id="sec-31">LULUSAN TERAKHIR</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-29">Institusi</label>
+                          <div class="input"><input class="input__control" id="f-29" placeholder="Mis. Universitas Indonesia" type="text" value="Universitas Riau"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-30">Kota</label>
+                          <div class="input"><input class="input__control" id="f-30" placeholder="Mis. Jakarta" type="text" value="Pekanbaru"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-36">
+                    <h3 class="account-section__title" id="sec-36">MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-32">Instagram</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-32" placeholder="nama pengguna" type="text" value="ahmad.fauzi"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-33">X</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-alternate_email" aria-hidden="true"></span></span><input class="input__control" id="f-33" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-34">Facebook</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-facebook" aria-hidden="true"></span></span><input class="input__control" id="f-34" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-35">LinkedIn</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-work_outline" aria-hidden="true"></span></span><input class="input__control" id="f-35" placeholder="https://www.linkedin.com/in/..." type="text"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Isi nama pengguna (mis. ahmad.islam) atau tautan https://. Disembunyikan kecuali diizinkan.</p>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--primary" type="button">Simpan profil</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Pratinjau foto lokal (bytes) sebelum disimpan; "Hapus foto" juga muncul bila foto tersimpan sudah ada. Foto pada mockup adalah tiruan.</p>
+    </figure>
+
+    <figure class="frame" id="frame-4">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Galat validasi setelah Simpan (digulir)</figcaption>
+      <div class="device" role="group" aria-label="Ubah Profil, galat validasi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-offset" style="--scroll:470px">
+              <div class="pad-screen pt-5 pb-8">
+                <div class="akun-avatar-block">
+                  <div class="avatar avatar--96 avatar--profile" role="img" aria-label="Foto profil Ahmad Fauzi">AF</div>
+                  <div class="akun-avatar-actions"><button class="btn-link" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ganti foto</button></div>
+                  <p class="akun-avatar-hint">JPG, PNG atau WebP maksimal 5 MB. Data lokasi foto dihapus otomatis.</p>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-37">
+                    <h3 class="account-section__title" id="sec-37">DATA KEANGGOTAAN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nama lengkap</span><span class="akun-ro-row__value">Ahmad Fauzi</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Email</span><span class="akun-ro-row__value">ahmad.fauzi@example.com</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nomor anggota</span><span class="akun-ro-row__value">12.01.01.7</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Angkatan</span><span class="akun-ro-row__value">KAPDH 12 · lulus 2014</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Tahun masuk - keluar</span><span class="akun-ro-row__value">2008 - 2014</span></div>
+                    </div>
+                    <p class="account-section__footnote">Data keanggotaan hanya dapat dikoreksi pengurus. Hubungi pengurus bila ada yang keliru; email diubah lewat alur verifikasi email.</p>
+                  </section>
+                </div>
+                <div class="akun-fields mt-5">
+                  <div class="field">
+                    <label class="field__label" for="f-38">Kota domisili</label>
+                    <div class="input is-error"><span class="input__prefix" aria-hidden="true"><span class="ic ic-location_on_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-38" placeholder="Mis. Pekanbaru" aria-describedby="f-38-err" aria-invalid="true" type="text"></div>
+                    <p class="field__error" id="f-38-err">Kota domisili tidak boleh dikosongkan.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-39">Nomor telepon</label>
+                    <div class="input is-error"><span class="input__prefix" aria-hidden="true"><span class="ic ic-phone_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-39" placeholder="+62 812 3456 7890" aria-describedby="f-39-err" aria-invalid="true" autocomplete="tel" type="tel" value="0812-ABC"></div>
+                    <p class="field__error" id="f-39-err">Gunakan angka, boleh diawali + (mis. +62 812 3456 7890).</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-40">Tentang saya</label>
+                    <div class="input input--multiline akun-lines-3"><textarea class="input__control" id="f-40" placeholder="Ceritakan singkat tentang Anda" aria-describedby="f-40-help" rows="3">Alumni KAPDH angkatan 12. Mengajar bahasa Arab di Pekanbaru dan aktif di kegiatan dakwah.</textarea></div>
+                    <p class="field__helper" id="f-40-help">89/500 karakter</p>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Profesi</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Profesi, Guru"><span class="input__value">Guru</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Keahlian (maksimal 10)</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Keahlian (maksimal 10), 3 keahlian dipilih"><span class="input__value">3 keahlian dipilih</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    <div class="akun-chips"><span class="akun-chip">Bahasa Arab</span><span class="akun-chip">Pendidikan dan Pengajaran</span><span class="akun-chip">Dakwah dan Public Speaking</span></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-43">
+                    <h3 class="account-section__title" id="sec-43">LULUSAN TERAKHIR</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-41">Institusi</label>
+                          <div class="input"><input class="input__control" id="f-41" placeholder="Mis. Universitas Indonesia" type="text" value="Universitas Riau"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-42">Kota</label>
+                          <div class="input"><input class="input__control" id="f-42" placeholder="Mis. Jakarta" type="text" value="Pekanbaru"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-48">
+                    <h3 class="account-section__title" id="sec-48">MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-44">Instagram</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-44" placeholder="nama pengguna" type="text" value="ahmad.fauzi"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-45">X</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-alternate_email" aria-hidden="true"></span></span><input class="input__control" id="f-45" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-46">Facebook</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-facebook" aria-hidden="true"></span></span><input class="input__control" id="f-46" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-47">LinkedIn</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-work_outline" aria-hidden="true"></span></span><input class="input__control" id="f-47" placeholder="https://www.linkedin.com/in/..." type="text"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Isi nama pengguna (mis. ahmad.islam) atau tautan https://. Disembunyikan kecuali diizinkan.</p>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--primary" type="button">Simpan profil</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="snackbar" role="status"><span class="snackbar__text">Periksa kembali isian yang ditandai.</span></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Galat menggantikan teks bantuan. Galat lain: "Maksimal 80 karakter.", "Maksimal 500 karakter.", "Maksimal 120 karakter.", "Isi nama pengguna atau tautan yang diawali https://", "Maksimal 10 keahlian.".</p>
+    </figure>
+
+    <figure class="frame" id="frame-5">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Menyimpan (digulir ke dasar)</figcaption>
+      <div class="device" role="group" aria-label="Ubah Profil, sedang menyimpan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body scroll-end">
+            <div>
+              <div class="pad-screen pt-5 pb-8">
+                <div class="akun-avatar-block">
+                  <div class="avatar avatar--96 avatar--profile" role="img" aria-label="Foto profil Ahmad Fauzi">AF</div>
+                  <div class="akun-avatar-actions"><button class="btn-link" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ganti foto</button></div>
+                  <p class="akun-avatar-hint">JPG, PNG atau WebP maksimal 5 MB. Data lokasi foto dihapus otomatis.</p>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-49">
+                    <h3 class="account-section__title" id="sec-49">DATA KEANGGOTAAN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nama lengkap</span><span class="akun-ro-row__value">Ahmad Fauzi</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Email</span><span class="akun-ro-row__value">ahmad.fauzi@example.com</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nomor anggota</span><span class="akun-ro-row__value">12.01.01.7</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Angkatan</span><span class="akun-ro-row__value">KAPDH 12 · lulus 2014</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Tahun masuk - keluar</span><span class="akun-ro-row__value">2008 - 2014</span></div>
+                    </div>
+                    <p class="account-section__footnote">Data keanggotaan hanya dapat dikoreksi pengurus. Hubungi pengurus bila ada yang keliru; email diubah lewat alur verifikasi email.</p>
+                  </section>
+                </div>
+                <div class="akun-fields mt-5">
+                  <div class="field">
+                    <label class="field__label" for="f-50">Kota domisili</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-location_on_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-50" placeholder="Mis. Pekanbaru" aria-describedby="f-50-help" type="text" value="Pekanbaru"></div>
+                    <p class="field__helper" id="f-50-help">Hanya kota, bukan alamat lengkap. Tampil di KTA.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-51">Nomor telepon</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-phone_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-51" placeholder="+62 812 3456 7890" aria-describedby="f-51-help" autocomplete="tel" type="tel" value="+62 812 0000 1122"></div>
+                    <p class="field__helper" id="f-51-help">Disembunyikan dari anggota lain kecuali Anda mengizinkannya di Privasi.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-52">Tentang saya</label>
+                    <div class="input input--multiline akun-lines-3"><textarea class="input__control" id="f-52" placeholder="Ceritakan singkat tentang Anda" aria-describedby="f-52-help" rows="3">Alumni KAPDH angkatan 12. Mengajar bahasa Arab di Pekanbaru dan aktif di kegiatan dakwah.</textarea></div>
+                    <p class="field__helper" id="f-52-help">89/500 karakter</p>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Profesi</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Profesi, Guru"><span class="input__value">Guru</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Keahlian (maksimal 10)</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Keahlian (maksimal 10), 3 keahlian dipilih"><span class="input__value">3 keahlian dipilih</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    <div class="akun-chips"><span class="akun-chip">Bahasa Arab</span><span class="akun-chip">Pendidikan dan Pengajaran</span><span class="akun-chip">Dakwah dan Public Speaking</span></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-55">
+                    <h3 class="account-section__title" id="sec-55">LULUSAN TERAKHIR</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-53">Institusi</label>
+                          <div class="input"><input class="input__control" id="f-53" placeholder="Mis. Universitas Indonesia" type="text" value="Universitas Riau"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-54">Kota</label>
+                          <div class="input"><input class="input__control" id="f-54" placeholder="Mis. Jakarta" type="text" value="Pekanbaru"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-60">
+                    <h3 class="account-section__title" id="sec-60">MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-56">Instagram</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-56" placeholder="nama pengguna" type="text" value="ahmad.fauzi"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-57">X</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-alternate_email" aria-hidden="true"></span></span><input class="input__control" id="f-57" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-58">Facebook</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-facebook" aria-hidden="true"></span></span><input class="input__control" id="f-58" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-59">LinkedIn</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-work_outline" aria-hidden="true"></span></span><input class="input__control" id="f-59" placeholder="https://www.linkedin.com/in/..." type="text"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Isi nama pengguna (mis. ahmad.islam) atau tautan https://. Disembunyikan kecuali diizinkan.</p>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--primary is-busy" type="button" disabled><span class="spinner spinner--18" aria-hidden="true"></span>Menyimpan...</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">KapdhButton busy "Menyimpan..."; Ganti/Hapus foto dan field pilihan tidak dapat diketuk selama menyimpan. Berhasil: snackbar "Profil tersimpan." lalu kembali. Tanpa perubahan: "Tidak ada perubahan untuk disimpan."</p>
+    </figure>
+
+    <h2 class="frames__group-title">Foto profil</h2>
+
+    <figure class="frame" id="frame-6">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Lembar sumber foto (Ganti foto)</figcaption>
+      <div class="device" role="group" aria-label="Ubah Profil, lembar sumber foto">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-5 pb-8">
+                <div class="akun-avatar-block">
+                  <div class="avatar avatar--96 avatar--profile" role="img" aria-label="Foto profil Ahmad Fauzi">AF</div>
+                  <div class="akun-avatar-actions"><button class="btn-link" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ganti foto</button></div>
+                  <p class="akun-avatar-hint">JPG, PNG atau WebP maksimal 5 MB. Data lokasi foto dihapus otomatis.</p>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-61">
+                    <h3 class="account-section__title" id="sec-61">DATA KEANGGOTAAN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nama lengkap</span><span class="akun-ro-row__value">Ahmad Fauzi</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Email</span><span class="akun-ro-row__value">ahmad.fauzi@example.com</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nomor anggota</span><span class="akun-ro-row__value">12.01.01.7</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Angkatan</span><span class="akun-ro-row__value">KAPDH 12 · lulus 2014</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Tahun masuk - keluar</span><span class="akun-ro-row__value">2008 - 2014</span></div>
+                    </div>
+                    <p class="account-section__footnote">Data keanggotaan hanya dapat dikoreksi pengurus. Hubungi pengurus bila ada yang keliru; email diubah lewat alur verifikasi email.</p>
+                  </section>
+                </div>
+                <div class="akun-fields mt-5">
+                  <div class="field">
+                    <label class="field__label" for="f-62">Kota domisili</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-location_on_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-62" placeholder="Mis. Pekanbaru" aria-describedby="f-62-help" type="text" value="Pekanbaru"></div>
+                    <p class="field__helper" id="f-62-help">Hanya kota, bukan alamat lengkap. Tampil di KTA.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-63">Nomor telepon</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-phone_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-63" placeholder="+62 812 3456 7890" aria-describedby="f-63-help" autocomplete="tel" type="tel" value="+62 812 0000 1122"></div>
+                    <p class="field__helper" id="f-63-help">Disembunyikan dari anggota lain kecuali Anda mengizinkannya di Privasi.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-64">Tentang saya</label>
+                    <div class="input input--multiline akun-lines-3"><textarea class="input__control" id="f-64" placeholder="Ceritakan singkat tentang Anda" aria-describedby="f-64-help" rows="3">Alumni KAPDH angkatan 12. Mengajar bahasa Arab di Pekanbaru dan aktif di kegiatan dakwah.</textarea></div>
+                    <p class="field__helper" id="f-64-help">89/500 karakter</p>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Profesi</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Profesi, Guru"><span class="input__value">Guru</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Keahlian (maksimal 10)</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Keahlian (maksimal 10), 3 keahlian dipilih"><span class="input__value">3 keahlian dipilih</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    <div class="akun-chips"><span class="akun-chip">Bahasa Arab</span><span class="akun-chip">Pendidikan dan Pengajaran</span><span class="akun-chip">Dakwah dan Public Speaking</span></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-67">
+                    <h3 class="account-section__title" id="sec-67">LULUSAN TERAKHIR</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-65">Institusi</label>
+                          <div class="input"><input class="input__control" id="f-65" placeholder="Mis. Universitas Indonesia" type="text" value="Universitas Riau"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-66">Kota</label>
+                          <div class="input"><input class="input__control" id="f-66" placeholder="Mis. Jakarta" type="text" value="Pekanbaru"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-72">
+                    <h3 class="account-section__title" id="sec-72">MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-68">Instagram</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-68" placeholder="nama pengguna" type="text" value="ahmad.fauzi"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-69">X</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-alternate_email" aria-hidden="true"></span></span><input class="input__control" id="f-69" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-70">Facebook</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-facebook" aria-hidden="true"></span></span><input class="input__control" id="f-70" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-71">LinkedIn</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-work_outline" aria-hidden="true"></span></span><input class="input__control" id="f-71" placeholder="https://www.linkedin.com/in/..." type="text"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Isi nama pengguna (mis. ahmad.islam) atau tautan https://. Disembunyikan kecuali diizinkan.</p>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--primary" type="button" disabled>Simpan profil</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet" role="dialog" aria-modal="true" aria-label="Sumber foto">
+          <div class="akun-sheet-list">
+            <button class="list-tile" type="button"><span class="list-tile__leading"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Ambil foto</span></span></button>
+            <button class="list-tile" type="button"><span class="list-tile__leading"><span class="ic ic-photo_library_outlined" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Pilih dari galeri</span></span></button>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Izin ditolak / gagal membuka: snackbar "Foto tidak dapat dibuka. Periksa izin kamera/galeri lalu coba lagi."</p>
+    </figure>
+
+    <figure class="frame" id="frame-7">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Dialog foto tidak dapat dipakai</figcaption>
+      <div class="device" role="group" aria-label="Ubah Profil, dialog foto ditolak">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-5 pb-8">
+                <div class="akun-avatar-block">
+                  <div class="avatar avatar--96 avatar--profile" role="img" aria-label="Foto profil Ahmad Fauzi">AF</div>
+                  <div class="akun-avatar-actions"><button class="btn-link" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ganti foto</button></div>
+                  <p class="akun-avatar-hint">JPG, PNG atau WebP maksimal 5 MB. Data lokasi foto dihapus otomatis.</p>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-73">
+                    <h3 class="account-section__title" id="sec-73">DATA KEANGGOTAAN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nama lengkap</span><span class="akun-ro-row__value">Ahmad Fauzi</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Email</span><span class="akun-ro-row__value">ahmad.fauzi@example.com</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nomor anggota</span><span class="akun-ro-row__value">12.01.01.7</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Angkatan</span><span class="akun-ro-row__value">KAPDH 12 · lulus 2014</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Tahun masuk - keluar</span><span class="akun-ro-row__value">2008 - 2014</span></div>
+                    </div>
+                    <p class="account-section__footnote">Data keanggotaan hanya dapat dikoreksi pengurus. Hubungi pengurus bila ada yang keliru; email diubah lewat alur verifikasi email.</p>
+                  </section>
+                </div>
+                <div class="akun-fields mt-5">
+                  <div class="field">
+                    <label class="field__label" for="f-74">Kota domisili</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-location_on_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-74" placeholder="Mis. Pekanbaru" aria-describedby="f-74-help" type="text" value="Pekanbaru"></div>
+                    <p class="field__helper" id="f-74-help">Hanya kota, bukan alamat lengkap. Tampil di KTA.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-75">Nomor telepon</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-phone_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-75" placeholder="+62 812 3456 7890" aria-describedby="f-75-help" autocomplete="tel" type="tel" value="+62 812 0000 1122"></div>
+                    <p class="field__helper" id="f-75-help">Disembunyikan dari anggota lain kecuali Anda mengizinkannya di Privasi.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-76">Tentang saya</label>
+                    <div class="input input--multiline akun-lines-3"><textarea class="input__control" id="f-76" placeholder="Ceritakan singkat tentang Anda" aria-describedby="f-76-help" rows="3">Alumni KAPDH angkatan 12. Mengajar bahasa Arab di Pekanbaru dan aktif di kegiatan dakwah.</textarea></div>
+                    <p class="field__helper" id="f-76-help">89/500 karakter</p>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Profesi</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Profesi, Guru"><span class="input__value">Guru</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Keahlian (maksimal 10)</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Keahlian (maksimal 10), 3 keahlian dipilih"><span class="input__value">3 keahlian dipilih</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    <div class="akun-chips"><span class="akun-chip">Bahasa Arab</span><span class="akun-chip">Pendidikan dan Pengajaran</span><span class="akun-chip">Dakwah dan Public Speaking</span></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-79">
+                    <h3 class="account-section__title" id="sec-79">LULUSAN TERAKHIR</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-77">Institusi</label>
+                          <div class="input"><input class="input__control" id="f-77" placeholder="Mis. Universitas Indonesia" type="text" value="Universitas Riau"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-78">Kota</label>
+                          <div class="input"><input class="input__control" id="f-78" placeholder="Mis. Jakarta" type="text" value="Pekanbaru"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-84">
+                    <h3 class="account-section__title" id="sec-84">MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-80">Instagram</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-80" placeholder="nama pengguna" type="text" value="ahmad.fauzi"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-81">X</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-alternate_email" aria-hidden="true"></span></span><input class="input__control" id="f-81" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-82">Facebook</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-facebook" aria-hidden="true"></span></span><input class="input__control" id="f-82" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-83">LinkedIn</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-work_outline" aria-hidden="true"></span></span><input class="input__control" id="f-83" placeholder="https://www.linkedin.com/in/..." type="text"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Isi nama pengguna (mis. ahmad.islam) atau tautan https://. Disembunyikan kecuali diizinkan.</p>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--primary" type="button" disabled>Simpan profil</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-85">
+          <h3 class="dialog__title" id="dlg-85">Foto tidak dapat dipakai</h3>
+          <div class="dialog__content c-muted">
+            <p>Ukuran foto melebihi 5 MB.</p>
+            <p class="mt-5">Gunakan foto JPG, PNG atau WebP maksimal 5 MB.</p>
+          </div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Tutup</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Alasan lain dari avatarProblem: "Foto kosong atau tidak dapat dibaca." dan "Gunakan foto JPG, PNG atau WebP."</p>
+    </figure>
+
+    <h2 class="frames__group-title">Lembar pilih profesi dan keahlian</h2>
+
+    <figure class="frame" id="frame-8">
+      <figcaption class="frame__label"><span class="frame__num">8</span> Lembar Pilih profesi</figcaption>
+      <div class="device" role="group" aria-label="Ubah Profil, lembar pilih profesi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-5 pb-8">
+                <div class="akun-avatar-block">
+                  <div class="avatar avatar--96 avatar--profile" role="img" aria-label="Foto profil Ahmad Fauzi">AF</div>
+                  <div class="akun-avatar-actions"><button class="btn-link" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ganti foto</button></div>
+                  <p class="akun-avatar-hint">JPG, PNG atau WebP maksimal 5 MB. Data lokasi foto dihapus otomatis.</p>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-86">
+                    <h3 class="account-section__title" id="sec-86">DATA KEANGGOTAAN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nama lengkap</span><span class="akun-ro-row__value">Ahmad Fauzi</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Email</span><span class="akun-ro-row__value">ahmad.fauzi@example.com</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nomor anggota</span><span class="akun-ro-row__value">12.01.01.7</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Angkatan</span><span class="akun-ro-row__value">KAPDH 12 · lulus 2014</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Tahun masuk - keluar</span><span class="akun-ro-row__value">2008 - 2014</span></div>
+                    </div>
+                    <p class="account-section__footnote">Data keanggotaan hanya dapat dikoreksi pengurus. Hubungi pengurus bila ada yang keliru; email diubah lewat alur verifikasi email.</p>
+                  </section>
+                </div>
+                <div class="akun-fields mt-5">
+                  <div class="field">
+                    <label class="field__label" for="f-87">Kota domisili</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-location_on_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-87" placeholder="Mis. Pekanbaru" aria-describedby="f-87-help" type="text" value="Pekanbaru"></div>
+                    <p class="field__helper" id="f-87-help">Hanya kota, bukan alamat lengkap. Tampil di KTA.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-88">Nomor telepon</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-phone_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-88" placeholder="+62 812 3456 7890" aria-describedby="f-88-help" autocomplete="tel" type="tel" value="+62 812 0000 1122"></div>
+                    <p class="field__helper" id="f-88-help">Disembunyikan dari anggota lain kecuali Anda mengizinkannya di Privasi.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-89">Tentang saya</label>
+                    <div class="input input--multiline akun-lines-3"><textarea class="input__control" id="f-89" placeholder="Ceritakan singkat tentang Anda" aria-describedby="f-89-help" rows="3">Alumni KAPDH angkatan 12. Mengajar bahasa Arab di Pekanbaru dan aktif di kegiatan dakwah.</textarea></div>
+                    <p class="field__helper" id="f-89-help">89/500 karakter</p>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Profesi</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Profesi, Guru"><span class="input__value">Guru</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Keahlian (maksimal 10)</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Keahlian (maksimal 10), 3 keahlian dipilih"><span class="input__value">3 keahlian dipilih</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    <div class="akun-chips"><span class="akun-chip">Bahasa Arab</span><span class="akun-chip">Pendidikan dan Pengajaran</span><span class="akun-chip">Dakwah dan Public Speaking</span></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-92">
+                    <h3 class="account-section__title" id="sec-92">LULUSAN TERAKHIR</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-90">Institusi</label>
+                          <div class="input"><input class="input__control" id="f-90" placeholder="Mis. Universitas Indonesia" type="text" value="Universitas Riau"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-91">Kota</label>
+                          <div class="input"><input class="input__control" id="f-91" placeholder="Mis. Jakarta" type="text" value="Pekanbaru"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-97">
+                    <h3 class="account-section__title" id="sec-97">MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-93">Instagram</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-93" placeholder="nama pengguna" type="text" value="ahmad.fauzi"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-94">X</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-alternate_email" aria-hidden="true"></span></span><input class="input__control" id="f-94" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-95">Facebook</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-facebook" aria-hidden="true"></span></span><input class="input__control" id="f-95" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-96">LinkedIn</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-work_outline" aria-hidden="true"></span></span><input class="input__control" id="f-96" placeholder="https://www.linkedin.com/in/..." type="text"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Isi nama pengguna (mis. ahmad.islam) atau tautan https://. Disembunyikan kecuali diizinkan.</p>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--primary" type="button" disabled>Simpan profil</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-98">
+          <div class="akun-master">
+            <div class="akun-master__head"><h3 class="akun-master__title" id="sheet-98">Pilih profesi</h3><button class="icon-btn" type="button" aria-label="Tutup"><span class="ic ic-close" aria-hidden="true"></span></button></div>
+            <div class="akun-master__search"><div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search" aria-hidden="true" style="--ic-size:24px"></span></span><input class="input__control" type="text" placeholder="Cari" aria-label="Cari"></div></div>
+            <div class="akun-master__list" role="listbox" aria-label="Pilih profesi">
+              <div class="list-tile" role="option" aria-selected="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Tanpa profesi</span></span></div>
+              <div class="list-tile" role="option" aria-selected="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Aparatur Sipil Negara</span></span></div>
+              <div class="list-tile" role="option" aria-selected="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">TNI/Polri</span></span></div>
+              <div class="list-tile akun-tile--selected" role="option" aria-selected="true" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Guru</span></span><span class="list-tile__trailing"><span class="ic ic-check" aria-hidden="true"></span></span></div>
+              <div class="list-tile" role="option" aria-selected="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Dosen/Peneliti</span></span></div>
+              <div class="list-tile" role="option" aria-selected="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Ustadz/Dai</span></span></div>
+              <div class="list-tile" role="option" aria-selected="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Pengasuh/Pengurus Pesantren</span></span></div>
+              <div class="list-tile" role="option" aria-selected="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Dokter</span></span></div>
+              <div class="list-tile" role="option" aria-selected="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Tenaga Kesehatan</span></span></div>
+              <div class="list-tile" role="option" aria-selected="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Advokat/Konsultan Hukum</span></span></div>
+              <div class="list-tile" role="option" aria-selected="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Akuntan</span></span></div>
+              <div class="list-tile" role="option" aria-selected="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Insinyur</span></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Pilihan tunggal: ketuk baris langsung menutup lembar. Tinggi lembar 85 % layar (680) + pegangan 48.</p>
+    </figure>
+
+    <figure class="frame" id="frame-9">
+      <figcaption class="frame__label"><span class="frame__num">9</span> Lembar profesi: pencarian tanpa hasil</figcaption>
+      <div class="device" role="group" aria-label="Ubah Profil, pencarian profesi tanpa hasil">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-5 pb-8">
+                <div class="akun-avatar-block">
+                  <div class="avatar avatar--96 avatar--profile" role="img" aria-label="Foto profil Ahmad Fauzi">AF</div>
+                  <div class="akun-avatar-actions"><button class="btn-link" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ganti foto</button></div>
+                  <p class="akun-avatar-hint">JPG, PNG atau WebP maksimal 5 MB. Data lokasi foto dihapus otomatis.</p>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-99">
+                    <h3 class="account-section__title" id="sec-99">DATA KEANGGOTAAN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nama lengkap</span><span class="akun-ro-row__value">Ahmad Fauzi</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Email</span><span class="akun-ro-row__value">ahmad.fauzi@example.com</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nomor anggota</span><span class="akun-ro-row__value">12.01.01.7</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Angkatan</span><span class="akun-ro-row__value">KAPDH 12 · lulus 2014</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Tahun masuk - keluar</span><span class="akun-ro-row__value">2008 - 2014</span></div>
+                    </div>
+                    <p class="account-section__footnote">Data keanggotaan hanya dapat dikoreksi pengurus. Hubungi pengurus bila ada yang keliru; email diubah lewat alur verifikasi email.</p>
+                  </section>
+                </div>
+                <div class="akun-fields mt-5">
+                  <div class="field">
+                    <label class="field__label" for="f-100">Kota domisili</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-location_on_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-100" placeholder="Mis. Pekanbaru" aria-describedby="f-100-help" type="text" value="Pekanbaru"></div>
+                    <p class="field__helper" id="f-100-help">Hanya kota, bukan alamat lengkap. Tampil di KTA.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-101">Nomor telepon</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-phone_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-101" placeholder="+62 812 3456 7890" aria-describedby="f-101-help" autocomplete="tel" type="tel" value="+62 812 0000 1122"></div>
+                    <p class="field__helper" id="f-101-help">Disembunyikan dari anggota lain kecuali Anda mengizinkannya di Privasi.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-102">Tentang saya</label>
+                    <div class="input input--multiline akun-lines-3"><textarea class="input__control" id="f-102" placeholder="Ceritakan singkat tentang Anda" aria-describedby="f-102-help" rows="3">Alumni KAPDH angkatan 12. Mengajar bahasa Arab di Pekanbaru dan aktif di kegiatan dakwah.</textarea></div>
+                    <p class="field__helper" id="f-102-help">89/500 karakter</p>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Profesi</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Profesi, Guru"><span class="input__value">Guru</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Keahlian (maksimal 10)</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Keahlian (maksimal 10), 3 keahlian dipilih"><span class="input__value">3 keahlian dipilih</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    <div class="akun-chips"><span class="akun-chip">Bahasa Arab</span><span class="akun-chip">Pendidikan dan Pengajaran</span><span class="akun-chip">Dakwah dan Public Speaking</span></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-105">
+                    <h3 class="account-section__title" id="sec-105">LULUSAN TERAKHIR</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-103">Institusi</label>
+                          <div class="input"><input class="input__control" id="f-103" placeholder="Mis. Universitas Indonesia" type="text" value="Universitas Riau"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-104">Kota</label>
+                          <div class="input"><input class="input__control" id="f-104" placeholder="Mis. Jakarta" type="text" value="Pekanbaru"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-110">
+                    <h3 class="account-section__title" id="sec-110">MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-106">Instagram</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-106" placeholder="nama pengguna" type="text" value="ahmad.fauzi"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-107">X</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-alternate_email" aria-hidden="true"></span></span><input class="input__control" id="f-107" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-108">Facebook</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-facebook" aria-hidden="true"></span></span><input class="input__control" id="f-108" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-109">LinkedIn</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-work_outline" aria-hidden="true"></span></span><input class="input__control" id="f-109" placeholder="https://www.linkedin.com/in/..." type="text"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Isi nama pengguna (mis. ahmad.islam) atau tautan https://. Disembunyikan kecuali diizinkan.</p>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--primary" type="button" disabled>Simpan profil</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-111">
+          <div class="akun-master">
+            <div class="akun-master__head"><h3 class="akun-master__title" id="sheet-111">Pilih profesi</h3><button class="icon-btn" type="button" aria-label="Tutup"><span class="ic ic-close" aria-hidden="true"></span></button></div>
+            <div class="akun-master__search"><div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search" aria-hidden="true" style="--ic-size:24px"></span></span><input class="input__control" type="text" placeholder="Cari" aria-label="Cari" value="arsitek lanskap"></div></div>
+            <div class="akun-master__list" role="listbox" aria-label="Pilih profesi">
+              <div class="list-tile" role="option" aria-selected="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Tanpa profesi</span></span></div>
+              <p class="akun-master__empty">Tidak ada pilihan yang cocok.</p>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-10">
+      <figcaption class="frame__label"><span class="frame__num">10</span> Lembar Pilih keahlian (3 dipilih)</figcaption>
+      <div class="device" role="group" aria-label="Ubah Profil, lembar pilih keahlian">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-5 pb-8">
+                <div class="akun-avatar-block">
+                  <div class="avatar avatar--96 avatar--profile" role="img" aria-label="Foto profil Ahmad Fauzi">AF</div>
+                  <div class="akun-avatar-actions"><button class="btn-link" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ganti foto</button></div>
+                  <p class="akun-avatar-hint">JPG, PNG atau WebP maksimal 5 MB. Data lokasi foto dihapus otomatis.</p>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-112">
+                    <h3 class="account-section__title" id="sec-112">DATA KEANGGOTAAN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nama lengkap</span><span class="akun-ro-row__value">Ahmad Fauzi</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Email</span><span class="akun-ro-row__value">ahmad.fauzi@example.com</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nomor anggota</span><span class="akun-ro-row__value">12.01.01.7</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Angkatan</span><span class="akun-ro-row__value">KAPDH 12 · lulus 2014</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Tahun masuk - keluar</span><span class="akun-ro-row__value">2008 - 2014</span></div>
+                    </div>
+                    <p class="account-section__footnote">Data keanggotaan hanya dapat dikoreksi pengurus. Hubungi pengurus bila ada yang keliru; email diubah lewat alur verifikasi email.</p>
+                  </section>
+                </div>
+                <div class="akun-fields mt-5">
+                  <div class="field">
+                    <label class="field__label" for="f-113">Kota domisili</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-location_on_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-113" placeholder="Mis. Pekanbaru" aria-describedby="f-113-help" type="text" value="Pekanbaru"></div>
+                    <p class="field__helper" id="f-113-help">Hanya kota, bukan alamat lengkap. Tampil di KTA.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-114">Nomor telepon</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-phone_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-114" placeholder="+62 812 3456 7890" aria-describedby="f-114-help" autocomplete="tel" type="tel" value="+62 812 0000 1122"></div>
+                    <p class="field__helper" id="f-114-help">Disembunyikan dari anggota lain kecuali Anda mengizinkannya di Privasi.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-115">Tentang saya</label>
+                    <div class="input input--multiline akun-lines-3"><textarea class="input__control" id="f-115" placeholder="Ceritakan singkat tentang Anda" aria-describedby="f-115-help" rows="3">Alumni KAPDH angkatan 12. Mengajar bahasa Arab di Pekanbaru dan aktif di kegiatan dakwah.</textarea></div>
+                    <p class="field__helper" id="f-115-help">89/500 karakter</p>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Profesi</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Profesi, Guru"><span class="input__value">Guru</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Keahlian (maksimal 10)</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Keahlian (maksimal 10), 3 keahlian dipilih"><span class="input__value">3 keahlian dipilih</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    <div class="akun-chips"><span class="akun-chip">Bahasa Arab</span><span class="akun-chip">Pendidikan dan Pengajaran</span><span class="akun-chip">Dakwah dan Public Speaking</span></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-118">
+                    <h3 class="account-section__title" id="sec-118">LULUSAN TERAKHIR</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-116">Institusi</label>
+                          <div class="input"><input class="input__control" id="f-116" placeholder="Mis. Universitas Indonesia" type="text" value="Universitas Riau"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-117">Kota</label>
+                          <div class="input"><input class="input__control" id="f-117" placeholder="Mis. Jakarta" type="text" value="Pekanbaru"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-123">
+                    <h3 class="account-section__title" id="sec-123">MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-119">Instagram</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-119" placeholder="nama pengguna" type="text" value="ahmad.fauzi"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-120">X</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-alternate_email" aria-hidden="true"></span></span><input class="input__control" id="f-120" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-121">Facebook</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-facebook" aria-hidden="true"></span></span><input class="input__control" id="f-121" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-122">LinkedIn</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-work_outline" aria-hidden="true"></span></span><input class="input__control" id="f-122" placeholder="https://www.linkedin.com/in/..." type="text"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Isi nama pengguna (mis. ahmad.islam) atau tautan https://. Disembunyikan kecuali diizinkan.</p>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--primary" type="button" disabled>Simpan profil</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-124">
+          <div class="akun-master">
+            <div class="akun-master__head"><h3 class="akun-master__title" id="sheet-124">Pilih keahlian</h3><button class="icon-btn" type="button" aria-label="Tutup"><span class="ic ic-close" aria-hidden="true"></span></button></div>
+            <div class="akun-master__search"><div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search" aria-hidden="true" style="--ic-size:24px"></span></span><input class="input__control" type="text" placeholder="Cari" aria-label="Cari"></div></div>
+            <p class="akun-master__count">Dipilih 3 dari maksimal 10.</p>
+            <div class="akun-master__list" role="group" aria-label="Pilih keahlian">
+              <div class="list-tile" role="checkbox" aria-checked="true" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Bahasa Arab</span></span><span class="checkbox is-checked" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Bahasa Inggris</span></span><span class="checkbox" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Tahfidz Al-Qur'an</span></span><span class="checkbox" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Kajian Kitab Kuning</span></span><span class="checkbox" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="true" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Dakwah dan Public Speaking</span></span><span class="checkbox is-checked" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="true" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Pendidikan dan Pengajaran</span></span><span class="checkbox is-checked" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Kepemimpinan dan Organisasi</span></span><span class="checkbox" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Manajemen Proyek</span></span><span class="checkbox" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Kewirausahaan</span></span><span class="checkbox" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="false" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Pemasaran Digital</span></span><span class="checkbox" aria-hidden="true"></span></div>
+            </div>
+            <div class="akun-master__foot"><button class="btn btn--solid" type="button">Simpan pilihan</button></div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">CheckboxListTile bawaan (kotak di kanan pada Android).</p>
+    </figure>
+
+    <figure class="frame" id="frame-11">
+      <figcaption class="frame__label"><span class="frame__num">11</span> Lembar keahlian penuh + keahlian tidak aktif</figcaption>
+      <div class="device" role="group" aria-label="Ubah Profil, lembar keahlian penuh">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-5 pb-8">
+                <div class="akun-avatar-block">
+                  <div class="avatar avatar--96 avatar--profile" role="img" aria-label="Foto profil Ahmad Fauzi">AF</div>
+                  <div class="akun-avatar-actions"><button class="btn-link" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ganti foto</button></div>
+                  <p class="akun-avatar-hint">JPG, PNG atau WebP maksimal 5 MB. Data lokasi foto dihapus otomatis.</p>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-125">
+                    <h3 class="account-section__title" id="sec-125">DATA KEANGGOTAAN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nama lengkap</span><span class="akun-ro-row__value">Ahmad Fauzi</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Email</span><span class="akun-ro-row__value">ahmad.fauzi@example.com</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nomor anggota</span><span class="akun-ro-row__value">12.01.01.7</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Angkatan</span><span class="akun-ro-row__value">KAPDH 12 · lulus 2014</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Tahun masuk - keluar</span><span class="akun-ro-row__value">2008 - 2014</span></div>
+                    </div>
+                    <p class="account-section__footnote">Data keanggotaan hanya dapat dikoreksi pengurus. Hubungi pengurus bila ada yang keliru; email diubah lewat alur verifikasi email.</p>
+                  </section>
+                </div>
+                <div class="akun-fields mt-5">
+                  <div class="field">
+                    <label class="field__label" for="f-126">Kota domisili</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-location_on_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-126" placeholder="Mis. Pekanbaru" aria-describedby="f-126-help" type="text" value="Pekanbaru"></div>
+                    <p class="field__helper" id="f-126-help">Hanya kota, bukan alamat lengkap. Tampil di KTA.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-127">Nomor telepon</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-phone_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-127" placeholder="+62 812 3456 7890" aria-describedby="f-127-help" autocomplete="tel" type="tel" value="+62 812 0000 1122"></div>
+                    <p class="field__helper" id="f-127-help">Disembunyikan dari anggota lain kecuali Anda mengizinkannya di Privasi.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-128">Tentang saya</label>
+                    <div class="input input--multiline akun-lines-3"><textarea class="input__control" id="f-128" placeholder="Ceritakan singkat tentang Anda" aria-describedby="f-128-help" rows="3">Alumni KAPDH angkatan 12. Mengajar bahasa Arab di Pekanbaru dan aktif di kegiatan dakwah.</textarea></div>
+                    <p class="field__helper" id="f-128-help">89/500 karakter</p>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Profesi</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Profesi, Guru"><span class="input__value">Guru</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Keahlian (maksimal 10)</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Keahlian (maksimal 10), 3 keahlian dipilih"><span class="input__value">3 keahlian dipilih</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    <div class="akun-chips"><span class="akun-chip">Bahasa Arab</span><span class="akun-chip">Pendidikan dan Pengajaran</span><span class="akun-chip">Dakwah dan Public Speaking</span></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-131">
+                    <h3 class="account-section__title" id="sec-131">LULUSAN TERAKHIR</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-129">Institusi</label>
+                          <div class="input"><input class="input__control" id="f-129" placeholder="Mis. Universitas Indonesia" type="text" value="Universitas Riau"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-130">Kota</label>
+                          <div class="input"><input class="input__control" id="f-130" placeholder="Mis. Jakarta" type="text" value="Pekanbaru"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-136">
+                    <h3 class="account-section__title" id="sec-136">MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-132">Instagram</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-132" placeholder="nama pengguna" type="text" value="ahmad.fauzi"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-133">X</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-alternate_email" aria-hidden="true"></span></span><input class="input__control" id="f-133" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-134">Facebook</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-facebook" aria-hidden="true"></span></span><input class="input__control" id="f-134" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-135">LinkedIn</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-work_outline" aria-hidden="true"></span></span><input class="input__control" id="f-135" placeholder="https://www.linkedin.com/in/..." type="text"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Isi nama pengguna (mis. ahmad.islam) atau tautan https://. Disembunyikan kecuali diizinkan.</p>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--primary" type="button" disabled>Simpan profil</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-137">
+          <div class="akun-master">
+            <div class="akun-master__head"><h3 class="akun-master__title" id="sheet-137">Pilih keahlian</h3><button class="icon-btn" type="button" aria-label="Tutup"><span class="ic ic-close" aria-hidden="true"></span></button></div>
+            <div class="akun-master__search"><div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search" aria-hidden="true" style="--ic-size:24px"></span></span><input class="input__control" type="text" placeholder="Cari" aria-label="Cari"></div></div>
+            <p class="akun-master__count is-full">Maksimal 10 keahlian. Lepas salah satu untuk memilih yang lain.</p>
+            <div class="akun-master__list" role="group" aria-label="Pilih keahlian">
+              <div class="list-tile list-tile--two-line" role="checkbox" aria-checked="true" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Kaligrafi</span><span class="list-tile__subtitle">Tidak aktif lagi; dapat dilepas tetapi tidak dapat dipilih kembali.</span></span><span class="checkbox is-checked" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="true" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Bahasa Arab</span></span><span class="checkbox is-checked" aria-hidden="true"></span></div>
+              <div class="list-tile is-disabled" role="checkbox" aria-checked="false" aria-disabled="true" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Bahasa Inggris</span></span><span class="checkbox" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="true" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Tahfidz Al-Qur'an</span></span><span class="checkbox is-checked" aria-hidden="true"></span></div>
+              <div class="list-tile is-disabled" role="checkbox" aria-checked="false" aria-disabled="true" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Kajian Kitab Kuning</span></span><span class="checkbox" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="true" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Dakwah dan Public Speaking</span></span><span class="checkbox is-checked" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="true" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Pendidikan dan Pengajaran</span></span><span class="checkbox is-checked" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="true" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Kepemimpinan dan Organisasi</span></span><span class="checkbox is-checked" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="true" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Manajemen Proyek</span></span><span class="checkbox is-checked" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="true" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Kewirausahaan</span></span><span class="checkbox is-checked" aria-hidden="true"></span></div>
+              <div class="list-tile" role="checkbox" aria-checked="true" tabindex="0"><span class="list-tile__body"><span class="list-tile__title">Pemasaran Digital</span></span><span class="checkbox is-checked" aria-hidden="true"></span></div>
+            </div>
+            <div class="akun-master__foot"><button class="btn btn--solid" type="button">Simpan pilihan</button></div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">10 terpilih: pilihan lain nonaktif dan keterangan berwarna peringatan. Keahlian nonaktif yang masih terpasang tampil paling atas.</p>
+    </figure>
+
+    <figure class="frame" id="frame-12">
+      <figcaption class="frame__label"><span class="frame__num">12</span> Lembar pilihan sedang memuat</figcaption>
+      <div class="device" role="group" aria-label="Ubah Profil, lembar pilihan memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-5 pb-8">
+                <div class="akun-avatar-block">
+                  <div class="avatar avatar--96 avatar--profile" role="img" aria-label="Foto profil Ahmad Fauzi">AF</div>
+                  <div class="akun-avatar-actions"><button class="btn-link" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ganti foto</button></div>
+                  <p class="akun-avatar-hint">JPG, PNG atau WebP maksimal 5 MB. Data lokasi foto dihapus otomatis.</p>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-138">
+                    <h3 class="account-section__title" id="sec-138">DATA KEANGGOTAAN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nama lengkap</span><span class="akun-ro-row__value">Ahmad Fauzi</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Email</span><span class="akun-ro-row__value">ahmad.fauzi@example.com</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nomor anggota</span><span class="akun-ro-row__value">12.01.01.7</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Angkatan</span><span class="akun-ro-row__value">KAPDH 12 · lulus 2014</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Tahun masuk - keluar</span><span class="akun-ro-row__value">2008 - 2014</span></div>
+                    </div>
+                    <p class="account-section__footnote">Data keanggotaan hanya dapat dikoreksi pengurus. Hubungi pengurus bila ada yang keliru; email diubah lewat alur verifikasi email.</p>
+                  </section>
+                </div>
+                <div class="akun-fields mt-5">
+                  <div class="field">
+                    <label class="field__label" for="f-139">Kota domisili</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-location_on_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-139" placeholder="Mis. Pekanbaru" aria-describedby="f-139-help" type="text" value="Pekanbaru"></div>
+                    <p class="field__helper" id="f-139-help">Hanya kota, bukan alamat lengkap. Tampil di KTA.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-140">Nomor telepon</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-phone_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-140" placeholder="+62 812 3456 7890" aria-describedby="f-140-help" autocomplete="tel" type="tel" value="+62 812 0000 1122"></div>
+                    <p class="field__helper" id="f-140-help">Disembunyikan dari anggota lain kecuali Anda mengizinkannya di Privasi.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-141">Tentang saya</label>
+                    <div class="input input--multiline akun-lines-3"><textarea class="input__control" id="f-141" placeholder="Ceritakan singkat tentang Anda" aria-describedby="f-141-help" rows="3">Alumni KAPDH angkatan 12. Mengajar bahasa Arab di Pekanbaru dan aktif di kegiatan dakwah.</textarea></div>
+                    <p class="field__helper" id="f-141-help">89/500 karakter</p>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Profesi</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Profesi, Guru"><span class="input__value">Guru</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Keahlian (maksimal 10)</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Keahlian (maksimal 10), 3 keahlian dipilih"><span class="input__value">3 keahlian dipilih</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    <div class="akun-chips"><span class="akun-chip">Bahasa Arab</span><span class="akun-chip">Pendidikan dan Pengajaran</span><span class="akun-chip">Dakwah dan Public Speaking</span></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-144">
+                    <h3 class="account-section__title" id="sec-144">LULUSAN TERAKHIR</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-142">Institusi</label>
+                          <div class="input"><input class="input__control" id="f-142" placeholder="Mis. Universitas Indonesia" type="text" value="Universitas Riau"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-143">Kota</label>
+                          <div class="input"><input class="input__control" id="f-143" placeholder="Mis. Jakarta" type="text" value="Pekanbaru"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-149">
+                    <h3 class="account-section__title" id="sec-149">MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-145">Instagram</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-145" placeholder="nama pengguna" type="text" value="ahmad.fauzi"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-146">X</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-alternate_email" aria-hidden="true"></span></span><input class="input__control" id="f-146" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-147">Facebook</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-facebook" aria-hidden="true"></span></span><input class="input__control" id="f-147" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-148">LinkedIn</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-work_outline" aria-hidden="true"></span></span><input class="input__control" id="f-148" placeholder="https://www.linkedin.com/in/..." type="text"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Isi nama pengguna (mis. ahmad.islam) atau tautan https://. Disembunyikan kecuali diizinkan.</p>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--primary" type="button" disabled>Simpan profil</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-150">
+          <div class="akun-master">
+            <div class="akun-master__head"><h3 class="akun-master__title" id="sheet-150">Pilih keahlian</h3><button class="icon-btn" type="button" aria-label="Tutup"><span class="ic ic-close" aria-hidden="true"></span></button></div>
+            <div class="akun-master__search"><div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search" aria-hidden="true" style="--ic-size:24px"></span></span><input class="input__control" type="text" placeholder="Cari" aria-label="Cari"></div></div>
+            <p class="akun-master__count">Dipilih 3 dari maksimal 10.</p>
+            <div class="akun-master__list">
+              <div class="skeleton" role="status" aria-label="Memuat pilihan">
+                <div class="skeleton__line"></div>
+                <div class="skeleton__line is-short"></div>
+                <div class="skeleton__line"></div>
+                <div class="skeleton__line is-short"></div>
+                <div class="skeleton__line"></div>
+                <div class="skeleton__line is-short"></div>
+              </div>
+            </div>
+            <div class="akun-master__foot"><button class="btn btn--solid" type="button" disabled>Simpan pilihan</button></div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">LoadingSkeleton "Memuat pilihan"; "Simpan pilihan" nonaktif sampai daftar dimuat. Galat memuat: ErrorState dengan "Coba lagi" di area daftar.</p>
+    </figure>
+
+    <h2 class="frames__group-title">Dialog</h2>
+
+    <figure class="frame" id="frame-13">
+      <figcaption class="frame__label"><span class="frame__num">13</span> Dialog konflik versi (409)</figcaption>
+      <div class="device" role="group" aria-label="Ubah Profil, dialog konflik versi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-5 pb-8">
+                <div class="akun-avatar-block">
+                  <div class="avatar avatar--96 avatar--profile" role="img" aria-label="Foto profil Ahmad Fauzi">AF</div>
+                  <div class="akun-avatar-actions"><button class="btn-link" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ganti foto</button></div>
+                  <p class="akun-avatar-hint">JPG, PNG atau WebP maksimal 5 MB. Data lokasi foto dihapus otomatis.</p>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-151">
+                    <h3 class="account-section__title" id="sec-151">DATA KEANGGOTAAN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nama lengkap</span><span class="akun-ro-row__value">Ahmad Fauzi</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Email</span><span class="akun-ro-row__value">ahmad.fauzi@example.com</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nomor anggota</span><span class="akun-ro-row__value">12.01.01.7</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Angkatan</span><span class="akun-ro-row__value">KAPDH 12 · lulus 2014</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Tahun masuk - keluar</span><span class="akun-ro-row__value">2008 - 2014</span></div>
+                    </div>
+                    <p class="account-section__footnote">Data keanggotaan hanya dapat dikoreksi pengurus. Hubungi pengurus bila ada yang keliru; email diubah lewat alur verifikasi email.</p>
+                  </section>
+                </div>
+                <div class="akun-fields mt-5">
+                  <div class="field">
+                    <label class="field__label" for="f-152">Kota domisili</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-location_on_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-152" placeholder="Mis. Pekanbaru" aria-describedby="f-152-help" type="text" value="Pekanbaru"></div>
+                    <p class="field__helper" id="f-152-help">Hanya kota, bukan alamat lengkap. Tampil di KTA.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-153">Nomor telepon</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-phone_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-153" placeholder="+62 812 3456 7890" aria-describedby="f-153-help" autocomplete="tel" type="tel" value="+62 812 0000 1122"></div>
+                    <p class="field__helper" id="f-153-help">Disembunyikan dari anggota lain kecuali Anda mengizinkannya di Privasi.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-154">Tentang saya</label>
+                    <div class="input input--multiline akun-lines-3"><textarea class="input__control" id="f-154" placeholder="Ceritakan singkat tentang Anda" aria-describedby="f-154-help" rows="3">Alumni KAPDH angkatan 12. Mengajar bahasa Arab di Pekanbaru dan aktif di kegiatan dakwah.</textarea></div>
+                    <p class="field__helper" id="f-154-help">89/500 karakter</p>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Profesi</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Profesi, Guru"><span class="input__value">Guru</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Keahlian (maksimal 10)</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Keahlian (maksimal 10), 3 keahlian dipilih"><span class="input__value">3 keahlian dipilih</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    <div class="akun-chips"><span class="akun-chip">Bahasa Arab</span><span class="akun-chip">Pendidikan dan Pengajaran</span><span class="akun-chip">Dakwah dan Public Speaking</span></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-157">
+                    <h3 class="account-section__title" id="sec-157">LULUSAN TERAKHIR</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-155">Institusi</label>
+                          <div class="input"><input class="input__control" id="f-155" placeholder="Mis. Universitas Indonesia" type="text" value="Universitas Riau"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-156">Kota</label>
+                          <div class="input"><input class="input__control" id="f-156" placeholder="Mis. Jakarta" type="text" value="Pekanbaru"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-162">
+                    <h3 class="account-section__title" id="sec-162">MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-158">Instagram</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-158" placeholder="nama pengguna" type="text" value="ahmad.fauzi"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-159">X</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-alternate_email" aria-hidden="true"></span></span><input class="input__control" id="f-159" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-160">Facebook</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-facebook" aria-hidden="true"></span></span><input class="input__control" id="f-160" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-161">LinkedIn</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-work_outline" aria-hidden="true"></span></span><input class="input__control" id="f-161" placeholder="https://www.linkedin.com/in/..." type="text"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Isi nama pengguna (mis. ahmad.islam) atau tautan https://. Disembunyikan kecuali diizinkan.</p>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--primary" type="button">Simpan profil</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-163">
+          <h3 class="dialog__title" id="dlg-163">Profil diubah di perangkat lain</h3>
+          <div class="dialog__content c-muted">
+            <p>Profil Anda baru saja diubah dari perangkat lain. Muat versi terbaru, atau terapkan hanya isian yang Anda ubah di atas versi terbaru lalu simpan lagi.</p>
+          </div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Muat terbaru</button><button class="btn-text" type="button">Pakai isian saya</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">barrierDismissible false. Dua aksi tidak muat satu baris sehingga OverflowBar menumpuknya rata kanan.</p>
+    </figure>
+
+    <figure class="frame" id="frame-14">
+      <figcaption class="frame__label"><span class="frame__num">14</span> Dialog buang perubahan (kembali)</figcaption>
+      <div class="device" role="group" aria-label="Ubah Profil, dialog buang perubahan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-5 pb-8">
+                <div class="akun-avatar-block">
+                  <div class="avatar avatar--96 avatar--profile" role="img" aria-label="Foto profil Ahmad Fauzi">AF</div>
+                  <div class="akun-avatar-actions"><button class="btn-link" type="button"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span>Ganti foto</button></div>
+                  <p class="akun-avatar-hint">JPG, PNG atau WebP maksimal 5 MB. Data lokasi foto dihapus otomatis.</p>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-164">
+                    <h3 class="account-section__title" id="sec-164">DATA KEANGGOTAAN</h3>
+                    <div class="account-section__card">
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nama lengkap</span><span class="akun-ro-row__value">Ahmad Fauzi</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Email</span><span class="akun-ro-row__value">ahmad.fauzi@example.com</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Nomor anggota</span><span class="akun-ro-row__value">12.01.01.7</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Angkatan</span><span class="akun-ro-row__value">KAPDH 12 · lulus 2014</span></div>
+                      <div class="akun-ro-row"><span class="akun-ro-row__label">Tahun masuk - keluar</span><span class="akun-ro-row__value">2008 - 2014</span></div>
+                    </div>
+                    <p class="account-section__footnote">Data keanggotaan hanya dapat dikoreksi pengurus. Hubungi pengurus bila ada yang keliru; email diubah lewat alur verifikasi email.</p>
+                  </section>
+                </div>
+                <div class="akun-fields mt-5">
+                  <div class="field">
+                    <label class="field__label" for="f-165">Kota domisili</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-location_on_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-165" placeholder="Mis. Pekanbaru" aria-describedby="f-165-help" type="text" value="Pekanbaru"></div>
+                    <p class="field__helper" id="f-165-help">Hanya kota, bukan alamat lengkap. Tampil di KTA.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-166">Nomor telepon</label>
+                    <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-phone_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-166" placeholder="+62 812 3456 7890" aria-describedby="f-166-help" autocomplete="tel" type="tel" value="+62 812 0000 1122"></div>
+                    <p class="field__helper" id="f-166-help">Disembunyikan dari anggota lain kecuali Anda mengizinkannya di Privasi.</p>
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="f-167">Tentang saya</label>
+                    <div class="input input--multiline akun-lines-3"><textarea class="input__control" id="f-167" placeholder="Ceritakan singkat tentang Anda" aria-describedby="f-167-help" rows="3">Alumni KAPDH angkatan 12. Mengajar bahasa Arab di Pekanbaru dan aktif di kegiatan dakwah.</textarea></div>
+                    <p class="field__helper" id="f-167-help">89/500 karakter</p>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Profesi</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Profesi, Guru"><span class="input__value">Guru</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <div class="akun-picker-field">
+                    <span class="field__label" aria-hidden="true">Keahlian (maksimal 10)</span>
+                    <button class="input input--dropdown akun-picker" type="button" aria-label="Keahlian (maksimal 10), 3 keahlian dipilih"><span class="input__value">3 keahlian dipilih</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button>
+                    <div class="akun-chips"><span class="akun-chip">Bahasa Arab</span><span class="akun-chip">Pendidikan dan Pengajaran</span><span class="akun-chip">Dakwah dan Public Speaking</span></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-170">
+                    <h3 class="account-section__title" id="sec-170">LULUSAN TERAKHIR</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-168">Institusi</label>
+                          <div class="input"><input class="input__control" id="f-168" placeholder="Mis. Universitas Indonesia" type="text" value="Universitas Riau"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-169">Kota</label>
+                          <div class="input"><input class="input__control" id="f-169" placeholder="Mis. Jakarta" type="text" value="Pekanbaru"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-175">
+                    <h3 class="account-section__title" id="sec-175">MEDIA SOSIAL</h3>
+                    <div class="account-section__card">
+                      <div class="akun-card-fields akun-fields">
+                        <div class="field">
+                          <label class="field__label" for="f-171">Instagram</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-camera_alt_outlined" aria-hidden="true"></span></span><input class="input__control" id="f-171" placeholder="nama pengguna" type="text" value="ahmad.fauzi"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-172">X</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-alternate_email" aria-hidden="true"></span></span><input class="input__control" id="f-172" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-173">Facebook</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-facebook" aria-hidden="true"></span></span><input class="input__control" id="f-173" placeholder="nama pengguna" type="text"></div>
+                        </div>
+                        <div class="field">
+                          <label class="field__label" for="f-174">LinkedIn</label>
+                          <div class="input"><span class="input__prefix" aria-hidden="true"><span class="ic ic-work_outline" aria-hidden="true"></span></span><input class="input__control" id="f-174" placeholder="https://www.linkedin.com/in/..." type="text"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="account-section__footnote">Isi nama pengguna (mis. ahmad.islam) atau tautan https://. Disembunyikan kecuali diizinkan.</p>
+                  </section>
+                </div>
+                <div class="mt-6"><button class="btn btn--primary" type="button">Simpan profil</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-176">
+          <h3 class="dialog__title" id="dlg-176">Buang perubahan?</h3>
+          <div class="dialog__content c-muted">
+            <p>Perubahan profil yang belum disimpan akan hilang.</p>
+          </div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Lanjut mengubah</button><button class="btn-text" type="button">Buang</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">PopScope: muncul dari tombol kembali app bar maupun sistem bila formulir berubah.</p>
+    </figure>
+
+    <h2 class="frames__group-title">Memuat dan galat</h2>
+
+    <figure class="frame" id="frame-15">
+      <figcaption class="frame__label"><span class="frame__num">15</span> Memuat</figcaption>
+      <div class="device" role="group" aria-label="Ubah Profil, memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="skeleton" role="status" aria-label="Memuat profil">
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-16">
+      <figcaption class="frame__label"><span class="frame__num">16</span> Galat memuat</figcaption>
+      <div class="device" role="group" aria-label="Ubah Profil, galat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Ubah Profil</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="state state--error">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off"></span></div>
+              <h3 class="state__title">Tidak ada koneksi</h3>
+              <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+  </main>
+</body>
+</html>

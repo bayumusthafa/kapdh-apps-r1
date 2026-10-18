@@ -1,0 +1,1163 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Percakapan - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar percakapan chat (direct dan grup) aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/jejaring.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+      <a href="chat-list.html">Daftar room</a>
+      <a href="chat-info.html">Info Percakapan</a>
+      <a href="report-sheet.html">Lembar laporan</a>
+    </nav>
+    <h1 class="page-header__title">Percakapan (chat room)</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/chat/chat_room_screen.dart</code> (ChatRoomScreen, _ConnectionNotice, _NoticeBar), <code>chat_message_widgets.dart</code> (ChatBubble, BubbleMeta, ReplyQuote, ChatImageView, ReactionRow, SystemMessageView, DateSeparator), <code>chat_room_controller.dart</code>, <code>outgoing_message.dart</code></dd>
+      <dt>Rute</dt><dd><code>/chat/:roomId</code> (navigator akar)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Percakapan langsung</li>
+        <li>Grup: nama pengirim, sistem, reaksi, gagal</li>
+        <li>Gulir penuh</li>
+        <li>Membalas + mengetik</li>
+        <li>Pesan terlalu panjang</li>
+        <li>Tindakan pesan orang lain</li>
+        <li>Tindakan pesan sendiri</li>
+        <li>Dialog hapus pesan</li>
+        <li>Pesan gagal: kirim ulang atau buang</li>
+        <li>Pilih sumber foto</li>
+        <li>Galat foto</li>
+        <li>Penampil foto</li>
+        <li>Pesan baru di bawah, foto memuat dan gagal</li>
+        <li>Menyambungkan ulang</li>
+        <li>Belum tersinkron</li>
+        <li>Keanggotaan berakhir</li>
+        <li>Diblokir</li>
+        <li>Grup ditutup</li>
+        <li>Lawan bicara tidak tersedia</li>
+        <li>Laporkan pesan</li>
+        <li>Memuat</li>
+        <li>Galat</li>
+        <li>Percakapan tidak tersedia</li>
+        <li>Keanggotaan tidak aktif</li>
+      </ol>
+    </div>
+    <p class="page-header__note">App bar khusus: titleSpacing 0, avatar 36 + nama 17 w600 + subjudul 12 (Daring / sedang mengetik / N anggota), ketuk judul atau ikon info membuka Info Percakapan. Latar riwayat background, komposer putih bergaris atas; inset gestur di bawah komposer berwarna latar. Foto contoh memakai gambar sampel; data fiktif.</p>
+  </header>
+
+  <main class="frames">
+
+    <!-- 1. Percakapan langsung -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Percakapan langsung</figcaption>
+      <div class="device" aria-label="Percakapan langsung, keadaan utama">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah, Daring"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">Daring</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <p class="jj-history">Awal percakapan</p>
+              <div class="jj-item"><p class="jj-date">17 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 19.02 WIB, Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?</p><div class="jj-meta" aria-hidden="true"><span>19.02 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 19.10 WIB, Waalaikumsalam. Insyaallah jadi, Bu., Dibaca">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Waalaikumsalam. Insyaallah jadi, Bu.</p><div class="jj-meta" aria-hidden="true"><span>19.10 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca</span></div></div>
+              </div></div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.20 WIB, Pesan ini telah dihapus">
+                <div class="jj-bubble"><p class="jj-bubble__body jj-bubble__deleted" aria-hidden="true">Pesan ini telah dihapus</p><div class="jj-meta" aria-hidden="true"><span>08.20 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 09.40 WIB, Saya berangkat dari Pekanbaru jam 7 pagi., Mengirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Saya berangkat dari Pekanbaru jam 7 pagi.</p><div class="jj-meta" aria-hidden="true"><span>09.40 WIB</span><span class="jj-meta__status"><span class="ic ic-schedule" aria-hidden="true"></span>Mengirim</span></div></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-composer">
+            <div class="jj-composer__row">
+              <button class="icon-btn" type="button" aria-label="Kirim foto"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span></button>
+              <div class="jj-composer__field">
+                <div class="input jj-input-typed"><textarea class="input__control" rows="1" aria-label="Tulis pesan" placeholder="Tulis pesan…"></textarea></div>
+              </div>
+              <button class="icon-btn jj-send" type="button" aria-label="Kirim" disabled><span class="ic ic-send" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Gelembung sendiri green700 (ekor kanan bawah 4), orang lain putih bergaris (ekor kiri bawah 4), lebar maks 78 %. Waktu + status di KIRI bawah isi gelembung (Align widthFactor 1 di Column start, terukur). Riwayat dibalik: pesan terbaru menempel ke komposer. Kirim nonaktif selama kotak kosong.</p>
+    </figure>
+
+    <!-- 2. Grup: nama pengirim, sistem, reaksi, gagal -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Grup: nama pengirim, sistem, reaksi, gagal</figcaption>
+      <div class="device" aria-label="Percakapan grup">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Angkatan 12, Siti Rahmah sedang mengetik…"><span class="avatar avatar--36" aria-hidden="true"><span class="ic ic-groups"></span></span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Angkatan 12</span><span class="jj-chat-title__sub">Siti Rahmah sedang mengetik…</span></span></a>
+            <div class="appbar__actions"><span class="ic ic-notifications_off_outlined jj-chat-mute" role="img" aria-label="Dibisukan"></span><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <p class="jj-history">Anda melihat pesan sejak bergabung pada 12 Okt 2026, 14.20 WIB.</p>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-system"><p class="jj-system__pill">Siti Rahmah bergabung ke grup. · 07.30 WIB</p></div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Muhammad Rizki, 07.45 WIB, Assalamu'alaikum semua. Rapat persiapan reuni kita adakan Sabtu depan di aula sekolah.">
+                <div class="jj-bubble"><p class="jj-bubble__sender" aria-hidden="true">Muhammad Rizki</p><p class="jj-bubble__body" aria-hidden="true">Assalamu'alaikum semua. Rapat persiapan reuni kita adakan Sabtu depan di aula sekolah.</p><div class="jj-meta" aria-hidden="true"><span>07.45 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="🙏 3, termasuk Anda"><span class="jj-reaction__emoji">🙏</span><span class="jj-reaction__count">3</span></button><button class="jj-reaction" type="button" aria-label="👍 2"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">2</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 07.50 WIB, Setuju. Saya bantu bagian pendaftaran.">
+                <div class="jj-bubble"><p class="jj-bubble__sender" aria-hidden="true">Siti Rahmah</p><p class="jj-bubble__body" aria-hidden="true">Setuju. Saya bantu bagian pendaftaran.</p><div class="jj-meta" aria-hidden="true"><span>07.50 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.02 WIB, Insyaallah saya bantu siapkan konsumsi., Dibaca 4">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Insyaallah saya bantu siapkan konsumsi.</p><div class="jj-meta" aria-hidden="true"><span>08.02 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca 4</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.05 WIB, Daftar hadir menyusul ya., Gagal terkirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Daftar hadir menyusul ya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span><span class="jj-meta__status jj-meta__status--failed"><span class="ic ic-error_outline" aria-hidden="true"></span>Gagal terkirim</span></div></div>
+                <p class="jj-msg__footer">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi. Ketuk untuk kirim ulang atau buang.</p>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-composer">
+            <div class="jj-composer__row">
+              <button class="icon-btn" type="button" aria-label="Kirim foto"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span></button>
+              <div class="jj-composer__field">
+                <div class="input jj-input-typed"><textarea class="input__control" rows="1" aria-label="Tulis pesan" placeholder="Tulis pesan…"></textarea></div>
+              </div>
+              <button class="icon-btn jj-send" type="button" aria-label="Kirim" disabled><span class="ic ic-send" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Subjudul: "X sedang mengetik…" / "N orang sedang mengetik…" / "N anggota" / "Grup ditutup". Pesan grup orang lain diberi nama pengirim 12 w600 hijau; pesan sistem pil abu. Status baca grup "Dibaca N". Ikon bisu di app bar bila dibisukan. Pesan gagal: status merah muda + keterangan merah di bawah gelembung.</p>
+    </figure>
+
+    <!-- 3. Gulir penuh (riwayat panjang) -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Gulir penuh (riwayat panjang)</figcaption>
+      <div class="device device--tall" aria-label="Percakapan langsung, seluruh riwayat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah, Daring"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">Daring</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <div class="jj-history-more"><button class="btn-text" type="button">Muat pesan lama</button></div>
+              <div class="jj-item"><p class="jj-date">16 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 20.31 WIB, Bu Siti, apakah masih ada formulir pendaftaran temu jejaring?, Dibaca">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Bu Siti, apakah masih ada formulir pendaftaran temu jejaring?</p><div class="jj-meta" aria-hidden="true"><span>20.31 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 20.45 WIB, Masih, Pak. Nanti saya kirim fotonya besok pagi.">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Masih, Pak. Nanti saya kirim fotonya besok pagi.</p><div class="jj-meta" aria-hidden="true"><span>20.45 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><p class="jj-date">17 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 19.02 WIB, Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?</p><div class="jj-meta" aria-hidden="true"><span>19.02 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 19.10 WIB, Waalaikumsalam. Insyaallah jadi, Bu., Dibaca">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Waalaikumsalam. Insyaallah jadi, Bu.</p><div class="jj-meta" aria-hidden="true"><span>19.10 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca</span></div></div>
+              </div></div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.20 WIB, Pesan ini telah dihapus">
+                <div class="jj-bubble"><p class="jj-bubble__body jj-bubble__deleted" aria-hidden="true">Pesan ini telah dihapus</p><div class="jj-meta" aria-hidden="true"><span>08.20 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 09.40 WIB, Saya berangkat dari Pekanbaru jam 7 pagi., Mengirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Saya berangkat dari Pekanbaru jam 7 pagi.</p><div class="jj-meta" aria-hidden="true"><span>09.40 WIB</span><span class="jj-meta__status"><span class="ic ic-schedule" aria-hidden="true"></span>Mengirim</span></div></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-composer">
+            <div class="jj-composer__row">
+              <button class="icon-btn" type="button" aria-label="Kirim foto"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span></button>
+              <div class="jj-composer__field">
+                <div class="input jj-input-typed"><textarea class="input__control" rows="1" aria-label="Tulis pesan" placeholder="Tulis pesan…"></textarea></div>
+              </div>
+              <button class="icon-btn jj-send" type="button" aria-label="Kirim" disabled><span class="ic ic-send" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Kepala riwayat saat masih ada halaman lama: TextButton "Muat pesan lama" (juga otomatis saat mendekati atas).</p>
+    </figure>
+
+    <!-- 4. Membalas + mengetik -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Membalas + mengetik</figcaption>
+      <div class="device" aria-label="Percakapan, membalas pesan dengan keyboard">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen jj-screen--kb">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah, sedang mengetik…"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">sedang mengetik…</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.20 WIB, Pesan ini telah dihapus">
+                <div class="jj-bubble"><p class="jj-bubble__body jj-bubble__deleted" aria-hidden="true">Pesan ini telah dihapus</p><div class="jj-meta" aria-hidden="true"><span>08.20 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 09.40 WIB, Saya berangkat dari Pekanbaru jam 7 pagi., Mengirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Saya berangkat dari Pekanbaru jam 7 pagi.</p><div class="jj-meta" aria-hidden="true"><span>09.40 WIB</span><span class="jj-meta__status"><span class="ic ic-schedule" aria-hidden="true"></span>Mengirim</span></div></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-composer">
+            <div class="jj-composer__reply"><div class="jj-quote"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><button class="icon-btn" type="button" aria-label="Batalkan balasan"><span class="ic ic-close" aria-hidden="true"></span></button></div>
+            <div class="jj-composer__row">
+              <button class="icon-btn" type="button" aria-label="Kirim foto"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span></button>
+              <div class="jj-composer__field">
+                <div class="input jj-input-typed is-focused"><textarea class="input__control" rows="2" aria-label="Tulis pesan" placeholder="Tulis pesan…">Baik, parkirnya di sebelah mana ya, Bu?</textarea></div>
+              </div>
+              <button class="icon-btn jj-send" type="button" aria-label="Kirim"><span class="ic ic-send" aria-hidden="true"></span></button>
+            </div>
+          </div>
+        </div>
+        <div class="keyboard" aria-hidden="true">
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key jj-key-space"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Pratinjau balasan (ReplyQuote green50 garis kiri primary) di atas kotak dengan tombol close "Batalkan balasan". Kotak tumbuh 1 sampai 5 baris; teks masukan 16, petunjuk 14. Untuk room direct subjudul mengetik hanya "sedang mengetik…".</p>
+    </figure>
+
+    <!-- 5. Pesan terlalu panjang -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Pesan terlalu panjang</figcaption>
+      <div class="device" aria-label="Percakapan, pesan melebihi batas">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen jj-screen--kb">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah, Daring"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">Daring</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.20 WIB, Pesan ini telah dihapus">
+                <div class="jj-bubble"><p class="jj-bubble__body jj-bubble__deleted" aria-hidden="true">Pesan ini telah dihapus</p><div class="jj-meta" aria-hidden="true"><span>08.20 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 09.40 WIB, Saya berangkat dari Pekanbaru jam 7 pagi., Mengirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Saya berangkat dari Pekanbaru jam 7 pagi.</p><div class="jj-meta" aria-hidden="true"><span>09.40 WIB</span><span class="jj-meta__status"><span class="ic ic-schedule" aria-hidden="true"></span>Mengirim</span></div></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-composer">
+            <div class="jj-composer__row">
+              <button class="icon-btn" type="button" aria-label="Kirim foto"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span></button>
+              <div class="jj-composer__field">
+                <div class="input jj-input-typed is-focused is-error"><textarea class="input__control" rows="5" aria-label="Tulis pesan" placeholder="Tulis pesan…">Bu Siti, berikut rangkuman hasil rapat panitia kemarin. Pertama, acara dimulai pukul 08.00 dengan pembukaan dan sambutan ketua alumni. Kedua, sesi temu jejaring per bidang profesi dibagi menjadi lima meja. Ketiga, konsumsi disiapkan oleh tim angkatan 12 dan 15, dan seterusnya sampai ribuan karakter…</textarea></div>
+                <div class="jj-help-row"><span class="jj-help-row__error">Pesan maksimal 4000 karakter.</span><span class="jj-help-row__counter">4012/4000</span></div>
+              </div>
+              <button class="icon-btn jj-send" type="button" aria-label="Kirim" disabled><span class="ic ic-send" aria-hidden="true"></span></button>
+            </div>
+          </div>
+        </div>
+        <div class="keyboard" aria-hidden="true">
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key jj-key-space"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Penghitung "N/4000" muncul mulai 3800 karakter; di atas 4000 kotak bergaris merah dengan teks galat dan tombol Kirim nonaktif. Tombol foto dan Kirim rata bawah (termasuk baris galat).</p>
+    </figure>
+
+    <!-- 6. Tindakan pesan orang lain -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Tindakan pesan orang lain</figcaption>
+      <div class="device" aria-label="Lembar tindakan pesan orang lain">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah, Daring"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">Daring</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <p class="jj-history">Awal percakapan</p>
+              <div class="jj-item"><p class="jj-date">17 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 19.02 WIB, Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?</p><div class="jj-meta" aria-hidden="true"><span>19.02 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 19.10 WIB, Waalaikumsalam. Insyaallah jadi, Bu., Dibaca">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Waalaikumsalam. Insyaallah jadi, Bu.</p><div class="jj-meta" aria-hidden="true"><span>19.10 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca</span></div></div>
+              </div></div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.20 WIB, Pesan ini telah dihapus">
+                <div class="jj-bubble"><p class="jj-bubble__body jj-bubble__deleted" aria-hidden="true">Pesan ini telah dihapus</p><div class="jj-meta" aria-hidden="true"><span>08.20 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 09.40 WIB, Saya berangkat dari Pekanbaru jam 7 pagi., Mengirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Saya berangkat dari Pekanbaru jam 7 pagi.</p><div class="jj-meta" aria-hidden="true"><span>09.40 WIB</span><span class="jj-meta__status"><span class="ic ic-schedule" aria-hidden="true"></span>Mengirim</span></div></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-composer">
+            <div class="jj-composer__row">
+              <button class="icon-btn" type="button" aria-label="Kirim foto"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span></button>
+              <div class="jj-composer__field">
+                <div class="input jj-input-typed"><textarea class="input__control" rows="1" aria-label="Tulis pesan" placeholder="Tulis pesan…"></textarea></div>
+              </div>
+              <button class="icon-btn jj-send" type="button" aria-label="Kirim" disabled><span class="ic ic-send" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet jj-sheet-list" role="dialog" aria-modal="true" aria-label="Tindakan pesan">
+          <div class="jj-reaction-picker"><button class="icon-btn jj-emoji-btn" type="button" aria-label="Reaksi 👍">👍</button><button class="icon-btn jj-emoji-btn" type="button" aria-label="Reaksi ❤️">❤️</button><button class="icon-btn jj-emoji-btn" type="button" aria-label="Reaksi 😂">😂</button><button class="icon-btn jj-emoji-btn" type="button" aria-label="Reaksi 😮">😮</button><button class="icon-btn jj-emoji-btn" type="button" aria-label="Reaksi 😢">😢</button><button class="icon-btn jj-emoji-btn" type="button" aria-label="Reaksi 🙏">🙏</button></div>
+          <button class="list-tile" type="button"><span class="list-tile__leading" aria-hidden="true"><span class="ic ic-reply" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Balas</span></span></button>
+          <button class="list-tile" type="button"><span class="list-tile__leading" aria-hidden="true"><span class="ic ic-copy" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Salin teks</span></span></button>
+          <button class="list-tile" type="button"><span class="list-tile__leading" aria-hidden="true"><span class="ic ic-flag_outlined" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Laporkan pesan</span></span></button>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tekan lama gelembung. Reaksi cepat (IconButton 48 emoji 24) hanya bila room masih menerima pesan. "Laporkan pesan" membuka lembar laporan dengan 5 pesan konteks.</p>
+    </figure>
+
+    <!-- 7. Tindakan pesan sendiri -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Tindakan pesan sendiri</figcaption>
+      <div class="device" aria-label="Lembar tindakan pesan sendiri">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah, Daring"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">Daring</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <p class="jj-history">Awal percakapan</p>
+              <div class="jj-item"><p class="jj-date">17 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 19.02 WIB, Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?</p><div class="jj-meta" aria-hidden="true"><span>19.02 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 19.10 WIB, Waalaikumsalam. Insyaallah jadi, Bu., Dibaca">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Waalaikumsalam. Insyaallah jadi, Bu.</p><div class="jj-meta" aria-hidden="true"><span>19.10 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca</span></div></div>
+              </div></div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.20 WIB, Pesan ini telah dihapus">
+                <div class="jj-bubble"><p class="jj-bubble__body jj-bubble__deleted" aria-hidden="true">Pesan ini telah dihapus</p><div class="jj-meta" aria-hidden="true"><span>08.20 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 09.40 WIB, Saya berangkat dari Pekanbaru jam 7 pagi., Mengirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Saya berangkat dari Pekanbaru jam 7 pagi.</p><div class="jj-meta" aria-hidden="true"><span>09.40 WIB</span><span class="jj-meta__status"><span class="ic ic-schedule" aria-hidden="true"></span>Mengirim</span></div></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-composer">
+            <div class="jj-composer__row">
+              <button class="icon-btn" type="button" aria-label="Kirim foto"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span></button>
+              <div class="jj-composer__field">
+                <div class="input jj-input-typed"><textarea class="input__control" rows="1" aria-label="Tulis pesan" placeholder="Tulis pesan…"></textarea></div>
+              </div>
+              <button class="icon-btn jj-send" type="button" aria-label="Kirim" disabled><span class="ic ic-send" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet jj-sheet-list" role="dialog" aria-modal="true" aria-label="Tindakan pesan">
+          <div class="jj-reaction-picker"><button class="icon-btn jj-emoji-btn" type="button" aria-label="Reaksi 👍">👍</button><button class="icon-btn jj-emoji-btn" type="button" aria-label="Reaksi ❤️">❤️</button><button class="icon-btn jj-emoji-btn" type="button" aria-label="Reaksi 😂">😂</button><button class="icon-btn jj-emoji-btn" type="button" aria-label="Reaksi 😮">😮</button><button class="icon-btn jj-emoji-btn" type="button" aria-label="Reaksi 😢">😢</button><button class="icon-btn jj-emoji-btn" type="button" aria-label="Reaksi 🙏">🙏</button></div>
+          <button class="list-tile" type="button"><span class="list-tile__leading" aria-hidden="true"><span class="ic ic-reply" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Balas</span></span></button>
+          <button class="list-tile" type="button"><span class="list-tile__leading" aria-hidden="true"><span class="ic ic-copy" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Salin teks</span></span></button>
+          <button class="list-tile" type="button"><span class="list-tile__leading c-danger" aria-hidden="true"><span class="ic ic-delete_outline" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Hapus pesan</span></span></button>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Ikon hapus merah, judul tetap warna teks.</p>
+    </figure>
+
+    <!-- 8. Dialog hapus pesan -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">8</span> Dialog hapus pesan</figcaption>
+      <div class="device" aria-label="Konfirmasi hapus pesan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah, Daring"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">Daring</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <p class="jj-history">Awal percakapan</p>
+              <div class="jj-item"><p class="jj-date">17 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 19.02 WIB, Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?</p><div class="jj-meta" aria-hidden="true"><span>19.02 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 19.10 WIB, Waalaikumsalam. Insyaallah jadi, Bu., Dibaca">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Waalaikumsalam. Insyaallah jadi, Bu.</p><div class="jj-meta" aria-hidden="true"><span>19.10 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca</span></div></div>
+              </div></div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.20 WIB, Pesan ini telah dihapus">
+                <div class="jj-bubble"><p class="jj-bubble__body jj-bubble__deleted" aria-hidden="true">Pesan ini telah dihapus</p><div class="jj-meta" aria-hidden="true"><span>08.20 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 09.40 WIB, Saya berangkat dari Pekanbaru jam 7 pagi., Mengirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Saya berangkat dari Pekanbaru jam 7 pagi.</p><div class="jj-meta" aria-hidden="true"><span>09.40 WIB</span><span class="jj-meta__status"><span class="ic ic-schedule" aria-hidden="true"></span>Mengirim</span></div></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-composer">
+            <div class="jj-composer__row">
+              <button class="icon-btn" type="button" aria-label="Kirim foto"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span></button>
+              <div class="jj-composer__field">
+                <div class="input jj-input-typed"><textarea class="input__control" rows="1" aria-label="Tulis pesan" placeholder="Tulis pesan…"></textarea></div>
+              </div>
+              <button class="icon-btn jj-send" type="button" aria-label="Kirim" disabled><span class="ic ic-send" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="cr8-title">
+          <h3 class="dialog__title" id="cr8-title">Hapus pesan?</h3>
+          <div class="dialog__content"><p class="c-muted">Isi pesan dihapus untuk semua anggota dan diganti keterangan "Pesan ini telah dihapus".</p></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text" type="button">Hapus</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 9. Pesan gagal: kirim ulang atau buang -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">9</span> Pesan gagal: kirim ulang atau buang</figcaption>
+      <div class="device" aria-label="Lembar pesan gagal">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Angkatan 12, 6 anggota"><span class="avatar avatar--36" aria-hidden="true"><span class="ic ic-groups"></span></span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Angkatan 12</span><span class="jj-chat-title__sub">6 anggota</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <p class="jj-history">Anda melihat pesan sejak bergabung pada 12 Okt 2026, 14.20 WIB.</p>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-system"><p class="jj-system__pill">Siti Rahmah bergabung ke grup. · 07.30 WIB</p></div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Muhammad Rizki, 07.45 WIB, Assalamu'alaikum semua. Rapat persiapan reuni kita adakan Sabtu depan di aula sekolah.">
+                <div class="jj-bubble"><p class="jj-bubble__sender" aria-hidden="true">Muhammad Rizki</p><p class="jj-bubble__body" aria-hidden="true">Assalamu'alaikum semua. Rapat persiapan reuni kita adakan Sabtu depan di aula sekolah.</p><div class="jj-meta" aria-hidden="true"><span>07.45 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="🙏 3, termasuk Anda"><span class="jj-reaction__emoji">🙏</span><span class="jj-reaction__count">3</span></button><button class="jj-reaction" type="button" aria-label="👍 2"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">2</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 07.50 WIB, Setuju. Saya bantu bagian pendaftaran.">
+                <div class="jj-bubble"><p class="jj-bubble__sender" aria-hidden="true">Siti Rahmah</p><p class="jj-bubble__body" aria-hidden="true">Setuju. Saya bantu bagian pendaftaran.</p><div class="jj-meta" aria-hidden="true"><span>07.50 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.02 WIB, Insyaallah saya bantu siapkan konsumsi., Dibaca 4">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Insyaallah saya bantu siapkan konsumsi.</p><div class="jj-meta" aria-hidden="true"><span>08.02 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca 4</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.05 WIB, Daftar hadir menyusul ya., Gagal terkirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Daftar hadir menyusul ya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span><span class="jj-meta__status jj-meta__status--failed"><span class="ic ic-error_outline" aria-hidden="true"></span>Gagal terkirim</span></div></div>
+                <p class="jj-msg__footer">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi. Ketuk untuk kirim ulang atau buang.</p>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-composer">
+            <div class="jj-composer__row">
+              <button class="icon-btn" type="button" aria-label="Kirim foto"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span></button>
+              <div class="jj-composer__field">
+                <div class="input jj-input-typed"><textarea class="input__control" rows="1" aria-label="Tulis pesan" placeholder="Tulis pesan…"></textarea></div>
+              </div>
+              <button class="icon-btn jj-send" type="button" aria-label="Kirim" disabled><span class="ic ic-send" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet jj-sheet-list" role="dialog" aria-modal="true" aria-label="Pilihan pesan">
+          <button class="list-tile" type="button"><span class="list-tile__leading" aria-hidden="true"><span class="ic ic-refresh" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Kirim ulang</span></span></button>
+          <button class="list-tile" type="button"><span class="list-tile__leading c-danger" aria-hidden="true"><span class="ic ic-delete_outline" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Buang pesan</span></span></button>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Ketuk pesan gagal/ditahan. "Kirim ulang" hanya bila room masih menerima pesan; pesan yang ditolak karena blokir atau grup ditutup hanya dapat dibuang.</p>
+    </figure>
+
+    <!-- 10. Pilih sumber foto -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">10</span> Pilih sumber foto</figcaption>
+      <div class="device" aria-label="Lembar pilih kamera atau galeri">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah, Daring"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">Daring</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <p class="jj-history">Awal percakapan</p>
+              <div class="jj-item"><p class="jj-date">17 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 19.02 WIB, Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?</p><div class="jj-meta" aria-hidden="true"><span>19.02 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 19.10 WIB, Waalaikumsalam. Insyaallah jadi, Bu., Dibaca">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Waalaikumsalam. Insyaallah jadi, Bu.</p><div class="jj-meta" aria-hidden="true"><span>19.10 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca</span></div></div>
+              </div></div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.20 WIB, Pesan ini telah dihapus">
+                <div class="jj-bubble"><p class="jj-bubble__body jj-bubble__deleted" aria-hidden="true">Pesan ini telah dihapus</p><div class="jj-meta" aria-hidden="true"><span>08.20 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 09.40 WIB, Saya berangkat dari Pekanbaru jam 7 pagi., Mengirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Saya berangkat dari Pekanbaru jam 7 pagi.</p><div class="jj-meta" aria-hidden="true"><span>09.40 WIB</span><span class="jj-meta__status"><span class="ic ic-schedule" aria-hidden="true"></span>Mengirim</span></div></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-composer">
+            <div class="jj-composer__row">
+              <button class="icon-btn" type="button" aria-label="Kirim foto"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span></button>
+              <div class="jj-composer__field">
+                <div class="input jj-input-typed"><textarea class="input__control" rows="1" aria-label="Tulis pesan" placeholder="Tulis pesan…">Ini tiket parkirnya</textarea></div>
+              </div>
+              <button class="icon-btn jj-send" type="button" aria-label="Kirim"><span class="ic ic-send" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet jj-sheet-list" role="dialog" aria-modal="true" aria-label="Sumber foto">
+          <button class="list-tile" type="button"><span class="list-tile__leading" aria-hidden="true"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Kamera</span></span></button>
+          <button class="list-tile" type="button"><span class="list-tile__leading" aria-hidden="true"><span class="ic ic-photo_library_outlined" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Galeri</span></span></button>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Teks di kotak ikut terkirim sebagai keterangan foto. Foto JPG/PNG maks 5 MB.</p>
+    </figure>
+
+    <!-- 11. Galat foto (snackbar) -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">11</span> Galat foto (snackbar)</figcaption>
+      <div class="device" aria-label="Percakapan, foto ditolak">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah, Daring"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">Daring</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <p class="jj-history">Awal percakapan</p>
+              <div class="jj-item"><p class="jj-date">17 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 19.02 WIB, Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?</p><div class="jj-meta" aria-hidden="true"><span>19.02 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 19.10 WIB, Waalaikumsalam. Insyaallah jadi, Bu., Dibaca">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Waalaikumsalam. Insyaallah jadi, Bu.</p><div class="jj-meta" aria-hidden="true"><span>19.10 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca</span></div></div>
+              </div></div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.20 WIB, Pesan ini telah dihapus">
+                <div class="jj-bubble"><p class="jj-bubble__body jj-bubble__deleted" aria-hidden="true">Pesan ini telah dihapus</p><div class="jj-meta" aria-hidden="true"><span>08.20 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 09.40 WIB, Saya berangkat dari Pekanbaru jam 7 pagi., Mengirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Saya berangkat dari Pekanbaru jam 7 pagi.</p><div class="jj-meta" aria-hidden="true"><span>09.40 WIB</span><span class="jj-meta__status"><span class="ic ic-schedule" aria-hidden="true"></span>Mengirim</span></div></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-composer">
+            <div class="jj-composer__row">
+              <button class="icon-btn" type="button" aria-label="Kirim foto"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span></button>
+              <div class="jj-composer__field">
+                <div class="input jj-input-typed"><textarea class="input__control" rows="1" aria-label="Tulis pesan" placeholder="Tulis pesan…"></textarea></div>
+              </div>
+              <button class="icon-btn jj-send" type="button" aria-label="Kirim" disabled><span class="ic ic-send" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="snackbar" role="status"><span class="snackbar__text">Ukuran foto maksimal 5 MB.</span></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Pesan lain: "Gunakan foto JPG atau PNG.", "Foto tidak dapat dibuka. Periksa izin kamera/galeri di pengaturan perangkat.", "Teks disalin."</p>
+    </figure>
+
+    <!-- 12. Penampil foto -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">12</span> Penampil foto</figcaption>
+      <div class="device" aria-label="Penampil foto layar penuh">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah, Daring"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">Daring</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <p class="jj-history">Awal percakapan</p>
+              <div class="jj-item"><p class="jj-date">17 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 19.02 WIB, Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?</p><div class="jj-meta" aria-hidden="true"><span>19.02 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 19.10 WIB, Waalaikumsalam. Insyaallah jadi, Bu., Dibaca">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Waalaikumsalam. Insyaallah jadi, Bu.</p><div class="jj-meta" aria-hidden="true"><span>19.10 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca</span></div></div>
+              </div></div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.20 WIB, Pesan ini telah dihapus">
+                <div class="jj-bubble"><p class="jj-bubble__body jj-bubble__deleted" aria-hidden="true">Pesan ini telah dihapus</p><div class="jj-meta" aria-hidden="true"><span>08.20 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 09.40 WIB, Saya berangkat dari Pekanbaru jam 7 pagi., Mengirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Saya berangkat dari Pekanbaru jam 7 pagi.</p><div class="jj-meta" aria-hidden="true"><span>09.40 WIB</span><span class="jj-meta__status"><span class="ic ic-schedule" aria-hidden="true"></span>Mengirim</span></div></div>
+              </div></div>
+            </div>
+          </div>
+        </div>
+        <div class="jj-viewer" role="dialog" aria-modal="true" aria-label="Foto"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto dari Siti Rahmah"><button class="icon-btn jj-viewer__close" type="button" aria-label="Tutup"><span class="ic ic-close" aria-hidden="true"></span></button></div>
+        <div class="sysnav sysnav--on-dark" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Dialog.fullscreen hitam dengan InteractiveViewer (cubit untuk zoom). Gagal memuat: teks putih "Foto tidak dapat dimuat."</p>
+    </figure>
+
+    <!-- 13. Pesan baru di bawah, foto memuat dan gagal -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">13</span> Pesan baru di bawah, foto memuat dan gagal</figcaption>
+      <div class="device" aria-label="Percakapan dengan tombol pesan baru">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah, Daring"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">Daring</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo jj-photo--center" role="img" aria-label="Foto"><button class="btn-text btn-text--icon" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Muat ulang foto</button></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Dibaca">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 09.41 WIB, Foto">
+                <div class="jj-bubble"><span class="jj-photo jj-photo--center" role="img" aria-label="Foto"><span class="spinner jj-spinner-thin" aria-hidden="true"></span></span><div class="jj-meta" aria-hidden="true"><span>09.41 WIB</span></div></div>
+              </div></div>
+            </div><button class="fab-small jj-fab" type="button" aria-label="Pesan baru, gulir ke bawah"><span class="ic ic-arrow_downward" aria-hidden="true"></span></button>
+          </div>
+          <div class="jj-composer">
+            <div class="jj-composer__row">
+              <button class="icon-btn" type="button" aria-label="Kirim foto"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span></button>
+              <div class="jj-composer__field">
+                <div class="input jj-input-typed"><textarea class="input__control" rows="1" aria-label="Tulis pesan" placeholder="Tulis pesan…"></textarea></div>
+              </div>
+              <button class="icon-btn jj-send" type="button" aria-label="Kirim" disabled><span class="ic ic-send" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">FloatingActionButton.small primary muncul bila pesan orang lain masuk saat tidak di posisi bawah. URL foto bertanda tangan kedaluwarsa (10 menit): "Muat ulang foto" memperbarui jendela pesan.</p>
+    </figure>
+
+    <!-- 14. Menyambungkan ulang + memuat pesan lama -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">14</span> Menyambungkan ulang + memuat pesan lama</figcaption>
+      <div class="device" aria-label="Percakapan, menyambungkan ulang">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-conn" role="status"><span class="ic ic-sync_problem" aria-hidden="true"></span><span class="jj-conn__text">Menyambungkan ulang… Pesan yang terlewat disinkronkan setelah tersambung.</span></div>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <div class="jj-history-loading"><span class="spinner spinner--24" role="status" aria-label="Memuat pesan lama"></span></div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.20 WIB, Pesan ini telah dihapus">
+                <div class="jj-bubble"><p class="jj-bubble__body jj-bubble__deleted" aria-hidden="true">Pesan ini telah dihapus</p><div class="jj-meta" aria-hidden="true"><span>08.20 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 09.40 WIB, Saya berangkat dari Pekanbaru jam 7 pagi., Mengirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Saya berangkat dari Pekanbaru jam 7 pagi.</p><div class="jj-meta" aria-hidden="true"><span>09.40 WIB</span><span class="jj-meta__status"><span class="ic ic-schedule" aria-hidden="true"></span>Mengirim</span></div></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-composer">
+            <div class="jj-composer__row">
+              <button class="icon-btn" type="button" aria-label="Kirim foto"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span></button>
+              <div class="jj-composer__field">
+                <div class="input jj-input-typed"><textarea class="input__control" rows="1" aria-label="Tulis pesan" placeholder="Tulis pesan…"></textarea></div>
+              </div>
+              <button class="icon-btn jj-send" type="button" aria-label="Kirim" disabled><span class="ic ic-send" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">_ConnectionNotice warningBg di bawah app bar selama realtime tidak tersambung. Presence tidak diketahui, subjudul kosong.</p>
+    </figure>
+
+    <!-- 15. Belum tersinkron + gagal memuat pesan lama -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">15</span> Belum tersinkron + gagal memuat pesan lama</figcaption>
+      <div class="device" aria-label="Percakapan, sinkron gagal">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah, Daring"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">Daring</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-conn" role="status"><span class="ic ic-sync_problem" aria-hidden="true"></span><span class="jj-conn__text">Pesan terbaru belum tersinkron. Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</span><button class="btn-text" type="button">Coba lagi</button></div>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <div class="jj-history-error"><div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Pesan lama belum dapat dimuat. Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div></div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-composer">
+            <div class="jj-composer__row">
+              <button class="icon-btn" type="button" aria-label="Kirim foto"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span></button>
+              <div class="jj-composer__field">
+                <div class="input jj-input-typed"><textarea class="input__control" rows="1" aria-label="Tulis pesan" placeholder="Tulis pesan…"></textarea></div>
+              </div>
+              <button class="icon-btn jj-send" type="button" aria-label="Kirim" disabled><span class="ic ic-send" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tombol "Coba lagi" pada pita memakai warna TextButton bawaan (hijau), bukan warna peringatan.</p>
+    </figure>
+
+    <!-- 16. Keanggotaan berakhir -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">16</span> Keanggotaan berakhir</figcaption>
+      <div class="device" aria-label="Percakapan, keanggotaan tidak aktif">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah, Daring"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">Daring</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 09.40 WIB, Nanti saya kirim lokasi parkirnya., Ditahan">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Nanti saya kirim lokasi parkirnya.</p><div class="jj-meta" aria-hidden="true"><span>09.40 WIB</span><span class="jj-meta__status"><span class="ic ic-pause_circle_outline" aria-hidden="true"></span>Ditahan</span></div></div>
+                <p class="jj-msg__footer jj-msg__footer--held">Masa keanggotaan Anda tidak aktif. Pesan disimpan dan dikirim setelah KTA diperpanjang. Dikirim setelah KTA diperpanjang.</p>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-notice-bar"><div class="info-box info-box--warning"><span class="ic ic-lock_clock_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Masa keanggotaan Anda tidak aktif, sehingga pesan baru tidak dapat dikirim. Perpanjang KTA untuk melanjutkan percakapan; pesan yang tertunda tetap tersimpan.</p></div><button class="btn-text info-box__trailing" type="button">Perpanjang KTA</button></div></div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Komposer diganti _NoticeBar (InfoBox peringatan). Pesan tertunda berstatus "Ditahan" dengan keterangan kuning.</p>
+    </figure>
+
+    <!-- 17. Diblokir -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">17</span> Diblokir</figcaption>
+      <div class="device" aria-label="Percakapan dengan pengguna yang diblokir">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <p class="jj-history">Awal percakapan</p>
+              <div class="jj-item"><p class="jj-date">17 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 19.02 WIB, Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?</p><div class="jj-meta" aria-hidden="true"><span>19.02 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 19.10 WIB, Waalaikumsalam. Insyaallah jadi, Bu., Dibaca">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Waalaikumsalam. Insyaallah jadi, Bu.</p><div class="jj-meta" aria-hidden="true"><span>19.10 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca</span></div></div>
+              </div></div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.20 WIB, Pesan ini telah dihapus">
+                <div class="jj-bubble"><p class="jj-bubble__body jj-bubble__deleted" aria-hidden="true">Pesan ini telah dihapus</p><div class="jj-meta" aria-hidden="true"><span>08.20 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 09.40 WIB, Saya berangkat dari Pekanbaru jam 7 pagi., Mengirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Saya berangkat dari Pekanbaru jam 7 pagi.</p><div class="jj-meta" aria-hidden="true"><span>09.40 WIB</span><span class="jj-meta__status"><span class="ic ic-schedule" aria-hidden="true"></span>Mengirim</span></div></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-notice-bar"><div class="info-box info-box--warning"><span class="ic ic-block" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Anda memblokir Siti Rahmah. Buka blokir untuk kembali mengirim pesan.</p></div><button class="btn-text info-box__trailing" type="button">Buka blokir</button></div></div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 18. Grup ditutup -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">18</span> Grup ditutup</figcaption>
+      <div class="device" aria-label="Percakapan grup yang ditutup">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Angkatan 12, Grup ditutup"><span class="avatar avatar--36" aria-hidden="true"><span class="ic ic-groups"></span></span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Angkatan 12</span><span class="jj-chat-title__sub">Grup ditutup</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <p class="jj-history">Anda melihat pesan sejak bergabung pada 12 Okt 2026, 14.20 WIB.</p>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-system"><p class="jj-system__pill">Siti Rahmah bergabung ke grup. · 07.30 WIB</p></div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Muhammad Rizki, 07.45 WIB, Assalamu'alaikum semua. Rapat persiapan reuni kita adakan Sabtu depan di aula sekolah.">
+                <div class="jj-bubble"><p class="jj-bubble__sender" aria-hidden="true">Muhammad Rizki</p><p class="jj-bubble__body" aria-hidden="true">Assalamu'alaikum semua. Rapat persiapan reuni kita adakan Sabtu depan di aula sekolah.</p><div class="jj-meta" aria-hidden="true"><span>07.45 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="🙏 3, termasuk Anda"><span class="jj-reaction__emoji">🙏</span><span class="jj-reaction__count">3</span></button><button class="jj-reaction" type="button" aria-label="👍 2"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">2</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 07.50 WIB, Setuju. Saya bantu bagian pendaftaran.">
+                <div class="jj-bubble"><p class="jj-bubble__sender" aria-hidden="true">Siti Rahmah</p><p class="jj-bubble__body" aria-hidden="true">Setuju. Saya bantu bagian pendaftaran.</p><div class="jj-meta" aria-hidden="true"><span>07.50 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.02 WIB, Insyaallah saya bantu siapkan konsumsi., Dibaca 4">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Insyaallah saya bantu siapkan konsumsi.</p><div class="jj-meta" aria-hidden="true"><span>08.02 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca 4</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-system"><p class="jj-system__pill">Seorang admin grup keluar karena akunnya dihapus dan tidak ada anggota aktif yang dapat menjadi admin. Grup ditutup. · 10.15 WIB</p></div></div>
+            </div>
+          </div>
+          <div class="jj-notice-bar"><div class="info-box info-box--warning"><span class="ic ic-lock_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Grup ini sudah ditutup. Riwayat pesan tetap dapat dibaca.</p></div></div></div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 19. Lawan bicara tidak tersedia -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">19</span> Lawan bicara tidak tersedia</figcaption>
+      <div class="device" aria-label="Percakapan, anggota tidak dapat menerima pesan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah, Tidak tersedia"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">Tidak tersedia</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <p class="jj-history">Awal percakapan</p>
+              <div class="jj-item"><p class="jj-date">17 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 19.02 WIB, Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?</p><div class="jj-meta" aria-hidden="true"><span>19.02 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 19.10 WIB, Waalaikumsalam. Insyaallah jadi, Bu., Dibaca">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Waalaikumsalam. Insyaallah jadi, Bu.</p><div class="jj-meta" aria-hidden="true"><span>19.10 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca</span></div></div>
+              </div></div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.20 WIB, Pesan ini telah dihapus">
+                <div class="jj-bubble"><p class="jj-bubble__body jj-bubble__deleted" aria-hidden="true">Pesan ini telah dihapus</p><div class="jj-meta" aria-hidden="true"><span>08.20 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 09.40 WIB, Saya berangkat dari Pekanbaru jam 7 pagi., Mengirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Saya berangkat dari Pekanbaru jam 7 pagi.</p><div class="jj-meta" aria-hidden="true"><span>09.40 WIB</span><span class="jj-meta__status"><span class="ic ic-schedule" aria-hidden="true"></span>Mengirim</span></div></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-notice-bar"><div class="info-box info-box--warning"><span class="ic ic-person_off_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Anggota ini tidak dapat menerima pesan saat ini. Riwayat pesan tetap dapat dibaca.</p></div></div></div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Alasan sengaja tidak dibedakan (tidak aktif, memblokir Anda, atau akun dihapus).</p>
+    </figure>
+
+    <!-- 20. Laporkan pesan -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">20</span> Laporkan pesan</figcaption>
+      <div class="device" aria-label="Lembar laporkan pesan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-chat-appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <a class="jj-chat-title" href="chat-info.html" aria-label="Info percakapan Siti Rahmah, Daring"><span class="avatar avatar--36" aria-hidden="true">SR</span><span class="jj-chat-title__text" aria-hidden="true"><span class="jj-chat-title__name">Siti Rahmah</span><span class="jj-chat-title__sub">Daring</span></span></a>
+            <div class="appbar__actions"><a class="icon-btn" href="chat-info.html" aria-label="Info percakapan"><span class="ic ic-info_outline" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="jj-timeline" aria-label="Riwayat pesan">
+            <div>
+              <p class="jj-history">Awal percakapan</p>
+              <div class="jj-item"><p class="jj-date">17 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 19.02 WIB, Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Assalamu'alaikum, Pak Ahmad. Jadi ikut temu jejaring hari Sabtu?</p><div class="jj-meta" aria-hidden="true"><span>19.02 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 19.10 WIB, Waalaikumsalam. Insyaallah jadi, Bu., Dibaca">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Waalaikumsalam. Insyaallah jadi, Bu.</p><div class="jj-meta" aria-hidden="true"><span>19.10 WIB</span><span class="jj-meta__status jj-meta__status--read"><span class="ic ic-done_all" aria-hidden="true"></span>Dibaca</span></div></div>
+              </div></div>
+              <div class="jj-item"><p class="jj-date">18 Okt 2026</p></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.05 WIB, Foto · Ini denah lokasinya.">
+                <div class="jj-bubble"><span class="jj-photo"><img src="../assets/sample/event-3-temu-jejaring.jpg" alt="Foto"></span><p class="jj-bubble__body" aria-hidden="true">Ini denah lokasinya.</p><div class="jj-meta" aria-hidden="true"><span>08.05 WIB</span></div></div>
+                <div class="jj-reactions"><button class="jj-reaction is-mine" type="button" aria-label="👍 1, termasuk Anda"><span class="jj-reaction__emoji">👍</span><span class="jj-reaction__count">1</span></button></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 08.12 WIB, Terima kasih, sudah saya simpan., Terkirim">
+                <div class="jj-bubble"><div class="jj-quote jj-quote--on-dark"><p class="jj-quote__name">Siti Rahmah</p><p class="jj-quote__text">Foto · Ini denah lokasinya.</p></div><p class="jj-bubble__body" aria-hidden="true">Terima kasih, sudah saya simpan.</p><div class="jj-meta" aria-hidden="true"><span>08.12 WIB</span><span class="jj-meta__status"><span class="ic ic-done" aria-hidden="true"></span>Terkirim</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg" role="group" aria-label="Siti Rahmah, 08.20 WIB, Pesan ini telah dihapus">
+                <div class="jj-bubble"><p class="jj-bubble__body jj-bubble__deleted" aria-hidden="true">Pesan ini telah dihapus</p><div class="jj-meta" aria-hidden="true"><span>08.20 WIB</span></div></div>
+              </div></div>
+              <div class="jj-item"><div class="jj-msg jj-msg--mine" role="group" aria-label="Anda, 09.40 WIB, Saya berangkat dari Pekanbaru jam 7 pagi., Mengirim">
+                <div class="jj-bubble"><p class="jj-bubble__body" aria-hidden="true">Saya berangkat dari Pekanbaru jam 7 pagi.</p><div class="jj-meta" aria-hidden="true"><span>09.40 WIB</span><span class="jj-meta__status"><span class="ic ic-schedule" aria-hidden="true"></span>Mengirim</span></div></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="jj-composer">
+            <div class="jj-composer__row">
+              <button class="icon-btn" type="button" aria-label="Kirim foto"><span class="ic ic-add_photo_alternate_outlined" aria-hidden="true"></span></button>
+              <div class="jj-composer__field">
+                <div class="input jj-input-typed"><textarea class="input__control" rows="1" aria-label="Tulis pesan" placeholder="Tulis pesan…"></textarea></div>
+              </div>
+              <button class="icon-btn jj-send" type="button" aria-label="Kirim" disabled><span class="ic ic-send" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="jj-safe-bottom"></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cr20-title">
+          <div class="sheet__body">
+            <h3 class="jj-sheet-title" id="cr20-title">Laporkan pesan</h3>
+            <p class="mt-1 c-muted clamp-2">Siti Rahmah: Foto · Ini denah lokasinya.</p>
+            <p class="mt-3 fw-500" id="cr20-title-cat">Kategori</p>
+            <div role="radiogroup" aria-labelledby="cr20-title-cat">
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Spam</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Pelecehan atau perundungan</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ujaran kebencian</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Konten seksual</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Ancaman kekerasan atau keselamatan</span><span class="jj-tile__subtitle">Ditangani paling lambat 24 jam.</span></span></div>
+              <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Penipuan</span></span></div>
+              <div class="jj-tile jj-tile--two-line" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Lainnya</span><span class="jj-tile__subtitle">Wajib menjelaskan masalahnya.</span></span></div>
+            </div>
+            <div class="field mt-3">
+              <label class="field__label" for="cr20-title-desc">Penjelasan</label>
+              <div class="input input--multiline"><textarea class="input__control" id="cr20-title-desc" rows="4" maxlength="2000" placeholder="Opsional"></textarea></div>
+            </div>
+            <div class="mt-3"><div class="info-box"><span class="ic ic-shield_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Laporan tidak dibuka kepada pihak yang dilaporkan. Pantau statusnya di Akun &gt; Laporan Saya. Dalam keadaan darurat, hubungi pihak berwenang.</p></div></div></div>
+            <div class="mt-4"><button class="btn btn--primary" type="button"><span class="ic ic-flag_outlined" aria-hidden="true"></span>Kirim laporan</button></div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Varian lengkap di <a href="report-sheet.html">report-sheet.html</a>.</p>
+    </figure>
+
+    <!-- 21. Memuat -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">21</span> Memuat</figcaption>
+      <div class="device" aria-label="Percakapan, memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="skeleton" role="status" aria-label="Memuat percakapan"><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div></div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Sebelum room dimuat: AppScaffold "Percakapan" biasa (judul tengah), bukan app bar percakapan.</p>
+    </figure>
+
+    <!-- 22. Galat -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">22</span> Galat</figcaption>
+      <div class="device" aria-label="Percakapan, galat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="state state--error">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off"></span></div>
+              <h3 class="state__title">Tidak ada koneksi</h3>
+              <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+            </div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 23. Percakapan tidak tersedia -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">23</span> Percakapan tidak tersedia</figcaption>
+      <div class="device" aria-label="Percakapan tidak tersedia">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="state">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-speaker_notes_off_outlined"></span></div>
+              <h3 class="state__title">Percakapan tidak tersedia</h3>
+              <p class="state__message">Anda bukan lagi anggota percakapan ini, sehingga riwayatnya tidak dapat dibuka.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button">Ke Jejaring</button>
+            </div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Keluar/dikeluarkan dari grup: riwayat tidak lagi dapat dibaca dan antrean lokal dibuang.</p>
+    </figure>
+
+    <!-- 24. Keanggotaan tidak aktif (saat membuka) -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">24</span> Keanggotaan tidak aktif (saat membuka)</figcaption>
+      <div class="device" aria-label="Percakapan, keanggotaan tidak aktif">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Percakapan</span></h2>
+            
+          </header>
+          <div class="screen__body"><div class="state">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-lock_clock_outlined"></span></div>
+              <h3 class="state__title">Keanggotaan tidak aktif</h3>
+              <p class="state__message">Fitur ini memerlukan KTA aktif. Status keanggotaan Anda sedang diperbarui. Perpanjang KTA untuk membuka kembali percakapan.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button">Perpanjang KTA</button>
+            </div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Pesan = pesan galat server (MEMBERSHIP_REQUIRED) + kalimat ajakan.</p>
+    </figure>
+
+  </main>
+</body>
+</html>

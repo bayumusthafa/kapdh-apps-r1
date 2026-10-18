@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Masuk - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Masuk (LoginScreen) aplikasi KAPDH untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/auth.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <h1 class="page-header__title">Masuk</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/auth/login_screen.dart</code> (LoginScreen, _ForgotPasswordLink)</dd>
+      <dt>Rute</dt><dd><code>/login</code></dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama (kosong, tombol nonaktif)</li>
+        <li>Terisi, siap masuk</li>
+        <li>Password ditampilkan</li>
+        <li>Fokus Email + keyboard</li>
+        <li>Memeriksa</li>
+        <li>Email atau password salah</li>
+        <li>Galat per field</li>
+        <li>Batas percobaan (cooldown)</li>
+        <li>Pemberitahuan password diganti</li>
+        <li>Pemberitahuan peringatan</li>
+      </ol>
+    </div>
+    <p class="page-header__note">BrandSheetScaffold(scrollable: true, overlap 16): pita bermotif dan lembar bergulir bersama; area status bar tetap hijau (#215E1E) saat tergulir. Tombol Masuk aktif hanya bila email dan password terisi dan tidak sedang cooldown. Email dapat terisi awal dari authEmailHintProvider (mis. setelah Lupa Password).</p>
+  </header>
+
+  <main class="frames">
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Utama (kosong)</figcaption>
+      <div class="device" role="group" aria-label="Masuk, utama (kosong)">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band brand-band--pattern auth-band-login">
+            <img class="auth-login-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="84" height="84">
+            <h2 class="auth-login-greeting">Selamat<br><span class="auth-login-greeting__accent">Datang kembali !!!</span></h2>
+            <p class="auth-login-tagline">Masuk untuk melanjutkan silaturahmi bersama alumni</p>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="auth-login-body">
+              <div class="field">
+                <label class="field__label" for="l1-email">Email</label>
+                <div class="input">
+                  <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                  <input class="input__control" id="l1-email" type="email" placeholder="Masukkan Email" autocomplete="email">
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="field">
+                  <label class="field__label" for="l1-pw">Password</label>
+                  <div class="input">
+                    <input class="input__control" id="l1-pw" type="password" placeholder="Masukkan Password" autocomplete="current-password">
+                    <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                  </div>
+                </div>
+              </div>
+              <button class="auth-forgot" type="button">Lupa Password</button>
+              <div class="mt-5">
+                <button class="btn btn--primary" type="button" disabled>Masuk</button>
+              </div>
+              <div class="mt-6">
+                <div class="auth-wrap"><span class="auth-wrap__text">Belum ada akun?</span><button class="btn-link" type="button">Daftar</button></div>
+              </div>
+              <div class="mt-2">
+                <div class="auth-wrap"><button class="btn-link" type="button">Kebijakan Privasi</button><button class="btn-link" type="button">Bantuan</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="auth-statusfill" aria-hidden="true"></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Kedua field kosong: KapdhButton "Masuk" nonaktif (disabledBg).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Terisi, siap masuk</figcaption>
+      <div class="device" role="group" aria-label="Masuk, terisi, siap masuk">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band brand-band--pattern auth-band-login">
+            <img class="auth-login-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="84" height="84">
+            <h2 class="auth-login-greeting">Selamat<br><span class="auth-login-greeting__accent">Datang kembali !!!</span></h2>
+            <p class="auth-login-tagline">Masuk untuk melanjutkan silaturahmi bersama alumni</p>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="auth-login-body">
+              <div class="field">
+                <label class="field__label" for="l2-email">Email</label>
+                <div class="input">
+                  <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                  <input class="input__control" id="l2-email" type="email" placeholder="Masukkan Email" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="field">
+                  <label class="field__label" for="l2-pw">Password</label>
+                  <div class="input">
+                    <input class="input__control" id="l2-pw" type="password" placeholder="Masukkan Password" value="Rahasia#2026" autocomplete="current-password">
+                    <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                  </div>
+                </div>
+              </div>
+              <button class="auth-forgot" type="button">Lupa Password</button>
+              <div class="mt-5">
+                <button class="btn btn--primary" type="button">Masuk</button>
+              </div>
+              <div class="mt-6">
+                <div class="auth-wrap"><span class="auth-wrap__text">Belum ada akun?</span><button class="btn-link" type="button">Daftar</button></div>
+              </div>
+              <div class="mt-2">
+                <div class="auth-wrap"><button class="btn-link" type="button">Kebijakan Privasi</button><button class="btn-link" type="button">Bantuan</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="auth-statusfill" aria-hidden="true"></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Password ditampilkan</figcaption>
+      <div class="device" role="group" aria-label="Masuk, password ditampilkan">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band brand-band--pattern auth-band-login">
+            <img class="auth-login-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="84" height="84">
+            <h2 class="auth-login-greeting">Selamat<br><span class="auth-login-greeting__accent">Datang kembali !!!</span></h2>
+            <p class="auth-login-tagline">Masuk untuk melanjutkan silaturahmi bersama alumni</p>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="auth-login-body">
+              <div class="field">
+                <label class="field__label" for="l3-email">Email</label>
+                <div class="input">
+                  <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                  <input class="input__control" id="l3-email" type="email" placeholder="Masukkan Email" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="field">
+                  <label class="field__label" for="l3-pw">Password</label>
+                  <div class="input">
+                    <input class="input__control" id="l3-pw" type="text" placeholder="Masukkan Password" value="Rahasia#2026" autocomplete="current-password">
+                    <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Sembunyikan password"><span class="ic ic-visibility_outlined" aria-hidden="true"></span></button></span>
+                  </div>
+                </div>
+              </div>
+              <button class="auth-forgot" type="button">Lupa Password</button>
+              <div class="mt-5">
+                <button class="btn btn--primary" type="button">Masuk</button>
+              </div>
+              <div class="mt-6">
+                <div class="auth-wrap"><span class="auth-wrap__text">Belum ada akun?</span><button class="btn-link" type="button">Daftar</button></div>
+              </div>
+              <div class="mt-2">
+                <div class="auth-wrap"><button class="btn-link" type="button">Kebijakan Privasi</button><button class="btn-link" type="button">Bantuan</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="auth-statusfill" aria-hidden="true"></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tombol mata: tooltip "Sembunyikan password", ikon visibility_outlined.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Fokus Email + keyboard</figcaption>
+      <div class="device" role="group" aria-label="Masuk, fokus email + keyboard">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen auth-kb">
+          <header class="brand-band brand-band--pattern auth-band-login">
+            <img class="auth-login-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="84" height="84">
+            <h2 class="auth-login-greeting">Selamat<br><span class="auth-login-greeting__accent">Datang kembali !!!</span></h2>
+            <p class="auth-login-tagline">Masuk untuk melanjutkan silaturahmi bersama alumni</p>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="auth-login-body">
+              <div class="field">
+                <label class="field__label" for="l4-email">Email</label>
+                <div class="input is-focused">
+                  <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                  <input class="input__control" id="l4-email" type="email" placeholder="Masukkan Email" value="ahmad.fa" autocomplete="email">
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="field">
+                  <label class="field__label" for="l4-pw">Password</label>
+                  <div class="input">
+                    <input class="input__control" id="l4-pw" type="password" placeholder="Masukkan Password" autocomplete="current-password">
+                    <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                  </div>
+                </div>
+              </div>
+              <button class="auth-forgot" type="button">Lupa Password</button>
+              <div class="mt-5">
+                <button class="btn btn--primary" type="button" disabled>Masuk</button>
+              </div>
+              <div class="mt-6">
+                <div class="auth-wrap"><span class="auth-wrap__text">Belum ada akun?</span><button class="btn-link" type="button">Daftar</button></div>
+              </div>
+              <div class="mt-2">
+                <div class="auth-wrap"><button class="btn-link" type="button">Kebijakan Privasi</button><button class="btn-link" type="button">Bantuan</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="auth-statusfill" aria-hidden="true"></div>
+        <div class="keyboard" aria-hidden="true">
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+          <div class="keyboard__row"><span class="keyboard__key"></span><span class="keyboard__key"></span><span class="keyboard__key" style="max-width:150px;flex:5"></span><span class="keyboard__key"></span><span class="keyboard__key"></span></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Garis field 2 px primary. Scaffold menyusut di atas keyboard; field Email tetap terlihat tanpa gulir.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Memeriksa</figcaption>
+      <div class="device" role="group" aria-label="Masuk, memeriksa">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band brand-band--pattern auth-band-login">
+            <img class="auth-login-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="84" height="84">
+            <h2 class="auth-login-greeting">Selamat<br><span class="auth-login-greeting__accent">Datang kembali !!!</span></h2>
+            <p class="auth-login-tagline">Masuk untuk melanjutkan silaturahmi bersama alumni</p>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="auth-login-body">
+              <div class="field">
+                <label class="field__label" for="l5-email">Email</label>
+                <div class="input">
+                  <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                  <input class="input__control" id="l5-email" type="email" placeholder="Masukkan Email" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="field">
+                  <label class="field__label" for="l5-pw">Password</label>
+                  <div class="input">
+                    <input class="input__control" id="l5-pw" type="password" placeholder="Masukkan Password" value="Rahasia#2026" autocomplete="current-password">
+                    <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                  </div>
+                </div>
+              </div>
+              <button class="auth-forgot" type="button">Lupa Password</button>
+              <div class="mt-5">
+                <button class="btn btn--primary is-busy" type="button" disabled aria-busy="true"><span class="spinner spinner--18" aria-hidden="true"></span>Memeriksa...</button>
+              </div>
+              <div class="mt-6">
+                <div class="auth-wrap"><span class="auth-wrap__text">Belum ada akun?</span><button class="btn-link" type="button">Daftar</button></div>
+              </div>
+              <div class="mt-2">
+                <div class="auth-wrap"><button class="btn-link" type="button">Kebijakan Privasi</button><button class="btn-link" type="button">Bantuan</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="auth-statusfill" aria-hidden="true"></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">busyLabel "Memeriksa..." dengan indikator 18 px; tombol nonaktif.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Email atau password salah</figcaption>
+      <div class="device" role="group" aria-label="Masuk, email atau password salah">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band brand-band--pattern auth-band-login">
+            <img class="auth-login-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="84" height="84">
+            <h2 class="auth-login-greeting">Selamat<br><span class="auth-login-greeting__accent">Datang kembali !!!</span></h2>
+            <p class="auth-login-tagline">Masuk untuk melanjutkan silaturahmi bersama alumni</p>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="auth-login-body">
+              <div class="field">
+                <label class="field__label" for="l6-email">Email</label>
+                <div class="input">
+                  <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                  <input class="input__control" id="l6-email" type="email" placeholder="Masukkan Email" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="field">
+                  <label class="field__label" for="l6-pw">Password</label>
+                  <div class="input">
+                    <input class="input__control" id="l6-pw" type="password" placeholder="Masukkan Password" value="Rahasia#2026" autocomplete="current-password">
+                    <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                  </div>
+                </div>
+              </div>
+              <button class="auth-forgot" type="button">Lupa Password</button>
+              <div class="mt-2">
+                <div class="info-box info-box--danger" role="status"><span class="ic ic-error_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Email atau password salah.</p></div></div>
+              </div>
+              <div class="mt-5">
+                <button class="btn btn--primary" type="button">Masuk</button>
+              </div>
+              <div class="mt-6">
+                <div class="auth-wrap"><span class="auth-wrap__text">Belum ada akun?</span><button class="btn-link" type="button">Daftar</button></div>
+              </div>
+              <div class="mt-2">
+                <div class="auth-wrap"><button class="btn-link" type="button">Kebijakan Privasi</button><button class="btn-link" type="button">Bantuan</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="auth-statusfill" aria-hidden="true"></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">InfoBox bahaya dari ApiException.message (401).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Galat per field</figcaption>
+      <div class="device" role="group" aria-label="Masuk, galat per field">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band brand-band--pattern auth-band-login">
+            <img class="auth-login-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="84" height="84">
+            <h2 class="auth-login-greeting">Selamat<br><span class="auth-login-greeting__accent">Datang kembali !!!</span></h2>
+            <p class="auth-login-tagline">Masuk untuk melanjutkan silaturahmi bersama alumni</p>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="auth-login-body">
+              <div class="field">
+                <label class="field__label" for="l7-email">Email</label>
+                <div class="input is-error">
+                  <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                  <input class="input__control" id="l7-email" type="email" placeholder="Masukkan Email" value="bukan-email" autocomplete="email" aria-invalid="true" aria-describedby="l7-email-err">
+                </div>
+                <p class="field__error" id="l7-email-err">Format email tidak valid</p>
+              </div>
+              <div class="mt-4">
+                <div class="field">
+                  <label class="field__label" for="l7-pw">Password</label>
+                  <div class="input">
+                    <input class="input__control" id="l7-pw" type="password" placeholder="Masukkan Password" value="Rahasia#2026" autocomplete="current-password">
+                    <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                  </div>
+                </div>
+              </div>
+              <button class="auth-forgot" type="button">Lupa Password</button>
+              <div class="mt-5">
+                <button class="btn btn--primary" type="button">Masuk</button>
+              </div>
+              <div class="mt-6">
+                <div class="auth-wrap"><span class="auth-wrap__text">Belum ada akun?</span><button class="btn-link" type="button">Daftar</button></div>
+              </div>
+              <div class="mt-2">
+                <div class="auth-wrap"><button class="btn-link" type="button">Kebijakan Privasi</button><button class="btn-link" type="button">Bantuan</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="auth-statusfill" aria-hidden="true"></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">field_errors.email dari server tampil di bawah field (indent 20).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">8</span> Batas percobaan (cooldown)</figcaption>
+      <div class="device device--tall" role="group" aria-label="Masuk, batas percobaan (cooldown)">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band brand-band--pattern auth-band-login">
+            <img class="auth-login-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="84" height="84">
+            <h2 class="auth-login-greeting">Selamat<br><span class="auth-login-greeting__accent">Datang kembali !!!</span></h2>
+            <p class="auth-login-tagline">Masuk untuk melanjutkan silaturahmi bersama alumni</p>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="auth-login-body">
+              <div class="field">
+                <label class="field__label" for="l8-email">Email</label>
+                <div class="input">
+                  <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                  <input class="input__control" id="l8-email" type="email" placeholder="Masukkan Email" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="field">
+                  <label class="field__label" for="l8-pw">Password</label>
+                  <div class="input">
+                    <input class="input__control" id="l8-pw" type="password" placeholder="Masukkan Password" value="Rahasia#2026" autocomplete="current-password">
+                    <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                  </div>
+                </div>
+              </div>
+              <button class="auth-forgot" type="button">Lupa Password</button>
+              <div class="mt-2">
+                <div class="info-box info-box--danger" role="status"><span class="ic ic-error_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Terlalu banyak percobaan masuk. Coba lagi nanti atau gunakan lupa password.</p></div></div>
+              </div>
+              <div class="mt-2">
+                <p class="auth-note">Sambil menunggu, Anda tetap dapat memulihkan akun lewat Lupa Password.</p>
+              </div>
+              <div class="mt-5">
+                <button class="btn btn--primary" type="button" disabled>Coba lagi dalam 4:59</button>
+              </div>
+              <div class="mt-6">
+                <div class="auth-wrap"><span class="auth-wrap__text">Belum ada akun?</span><button class="btn-link" type="button">Daftar</button></div>
+              </div>
+              <div class="mt-2">
+                <div class="auth-wrap"><button class="btn-link" type="button">Kebijakan Privasi</button><button class="btn-link" type="button">Bantuan</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="auth-statusfill" aria-hidden="true"></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">RATE_LIMITED + retry_after: label hitung mundur m:ss, tombol nonaktif; Lupa Password tetap aktif (PRD 2.5). Frame setinggi isi.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">9</span> Pemberitahuan password diganti</figcaption>
+      <div class="device device--tall" role="group" aria-label="Masuk, pemberitahuan password diganti">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band brand-band--pattern auth-band-login">
+            <img class="auth-login-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="84" height="84">
+            <h2 class="auth-login-greeting">Selamat<br><span class="auth-login-greeting__accent">Datang kembali !!!</span></h2>
+            <p class="auth-login-tagline">Masuk untuk melanjutkan silaturahmi bersama alumni</p>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="auth-login-body">
+              <div class="field">
+                <label class="field__label" for="l9-email">Email</label>
+                <div class="input">
+                  <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                  <input class="input__control" id="l9-email" type="email" placeholder="Masukkan Email" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="field">
+                  <label class="field__label" for="l9-pw">Password</label>
+                  <div class="input">
+                    <input class="input__control" id="l9-pw" type="password" placeholder="Masukkan Password" autocomplete="current-password">
+                    <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                  </div>
+                </div>
+              </div>
+              <button class="auth-forgot" type="button">Lupa Password</button>
+              <div class="mt-2">
+                <div class="info-box" role="status"><span class="ic ic-check_circle_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Password berhasil diganti</p><p class="info-box__message">Masuk dengan password baru Anda. Perangkat lain yang masuk ke akun ini sudah dikeluarkan.</p></div></div>
+              </div>
+              <div class="mt-5">
+                <button class="btn btn--primary" type="button" disabled>Masuk</button>
+              </div>
+              <div class="mt-6">
+                <div class="auth-wrap"><span class="auth-wrap__text">Belum ada akun?</span><button class="btn-link" type="button">Daftar</button></div>
+              </div>
+              <div class="mt-2">
+                <div class="auth-wrap"><button class="btn-link" type="button">Kebijakan Privasi</button><button class="btn-link" type="button">Bantuan</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="auth-statusfill" aria-hidden="true"></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">LoginNotice sekali tampil setelah Password Baru tersimpan (nada info, ikon check_circle_outline).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">10</span> Pemberitahuan peringatan</figcaption>
+      <div class="device device--tall" role="group" aria-label="Masuk, pemberitahuan peringatan">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band brand-band--pattern auth-band-login">
+            <img class="auth-login-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="84" height="84">
+            <h2 class="auth-login-greeting">Selamat<br><span class="auth-login-greeting__accent">Datang kembali !!!</span></h2>
+            <p class="auth-login-tagline">Masuk untuk melanjutkan silaturahmi bersama alumni</p>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="auth-login-body">
+              <div class="field">
+                <label class="field__label" for="l10-email">Email</label>
+                <div class="input">
+                  <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                  <input class="input__control" id="l10-email" type="email" placeholder="Masukkan Email" value="ahmad.fauzi@contoh.id" autocomplete="email">
+                </div>
+              </div>
+              <div class="mt-4">
+                <div class="field">
+                  <label class="field__label" for="l10-pw">Password</label>
+                  <div class="input">
+                    <input class="input__control" id="l10-pw" type="password" placeholder="Masukkan Password" autocomplete="current-password">
+                    <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                  </div>
+                </div>
+              </div>
+              <button class="auth-forgot" type="button">Lupa Password</button>
+              <div class="mt-2">
+                <div class="info-box info-box--warning" role="status"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Coba masuk dengan password baru Anda. Bila ditolak, gunakan Lupa Password untuk menerima kode baru.</p></div></div>
+              </div>
+              <div class="mt-5">
+                <button class="btn btn--primary" type="button" disabled>Masuk</button>
+              </div>
+              <div class="mt-6">
+                <div class="auth-wrap"><span class="auth-wrap__text">Belum ada akun?</span><button class="btn-link" type="button">Daftar</button></div>
+              </div>
+              <div class="mt-2">
+                <div class="auth-wrap"><button class="btn-link" type="button">Kebijakan Privasi</button><button class="btn-link" type="button">Bantuan</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="auth-statusfill" aria-hidden="true"></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">LoginNotice(success: false) dari keadaan "Password baru mungkin sudah tersimpan".</p>
+    </figure>
+
+  </main>
+</body>
+</html>

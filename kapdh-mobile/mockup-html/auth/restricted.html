@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portal Akun Dibatasi - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis portal pembatasan (RestrictedScreen) aplikasi KAPDH untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/auth.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <h1 class="page-header__title">Portal Akun Dibatasi</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/status/restricted_screen.dart</code> (RestrictedScreen), <code>lib/features/status/appeal_section.dart</code> (AppealSection, _AppealCard), <code>lib/features/status/status_portal_actions.dart</code>, <code>lib/features/account/widgets/account_section.dart</code></dd>
+      <dt>Rute</dt><dd><code>/restricted</code></dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama (viewport)</li>
+        <li>Gulir penuh</li>
+        <li>Banding sudah diterima</li>
+        <li>Banding: alasan terlalu pendek</li>
+        <li>Status banding memuat</li>
+        <li>Status banding gagal dimuat</li>
+        <li>Offline</li>
+        <li>Pemeliharaan: ganti password ditunda</li>
+        <li>Banding terkirim (snackbar)</li>
+      </ol>
+    </div>
+    <p class="page-header__note">BrandSheetScaffold dengan GreetingHeader (overlap 16) dan anggota suspended. Alasan dari server (suspension_message) tanpa alasan internal; contoh teks fiktif. Kotak masuk resmi, sesi perangkat, ganti password, banding, kontak, ketentuan dan hapus akun tetap tersedia. Pita global (Offline/Pemeliharaan) disisipkan di puncak isi yang bergulir.</p>
+  </header>
+
+  <main class="frames">
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Utama (viewport)</figcaption>
+      <div class="device" role="group" aria-label="Akun dibatasi, utama (viewport)">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <div class="col"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Siti Rahmah</span></div>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-neutral">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-block"></span></div>
+                  <span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatasi</span>
+                  <h2 class="status-hero__title">Akun Anda sedang dibatasi</h2>
+                  <p class="status-hero__message">Pengurus membatasi akses akun ini. Selama dibatasi, KTA, pembayaran baru dan fitur komunitas tidak dapat digunakan. Tanggal masa keanggotaan Anda tidak berubah.</p>
+                </div>
+                <div class="mt-5">
+                  <div class="summary-card summary-card--danger">
+                    <h3 class="summary-card__title">Keterangan dari pengurus</h3>
+                    <p class="summary-card__body">Akun dibatasi sementara karena beberapa laporan pelanggaran ketentuan komunitas. Hubungi pengurus untuk peninjauan.</p>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x1-inbox">
+                    <h3 class="account-section__title" id="x1-inbox">KOTAK MASUK</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Notifikasi</span><span class="menu-tile__subtitle">Pemberitahuan pengurus dan keamanan akun</span></span><span class="count-pill">3</span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x1-sec">
+                    <h3 class="account-section__title" id="x1-sec">KEAMANAN AKUN</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-devices_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Sesi perangkat</span><span class="menu-tile__subtitle">Tinjau dan keluarkan perangkat yang tidak Anda kenali</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                      <a class="menu-tile" href="#"><span class="ic ic-lock_reset" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Ganti password</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <div class="section-header auth-section-header"><h3 class="section-header__title">Banding</h3></div>
+                </div>
+                <div class="mt-2">
+                  <div class="auth-panel">
+                    <h4 class="auth-panel__title">Ajukan banding</h4>
+                    <p class="auth-panel__text">Jelaskan mengapa pembatasan ini perlu ditinjau ulang. Pengurus menanggapi paling lambat 2 hari kerja.</p>
+                    <div class="mt-3">
+                      <div class="field">
+                        <label class="field__label" for="x1-appeal">Alasan banding</label>
+                        <div class="input input--multiline">
+                          <textarea class="input__control auth-textarea-5" id="x1-appeal" rows="5" placeholder="Tuliskan alasan Anda" aria-describedby="x1-appeal-help"></textarea>
+                        </div>
+                        <p class="field__helper" id="x1-appeal-help">0/2000 karakter</p>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button"><span class="ic ic-send_outlined" aria-hidden="true"></span>Kirim banding</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div class="auth-links"><button class="btn-link" type="button"><span class="ic ic-gavel_outlined" aria-hidden="true"></span>Ketentuan komunitas</button><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-3">
+                  <div class="info-box"><span class="ic ic-delete_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Ingin menghapus akun?</p><p class="info-box__message">Anda tetap dapat menghapus akun dan data pribadi setelah mengonfirmasi password, tanpa membuka akses komunitas.</p></div><button class="btn-text info-box__trailing" type="button">Hapus akun</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--primary" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Periksa status</button>
+                  <div class="mt-3">
+                    <button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">StatusHero nada netral "Dibatasi" (ikon block).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Gulir penuh</figcaption>
+      <div class="device device--tall" role="group" aria-label="Akun dibatasi, gulir penuh">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <div class="col"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Siti Rahmah</span></div>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-neutral">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-block"></span></div>
+                  <span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatasi</span>
+                  <h2 class="status-hero__title">Akun Anda sedang dibatasi</h2>
+                  <p class="status-hero__message">Pengurus membatasi akses akun ini. Selama dibatasi, KTA, pembayaran baru dan fitur komunitas tidak dapat digunakan. Tanggal masa keanggotaan Anda tidak berubah.</p>
+                </div>
+                <div class="mt-5">
+                  <div class="summary-card summary-card--danger">
+                    <h3 class="summary-card__title">Keterangan dari pengurus</h3>
+                    <p class="summary-card__body">Akun dibatasi sementara karena beberapa laporan pelanggaran ketentuan komunitas. Hubungi pengurus untuk peninjauan.</p>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x2-inbox">
+                    <h3 class="account-section__title" id="x2-inbox">KOTAK MASUK</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Notifikasi</span><span class="menu-tile__subtitle">Pemberitahuan pengurus dan keamanan akun</span></span><span class="count-pill">3</span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x2-sec">
+                    <h3 class="account-section__title" id="x2-sec">KEAMANAN AKUN</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-devices_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Sesi perangkat</span><span class="menu-tile__subtitle">Tinjau dan keluarkan perangkat yang tidak Anda kenali</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                      <a class="menu-tile" href="#"><span class="ic ic-lock_reset" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Ganti password</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <div class="section-header auth-section-header"><h3 class="section-header__title">Banding</h3></div>
+                </div>
+                <div class="mt-2">
+                  <div class="auth-panel">
+                    <h4 class="auth-panel__title">Ajukan banding</h4>
+                    <p class="auth-panel__text">Jelaskan mengapa pembatasan ini perlu ditinjau ulang. Pengurus menanggapi paling lambat 2 hari kerja.</p>
+                    <div class="mt-3">
+                      <div class="field">
+                        <label class="field__label" for="x2-appeal">Alasan banding</label>
+                        <div class="input input--multiline">
+                          <textarea class="input__control auth-textarea-5" id="x2-appeal" rows="5" placeholder="Tuliskan alasan Anda" aria-describedby="x2-appeal-help"></textarea>
+                        </div>
+                        <p class="field__helper" id="x2-appeal-help">0/2000 karakter</p>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button"><span class="ic ic-send_outlined" aria-hidden="true"></span>Kirim banding</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div class="auth-links"><button class="btn-link" type="button"><span class="ic ic-gavel_outlined" aria-hidden="true"></span>Ketentuan komunitas</button><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-3">
+                  <div class="info-box"><span class="ic ic-delete_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Ingin menghapus akun?</p><p class="info-box__message">Anda tetap dapat menghapus akun dan data pribadi setelah mengonfirmasi password, tanpa membuka akses komunitas.</p></div><button class="btn-text info-box__trailing" type="button">Hapus akun</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--primary" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Periksa status</button>
+                  <div class="mt-3">
+                    <button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Seluruh isi: formulir banding (TextField 5 baris, helper penghitung) sampai tombol "Periksa status" dan "Keluar".</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Banding sudah diterima</figcaption>
+      <div class="device" role="group" aria-label="Akun dibatasi, banding sudah diterima">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <div class="col"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Siti Rahmah</span></div>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport" style="--scroll:700px">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-neutral">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-block"></span></div>
+                  <span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatasi</span>
+                  <h2 class="status-hero__title">Akun Anda sedang dibatasi</h2>
+                  <p class="status-hero__message">Pengurus membatasi akses akun ini. Selama dibatasi, KTA, pembayaran baru dan fitur komunitas tidak dapat digunakan. Tanggal masa keanggotaan Anda tidak berubah.</p>
+                </div>
+                <div class="mt-5">
+                  <div class="summary-card summary-card--danger">
+                    <h3 class="summary-card__title">Keterangan dari pengurus</h3>
+                    <p class="summary-card__body">Akun dibatasi sementara karena beberapa laporan pelanggaran ketentuan komunitas. Hubungi pengurus untuk peninjauan.</p>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x3-inbox">
+                    <h3 class="account-section__title" id="x3-inbox">KOTAK MASUK</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Notifikasi</span><span class="menu-tile__subtitle">Pemberitahuan pengurus dan keamanan akun</span></span><span class="count-pill">3</span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x3-sec">
+                    <h3 class="account-section__title" id="x3-sec">KEAMANAN AKUN</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-devices_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Sesi perangkat</span><span class="menu-tile__subtitle">Tinjau dan keluarkan perangkat yang tidak Anda kenali</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                      <a class="menu-tile" href="#"><span class="ic ic-lock_reset" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Ganti password</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <div class="section-header auth-section-header"><h3 class="section-header__title">Banding</h3></div>
+                </div>
+                <div class="mt-2">
+                  <div class="summary-card">
+                    <h3 class="summary-card__title">Banding sudah diterima</h3>
+                    <div class="summary-row"><span class="summary-row__label">Status</span><span class="summary-row__value summary-row__value--em">Menunggu ditinjau</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Diajukan</span><span class="summary-row__value">16 Okt 2026, 10.15 WIB</span></div>
+                    <p class="summary-card__footnote">Target tanggapan 20 Okt 2026, 10.15 WIB.</p>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div class="auth-links"><button class="btn-link" type="button"><span class="ic ic-gavel_outlined" aria-hidden="true"></span>Ketentuan komunitas</button><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-3">
+                  <div class="info-box"><span class="ic ic-delete_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Ingin menghapus akun?</p><p class="info-box__message">Anda tetap dapat menghapus akun dan data pribadi setelah mengonfirmasi password, tanpa membuka akses komunitas.</p></div><button class="btn-text info-box__trailing" type="button">Hapus akun</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--primary" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Periksa status</button>
+                  <div class="mt-3">
+                    <button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Banding aktif: _AppealCard (SummaryCard) menggantikan formulir.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Banding: alasan terlalu pendek</figcaption>
+      <div class="device" role="group" aria-label="Akun dibatasi, banding: alasan terlalu pendek">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <div class="col"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Siti Rahmah</span></div>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport" style="--scroll:700px">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-neutral">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-block"></span></div>
+                  <span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatasi</span>
+                  <h2 class="status-hero__title">Akun Anda sedang dibatasi</h2>
+                  <p class="status-hero__message">Pengurus membatasi akses akun ini. Selama dibatasi, KTA, pembayaran baru dan fitur komunitas tidak dapat digunakan. Tanggal masa keanggotaan Anda tidak berubah.</p>
+                </div>
+                <div class="mt-5">
+                  <div class="summary-card summary-card--danger">
+                    <h3 class="summary-card__title">Keterangan dari pengurus</h3>
+                    <p class="summary-card__body">Akun dibatasi sementara karena beberapa laporan pelanggaran ketentuan komunitas. Hubungi pengurus untuk peninjauan.</p>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x4-inbox">
+                    <h3 class="account-section__title" id="x4-inbox">KOTAK MASUK</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Notifikasi</span><span class="menu-tile__subtitle">Pemberitahuan pengurus dan keamanan akun</span></span><span class="count-pill">3</span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x4-sec">
+                    <h3 class="account-section__title" id="x4-sec">KEAMANAN AKUN</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-devices_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Sesi perangkat</span><span class="menu-tile__subtitle">Tinjau dan keluarkan perangkat yang tidak Anda kenali</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                      <a class="menu-tile" href="#"><span class="ic ic-lock_reset" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Ganti password</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <div class="section-header auth-section-header"><h3 class="section-header__title">Banding</h3></div>
+                </div>
+                <div class="mt-2">
+                  <div class="auth-panel">
+                    <h4 class="auth-panel__title">Ajukan banding</h4>
+                    <p class="auth-panel__text">Jelaskan mengapa pembatasan ini perlu ditinjau ulang. Pengurus menanggapi paling lambat 2 hari kerja.</p>
+                    <div class="mt-3">
+                      <div class="field">
+                        <label class="field__label" for="x4-appeal">Alasan banding</label>
+                        <div class="input input--multiline is-error">
+                          <textarea class="input__control auth-textarea-5" id="x4-appeal" rows="5" placeholder="Tuliskan alasan Anda" aria-invalid="true" aria-describedby="x4-appeal-err">Mohon cek</textarea>
+                        </div>
+                        <p class="field__error" id="x4-appeal-err">Tuliskan alasan banding minimal 10 karakter.</p>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button"><span class="ic ic-send_outlined" aria-hidden="true"></span>Kirim banding</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div class="auth-links"><button class="btn-link" type="button"><span class="ic ic-gavel_outlined" aria-hidden="true"></span>Ketentuan komunitas</button><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-3">
+                  <div class="info-box"><span class="ic ic-delete_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Ingin menghapus akun?</p><p class="info-box__message">Anda tetap dapat menghapus akun dan data pribadi setelah mengonfirmasi password, tanpa membuka akses komunitas.</p></div><button class="btn-text info-box__trailing" type="button">Hapus akun</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--primary" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Periksa status</button>
+                  <div class="mt-3">
+                    <button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Validasi lokal setelah "Kirim banding" ditekan (minimal 10 karakter bukan spasi).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Status banding memuat</figcaption>
+      <div class="device" role="group" aria-label="Akun dibatasi, status banding memuat">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <div class="col"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Siti Rahmah</span></div>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport" style="--scroll:700px">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-neutral">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-block"></span></div>
+                  <span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatasi</span>
+                  <h2 class="status-hero__title">Akun Anda sedang dibatasi</h2>
+                  <p class="status-hero__message">Pengurus membatasi akses akun ini. Selama dibatasi, KTA, pembayaran baru dan fitur komunitas tidak dapat digunakan. Tanggal masa keanggotaan Anda tidak berubah.</p>
+                </div>
+                <div class="mt-5">
+                  <div class="summary-card summary-card--danger">
+                    <h3 class="summary-card__title">Keterangan dari pengurus</h3>
+                    <p class="summary-card__body">Akun dibatasi sementara karena beberapa laporan pelanggaran ketentuan komunitas. Hubungi pengurus untuk peninjauan.</p>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x5-inbox">
+                    <h3 class="account-section__title" id="x5-inbox">KOTAK MASUK</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Notifikasi</span><span class="menu-tile__subtitle">Pemberitahuan pengurus dan keamanan akun</span></span><span class="count-pill">3</span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x5-sec">
+                    <h3 class="account-section__title" id="x5-sec">KEAMANAN AKUN</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-devices_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Sesi perangkat</span><span class="menu-tile__subtitle">Tinjau dan keluarkan perangkat yang tidak Anda kenali</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                      <a class="menu-tile" href="#"><span class="ic ic-lock_reset" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Ganti password</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <div class="section-header auth-section-header"><h3 class="section-header__title">Banding</h3></div>
+                </div>
+                <div class="mt-2">
+                  <div class="skeleton" role="status" aria-label="Memuat status banding">
+                    <div class="skeleton__line"></div>
+                    <div class="skeleton__line is-short"></div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div class="auth-links"><button class="btn-link" type="button"><span class="ic ic-gavel_outlined" aria-hidden="true"></span>Ketentuan komunitas</button><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-3">
+                  <div class="info-box"><span class="ic ic-delete_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Ingin menghapus akun?</p><p class="info-box__message">Anda tetap dapat menghapus akun dan data pribadi setelah mengonfirmasi password, tanpa membuka akses komunitas.</p></div><button class="btn-text info-box__trailing" type="button">Hapus akun</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--primary" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Periksa status</button>
+                  <div class="mt-3">
+                    <button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">LoadingSkeleton(showCard: false, lines: 2).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Status banding gagal dimuat</figcaption>
+      <div class="device" role="group" aria-label="Akun dibatasi, status banding gagal dimuat">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <div class="col"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Siti Rahmah</span></div>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport" style="--scroll:700px">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-neutral">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-block"></span></div>
+                  <span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatasi</span>
+                  <h2 class="status-hero__title">Akun Anda sedang dibatasi</h2>
+                  <p class="status-hero__message">Pengurus membatasi akses akun ini. Selama dibatasi, KTA, pembayaran baru dan fitur komunitas tidak dapat digunakan. Tanggal masa keanggotaan Anda tidak berubah.</p>
+                </div>
+                <div class="mt-5">
+                  <div class="summary-card summary-card--danger">
+                    <h3 class="summary-card__title">Keterangan dari pengurus</h3>
+                    <p class="summary-card__body">Akun dibatasi sementara karena beberapa laporan pelanggaran ketentuan komunitas. Hubungi pengurus untuk peninjauan.</p>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x6-inbox">
+                    <h3 class="account-section__title" id="x6-inbox">KOTAK MASUK</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Notifikasi</span><span class="menu-tile__subtitle">Pemberitahuan pengurus dan keamanan akun</span></span><span class="count-pill">3</span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x6-sec">
+                    <h3 class="account-section__title" id="x6-sec">KEAMANAN AKUN</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-devices_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Sesi perangkat</span><span class="menu-tile__subtitle">Tinjau dan keluarkan perangkat yang tidak Anda kenali</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                      <a class="menu-tile" href="#"><span class="ic ic-lock_reset" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Ganti password</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <div class="section-header auth-section-header"><h3 class="section-header__title">Banding</h3></div>
+                </div>
+                <div class="mt-2">
+                  <div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Status banding belum dapat dimuat</p><p class="info-box__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div class="auth-links"><button class="btn-link" type="button"><span class="ic ic-gavel_outlined" aria-hidden="true"></span>Ketentuan komunitas</button><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-3">
+                  <div class="info-box"><span class="ic ic-delete_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Ingin menghapus akun?</p><p class="info-box__message">Anda tetap dapat menghapus akun dan data pribadi setelah mengonfirmasi password, tanpa membuka akses komunitas.</p></div><button class="btn-text info-box__trailing" type="button">Hapus akun</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--primary" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Periksa status</button>
+                  <div class="mt-3">
+                    <button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">InfoBox peringatan dengan "Coba lagi".</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Offline</figcaption>
+      <div class="device" role="group" aria-label="Akun dibatasi, offline">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <div class="col"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Siti Rahmah</span></div>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-strip" role="status"><span class="ic ic-cloud_off" aria-hidden="true"></span><span class="status-strip__text"><strong>Offline</strong>. Tersinkron 18 Okt 2026, 09.12 WIB</span><button class="btn-text" type="button">Coba lagi</button></div>
+                <div class="mt-4">
+                  <div class="status-hero tone-neutral">
+                    <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-block"></span></div>
+                    <span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatasi</span>
+                    <h2 class="status-hero__title">Akun Anda sedang dibatasi</h2>
+                    <p class="status-hero__message">Pengurus membatasi akses akun ini. Selama dibatasi, KTA, pembayaran baru dan fitur komunitas tidak dapat digunakan. Tanggal masa keanggotaan Anda tidak berubah.</p>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="summary-card summary-card--danger">
+                    <h3 class="summary-card__title">Keterangan dari pengurus</h3>
+                    <p class="summary-card__body">Akun dibatasi sementara karena beberapa laporan pelanggaran ketentuan komunitas. Hubungi pengurus untuk peninjauan.</p>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div class="info-box info-box--warning"><span class="ic ic-cloud_off" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Anda sedang offline. Status di atas berasal dari sinkronisasi terakhir.</p></div></div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x7-inbox">
+                    <h3 class="account-section__title" id="x7-inbox">KOTAK MASUK</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Notifikasi</span><span class="menu-tile__subtitle">Pemberitahuan pengurus dan keamanan akun</span></span><span class="count-pill">3</span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x7-sec">
+                    <h3 class="account-section__title" id="x7-sec">KEAMANAN AKUN</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-devices_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Sesi perangkat</span><span class="menu-tile__subtitle">Tinjau dan keluarkan perangkat yang tidak Anda kenali</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                      <a class="menu-tile" href="#"><span class="ic ic-lock_reset" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Ganti password</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <div class="section-header auth-section-header"><h3 class="section-header__title">Banding</h3></div>
+                </div>
+                <div class="mt-2">
+                  <div class="auth-panel">
+                    <h4 class="auth-panel__title">Ajukan banding</h4>
+                    <p class="auth-panel__text">Jelaskan mengapa pembatasan ini perlu ditinjau ulang. Pengurus menanggapi paling lambat 2 hari kerja.</p>
+                    <div class="mt-3">
+                      <div class="field">
+                        <label class="field__label" for="x7-appeal">Alasan banding</label>
+                        <div class="input input--multiline">
+                          <textarea class="input__control auth-textarea-5" id="x7-appeal" rows="5" placeholder="Tuliskan alasan Anda" aria-describedby="x7-appeal-help"></textarea>
+                        </div>
+                        <p class="field__helper" id="x7-appeal-help">0/2000 karakter</p>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button"><span class="ic ic-send_outlined" aria-hidden="true"></span>Kirim banding</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div class="auth-links"><button class="btn-link" type="button"><span class="ic ic-gavel_outlined" aria-hidden="true"></span>Ketentuan komunitas</button><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-3">
+                  <div class="info-box"><span class="ic ic-delete_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Ingin menghapus akun?</p><p class="info-box__message">Anda tetap dapat menghapus akun dan data pribadi setelah mengonfirmasi password, tanpa membuka akses komunitas.</p></div><button class="btn-text info-box__trailing" type="button">Hapus akun</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--primary" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Periksa status</button>
+                  <div class="mt-3">
+                    <button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Pita Offline global di puncak isi + InfoBox peringatan di bawah keterangan pengurus.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">8</span> Pemeliharaan: ganti password ditunda</figcaption>
+      <div class="device" role="group" aria-label="Akun dibatasi, pemeliharaan: ganti password ditunda">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <div class="col"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Siti Rahmah</span></div>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport" style="--scroll:330px">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-strip" role="status"><span class="ic ic-build_outlined" aria-hidden="true"></span><span class="status-strip__text"><strong>Pemeliharaan</strong>. Perubahan data ditunda sampai sekitar 18 Okt 2026, 12.00 WIB.</span><button class="btn-text" type="button">Detail</button></div>
+                <div class="mt-4">
+                  <div class="status-hero tone-neutral">
+                    <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-block"></span></div>
+                    <span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatasi</span>
+                    <h2 class="status-hero__title">Akun Anda sedang dibatasi</h2>
+                    <p class="status-hero__message">Pengurus membatasi akses akun ini. Selama dibatasi, KTA, pembayaran baru dan fitur komunitas tidak dapat digunakan. Tanggal masa keanggotaan Anda tidak berubah.</p>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="summary-card summary-card--danger">
+                    <h3 class="summary-card__title">Keterangan dari pengurus</h3>
+                    <p class="summary-card__body">Akun dibatasi sementara karena beberapa laporan pelanggaran ketentuan komunitas. Hubungi pengurus untuk peninjauan.</p>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x8-inbox">
+                    <h3 class="account-section__title" id="x8-inbox">KOTAK MASUK</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Notifikasi</span><span class="menu-tile__subtitle">Pemberitahuan pengurus dan keamanan akun</span></span><span class="count-pill">3</span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x8-sec">
+                    <h3 class="account-section__title" id="x8-sec">KEAMANAN AKUN</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-devices_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Sesi perangkat</span><span class="menu-tile__subtitle">Tinjau dan keluarkan perangkat yang tidak Anda kenali</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                      <a class="menu-tile is-paused" href="#"><span class="ic ic-lock_reset" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Ganti password</span><span class="menu-tile__subtitle">Ditunda selama pemeliharaan</span></span><span class="ic ic-build_outlined menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <div class="section-header auth-section-header"><h3 class="section-header__title">Banding</h3></div>
+                </div>
+                <div class="mt-2">
+                  <div class="auth-panel">
+                    <h4 class="auth-panel__title">Ajukan banding</h4>
+                    <p class="auth-panel__text">Jelaskan mengapa pembatasan ini perlu ditinjau ulang. Pengurus menanggapi paling lambat 2 hari kerja.</p>
+                    <div class="mt-3">
+                      <div class="field">
+                        <label class="field__label" for="x8-appeal">Alasan banding</label>
+                        <div class="input input--multiline">
+                          <textarea class="input__control auth-textarea-5" id="x8-appeal" rows="5" placeholder="Tuliskan alasan Anda" aria-describedby="x8-appeal-help"></textarea>
+                        </div>
+                        <p class="field__helper" id="x8-appeal-help">0/2000 karakter</p>
+                      </div>
+                    </div>
+                    <div class="mt-3">
+                      <button class="btn btn--solid" type="button"><span class="ic ic-send_outlined" aria-hidden="true"></span>Kirim banding</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div class="auth-links"><button class="btn-link" type="button"><span class="ic ic-gavel_outlined" aria-hidden="true"></span>Ketentuan komunitas</button><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-3">
+                  <div class="info-box"><span class="ic ic-delete_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Ingin menghapus akun?</p><p class="info-box__message">Anda tetap dapat menghapus akun dan data pribadi setelah mengonfirmasi password, tanpa membuka akses komunitas.</p></div><button class="btn-text info-box__trailing" type="button">Hapus akun</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--primary" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Periksa status</button>
+                  <div class="mt-3">
+                    <button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Menu "Ganti password" ditahan mode baca: subjudul "Ditunda selama pemeliharaan", ikon build_outlined.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">9</span> Banding terkirim</figcaption>
+      <div class="device" role="group" aria-label="Akun dibatasi, banding terkirim">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="brand-band auth-band-greeting">
+            <div class="greeting-band">
+              <img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="44" height="44">
+              <div class="col"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Siti Rahmah</span></div>
+            </div>
+          </header>
+          <div class="brand-sheet brand-sheet--overlap-16 auth-sheet">
+            <div class="scroll-viewport" style="--scroll:700px">
+              <div class="scroll-offset auth-portal-body">
+                <div class="status-hero tone-neutral">
+                  <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-block"></span></div>
+                  <span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatasi</span>
+                  <h2 class="status-hero__title">Akun Anda sedang dibatasi</h2>
+                  <p class="status-hero__message">Pengurus membatasi akses akun ini. Selama dibatasi, KTA, pembayaran baru dan fitur komunitas tidak dapat digunakan. Tanggal masa keanggotaan Anda tidak berubah.</p>
+                </div>
+                <div class="mt-5">
+                  <div class="summary-card summary-card--danger">
+                    <h3 class="summary-card__title">Keterangan dari pengurus</h3>
+                    <p class="summary-card__body">Akun dibatasi sementara karena beberapa laporan pelanggaran ketentuan komunitas. Hubungi pengurus untuk peninjauan.</p>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x9-inbox">
+                    <h3 class="account-section__title" id="x9-inbox">KOTAK MASUK</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-notifications_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Notifikasi</span><span class="menu-tile__subtitle">Pemberitahuan pengurus dan keamanan akun</span></span><span class="count-pill">3</span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="x9-sec">
+                    <h3 class="account-section__title" id="x9-sec">KEAMANAN AKUN</h3>
+                    <div class="account-section__card">
+                      <a class="menu-tile" href="#"><span class="ic ic-devices_outlined" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Sesi perangkat</span><span class="menu-tile__subtitle">Tinjau dan keluarkan perangkat yang tidak Anda kenali</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                      <a class="menu-tile" href="#"><span class="ic ic-lock_reset" aria-hidden="true"></span><span class="menu-tile__body"><span class="menu-tile__label">Ganti password</span></span><span class="ic ic-chevron_right menu-tile__trail" aria-hidden="true"></span></a>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <div class="section-header auth-section-header"><h3 class="section-header__title">Banding</h3></div>
+                </div>
+                <div class="mt-2">
+                  <div class="summary-card">
+                    <h3 class="summary-card__title">Banding sudah diterima</h3>
+                    <div class="summary-row"><span class="summary-row__label">Status</span><span class="summary-row__value summary-row__value--em">Menunggu ditinjau</span></div>
+                    <div class="summary-row"><span class="summary-row__label">Diajukan</span><span class="summary-row__value">16 Okt 2026, 10.15 WIB</span></div>
+                    <p class="summary-card__footnote">Target tanggapan 20 Okt 2026, 10.15 WIB.</p>
+                  </div>
+                </div>
+                <div class="mt-5">
+                  <div class="support-card">
+                    <h3 class="support-card__title">Hubungi pengurus</h3>
+                    <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                    <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <div class="auth-links"><button class="btn-link" type="button"><span class="ic ic-gavel_outlined" aria-hidden="true"></span>Ketentuan komunitas</button><button class="btn-link" type="button"><span class="ic ic-privacy_tip_outlined" aria-hidden="true"></span>Kebijakan privasi</button></div>
+                </div>
+                <div class="mt-3">
+                  <div class="info-box"><span class="ic ic-delete_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Ingin menghapus akun?</p><p class="info-box__message">Anda tetap dapat menghapus akun dan data pribadi setelah mengonfirmasi password, tanpa membuka akses komunitas.</p></div><button class="btn-text info-box__trailing" type="button">Hapus akun</button></div>
+                </div>
+                <div class="mt-5">
+                  <button class="btn btn--primary" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Periksa status</button>
+                  <div class="mt-3">
+                    <button class="btn btn--outline" type="button"><span class="ic ic-logout" aria-hidden="true"></span>Keluar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="snackbar" role="status"><span class="snackbar__text">Banding terkirim. Pengurus akan meninjaunya.</span></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">SnackBar setelah POST banding berhasil.</p>
+    </figure>
+
+  </main>
+</body>
+</html>

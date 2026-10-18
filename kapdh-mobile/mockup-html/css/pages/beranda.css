@@ -1,0 +1,178 @@
+/* =====================================================================================================================
+   KAPDH mockup HTML: GAYA GRUP "beranda"
+   Layar: Beranda (home_screen.dart), cangkang navigasi bawah (app_shell.dart), Berita (news_list_screen.dart,
+   news_detail_screen.dart), Notifikasi (notifications_screen.dart, notification_open_screen.dart) dan halaman legal
+   (legal_page_screen.dart). Hanya gaya khusus layar; komponen bersama ada di components.css (jangan diubah dari sini).
+   Semua nilai memakai token tokens.css; angka literal diberi komentar sumber Dart.
+   ===================================================================================================================== */
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   UMUM
+   --------------------------------------------------------------------------------------------------------------------- */
+/* "Digulir ke akhir" (.scroll-end) dan .spinner--24 kini ada di components.css. */
+
+/* TextButton yang direntangkan Column(crossAxisAlignment: stretch) (lembar tab terkunci "Tutup") */
+.btn-text--block { display: flex; width: 100%; }
+
+/* Baris kontak SupportContactCard: label dan nilai bertumpuk */
+.contact-row__text { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+
+/* Isi AlertDialog: contentTextStyle M3 = bodyMedium onSurfaceVariant; teks tebal w600 (Text.rich) */
+.dialog__content strong { font-weight: 600; color: var(--color-text-muted); }
+.dialog__icon .ic { color: var(--color-primary); } /* Icon(Icons.open_in_new, color: KapdhColors.primary), 24 */
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   BERANDA  (lib/features/home/home_screen.dart)
+   --------------------------------------------------------------------------------------------------------------------- */
+/* _ActiveHome ListView padding fromLTRB(s5, s4, s5, s8) */
+.home-list { padding: var(--s4) var(--s5) var(--s8); }
+/* _GatedHome ListView padding fromLTRB(s5, s6, s5, s8) */
+.home-gated { padding: var(--s6) var(--s5) var(--s8); }
+/* LinearProgressIndicator(minHeight: 2) + SizedBox(s3) di atas isi saat memperbarui */
+.home-list > .progress-linear { margin-bottom: var(--s3); }
+/* BannerCarousel digeser ke halaman ke-2 (PageController viewportFraction 0.92): satu lebar halaman ke kiri */
+.banner-carousel__track--page-2 { transform: translateX(-92%); }
+/* Kartu event/berita: SizedBox(s2) setelah HomeSectionTitle, SizedBox(s3) setelah setiap kartu */
+.home-cards { margin-top: var(--s2); }
+.home-cards > .card { margin-bottom: var(--s3); }
+/* EmptyState di dalam ListView Beranda tingginya mengikuti isi (bukan mengisi layar) */
+.home-list .state { flex: none; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   DAFTAR BERHALAMAN  (lib/features/home/shared/paged_list.dart, dipakai Berita)
+   --------------------------------------------------------------------------------------------------------------------- */
+/* PagedListView padding bawaan fromLTRB(s5, s4, s5, s6); jarak antarkartu separator s3 */
+.paged-list { padding: var(--s4) var(--s5) var(--s6); }
+.paged-list > .card + .card { margin-top: var(--s3); }
+/* InfoBox galat di atas daftar + SizedBox(separator) */
+.paged-list > .info-box { margin-bottom: var(--s3); }
+/* Keadaan kosong: ConstrainedBox(minHeight: maxHeight * 0.55). Viewport daftar Berita = 800 - app bar 81 - filter
+   kategori 64 = 655, jadi 0.55 x 655 = 360. */
+.paged-list .state { min-height: 360px; flex: none; }
+/* Galat halaman pertama: ListView tanpa padding, ConstrainedBox(minHeight: maxHeight * 0.6) = 0.6 x 655 = 393 */
+.paged-error { flex: none; min-height: 393px; }
+/* Footer: memuat berikutnya (padding vertikal s4, spinner 24), "Muat lebih banyak" (padding atas s2),
+   galat muat berikutnya (InfoBox warning, padding atas s3) */
+.paged-footer-spinner { display: flex; justify-content: center; padding: var(--s4) 0; }
+.paged-footer-more { display: flex; justify-content: center; padding-top: var(--s2); }
+.paged-footer-error { padding-top: var(--s3); }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   BERITA: DAFTAR  (lib/features/news/news_list_screen.dart)
+   --------------------------------------------------------------------------------------------------------------------- */
+/* _CategoryFilter: Container putih, SingleChildScrollView horizontal padding fromLTRB(s5, s2, s3, s2), chip
+   ChoiceChip dengan Padding kanan s2. Tinggi 8 + chip 48 (target sentuh) + 8 = 64. */
+.news-filter {
+  flex: none;
+  display: flex; align-items: center; gap: var(--s2);
+  padding: var(--s2) var(--s3) var(--s2) var(--s5);
+  background: var(--color-surface);
+  overflow: hidden; white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   BERITA: DETAIL  (lib/features/news/news_detail_screen.dart, widgets/post_body.dart)
+   --------------------------------------------------------------------------------------------------------------------- */
+/* ListView padding bawah s8 */
+.post-detail { padding-bottom: var(--s8); }
+/* Cover AspectRatio 16/9 selebar layar */
+.post-detail__cover { aspect-ratio: 16 / 9; }
+/* Padding fromLTRB(s5, s4, s5, 0) */
+.post-detail__head { padding: var(--s4) var(--s5) 0; }
+/* Judul: fontSize h2 (20), w700, height 1.3 */
+.post-detail__title { font-size: var(--fs-h2); font-weight: 700; line-height: 1.3; letter-spacing: var(--ls-body); }
+/* SizedBox(s5) + Divider (space 1) + SizedBox(s3) sebelum bilah suka */
+.post-detail__divider { margin: var(--s5) 0 var(--s3); }
+
+/* _LikeBar: OutlinedButton.icon (min 48, ikon 20) + jarak s3 + "N suka" 14 muted */
+.like-bar { display: flex; align-items: center; gap: var(--s3); }
+.like-bar__count { flex: 1 1 auto; min-width: 0; font-size: var(--fs-body); color: var(--color-text-muted); }
+.like-btn .ic { --ic-size: 20px; }
+/* liked: foregroundColor + side danger */
+.like-btn.is-liked { color: var(--color-danger); border-color: var(--color-danger); }
+/* busy: onPressed null. styleFrom(side:) berlaku untuk semua keadaan, jadi garis tetap primary/danger; teks
+   memakai warna nonaktif M3 (onSurface 38 %). Spinner 18 strokeWidth 2 berwarna progressIndicatorTheme primary. */
+.like-btn:disabled { color: rgba(28, 27, 31, .38); border-color: var(--color-primary); cursor: default; }
+.like-btn.is-liked:disabled { border-color: var(--color-danger); }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   ISI HTML  (HtmlWidget flutter_widget_from_html_core 0.17.4: gaya bawaan tag mirip browser)
+   p margin 1em 0; h2 1.5em bold margin .83em 0; h3 1.17em; h4 1.33em margin; ul/ol padding-inline-start 40 margin 1em 0;
+   a garis bawah + colorScheme.primary; margin antarblok dilipat (nilai terbesar), seperti CSS.
+   --------------------------------------------------------------------------------------------------------------------- */
+/* flow-root: margin atas p pertama / bawah p terakhir tetap di dalam (fwfh merender marginTop/marginBottom akar sebagai
+   SizedBox), sedangkan margin antarsaudara tetap dilipat. */
+.html-body { display: flow-root; color: var(--color-text); }
+.html-body p { margin: 1em 0; }
+.html-body h2 { margin: .83em 0; font-size: 1.5em; font-weight: 700; }
+.html-body h3 { margin: 1em 0; font-size: 1.17em; font-weight: 700; }
+.html-body h4 { margin: 1.33em 0; font-weight: 700; }
+.html-body ul, .html-body ol { margin: 1em 0; padding-left: 40px; }
+.html-body ul { list-style: disc; }
+.html-body ol { list-style: decimal; }
+.html-body li { display: list-item; }
+.html-body strong { font-weight: 700; }
+.html-body em { font-style: italic; }
+.html-body a { color: var(--color-primary); text-decoration: underline; }
+.html-body blockquote { margin: 1em 40px; }
+.html-body hr { margin: .5em 0; border: 0; border-top: 1px solid currentColor; }
+
+/* PostBody: textStyle 15 / 1.6 text; customStylesBuilder a (#1A4B17 underline w600), blockquote, h2-h4 primary */
+.post-body { font-size: 15px; line-height: 1.6; }
+.post-body a { font-weight: 600; }
+.post-body h2, .post-body h3, .post-body h4 { color: var(--color-primary); }
+.post-body blockquote { margin: 8px 0; padding-left: 12px; border-left: 3px solid var(--color-green-500); color: var(--color-neutral-700); }
+/* _ExternalAnchor (data-external="true"): teks 15 / 1.6 w600 primary bergaris bawah + ExternalLinkMark 14, jarak 2 */
+.ext-anchor { color: var(--color-primary); font-weight: 600; text-decoration: underline; }
+.ext-anchor .ic { --ic-size: 14px; margin-left: 2px; vertical-align: -2px; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   NOTIFIKASI  (lib/features/notifications/notifications_screen.dart)
+   --------------------------------------------------------------------------------------------------------------------- */
+/* Filter: Padding fromLTRB(s5, s3, s5, s2) + Wrap spacing/runSpacing s2 (chip 48 dengan target sentuh) */
+.notif-filter { flex: none; display: flex; flex-wrap: wrap; gap: 0 var(--s2); padding: var(--s3) var(--s5) var(--s2); }
+/* ListView.separated padding bawah s6 */
+.notif-list { padding-bottom: var(--s6); }
+/* NotificationTile: Material green50 (belum dibaca) / surface, padding 20 x 12, ikon 40 green100 + 12, Expanded,
+   pil "Baru" (8 + margin atas 6) */
+.notif-tile { display: flex; align-items: flex-start; width: 100%; padding: var(--s3) var(--s5); background: var(--color-surface); text-align: left; }
+.notif-tile.is-unread { background: var(--color-green-50); }
+.notif-tile__icon { flex: none; width: 40px; height: 40px; margin-right: var(--s3); border-radius: 50%; display: grid; place-items: center; background: var(--color-green-100); color: var(--color-primary); }
+.notif-tile__icon .ic { --ic-size: 20px; }
+.notif-tile__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.notif-tile__title { font-size: var(--fs-body); font-weight: 500; color: var(--color-text); }
+.notif-tile.is-unread .notif-tile__title { font-weight: 600; }
+.notif-tile__text { margin-top: 2px; font-size: 13px; line-height: 1.45; color: var(--color-text-muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.notif-tile__meta { margin-top: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
+.notif-tile__new { flex: none; margin: 6px 0 0 var(--s2); padding: 2px 6px; border-radius: var(--r-pill); background: var(--color-primary); color: var(--color-on-primary); font-size: var(--fs-overline); }
+/* Divider(height: 1, indent: 72) di antara tile */
+.notif-divider { margin-left: 72px; }
+/* Footer: galat (Padding s4, teks 12 danger + KapdhLinkButton), memuat (Padding s4, spinner 36), sisa SizedBox(s4) */
+.notif-footer { display: flex; flex-direction: column; align-items: center; padding: var(--s4); text-align: center; }
+.notif-footer__error { font-size: var(--fs-caption); color: var(--color-danger); }
+.notif-footer--end { height: var(--s4); padding: 0; }
+/* Kosong: SizedBox(height: 420) berisi EmptyState di dalam ListView */
+.notif-empty { flex: none; height: 420px; display: flex; flex-direction: column; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   HALAMAN LEGAL  (lib/features/legal/legal_page_screen.dart)
+   --------------------------------------------------------------------------------------------------------------------- */
+/* ScrollColumn padding fromLTRB(s5, s5, s5, s8) */
+.legal { padding: var(--s5) var(--s5) var(--s8); }
+.legal__title { font-size: var(--fs-h2); font-weight: 600; line-height: 1.3; letter-spacing: var(--ls-body); }
+.legal__meta { margin-top: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
+/* SizedBox(s4) + Divider(height 1) + SizedBox(s4) */
+.legal__divider { margin: var(--s4) 0; }
+/* HtmlWidget textStyle 14 / 1.6 text */
+.legal-body { font-size: var(--fs-body); line-height: 1.6; }
+/* Belum tersedia: ScrollColumn padding s5, SizedBox(height: 320) EmptyState + SupportSection */
+.legal-missing { padding: var(--s5); }
+.legal-missing__state { height: 320px; display: flex; flex-direction: column; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   KANVAS MOCKUP (di luar ponsel): varian bilah navigasi pada halaman app-shell
+   --------------------------------------------------------------------------------------------------------------------- */
+.nav-specimens { display: flex; flex-direction: column; gap: 14px; margin: 10px 0; }
+.nav-specimen { width: var(--device-w); border-radius: 10px; overflow: hidden; background: var(--color-background); box-shadow: 0 0 0 1px #D5D8D1; }
+.nav-specimen__label { display: block; padding: 6px 12px; border-bottom: 1px solid #E3E3E6; background: #FFFFFF; font-size: 12px; line-height: 1.4; letter-spacing: 0; color: #575C55; }
+.nav-specimen__label code { font-family: var(--font-mono); font-size: 11px; }

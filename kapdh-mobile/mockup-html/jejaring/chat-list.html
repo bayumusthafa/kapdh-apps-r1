@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pesan dan Pesan Grup - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis tab Pesan dan Pesan Grup (daftar room chat) di layar Jejaring aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/jejaring.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+      <a href="network.html">Tab Jejaring</a>
+      <a href="chat-room.html">Percakapan</a>
+      <a href="chat-invitations.html">Undangan Grup</a>
+      <a href="new-group.html">Grup Baru</a>
+    </nav>
+    <h1 class="page-header__title">Jejaring: tab Pesan dan Pesan Grup</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/chat/chat_list_view.dart</code> (ChatRoomListView, ChatRoomTile, _GroupActions) di dalam <code>lib/features/network/network_screen.dart</code> (NetworkScreen)</dd>
+      <dt>Rute</dt><dd><code>/network</code> (tab kedua "Pesan" = room direct, tab ketiga "Pesan Grup" = room grup)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Pesan</li>
+        <li>Pesan Grup</li>
+        <li>Pesan: gulir penuh</li>
+        <li>Pesan kosong</li>
+        <li>Pesan Grup kosong</li>
+        <li>Memuat</li>
+        <li>Galat</li>
+        <li>Daftar lama + gagal memuat ulang</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Baris room: avatar 48 (grup tanpa foto memakai ikon groups), judul w600 (w700 bila ada pesan belum dibaca), waktu relatif 11 (hijau bila belum dibaca), pratinjau 12, ikon gagal kirim, ikon bisu dan pil jumlah (abu bila dibisukan). Pemisah Divider indent 76. Kotak cari dan TabBar sama dengan <a href="network.html">tab Jejaring</a>; mengetik di kotak cari pindah ke tab Jejaring.</p>
+  </header>
+
+  <main class="frames">
+
+    <!-- 1. Pesan -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Pesan</figcaption>
+      <div class="device" aria-label="Tab Pesan, daftar percakapan langsung">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="screen__body inset-top">
+            <div class="jj-search-row" role="search">
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+            </div>
+            <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
+              <button class="tab" type="button" role="tab" aria-selected="false"><span class="tab__label">Jejaring</span></button>
+              <button class="tab is-selected" type="button" role="tab" aria-selected="true" aria-label="Pesan, 2 percakapan belum dibaca"><span class="tab__label"><span class="badge-host">Pesan<span class="badge badge--primary badge--dot"></span></span></span></button>
+              <button class="tab" type="button" role="tab" aria-selected="false" aria-label="Pesan Grup, 1 percakapan belum dibaca, 1 undangan grup"><span class="tab__label"><span class="badge-host">Pesan Grup<span class="badge badge--primary badge--dot"></span></span></span></button>
+            </div>
+            <hr class="divider">
+            <div class="jj-tabview" role="tabpanel" aria-label="Pesan">
+              <div class="scroll-viewport">
+                <div>
+                  <a class="jj-room is-unread" href="chat-room.html" aria-label="Siti Rahmah, 2 pesan belum dibaca, Insyaallah saya hadir di temu jejaring Sabtu.">
+                    <span class="avatar avatar--48" aria-hidden="true">SR</span>
+                    <span class="jj-room__body" aria-hidden="true">
+                      <span class="jj-room__top"><span class="jj-room__title">Siti Rahmah</span><span class="jj-room__time">5 menit lalu</span></span>
+                      <span class="jj-room__bottom"><span class="jj-room__preview">Insyaallah saya hadir di temu jejaring Sabtu.</span><span class="jj-unread-pill">2</span></span>
+                    </span>
+                  </a>
+                  <div class="jj-room-sep"></div>
+                  <a class="jj-room" href="chat-room.html" aria-label="Muhammad Rizki, dibisukan, Anda: Baik, nanti saya kabari lagi.">
+                    <span class="avatar avatar--48" aria-hidden="true">MR</span>
+                    <span class="jj-room__body" aria-hidden="true">
+                      <span class="jj-room__top"><span class="jj-room__title">Muhammad Rizki</span><span class="jj-room__time">2 jam lalu</span></span>
+                      <span class="jj-room__bottom"><span class="jj-room__preview">Anda: Baik, nanti saya kabari lagi.</span><span class="ic ic-notifications_off_outlined jj-room__muted"></span></span>
+                    </span>
+                  </a>
+                  <div class="jj-room-sep"></div>
+                  <a class="jj-room" href="chat-room.html" aria-label="Nur Aisyah, ada pesan belum terkirim, Anda: Foto · Dokumentasi kegiatan kemarin">
+                    <span class="avatar avatar--48" aria-hidden="true">NA</span>
+                    <span class="jj-room__body" aria-hidden="true">
+                      <span class="jj-room__top"><span class="jj-room__title">Nur Aisyah</span><span class="jj-room__time">kemarin, 20.14 WIB</span></span>
+                      <span class="jj-room__bottom"><span class="ic ic-error_outline jj-room__unsent"></span><span class="jj-room__preview">Anda: Foto · Dokumentasi kegiatan kemarin</span></span>
+                    </span>
+                  </a>
+                  <div class="jj-room-sep"></div>
+                  <a class="jj-room is-unread" href="chat-room.html" aria-label="Dewi Lestari, 4 pesan belum dibaca, dibisukan, Terima kasih infonya, Pak.">
+                    <span class="avatar avatar--48" aria-hidden="true">DL</span>
+                    <span class="jj-room__body" aria-hidden="true">
+                      <span class="jj-room__top"><span class="jj-room__title">Dewi Lestari</span><span class="jj-room__time">3 hari lalu</span></span>
+                      <span class="jj-room__bottom"><span class="jj-room__preview">Terima kasih infonya, Pak.</span><span class="ic ic-notifications_off_outlined jj-room__muted"></span><span class="jj-unread-pill jj-unread-pill--muted">4</span></span>
+                    </span>
+                  </a>
+                  <div class="jj-room-sep"></div>
+                  <a class="jj-room" href="chat-room.html" aria-label="Fajar Hidayat, Pesan dihapus">
+                    <span class="avatar avatar--48" aria-hidden="true">FH</span>
+                    <span class="jj-room__body" aria-hidden="true">
+                      <span class="jj-room__top"><span class="jj-room__title">Fajar Hidayat</span><span class="jj-room__time">12 Okt 2026</span></span>
+                      <span class="jj-room__bottom"><span class="jj-room__preview is-deleted">Pesan dihapus</span></span>
+                    </span>
+                  </a>
+                  <div class="jj-room-sep"></div>
+                  <a class="jj-room" href="chat-room.html" aria-label="Hasan Basri, Foto">
+                    <span class="avatar avatar--48" aria-hidden="true">HB</span>
+                    <span class="jj-room__body" aria-hidden="true">
+                      <span class="jj-room__top"><span class="jj-room__title">Hasan Basri</span><span class="jj-room__time">5 Okt 2026</span></span>
+                      <span class="jj-room__bottom"><span class="jj-room__preview">Foto</span></span>
+                    </span>
+                  </a>
+                  <div class="jj-room-sep"></div>
+                  <a class="jj-room" href="chat-room.html" aria-label="Rina Marlina">
+                    <span class="avatar avatar--48" aria-hidden="true">RM</span>
+                    <span class="jj-room__body" aria-hidden="true">
+                      <span class="jj-room__top"><span class="jj-room__title">Rina Marlina</span></span>
+                      <span class="jj-room__bottom"><span class="jj-room__preview">&#8203;</span></span>
+                    </span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Pratinjau: "Anda: ..." untuk pesan sendiri, "Foto" / "Foto · teks" untuk gambar, "Pesan dihapus" miring. Room direct tanpa pesan menampilkan baris kedua kosong tanpa waktu. Ikon error_outline merah = ada pesan gagal/ditahan di antrean lokal.</p>
+    </figure>
+
+    <!-- 2. Pesan Grup -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Pesan Grup</figcaption>
+      <div class="device" aria-label="Tab Pesan Grup, daftar grup">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="screen__body inset-top">
+            <div class="jj-search-row" role="search">
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+            </div>
+            <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
+              <button class="tab" type="button" role="tab" aria-selected="false"><span class="tab__label">Jejaring</span></button>
+              <button class="tab" type="button" role="tab" aria-selected="false" aria-label="Pesan, 2 percakapan belum dibaca"><span class="tab__label"><span class="badge-host">Pesan<span class="badge badge--primary badge--dot"></span></span></span></button>
+              <button class="tab is-selected" type="button" role="tab" aria-selected="true" aria-label="Pesan Grup, 1 percakapan belum dibaca, 1 undangan grup"><span class="tab__label"><span class="badge-host">Pesan Grup<span class="badge badge--primary badge--dot"></span></span></span></button>
+            </div>
+            <hr class="divider">
+            <div class="jj-tabview" role="tabpanel" aria-label="Pesan Grup">
+              <div class="jj-group-actions">
+                <a class="btn-m3 btn-m3--outlined btn-m3--icon" href="new-group.html"><span class="ic ic-group_add_outlined" aria-hidden="true"></span>Buat grup</a>
+                <a class="btn-m3 btn-m3--outlined btn-m3--icon" href="chat-invitations.html"><span class="badge-host"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="badge" aria-hidden="true">1</span></span>Undangan (1)</a>
+              </div>
+              <div class="scroll-viewport">
+                <div>
+                  <a class="jj-room is-unread" href="chat-room.html" aria-label="Angkatan 12, 12 pesan belum dibaca, Siti Rahmah: Jangan lupa iuran kas bulan ini ya.">
+                    <span class="avatar avatar--48" aria-hidden="true"><span class="ic ic-groups"></span></span>
+                    <span class="jj-room__body" aria-hidden="true">
+                      <span class="jj-room__top"><span class="jj-room__title">Angkatan 12</span><span class="jj-room__time">baru saja</span></span>
+                      <span class="jj-room__bottom"><span class="jj-room__preview">Siti Rahmah: Jangan lupa iuran kas bulan ini ya.</span><span class="jj-unread-pill">12</span></span>
+                    </span>
+                  </a>
+                  <div class="jj-room-sep"></div>
+                  <a class="jj-room" href="chat-room.html" aria-label="Alumni Pekanbaru, dibisukan, Anda: Siap, terima kasih.">
+                    <span class="avatar avatar--48" aria-hidden="true"><span class="ic ic-groups"></span></span>
+                    <span class="jj-room__body" aria-hidden="true">
+                      <span class="jj-room__top"><span class="jj-room__title">Alumni Pekanbaru</span><span class="jj-room__time">1 jam lalu</span></span>
+                      <span class="jj-room__bottom"><span class="jj-room__preview">Anda: Siap, terima kasih.</span><span class="ic ic-notifications_off_outlined jj-room__muted"></span></span>
+                    </span>
+                  </a>
+                  <div class="jj-room-sep"></div>
+                  <a class="jj-room" href="chat-room.html" aria-label="Kajian Ahad Pagi, Fajar Hidayat bergabung ke grup.">
+                    <span class="avatar avatar--48" aria-hidden="true"><span class="ic ic-groups"></span></span>
+                    <span class="jj-room__body" aria-hidden="true">
+                      <span class="jj-room__top"><span class="jj-room__title">Kajian Ahad Pagi</span><span class="jj-room__time">kemarin, 07.30 WIB</span></span>
+                      <span class="jj-room__bottom"><span class="jj-room__preview">Fajar Hidayat bergabung ke grup.</span></span>
+                    </span>
+                  </a>
+                  <div class="jj-room-sep"></div>
+                  <a class="jj-room" href="chat-room.html" aria-label="Panitia Halal Bihalal, Belum ada pesan">
+                    <span class="avatar avatar--48" aria-hidden="true"><span class="ic ic-groups"></span></span>
+                    <span class="jj-room__body" aria-hidden="true">
+                      <span class="jj-room__top"><span class="jj-room__title">Panitia Halal Bihalal</span></span>
+                      <span class="jj-room__bottom"><span class="jj-room__preview">Belum ada pesan</span></span>
+                    </span>
+                  </a>
+                  <div class="jj-room-sep"></div>
+                  <div class="jj-footer-end"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">_GroupActions: dua OutlinedButton.icon bertema (48, ikon 18) dalam Wrap. Lencana undangan = Badge merah bawaan pada ikon mail_outline; label "Undangan (N)" atau "Undangan grup" bila tidak ada. Pesan sistem tampil tanpa nama pengirim.</p>
+    </figure>
+
+    <!-- 3. Pesan: gulir penuh -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Pesan: gulir penuh</figcaption>
+      <div class="device device--tall" aria-label="Tab Pesan, seluruh isi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="screen__body inset-top">
+            <div class="jj-search-row" role="search">
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+            </div>
+            <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
+              <button class="tab" type="button" role="tab" aria-selected="false"><span class="tab__label">Jejaring</span></button>
+              <button class="tab is-selected" type="button" role="tab" aria-selected="true" aria-label="Pesan, 2 percakapan belum dibaca"><span class="tab__label"><span class="badge-host">Pesan<span class="badge badge--primary badge--dot"></span></span></span></button>
+              <button class="tab" type="button" role="tab" aria-selected="false" aria-label="Pesan Grup, 1 percakapan belum dibaca, 1 undangan grup"><span class="tab__label"><span class="badge-host">Pesan Grup<span class="badge badge--primary badge--dot"></span></span></span></button>
+            </div>
+            <hr class="divider">
+            <div role="tabpanel" aria-label="Pesan">
+              <a class="jj-room is-unread" href="chat-room.html" aria-label="Siti Rahmah, 2 pesan belum dibaca, Insyaallah saya hadir di temu jejaring Sabtu.">
+                <span class="avatar avatar--48" aria-hidden="true">SR</span>
+                <span class="jj-room__body" aria-hidden="true">
+                  <span class="jj-room__top"><span class="jj-room__title">Siti Rahmah</span><span class="jj-room__time">5 menit lalu</span></span>
+                  <span class="jj-room__bottom"><span class="jj-room__preview">Insyaallah saya hadir di temu jejaring Sabtu.</span><span class="jj-unread-pill">2</span></span>
+                </span>
+              </a>
+              <div class="jj-room-sep"></div>
+              <a class="jj-room" href="chat-room.html" aria-label="Muhammad Rizki, dibisukan, Anda: Baik, nanti saya kabari lagi.">
+                <span class="avatar avatar--48" aria-hidden="true">MR</span>
+                <span class="jj-room__body" aria-hidden="true">
+                  <span class="jj-room__top"><span class="jj-room__title">Muhammad Rizki</span><span class="jj-room__time">2 jam lalu</span></span>
+                  <span class="jj-room__bottom"><span class="jj-room__preview">Anda: Baik, nanti saya kabari lagi.</span><span class="ic ic-notifications_off_outlined jj-room__muted"></span></span>
+                </span>
+              </a>
+              <div class="jj-room-sep"></div>
+              <a class="jj-room" href="chat-room.html" aria-label="Nur Aisyah, ada pesan belum terkirim, Anda: Foto · Dokumentasi kegiatan kemarin">
+                <span class="avatar avatar--48" aria-hidden="true">NA</span>
+                <span class="jj-room__body" aria-hidden="true">
+                  <span class="jj-room__top"><span class="jj-room__title">Nur Aisyah</span><span class="jj-room__time">kemarin, 20.14 WIB</span></span>
+                  <span class="jj-room__bottom"><span class="ic ic-error_outline jj-room__unsent"></span><span class="jj-room__preview">Anda: Foto · Dokumentasi kegiatan kemarin</span></span>
+                </span>
+              </a>
+              <div class="jj-room-sep"></div>
+              <a class="jj-room is-unread" href="chat-room.html" aria-label="Dewi Lestari, 4 pesan belum dibaca, dibisukan, Terima kasih infonya, Pak.">
+                <span class="avatar avatar--48" aria-hidden="true">DL</span>
+                <span class="jj-room__body" aria-hidden="true">
+                  <span class="jj-room__top"><span class="jj-room__title">Dewi Lestari</span><span class="jj-room__time">3 hari lalu</span></span>
+                  <span class="jj-room__bottom"><span class="jj-room__preview">Terima kasih infonya, Pak.</span><span class="ic ic-notifications_off_outlined jj-room__muted"></span><span class="jj-unread-pill jj-unread-pill--muted">4</span></span>
+                </span>
+              </a>
+              <div class="jj-room-sep"></div>
+              <a class="jj-room" href="chat-room.html" aria-label="Fajar Hidayat, Pesan dihapus">
+                <span class="avatar avatar--48" aria-hidden="true">FH</span>
+                <span class="jj-room__body" aria-hidden="true">
+                  <span class="jj-room__top"><span class="jj-room__title">Fajar Hidayat</span><span class="jj-room__time">12 Okt 2026</span></span>
+                  <span class="jj-room__bottom"><span class="jj-room__preview is-deleted">Pesan dihapus</span></span>
+                </span>
+              </a>
+              <div class="jj-room-sep"></div>
+              <a class="jj-room" href="chat-room.html" aria-label="Hasan Basri, Foto">
+                <span class="avatar avatar--48" aria-hidden="true">HB</span>
+                <span class="jj-room__body" aria-hidden="true">
+                  <span class="jj-room__top"><span class="jj-room__title">Hasan Basri</span><span class="jj-room__time">5 Okt 2026</span></span>
+                  <span class="jj-room__bottom"><span class="jj-room__preview">Foto</span></span>
+                </span>
+              </a>
+              <div class="jj-room-sep"></div>
+              <a class="jj-room" href="chat-room.html" aria-label="Rina Marlina">
+                <span class="avatar avatar--48" aria-hidden="true">RM</span>
+                <span class="jj-room__body" aria-hidden="true">
+                  <span class="jj-room__top"><span class="jj-room__title">Rina Marlina</span></span>
+                  <span class="jj-room__bottom"><span class="jj-room__preview">&#8203;</span></span>
+                </span>
+              </a>
+              <div class="jj-room-sep"></div>
+              <a class="jj-room" href="chat-room.html" aria-label="Zainal Abidin, Assalamu'alaikum, salam kenal dari angkatan 15.">
+                <span class="avatar avatar--48" aria-hidden="true">ZA</span>
+                <span class="jj-room__body" aria-hidden="true">
+                  <span class="jj-room__top"><span class="jj-room__title">Zainal Abidin</span><span class="jj-room__time">28 Sep 2026</span></span>
+                  <span class="jj-room__bottom"><span class="jj-room__preview">Assalamu'alaikum, salam kenal dari angkatan 15.</span></span>
+                </span>
+              </a>
+              <div class="jj-room-sep"></div>
+              <div class="jj-footer-more"><button class="btn-text" type="button">Muat lebih banyak</button></div>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Urutan pesan terbaru di atas. Pemisah juga muncul sebelum PagedFooter (ListView.separated). Halaman berikut dimuat otomatis saat sisa gulir &lt; 300.</p>
+    </figure>
+
+    <!-- 4. Pesan kosong -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Pesan kosong</figcaption>
+      <div class="device" aria-label="Tab Pesan, belum ada percakapan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="screen__body inset-top">
+            <div class="jj-search-row" role="search">
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+            </div>
+            <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
+              <button class="tab" type="button" role="tab" aria-selected="false"><span class="tab__label">Jejaring</span></button>
+              <button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Pesan</span></button>
+              <button class="tab" type="button" role="tab" aria-selected="false"><span class="tab__label">Pesan Grup</span></button>
+            </div>
+            <hr class="divider">
+            <div class="state" role="tabpanel" aria-label="Pesan">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-chat_bubble_outline"></span></div>
+              <h3 class="state__title">Belum ada percakapan</h3>
+              <p class="state__message">Buka profil alumni di tab Jejaring lalu ketuk Kirim Pesan untuk memulai percakapan.</p>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-school" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">EmptyState tanpa tombol aksi (layar tidak memberi pintasan ke tab Jejaring).</p>
+    </figure>
+
+    <!-- 5. Pesan Grup kosong -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Pesan Grup kosong</figcaption>
+      <div class="device" aria-label="Tab Pesan Grup, belum ada grup">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="screen__body inset-top">
+            <div class="jj-search-row" role="search">
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+            </div>
+            <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
+              <button class="tab" type="button" role="tab" aria-selected="false"><span class="tab__label">Jejaring</span></button>
+              <button class="tab" type="button" role="tab" aria-selected="false"><span class="tab__label">Pesan</span></button>
+              <button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Pesan Grup</span></button>
+            </div>
+            <hr class="divider">
+            <div class="jj-tabview" role="tabpanel" aria-label="Pesan Grup">
+              <div class="jj-group-actions">
+                <a class="btn-m3 btn-m3--outlined btn-m3--icon" href="new-group.html"><span class="ic ic-group_add_outlined" aria-hidden="true"></span>Buat grup</a>
+                <a class="btn-m3 btn-m3--outlined btn-m3--icon" href="chat-invitations.html"><span class="ic ic-mail_outline" aria-hidden="true"></span>Undangan grup</a>
+              </div>
+              <div class="state">
+                <div class="state__icon" aria-hidden="true"><span class="ic ic-groups_outlined"></span></div>
+                <h3 class="state__title">Belum ada grup</h3>
+                <p class="state__message">Buat grup lalu undang alumni, atau terima undangan grup yang masuk.</p>
+              </div>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-school" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tombol grup selalu tampil di atas isi tab (juga saat memuat, kosong dan galat).</p>
+    </figure>
+
+    <!-- 6. Memuat -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Memuat</figcaption>
+      <div class="device" aria-label="Tab Pesan, memuat percakapan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="screen__body inset-top">
+            <div class="jj-search-row" role="search">
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+            </div>
+            <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
+              <button class="tab" type="button" role="tab" aria-selected="false"><span class="tab__label">Jejaring</span></button>
+              <button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Pesan</span></button>
+              <button class="tab" type="button" role="tab" aria-selected="false"><span class="tab__label">Pesan Grup</span></button>
+            </div>
+            <hr class="divider">
+            <div class="skeleton" role="status" aria-label="Memuat percakapan">
+              <div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-school" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">LoadingSkeleton(showCard: false, lines: 6) langsung di bawah TabBar (tanpa jarak tambahan).</p>
+    </figure>
+
+    <!-- 7. Galat -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Galat</figcaption>
+      <div class="device" aria-label="Tab Pesan Grup, galat memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="screen__body inset-top">
+            <div class="jj-search-row" role="search">
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+            </div>
+            <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
+              <button class="tab" type="button" role="tab" aria-selected="false"><span class="tab__label">Jejaring</span></button>
+              <button class="tab" type="button" role="tab" aria-selected="false"><span class="tab__label">Pesan</span></button>
+              <button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Pesan Grup</span></button>
+            </div>
+            <hr class="divider">
+            <div class="jj-tabview" role="tabpanel" aria-label="Pesan Grup">
+              <div class="jj-group-actions">
+                <a class="btn-m3 btn-m3--outlined btn-m3--icon" href="new-group.html"><span class="ic ic-group_add_outlined" aria-hidden="true"></span>Buat grup</a>
+                <a class="btn-m3 btn-m3--outlined btn-m3--icon" href="chat-invitations.html"><span class="ic ic-mail_outline" aria-hidden="true"></span>Undangan grup</a>
+              </div>
+              <div class="state state--error">
+                <div class="state__icon" aria-hidden="true"><span class="ic ic-error_outline"></span></div>
+                <h3 class="state__title">Terjadi kesalahan</h3>
+                <p class="state__message">Terjadi kesalahan. Coba lagi.</p>
+                <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+                <p class="state__footnote">Kode bantuan: req_7f3a91c2</p>
+              </div>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-school" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">ErrorState.fromException untuk galat server (INTERNAL_ERROR) dengan kode bantuan request_id yang dapat diseleksi.</p>
+    </figure>
+
+    <!-- 8. Daftar lama + gagal memuat ulang -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">8</span> Daftar lama + gagal memuat ulang</figcaption>
+      <div class="device" aria-label="Tab Pesan, gagal memuat daftar terbaru">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <div class="screen__body inset-top">
+            <div class="jj-search-row" role="search">
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+            </div>
+            <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
+              <button class="tab" type="button" role="tab" aria-selected="false"><span class="tab__label">Jejaring</span></button>
+              <button class="tab is-selected" type="button" role="tab" aria-selected="true" aria-label="Pesan, 2 percakapan belum dibaca"><span class="tab__label"><span class="badge-host">Pesan<span class="badge badge--primary badge--dot"></span></span></span></button>
+              <button class="tab" type="button" role="tab" aria-selected="false" aria-label="Pesan Grup, 1 percakapan belum dibaca, 1 undangan grup"><span class="tab__label"><span class="badge-host">Pesan Grup<span class="badge badge--primary badge--dot"></span></span></span></button>
+            </div>
+            <hr class="divider">
+            <div class="jj-tabview" role="tabpanel" aria-label="Pesan">
+              <div class="px-4">
+                <div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Daftar terbaru belum dapat dimuat. Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+              </div>
+              <div class="scroll-viewport">
+                <div>
+                  <a class="jj-room is-unread" href="chat-room.html" aria-label="Siti Rahmah, 2 pesan belum dibaca, Insyaallah saya hadir di temu jejaring Sabtu.">
+                    <span class="avatar avatar--48" aria-hidden="true">SR</span>
+                    <span class="jj-room__body" aria-hidden="true">
+                      <span class="jj-room__top"><span class="jj-room__title">Siti Rahmah</span><span class="jj-room__time">5 menit lalu</span></span>
+                      <span class="jj-room__bottom"><span class="jj-room__preview">Insyaallah saya hadir di temu jejaring Sabtu.</span><span class="jj-unread-pill">2</span></span>
+                    </span>
+                  </a>
+                  <div class="jj-room-sep"></div>
+                  <a class="jj-room" href="chat-room.html" aria-label="Muhammad Rizki, dibisukan, Anda: Baik, nanti saya kabari lagi.">
+                    <span class="avatar avatar--48" aria-hidden="true">MR</span>
+                    <span class="jj-room__body" aria-hidden="true">
+                      <span class="jj-room__top"><span class="jj-room__title">Muhammad Rizki</span><span class="jj-room__time">2 jam lalu</span></span>
+                      <span class="jj-room__bottom"><span class="jj-room__preview">Anda: Baik, nanti saya kabari lagi.</span><span class="ic ic-notifications_off_outlined jj-room__muted"></span></span>
+                    </span>
+                  </a>
+                  <div class="jj-room-sep"></div>
+                  <a class="jj-room" href="chat-room.html" aria-label="Nur Aisyah, ada pesan belum terkirim, Anda: Foto · Dokumentasi kegiatan kemarin">
+                    <span class="avatar avatar--48" aria-hidden="true">NA</span>
+                    <span class="jj-room__body" aria-hidden="true">
+                      <span class="jj-room__top"><span class="jj-room__title">Nur Aisyah</span><span class="jj-room__time">kemarin, 20.14 WIB</span></span>
+                      <span class="jj-room__bottom"><span class="ic ic-error_outline jj-room__unsent"></span><span class="jj-room__preview">Anda: Foto · Dokumentasi kegiatan kemarin</span></span>
+                    </span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">InfoBox peringatan berpadding samping 16 tanpa jarak atas/bawah, menempel ke baris room pertama (berbeda dengan tab Jejaring yang memberi jarak bawah 8).</p>
+    </figure>
+
+  </main>
+</body>
+</html>

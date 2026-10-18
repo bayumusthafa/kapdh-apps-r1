@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notifikasi - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Notifikasi aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/beranda.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <h1 class="page-header__title">Notifikasi</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/notifications/notifications_screen.dart</code> (NotificationsScreen, NotificationTile); <code>notification_presentation.dart</code> (notificationCategoryStyle)</dd>
+      <dt>Rute</dt><dd><code>/notifications</code> (di luar cangkang tab; dibuka dari lonceng dan akses cepat Beranda, menu Akun)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama (Semua)</li>
+        <li>Gulir penuh</li>
+        <li>Filter Belum dibaca</li>
+        <li>Menandai semua dibaca</li>
+        <li>Semua sudah dibaca</li>
+        <li>Kosong (Semua)</li>
+        <li>Kosong (Belum dibaca)</li>
+        <li>Memuat</li>
+        <li>Galat</li>
+        <li>Memuat berikutnya</li>
+        <li>Gagal memuat berikutnya</li>
+        <li>Tujuan belum didukung</li>
+        <li>Gagal menandai semua</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Ikon dan label kategori (notificationCategoryStyle): Pembayaran payments_outlined, Keanggotaan badge_outlined, Event event_outlined, Berita article_outlined, Chat chat_bubble_outline, Keamanan akun shield_outlined, Akun manage_accounts_outlined, Informasi notifications_none. Judul dan isi contoh mengikuti templat notifikasi server (apps/api); nama grup dan tanggal fiktif. Waktu relatif: formatRelative ("baru saja", "N menit lalu", "N jam lalu", "kemarin, HH.mm WIB", "N hari lalu", lalu tanggal).</p>
+  </header>
+
+  <main class="frames">
+
+<h2 class="frames__group-title">Kotak masuk</h2>
+
+<figure class="frame" id="frame-1">
+<figcaption class="frame__label"><span class="frame__num">1</span> Utama (Semua)</figcaption>
+<div class="device" aria-label="Notifikasi, keadaan utama">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+  <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Tandai semua dibaca"><span class="ic ic-done_all" aria-hidden="true"></span></button></div>
+</header>
+<div class="notif-filter" role="group" aria-label="Filter notifikasi"><button class="choice-chip is-selected" type="button" aria-pressed="true"><span class="ic ic-check" aria-hidden="true"></span>Semua</button><button class="choice-chip" type="button" aria-pressed="false">Belum dibaca (2)</button></div>
+<div class="screen__body">
+<div class="notif-list">
+<a class="notif-tile is-unread" href="#" aria-label="Belum dibaca, Berita, Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi., 25 menit lalu">
+  <span class="notif-tile__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</span><span class="notif-tile__text">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</span><span class="notif-tile__meta">Berita · 25 menit lalu</span></span>
+  <span class="notif-tile__new" aria-hidden="true">Baru</span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile is-unread" href="#" aria-label="Belum dibaca, Pembayaran, Iuran perpanjangan disetujui, Dana iuran keanggotaan sudah diverifikasi pengurus. KTA berlaku sampai 20 Oktober 2027., 2 jam lalu">
+  <span class="notif-tile__icon"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Iuran perpanjangan disetujui</span><span class="notif-tile__text">Dana iuran keanggotaan sudah diverifikasi pengurus. KTA berlaku sampai 20 Oktober 2027.</span><span class="notif-tile__meta">Pembayaran · 2 jam lalu</span></span>
+  <span class="notif-tile__new" aria-hidden="true">Baru</span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Chat, Undangan grup, Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak., kemarin, 19.30 WIB">
+  <span class="notif-tile__icon"><span class="ic ic-chat_bubble_outline" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Undangan grup</span><span class="notif-tile__text">Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak.</span><span class="notif-tile__meta">Chat · kemarin, 19.30 WIB</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Event, Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni, Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru., 3 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-event_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni</span><span class="notif-tile__text">Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru.</span><span class="notif-tile__meta">Event · 3 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keamanan akun, Keluar dari semua perangkat, Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi., 6 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Keluar dari semua perangkat</span><span class="notif-tile__text">Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi.</span><span class="notif-tile__meta">Keamanan akun · 6 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keanggotaan, Masa KTA segera berakhir, KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif., 20 Sep 2026">
+  <span class="notif-tile__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Masa KTA segera berakhir</span><span class="notif-tile__text">KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif.</span><span class="notif-tile__meta">Keanggotaan · 20 Sep 2026</span></span>
+</a>
+<div class="notif-footer notif-footer--end"></div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Tile belum dibaca berlatar green50, judul w600, pil "Baru". Tile terbaca putih, judul w500. Divider indent 72 di antara tile. Aksi app bar done_all aktif bila ada yang belum dibaca.</p>
+</figure>
+
+<figure class="frame" id="frame-2">
+<figcaption class="frame__label"><span class="frame__num">2</span> Gulir penuh</figcaption>
+<div class="device device--tall" aria-label="Notifikasi, seluruh isi">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+  <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Tandai semua dibaca"><span class="ic ic-done_all" aria-hidden="true"></span></button></div>
+</header>
+<div class="notif-filter" role="group" aria-label="Filter notifikasi"><button class="choice-chip is-selected" type="button" aria-pressed="true"><span class="ic ic-check" aria-hidden="true"></span>Semua</button><button class="choice-chip" type="button" aria-pressed="false">Belum dibaca (2)</button></div>
+<div class="screen__body">
+<div class="notif-list">
+<a class="notif-tile is-unread" href="#" aria-label="Belum dibaca, Berita, Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi., 25 menit lalu">
+  <span class="notif-tile__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</span><span class="notif-tile__text">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</span><span class="notif-tile__meta">Berita · 25 menit lalu</span></span>
+  <span class="notif-tile__new" aria-hidden="true">Baru</span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile is-unread" href="#" aria-label="Belum dibaca, Pembayaran, Iuran perpanjangan disetujui, Dana iuran keanggotaan sudah diverifikasi pengurus. KTA berlaku sampai 20 Oktober 2027., 2 jam lalu">
+  <span class="notif-tile__icon"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Iuran perpanjangan disetujui</span><span class="notif-tile__text">Dana iuran keanggotaan sudah diverifikasi pengurus. KTA berlaku sampai 20 Oktober 2027.</span><span class="notif-tile__meta">Pembayaran · 2 jam lalu</span></span>
+  <span class="notif-tile__new" aria-hidden="true">Baru</span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Chat, Undangan grup, Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak., kemarin, 19.30 WIB">
+  <span class="notif-tile__icon"><span class="ic ic-chat_bubble_outline" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Undangan grup</span><span class="notif-tile__text">Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak.</span><span class="notif-tile__meta">Chat · kemarin, 19.30 WIB</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Event, Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni, Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru., 3 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-event_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni</span><span class="notif-tile__text">Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru.</span><span class="notif-tile__meta">Event · 3 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keamanan akun, Keluar dari semua perangkat, Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi., 6 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Keluar dari semua perangkat</span><span class="notif-tile__text">Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi.</span><span class="notif-tile__meta">Keamanan akun · 6 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keanggotaan, Masa KTA segera berakhir, KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif., 20 Sep 2026">
+  <span class="notif-tile__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Masa KTA segera berakhir</span><span class="notif-tile__text">KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif.</span><span class="notif-tile__meta">Keanggotaan · 20 Sep 2026</span></span>
+</a>
+<div class="center"><button class="btn-link" type="button">Muat lebih banyak</button></div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Footer KapdhLinkButton "Muat lebih banyak" saat next_cursor ada (biasanya dimuat otomatis saat sisa gulir &lt; 400). Ringkasan maks 3 baris.</p>
+</figure>
+
+<figure class="frame" id="frame-3">
+<figcaption class="frame__label"><span class="frame__num">3</span> Filter Belum dibaca</figcaption>
+<div class="device" aria-label="Notifikasi, filter belum dibaca">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+  <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Tandai semua dibaca"><span class="ic ic-done_all" aria-hidden="true"></span></button></div>
+</header>
+<div class="notif-filter" role="group" aria-label="Filter notifikasi"><button class="choice-chip" type="button" aria-pressed="false">Semua</button><button class="choice-chip is-selected" type="button" aria-pressed="true"><span class="ic ic-check" aria-hidden="true"></span>Belum dibaca (2)</button></div>
+<div class="screen__body">
+<div class="notif-list">
+<a class="notif-tile is-unread" href="#" aria-label="Belum dibaca, Berita, Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi., 25 menit lalu">
+  <span class="notif-tile__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</span><span class="notif-tile__text">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</span><span class="notif-tile__meta">Berita · 25 menit lalu</span></span>
+  <span class="notif-tile__new" aria-hidden="true">Baru</span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile is-unread" href="#" aria-label="Belum dibaca, Pembayaran, Iuran perpanjangan disetujui, Dana iuran keanggotaan sudah diverifikasi pengurus. KTA berlaku sampai 20 Oktober 2027., 2 jam lalu">
+  <span class="notif-tile__icon"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Iuran perpanjangan disetujui</span><span class="notif-tile__text">Dana iuran keanggotaan sudah diverifikasi pengurus. KTA berlaku sampai 20 Oktober 2027.</span><span class="notif-tile__meta">Pembayaran · 2 jam lalu</span></span>
+  <span class="notif-tile__new" aria-hidden="true">Baru</span>
+</a>
+<div class="notif-footer notif-footer--end"></div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">ChoiceChip bawaan M3: terpilih secondaryContainer + centang, label "Belum dibaca (N)".</p>
+</figure>
+
+<figure class="frame" id="frame-4">
+<figcaption class="frame__label"><span class="frame__num">4</span> Menandai semua dibaca</figcaption>
+<div class="device" aria-label="Notifikasi, menandai semua dibaca">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+  <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Tandai semua dibaca" disabled><span class="spinner spinner--20" aria-hidden="true"></span></button></div>
+</header>
+<div class="notif-filter" role="group" aria-label="Filter notifikasi"><button class="choice-chip is-selected" type="button" aria-pressed="true"><span class="ic ic-check" aria-hidden="true"></span>Semua</button><button class="choice-chip" type="button" aria-pressed="false">Belum dibaca (2)</button></div>
+<div class="screen__body">
+<div class="notif-list">
+<a class="notif-tile is-unread" href="#" aria-label="Belum dibaca, Berita, Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi., 25 menit lalu">
+  <span class="notif-tile__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</span><span class="notif-tile__text">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</span><span class="notif-tile__meta">Berita · 25 menit lalu</span></span>
+  <span class="notif-tile__new" aria-hidden="true">Baru</span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile is-unread" href="#" aria-label="Belum dibaca, Pembayaran, Iuran perpanjangan disetujui, Dana iuran keanggotaan sudah diverifikasi pengurus. KTA berlaku sampai 20 Oktober 2027., 2 jam lalu">
+  <span class="notif-tile__icon"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Iuran perpanjangan disetujui</span><span class="notif-tile__text">Dana iuran keanggotaan sudah diverifikasi pengurus. KTA berlaku sampai 20 Oktober 2027.</span><span class="notif-tile__meta">Pembayaran · 2 jam lalu</span></span>
+  <span class="notif-tile__new" aria-hidden="true">Baru</span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Chat, Undangan grup, Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak., kemarin, 19.30 WIB">
+  <span class="notif-tile__icon"><span class="ic ic-chat_bubble_outline" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Undangan grup</span><span class="notif-tile__text">Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak.</span><span class="notif-tile__meta">Chat · kemarin, 19.30 WIB</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Event, Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni, Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru., 3 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-event_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni</span><span class="notif-tile__text">Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru.</span><span class="notif-tile__meta">Event · 3 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keamanan akun, Keluar dari semua perangkat, Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi., 6 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Keluar dari semua perangkat</span><span class="notif-tile__text">Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi.</span><span class="notif-tile__meta">Keamanan akun · 6 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keanggotaan, Masa KTA segera berakhir, KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif., 20 Sep 2026">
+  <span class="notif-tile__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Masa KTA segera berakhir</span><span class="notif-tile__text">KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif.</span><span class="notif-tile__meta">Keanggotaan · 20 Sep 2026</span></span>
+</a>
+<div class="notif-footer notif-footer--end"></div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">POST read-all berjalan: ikon diganti CircularProgressIndicator 20 (stroke 2), tombol nonaktif.</p>
+</figure>
+
+<figure class="frame" id="frame-5">
+<figcaption class="frame__label"><span class="frame__num">5</span> Semua sudah dibaca</figcaption>
+<div class="device" aria-label="Notifikasi, semua sudah dibaca">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+  <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Tandai semua dibaca" disabled><span class="ic ic-done_all" aria-hidden="true"></span></button></div>
+</header>
+<div class="notif-filter" role="group" aria-label="Filter notifikasi"><button class="choice-chip is-selected" type="button" aria-pressed="true"><span class="ic ic-check" aria-hidden="true"></span>Semua</button><button class="choice-chip" type="button" aria-pressed="false">Belum dibaca</button></div>
+<div class="screen__body">
+<div class="notif-list">
+<a class="notif-tile" href="#" aria-label="Berita, Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi., 25 menit lalu">
+  <span class="notif-tile__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</span><span class="notif-tile__text">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</span><span class="notif-tile__meta">Berita · 25 menit lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Pembayaran, Iuran perpanjangan disetujui, Dana iuran keanggotaan sudah diverifikasi pengurus. KTA berlaku sampai 20 Oktober 2027., 2 jam lalu">
+  <span class="notif-tile__icon"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Iuran perpanjangan disetujui</span><span class="notif-tile__text">Dana iuran keanggotaan sudah diverifikasi pengurus. KTA berlaku sampai 20 Oktober 2027.</span><span class="notif-tile__meta">Pembayaran · 2 jam lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Chat, Undangan grup, Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak., kemarin, 19.30 WIB">
+  <span class="notif-tile__icon"><span class="ic ic-chat_bubble_outline" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Undangan grup</span><span class="notif-tile__text">Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak.</span><span class="notif-tile__meta">Chat · kemarin, 19.30 WIB</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Event, Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni, Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru., 3 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-event_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni</span><span class="notif-tile__text">Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru.</span><span class="notif-tile__meta">Event · 3 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keamanan akun, Keluar dari semua perangkat, Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi., 6 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Keluar dari semua perangkat</span><span class="notif-tile__text">Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi.</span><span class="notif-tile__meta">Keamanan akun · 6 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keanggotaan, Masa KTA segera berakhir, KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif., 20 Sep 2026">
+  <span class="notif-tile__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Masa KTA segera berakhir</span><span class="notif-tile__text">KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif.</span><span class="notif-tile__meta">Keanggotaan · 20 Sep 2026</span></span>
+</a>
+<div class="notif-footer notif-footer--end"></div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Setelah tandai semua: semua tile putih tanpa pil, chip "Belum dibaca" tanpa angka, tombol done_all nonaktif (38 %).</p>
+</figure>
+
+<h2 class="frames__group-title">Kosong, memuat dan galat</h2>
+
+<figure class="frame" id="frame-6">
+<figcaption class="frame__label"><span class="frame__num">6</span> Kosong (Semua)</figcaption>
+<div class="device" aria-label="Notifikasi, kosong">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+  <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Tandai semua dibaca" disabled><span class="ic ic-done_all" aria-hidden="true"></span></button></div>
+</header>
+<div class="notif-filter" role="group" aria-label="Filter notifikasi"><button class="choice-chip is-selected" type="button" aria-pressed="true"><span class="ic ic-check" aria-hidden="true"></span>Semua</button><button class="choice-chip" type="button" aria-pressed="false">Belum dibaca</button></div>
+<div class="screen__body">
+<div class="notif-empty">
+<div class="state">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-notifications_none" aria-hidden="true"></span></div>
+  <h3 class="state__title">Belum ada notifikasi</h3>
+  <p class="state__message">Hasil pembayaran, masa KTA, event, berita dan keamanan akun akan tersimpan di sini, termasuk saat notifikasi push dimatikan.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">EmptyState notifications_none dalam SizedBox setinggi 420 di ListView (tarik untuk memuat ulang).</p>
+</figure>
+
+<figure class="frame" id="frame-7">
+<figcaption class="frame__label"><span class="frame__num">7</span> Kosong (Belum dibaca)</figcaption>
+<div class="device" aria-label="Notifikasi, kosong belum dibaca">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+  <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Tandai semua dibaca" disabled><span class="ic ic-done_all" aria-hidden="true"></span></button></div>
+</header>
+<div class="notif-filter" role="group" aria-label="Filter notifikasi"><button class="choice-chip" type="button" aria-pressed="false">Semua</button><button class="choice-chip is-selected" type="button" aria-pressed="true"><span class="ic ic-check" aria-hidden="true"></span>Belum dibaca</button></div>
+<div class="screen__body">
+<div class="notif-empty">
+<div class="state">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-notifications_none" aria-hidden="true"></span></div>
+  <h3 class="state__title">Semua notifikasi sudah dibaca</h3>
+  <p class="state__message">Notifikasi baru akan tampil di sini.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+</figure>
+
+<figure class="frame" id="frame-8">
+<figcaption class="frame__label"><span class="frame__num">8</span> Memuat</figcaption>
+<div class="device" aria-label="Notifikasi, memuat">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+  <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Tandai semua dibaca" disabled><span class="ic ic-done_all" aria-hidden="true"></span></button></div>
+</header>
+<div class="notif-filter" role="group" aria-label="Filter notifikasi"><button class="choice-chip is-selected" type="button" aria-pressed="true"><span class="ic ic-check" aria-hidden="true"></span>Semua</button><button class="choice-chip" type="button" aria-pressed="false">Belum dibaca</button></div>
+<div class="screen__body">
+<div class="skeleton" role="status" aria-label="Memuat notifikasi"><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div></div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">LoadingSkeleton(showCard: false, lines: 6). Chip tetap tampil; angka belum dibaca belum diketahui.</p>
+</figure>
+
+<figure class="frame" id="frame-9">
+<figcaption class="frame__label"><span class="frame__num">9</span> Galat</figcaption>
+<div class="device" aria-label="Notifikasi, galat">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+  <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Tandai semua dibaca" disabled><span class="ic ic-done_all" aria-hidden="true"></span></button></div>
+</header>
+<div class="notif-filter" role="group" aria-label="Filter notifikasi"><button class="choice-chip is-selected" type="button" aria-pressed="true"><span class="ic ic-check" aria-hidden="true"></span>Semua</button><button class="choice-chip" type="button" aria-pressed="false">Belum dibaca</button></div>
+<div class="screen__body">
+<div class="state state--error">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off" aria-hidden="true"></span></div>
+  <h3 class="state__title">Tidak ada koneksi</h3>
+  <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+  <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">ErrorState.fromException dengan "Coba lagi".</p>
+</figure>
+
+<figure class="frame" id="frame-10">
+<figcaption class="frame__label"><span class="frame__num">10</span> Memuat berikutnya</figcaption>
+<div class="device" aria-label="Notifikasi, memuat berikutnya">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+  <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Tandai semua dibaca"><span class="ic ic-done_all" aria-hidden="true"></span></button></div>
+</header>
+<div class="notif-filter" role="group" aria-label="Filter notifikasi"><button class="choice-chip is-selected" type="button" aria-pressed="true"><span class="ic ic-check" aria-hidden="true"></span>Semua</button><button class="choice-chip" type="button" aria-pressed="false">Belum dibaca (2)</button></div>
+<div class="screen__body scroll-end">
+<div class="notif-list">
+<a class="notif-tile" href="#" aria-label="Chat, Undangan grup, Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak., kemarin, 19.30 WIB">
+  <span class="notif-tile__icon"><span class="ic ic-chat_bubble_outline" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Undangan grup</span><span class="notif-tile__text">Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak.</span><span class="notif-tile__meta">Chat · kemarin, 19.30 WIB</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Event, Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni, Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru., 3 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-event_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni</span><span class="notif-tile__text">Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru.</span><span class="notif-tile__meta">Event · 3 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keamanan akun, Keluar dari semua perangkat, Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi., 6 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Keluar dari semua perangkat</span><span class="notif-tile__text">Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi.</span><span class="notif-tile__meta">Keamanan akun · 6 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keanggotaan, Masa KTA segera berakhir, KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif., 20 Sep 2026">
+  <span class="notif-tile__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Masa KTA segera berakhir</span><span class="notif-tile__text">KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif.</span><span class="notif-tile__meta">Keanggotaan · 20 Sep 2026</span></span>
+</a>
+<div class="notif-footer"><span class="spinner" role="status" aria-label="Memuat notifikasi lain"></span></div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Digulir ke akhir: CircularProgressIndicator bawaan 36 di tengah, padding 16.</p>
+</figure>
+
+<figure class="frame" id="frame-11">
+<figcaption class="frame__label"><span class="frame__num">11</span> Gagal memuat berikutnya</figcaption>
+<div class="device" aria-label="Notifikasi, gagal memuat berikutnya">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+  <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Tandai semua dibaca"><span class="ic ic-done_all" aria-hidden="true"></span></button></div>
+</header>
+<div class="notif-filter" role="group" aria-label="Filter notifikasi"><button class="choice-chip is-selected" type="button" aria-pressed="true"><span class="ic ic-check" aria-hidden="true"></span>Semua</button><button class="choice-chip" type="button" aria-pressed="false">Belum dibaca (2)</button></div>
+<div class="screen__body scroll-end">
+<div class="notif-list">
+<a class="notif-tile" href="#" aria-label="Chat, Undangan grup, Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak., kemarin, 19.30 WIB">
+  <span class="notif-tile__icon"><span class="ic ic-chat_bubble_outline" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Undangan grup</span><span class="notif-tile__text">Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak.</span><span class="notif-tile__meta">Chat · kemarin, 19.30 WIB</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Event, Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni, Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru., 3 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-event_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni</span><span class="notif-tile__text">Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru.</span><span class="notif-tile__meta">Event · 3 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keamanan akun, Keluar dari semua perangkat, Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi., 6 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Keluar dari semua perangkat</span><span class="notif-tile__text">Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi.</span><span class="notif-tile__meta">Keamanan akun · 6 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keanggotaan, Masa KTA segera berakhir, KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif., 20 Sep 2026">
+  <span class="notif-tile__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Masa KTA segera berakhir</span><span class="notif-tile__text">KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif.</span><span class="notif-tile__meta">Keanggotaan · 20 Sep 2026</span></span>
+</a>
+<div class="notif-footer"><p class="notif-footer__error">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p><button class="btn-link" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button></div>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Pesan galat 12 danger rata tengah + KapdhLinkButton "Coba lagi" (ikon refresh 18).</p>
+</figure>
+
+<h2 class="frames__group-title">Snackbar</h2>
+
+<figure class="frame" id="frame-12">
+<figcaption class="frame__label"><span class="frame__num">12</span> Tujuan belum didukung</figcaption>
+<div class="device" aria-label="Notifikasi, snackbar tujuan belum didukung">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+  <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Tandai semua dibaca"><span class="ic ic-done_all" aria-hidden="true"></span></button></div>
+</header>
+<div class="notif-filter" role="group" aria-label="Filter notifikasi"><button class="choice-chip is-selected" type="button" aria-pressed="true"><span class="ic ic-check" aria-hidden="true"></span>Semua</button><button class="choice-chip" type="button" aria-pressed="false">Belum dibaca (2)</button></div>
+<div class="screen__body">
+<div class="notif-list">
+<a class="notif-tile is-unread" href="#" aria-label="Belum dibaca, Berita, Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi., 25 menit lalu">
+  <span class="notif-tile__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</span><span class="notif-tile__text">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</span><span class="notif-tile__meta">Berita · 25 menit lalu</span></span>
+  <span class="notif-tile__new" aria-hidden="true">Baru</span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile is-unread" href="#" aria-label="Belum dibaca, Pembayaran, Iuran perpanjangan disetujui, Dana iuran keanggotaan sudah diverifikasi pengurus. KTA berlaku sampai 20 Oktober 2027., 2 jam lalu">
+  <span class="notif-tile__icon"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Iuran perpanjangan disetujui</span><span class="notif-tile__text">Dana iuran keanggotaan sudah diverifikasi pengurus. KTA berlaku sampai 20 Oktober 2027.</span><span class="notif-tile__meta">Pembayaran · 2 jam lalu</span></span>
+  <span class="notif-tile__new" aria-hidden="true">Baru</span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Chat, Undangan grup, Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak., kemarin, 19.30 WIB">
+  <span class="notif-tile__icon"><span class="ic ic-chat_bubble_outline" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Undangan grup</span><span class="notif-tile__text">Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak.</span><span class="notif-tile__meta">Chat · kemarin, 19.30 WIB</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Event, Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni, Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru., 3 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-event_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni</span><span class="notif-tile__text">Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru.</span><span class="notif-tile__meta">Event · 3 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keamanan akun, Keluar dari semua perangkat, Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi., 6 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Keluar dari semua perangkat</span><span class="notif-tile__text">Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi.</span><span class="notif-tile__meta">Keamanan akun · 6 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keanggotaan, Masa KTA segera berakhir, KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif., 20 Sep 2026">
+  <span class="notif-tile__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Masa KTA segera berakhir</span><span class="notif-tile__text">KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif.</span><span class="notif-tile__meta">Keanggotaan · 20 Sep 2026</span></span>
+</a>
+<div class="notif-footer notif-footer--end"></div>
+</div>
+</div>
+</div>
+<div class="snackbar" role="status"><span class="snackbar__text">Tujuan notifikasi ini belum didukung versi aplikasi Anda.</span></div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">deep_link tidak dikenal versi aplikasi ini: notifikasi tetap ditandai dibaca, layar tetap di kotak masuk.</p>
+</figure>
+
+<figure class="frame" id="frame-13">
+<figcaption class="frame__label"><span class="frame__num">13</span> Gagal menandai semua</figcaption>
+<div class="device" aria-label="Notifikasi, snackbar gagal tandai semua">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+  <div class="appbar__actions"><button class="icon-btn" type="button" aria-label="Tandai semua dibaca"><span class="ic ic-done_all" aria-hidden="true"></span></button></div>
+</header>
+<div class="notif-filter" role="group" aria-label="Filter notifikasi"><button class="choice-chip is-selected" type="button" aria-pressed="true"><span class="ic ic-check" aria-hidden="true"></span>Semua</button><button class="choice-chip" type="button" aria-pressed="false">Belum dibaca (2)</button></div>
+<div class="screen__body">
+<div class="notif-list">
+<a class="notif-tile is-unread" href="#" aria-label="Belum dibaca, Berita, Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota, KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi., 25 menit lalu">
+  <span class="notif-tile__icon"><span class="ic ic-article_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Mengenal KAPDH: Perkumpulan Berbadan Hukum dan Komitmen Pelindungan Data Anggota</span><span class="notif-tile__text">KAPDH adalah perkumpulan alumni berbadan hukum yang disahkan Menteri Hukum dan HAM. Kenali maksud dan tujuan perkumpulan, serta cara KAPDH menjaga data pribadi anggota sesuai UU Pelindungan Data Pribadi.</span><span class="notif-tile__meta">Berita · 25 menit lalu</span></span>
+  <span class="notif-tile__new" aria-hidden="true">Baru</span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile is-unread" href="#" aria-label="Belum dibaca, Pembayaran, Iuran perpanjangan disetujui, Dana iuran keanggotaan sudah diverifikasi pengurus. KTA berlaku sampai 20 Oktober 2027., 2 jam lalu">
+  <span class="notif-tile__icon"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Iuran perpanjangan disetujui</span><span class="notif-tile__text">Dana iuran keanggotaan sudah diverifikasi pengurus. KTA berlaku sampai 20 Oktober 2027.</span><span class="notif-tile__meta">Pembayaran · 2 jam lalu</span></span>
+  <span class="notif-tile__new" aria-hidden="true">Baru</span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Chat, Undangan grup, Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak., kemarin, 19.30 WIB">
+  <span class="notif-tile__icon"><span class="ic ic-chat_bubble_outline" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Undangan grup</span><span class="notif-tile__text">Anda diundang bergabung ke grup &quot;KAPDH 12 Pekanbaru&quot;. Buka undangan untuk menerima atau menolak.</span><span class="notif-tile__meta">Chat · kemarin, 19.30 WIB</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Event, Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni, Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru., 3 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-event_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Jadwal atau lokasi diperbarui: Peluncuran KAPDH Apps dan Silaturahmi Alumni</span><span class="notif-tile__text">Pengurus mengubah jadwal atau lokasi event yang Anda ikuti. Buka tiket untuk melihat detail terbaru.</span><span class="notif-tile__meta">Event · 3 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keamanan akun, Keluar dari semua perangkat, Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi., 6 hari lalu">
+  <span class="notif-tile__icon"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Keluar dari semua perangkat</span><span class="notif-tile__text">Semua sesi akun KAPDH Anda diakhiri pada 12 Oktober 2026 pukul 21.14 WIB. Bila bukan Anda, segera ganti sandi lewat Lupa Sandi.</span><span class="notif-tile__meta">Keamanan akun · 6 hari lalu</span></span>
+</a>
+<hr class="divider notif-divider">
+<a class="notif-tile" href="#" aria-label="Keanggotaan, Masa KTA segera berakhir, KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif., 20 Sep 2026">
+  <span class="notif-tile__icon"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span>
+  <span class="notif-tile__body"><span class="notif-tile__title">Masa KTA segera berakhir</span><span class="notif-tile__text">KTA Anda berlaku sampai 20 Oktober 2026. Perpanjang sekarang agar keanggotaan tetap aktif.</span><span class="notif-tile__meta">Keanggotaan · 20 Sep 2026</span></span>
+</a>
+<div class="notif-footer notif-footer--end"></div>
+</div>
+</div>
+</div>
+<div class="snackbar" role="status"><span class="snackbar__text">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</span><button class="btn-text" type="button">Coba lagi</button></div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">ErrorPresenter.present(onRetry: _markAll).</p>
+</figure>
+
+  </main>
+</body>
+</html>

@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pemilih Alumni - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis halaman pemilih alumni (undang ke grup chat) aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/jejaring.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+      <a href="new-group.html">Grup Baru</a>
+      <a href="chat-info.html">Info Percakapan</a>
+      <a href="network.html">Tab Jejaring</a>
+    </nav>
+    <h1 class="page-header__title">Pemilih Alumni (undang ke grup)</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/chat/member_picker.dart</code> (showMemberPicker, MemberPickerPage), memakai <code>../network/widgets/directory_member_card.dart</code> dan <code>../network/directory_tab.dart</code> (PagedFooter)</dd>
+      <dt>Rute</dt><dd>tanpa rute: Navigator.push(MaterialPageRoute(fullscreenDialog)) dari <code>/chat/new-group</code> ("Pilih alumni") dan <code>/chat/:roomId/info</code> ("Undang")</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Awal</li>
+        <li>Dengan pilihan</li>
+        <li>Undang ke grup: batas pilihan</li>
+        <li>Cari tanpa hasil</li>
+        <li>Memuat</li>
+        <li>Galat</li>
+        <li>Akhir daftar: muat lebih banyak</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Scaffold latar background. Pencarian nama memakai direktori yang sama dengan tab Jejaring (jeda 400 ms, minimal 2 huruf). Data contoh fiktif.</p>
+  </header>
+
+  <main class="frames">
+
+    <!-- 1. Awal -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Awal</figcaption>
+      <div class="device" aria-label="Pemilih alumni, awal">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-appbar-plain" style="--appbar-side:96px">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Batal"><span class="ic ic-close" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Undang alumni</span></h2>
+            <div class="appbar__actions"><button class="btn-text" type="button">Selesai (0)</button></div>
+          </header>
+          <div class="screen__body">
+            <div class="jj-picker-search"><div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search" aria-hidden="true"></span></span><input class="input__control" type="search" aria-label="Cari nama alumni" placeholder="Cari nama alumni (minimal 2 huruf)"></div></div>
+            <div class="scroll-viewport"><div class="jj-dir-list jj-dir-list--picker">
+              <div class="card card--md member-card" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">DL</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Dewi Lestari</div>
+                  <div class="member-card__line">Dokter • Padang</div>
+                  <div class="member-card__line">Universitas Contoh • Padang</div>
+                  <div class="member-card__tags"><span class="tag-chip">Kesehatan Masyarakat</span></div>
+                  <div class="member-card__cohort">#KAPDH09</div>
+                </div>
+                <span class="checkbox jj-check48" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">FH</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Fajar Hidayat</div>
+                  <div class="member-card__line">Insinyur • Pekanbaru</div>
+                  <div class="member-card__line">Institut Teknologi Contoh • Bandung</div>
+                  <div class="member-card__tags"><span class="tag-chip">Teknik Sipil</span><span class="tag-chip">Manajemen Proyek</span></div>
+                  <div class="member-card__cohort">#KAPDH12</div>
+                </div>
+                <span class="checkbox jj-check48" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">HB</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Hasan Basri</div>
+                  <div class="member-card__line">Wiraswasta • Bukittinggi</div>
+                  <div class="member-card__tags"><span class="tag-chip">Kuliner</span></div>
+                  <div class="member-card__cohort">#KAPDH07</div>
+                </div>
+                <span class="checkbox jj-check48" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">MR</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Muhammad Rizki</div>
+                  <div class="member-card__line">Guru • Pekanbaru</div>
+                  <div class="member-card__line">Universitas Contoh • Pekanbaru</div>
+                  <div class="member-card__tags"><span class="tag-chip">Bahasa Arab</span><span class="tag-chip">Tahfiz</span></div>
+                  <div class="member-card__cohort">#KAPDH12</div>
+                </div>
+                <span class="checkbox jj-check48" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">NA</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Nur Aisyah</div>
+                  <div class="member-card__line">Akuntan • Medan</div>
+                  <div class="member-card__line">Politeknik Contoh • Medan</div>
+                  <div class="member-card__tags"><span class="tag-chip">Akuntansi</span><span class="tag-chip">Perpajakan</span></div>
+                  <div class="member-card__cohort">#KAPDH15</div>
+                </div>
+                <span class="checkbox jj-check48" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">SR</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Siti Rahmah</div>
+                  <div class="member-card__line">Pegawai Negeri Sipil • Pekanbaru</div>
+                  <div class="member-card__line">Universitas Contoh • Padang</div>
+                  <div class="member-card__tags"><span class="tag-chip">Administrasi</span><span class="tag-chip">Desain Grafis</span></div>
+                  <div class="member-card__cohort">#KAPDH12</div>
+                </div>
+                <span class="checkbox jj-check48" aria-hidden="true"></span>
+              </div>
+              <div class="jj-footer-end"></div>
+            </div></div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">MaterialPageRoute fullscreenDialog di navigator akar. AppBar M3 bawaan (tanpa garis bawah): close "Batal", judul tengah, TextButton "Selesai (N)". Kartu DirectoryMemberCard dengan Checkbox 48 di kanan atas; seluruh kartu dapat diketuk. Jarak kartu 8.</p>
+    </figure>
+
+    <!-- 2. Dengan pilihan -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Dengan pilihan</figcaption>
+      <div class="device" aria-label="Pemilih alumni, dua alumni terpilih">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-appbar-plain" style="--appbar-side:96px">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Batal"><span class="ic ic-close" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Undang alumni</span></h2>
+            <div class="appbar__actions"><button class="btn-text" type="button">Selesai (2)</button></div>
+          </header>
+          <div class="screen__body">
+            <div class="jj-picker-search"><div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search" aria-hidden="true"></span></span><input class="input__control" type="search" aria-label="Cari nama alumni" placeholder="Cari nama alumni (minimal 2 huruf)"></div></div>
+            <div class="jj-chip-strip" aria-label="Alumni terpilih"><span class="jj-input-chip">Fajar Hidayat<button class="icon-btn" type="button" aria-label="Hapus Fajar Hidayat"><span class="ic ic-close" aria-hidden="true"></span></button></span><span class="jj-input-chip">Muhammad Rizki<button class="icon-btn" type="button" aria-label="Hapus Muhammad Rizki"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
+            <div class="scroll-viewport"><div class="jj-dir-list jj-dir-list--picker">
+              <div class="card card--md member-card" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">DL</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Dewi Lestari</div>
+                  <div class="member-card__line">Dokter • Padang</div>
+                  <div class="member-card__line">Universitas Contoh • Padang</div>
+                  <div class="member-card__tags"><span class="tag-chip">Kesehatan Masyarakat</span></div>
+                  <div class="member-card__cohort">#KAPDH09</div>
+                </div>
+                <span class="checkbox jj-check48" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="true" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">FH</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Fajar Hidayat</div>
+                  <div class="member-card__line">Insinyur • Pekanbaru</div>
+                  <div class="member-card__line">Institut Teknologi Contoh • Bandung</div>
+                  <div class="member-card__tags"><span class="tag-chip">Teknik Sipil</span><span class="tag-chip">Manajemen Proyek</span></div>
+                  <div class="member-card__cohort">#KAPDH12</div>
+                </div>
+                <span class="checkbox jj-check48 is-checked" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">HB</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Hasan Basri</div>
+                  <div class="member-card__line">Wiraswasta • Bukittinggi</div>
+                  <div class="member-card__tags"><span class="tag-chip">Kuliner</span></div>
+                  <div class="member-card__cohort">#KAPDH07</div>
+                </div>
+                <span class="checkbox jj-check48" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="true" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">MR</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Muhammad Rizki</div>
+                  <div class="member-card__line">Guru • Pekanbaru</div>
+                  <div class="member-card__line">Universitas Contoh • Pekanbaru</div>
+                  <div class="member-card__tags"><span class="tag-chip">Bahasa Arab</span><span class="tag-chip">Tahfiz</span></div>
+                  <div class="member-card__cohort">#KAPDH12</div>
+                </div>
+                <span class="checkbox jj-check48 is-checked" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">NA</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Nur Aisyah</div>
+                  <div class="member-card__line">Akuntan • Medan</div>
+                  <div class="member-card__line">Politeknik Contoh • Medan</div>
+                  <div class="member-card__tags"><span class="tag-chip">Akuntansi</span><span class="tag-chip">Perpajakan</span></div>
+                  <div class="member-card__cohort">#KAPDH15</div>
+                </div>
+                <span class="checkbox jj-check48" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">SR</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Siti Rahmah</div>
+                  <div class="member-card__line">Pegawai Negeri Sipil • Pekanbaru</div>
+                  <div class="member-card__line">Universitas Contoh • Padang</div>
+                  <div class="member-card__tags"><span class="tag-chip">Administrasi</span><span class="tag-chip">Desain Grafis</span></div>
+                  <div class="member-card__cohort">#KAPDH12</div>
+                </div>
+                <span class="checkbox jj-check48" aria-hidden="true"></span>
+              </div>
+              <div class="jj-footer-end"></div>
+            </div></div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Pilihan tampil sebagai baris InputChip horizontal (tinggi 56, padding 16/8) di bawah kotak cari.</p>
+    </figure>
+
+    <!-- 3. Undang ke grup: batas pilihan -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Undang ke grup: batas pilihan</figcaption>
+      <div class="device" aria-label="Pemilih alumni dari info grup, batas tercapai">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-appbar-plain" style="--appbar-side:96px">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Batal"><span class="ic ic-close" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Undang ke Angkatan 12</span></h2>
+            <div class="appbar__actions"><button class="btn-text" type="button">Selesai (3)</button></div>
+          </header>
+          <div class="screen__body">
+            <div class="jj-picker-search"><div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search" aria-hidden="true"></span></span><input class="input__control" type="search" aria-label="Cari nama alumni" placeholder="Cari nama alumni (minimal 2 huruf)"></div></div>
+            <div class="jj-chip-strip" aria-label="Alumni terpilih"><span class="jj-input-chip">Dewi Lestari<button class="icon-btn" type="button" aria-label="Hapus Dewi Lestari"><span class="ic ic-close" aria-hidden="true"></span></button></span><span class="jj-input-chip">Hasan Basri<button class="icon-btn" type="button" aria-label="Hapus Hasan Basri"><span class="ic ic-close" aria-hidden="true"></span></button></span><span class="jj-input-chip">Nur Aisyah<button class="icon-btn" type="button" aria-label="Hapus Nur Aisyah"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
+            <div class="scroll-viewport"><div class="jj-dir-list jj-dir-list--picker">
+              <div class="card card--md member-card" role="checkbox" aria-checked="true" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">DL</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Dewi Lestari</div>
+                  <div class="member-card__line">Dokter • Padang</div>
+                  <div class="member-card__line">Universitas Contoh • Padang</div>
+                  <div class="member-card__tags"><span class="tag-chip">Kesehatan Masyarakat</span></div>
+                  <div class="member-card__cohort">#KAPDH09</div>
+                </div>
+                <span class="checkbox jj-check48 is-checked" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="true" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">HB</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Hasan Basri</div>
+                  <div class="member-card__line">Wiraswasta • Bukittinggi</div>
+                  <div class="member-card__tags"><span class="tag-chip">Kuliner</span></div>
+                  <div class="member-card__cohort">#KAPDH07</div>
+                </div>
+                <span class="checkbox jj-check48 is-checked" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="true" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">NA</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Nur Aisyah</div>
+                  <div class="member-card__line">Akuntan • Medan</div>
+                  <div class="member-card__line">Politeknik Contoh • Medan</div>
+                  <div class="member-card__tags"><span class="tag-chip">Akuntansi</span><span class="tag-chip">Perpajakan</span></div>
+                  <div class="member-card__cohort">#KAPDH15</div>
+                </div>
+                <span class="checkbox jj-check48 is-checked" aria-hidden="true"></span>
+              </div>
+              <div class="jj-footer-end"></div>
+            </div></div>
+          </div>
+        </div>
+        <div class="snackbar" role="status"><span class="snackbar__text">Maksimal 3 alumni dapat dipilih.</span></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Dari Info Percakapan: anggota dan undangan yang sudah ada disaring (tidak tampil); batas = sisa kapasitas grup (maks 50 per undangan).</p>
+    </figure>
+
+    <!-- 4. Cari tanpa hasil -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Cari tanpa hasil</figcaption>
+      <div class="device" aria-label="Pemilih alumni, tidak ditemukan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-appbar-plain" style="--appbar-side:96px">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Batal"><span class="ic ic-close" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Undang alumni</span></h2>
+            <div class="appbar__actions"><button class="btn-text" type="button">Selesai (0)</button></div>
+          </header>
+          <div class="screen__body">
+            <div class="jj-picker-search"><div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search" aria-hidden="true"></span></span><input class="input__control" type="search" aria-label="Cari nama alumni" placeholder="Cari nama alumni (minimal 2 huruf)" value="Zulkifli"></div></div>
+            <div class="state">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-person_search_outlined"></span></div>
+              <h3 class="state__title">Alumni tidak ditemukan</h3>
+              <p class="state__message">Cari dengan nama lain. Hanya anggota aktif yang tampil di direktori yang dapat diundang.</p>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 5. Memuat -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Memuat</figcaption>
+      <div class="device" aria-label="Pemilih alumni, memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-appbar-plain" style="--appbar-side:96px">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Batal"><span class="ic ic-close" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Undang alumni</span></h2>
+            <div class="appbar__actions"><button class="btn-text" type="button">Selesai (0)</button></div>
+          </header>
+          <div class="screen__body">
+            <div class="jj-picker-search"><div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search" aria-hidden="true"></span></span><input class="input__control" type="search" aria-label="Cari nama alumni" placeholder="Cari nama alumni (minimal 2 huruf)"></div></div>
+            <div class="skeleton" role="status" aria-label="Memuat alumni"><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div></div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 6. Galat -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Galat</figcaption>
+      <div class="device" aria-label="Pemilih alumni, galat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-appbar-plain" style="--appbar-side:96px">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Batal"><span class="ic ic-close" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Undang alumni</span></h2>
+            <div class="appbar__actions"><button class="btn-text" type="button">Selesai (0)</button></div>
+          </header>
+          <div class="screen__body">
+            <div class="jj-picker-search"><div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search" aria-hidden="true"></span></span><input class="input__control" type="search" aria-label="Cari nama alumni" placeholder="Cari nama alumni (minimal 2 huruf)"></div></div>
+            <div class="state state--error">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off"></span></div>
+              <h3 class="state__title">Tidak ada koneksi</h3>
+              <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <!-- 7. Akhir daftar: muat lebih banyak -->
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Akhir daftar: muat lebih banyak</figcaption>
+      <div class="device" aria-label="Pemilih alumni, akhir daftar">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar jj-appbar-plain" style="--appbar-side:96px">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Batal"><span class="ic ic-close" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Undang alumni</span></h2>
+            <div class="appbar__actions"><button class="btn-text" type="button">Selesai (1)</button></div>
+          </header>
+          <div class="screen__body">
+            <div class="jj-picker-search"><div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search" aria-hidden="true"></span></span><input class="input__control" type="search" aria-label="Cari nama alumni" placeholder="Cari nama alumni (minimal 2 huruf)"></div></div>
+            <div class="jj-chip-strip" aria-label="Alumni terpilih"><span class="jj-input-chip">Siti Rahmah<button class="icon-btn" type="button" aria-label="Hapus Siti Rahmah"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
+            <div class="scroll-viewport scroll-end"><div class="jj-dir-list jj-dir-list--picker">
+              <div class="card card--md member-card" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">DL</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Dewi Lestari</div>
+                  <div class="member-card__line">Dokter • Padang</div>
+                  <div class="member-card__line">Universitas Contoh • Padang</div>
+                  <div class="member-card__tags"><span class="tag-chip">Kesehatan Masyarakat</span></div>
+                  <div class="member-card__cohort">#KAPDH09</div>
+                </div>
+                <span class="checkbox jj-check48" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">FH</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Fajar Hidayat</div>
+                  <div class="member-card__line">Insinyur • Pekanbaru</div>
+                  <div class="member-card__line">Institut Teknologi Contoh • Bandung</div>
+                  <div class="member-card__tags"><span class="tag-chip">Teknik Sipil</span><span class="tag-chip">Manajemen Proyek</span></div>
+                  <div class="member-card__cohort">#KAPDH12</div>
+                </div>
+                <span class="checkbox jj-check48" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">HB</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Hasan Basri</div>
+                  <div class="member-card__line">Wiraswasta • Bukittinggi</div>
+                  <div class="member-card__tags"><span class="tag-chip">Kuliner</span></div>
+                  <div class="member-card__cohort">#KAPDH07</div>
+                </div>
+                <span class="checkbox jj-check48" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">MR</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Muhammad Rizki</div>
+                  <div class="member-card__line">Guru • Pekanbaru</div>
+                  <div class="member-card__line">Universitas Contoh • Pekanbaru</div>
+                  <div class="member-card__tags"><span class="tag-chip">Bahasa Arab</span><span class="tag-chip">Tahfiz</span></div>
+                  <div class="member-card__cohort">#KAPDH12</div>
+                </div>
+                <span class="checkbox jj-check48" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">NA</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Nur Aisyah</div>
+                  <div class="member-card__line">Akuntan • Medan</div>
+                  <div class="member-card__line">Politeknik Contoh • Medan</div>
+                  <div class="member-card__tags"><span class="tag-chip">Akuntansi</span><span class="tag-chip">Perpajakan</span></div>
+                  <div class="member-card__cohort">#KAPDH15</div>
+                </div>
+                <span class="checkbox jj-check48" aria-hidden="true"></span>
+              </div>
+              <div class="card card--md member-card" role="checkbox" aria-checked="true" tabindex="0">
+                <span class="avatar avatar--48" aria-hidden="true">SR</span>
+                <div class="member-card__body">
+                  <div class="member-card__name">Siti Rahmah</div>
+                  <div class="member-card__line">Pegawai Negeri Sipil • Pekanbaru</div>
+                  <div class="member-card__line">Universitas Contoh • Padang</div>
+                  <div class="member-card__tags"><span class="tag-chip">Administrasi</span><span class="tag-chip">Desain Grafis</span></div>
+                  <div class="member-card__cohort">#KAPDH12</div>
+                </div>
+                <span class="checkbox jj-check48 is-checked" aria-hidden="true"></span>
+              </div>
+              <div class="jj-footer-more"><button class="btn-text" type="button">Muat lebih banyak</button></div>
+            </div></div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Halaman berikut dimuat otomatis bila alumni yang dapat dipilih di layar &lt; 10 (maks 5 halaman beruntun), selebihnya lewat "Muat lebih banyak".</p>
+    </figure>
+
+  </main>
+</body>
+</html>

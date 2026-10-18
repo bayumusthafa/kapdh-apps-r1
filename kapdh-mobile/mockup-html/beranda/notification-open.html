@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notifikasi (gerbang ketukan push) - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Notifikasi (gerbang ketukan push) aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/beranda.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <h1 class="page-header__title">Notifikasi (gerbang ketukan push)</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/notifications/notification_open_screen.dart</code> (NotificationOpenScreen)</dd>
+      <dt>Rute</dt><dd><code>/notifications/:notificationId</code> (ketukan notifikasi push; login dulu bila belum masuk)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Membuka notifikasi</li>
+        <li>Tidak tersedia</li>
+        <li>Galat (offline)</li>
+        <li>Galat (server)</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Layar transisi: pada jalur berhasil pengguna hanya melihat kerangka sebentar sebelum tujuan terbuka.</p>
+  </header>
+
+  <main class="frames">
+
+<figure class="frame" id="frame-1">
+<figcaption class="frame__label"><span class="frame__num">1</span> Membuka notifikasi</figcaption>
+<div class="device" aria-label="Notifikasi (gerbang push), membuka">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+</header>
+<div class="screen__body">
+<div class="skeleton" role="status" aria-label="Membuka notifikasi"><div class="skeleton__line"></div><div class="skeleton__line is-short"></div></div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">GET /notifications/{id} berjalan: LoadingSkeleton(showCard: false, lines: 2). Bila berhasil, tujuan deep_link dibuka dengan go (layar ini diganti) dan notifikasi ditandai dibaca.</p>
+</figure>
+
+<figure class="frame" id="frame-2">
+<figcaption class="frame__label"><span class="frame__num">2</span> Tidak tersedia</figcaption>
+<div class="device" aria-label="Notifikasi (gerbang push), notifikasi tidak tersedia">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+</header>
+<div class="screen__body">
+<div class="state">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-notifications_off_outlined" aria-hidden="true"></span></div>
+  <h3 class="state__title">Notifikasi tidak tersedia</h3>
+  <p class="state__message">Notifikasi ini bukan milik akun yang sedang masuk atau sudah tidak tersedia. Isinya tidak dibuka demi keamanan akun.</p>
+  <button class="btn btn--outline btn--inline state__action" type="button">Buka kotak masuk</button>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">404 atau id tidak sah (400) tidak dibedakan. "Buka kotak masuk" ke /notifications.</p>
+</figure>
+
+<figure class="frame" id="frame-3">
+<figcaption class="frame__label"><span class="frame__num">3</span> Galat (offline)</figcaption>
+<div class="device" aria-label="Notifikasi (gerbang push), galat offline">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+</header>
+<div class="screen__body">
+<div class="state state--error">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off" aria-hidden="true"></span></div>
+  <h3 class="state__title">Tidak ada koneksi</h3>
+  <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+  <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Galat lain: ErrorState.fromException, "Coba lagi" mengulang _resolve.</p>
+</figure>
+
+<figure class="frame" id="frame-4">
+<figcaption class="frame__label"><span class="frame__num">4</span> Galat (server)</figcaption>
+<div class="device" aria-label="Notifikasi (gerbang push), galat server">
+<div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+<div class="screen">
+<header class="appbar">
+  <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+  <h2 class="appbar__title"><span>Notifikasi</span></h2>
+</header>
+<div class="screen__body">
+<div class="state state--error">
+  <div class="state__icon" aria-hidden="true"><span class="ic ic-error_outline" aria-hidden="true"></span></div>
+  <h3 class="state__title">Terjadi kesalahan</h3>
+  <p class="state__message">Terjadi kesalahan. Coba lagi.</p>
+  <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+  <p class="state__footnote">Kode bantuan: req_9b27e04f</p>
+</div>
+</div>
+</div>
+<div class="sysnav" aria-hidden="true"></div>
+</div>
+<p class="frame__note">Galat server dengan Kode bantuan.</p>
+</figure>
+
+  </main>
+</body>
+</html>

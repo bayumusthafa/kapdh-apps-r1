@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daftar Event - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Daftar Event aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/event.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+      <a href="events.html" aria-current="page">Event</a>
+      <a href="event-detail.html">Detail Event</a>
+      <a href="reservation.html">Konfirmasi Pendaftaran</a>
+      <a href="tickets.html">Tiket Saya</a>
+      <a href="ticket-detail.html">Detail Tiket</a>
+    </nav>
+    <h1 class="page-header__title">Daftar Event</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/events/events_screen.dart</code> (EventsScreen, _SearchField, _CategoryTabs), <code>lib/features/events/widgets/event_card.dart</code> (EventCard.summary), <code>lib/features/home/shared/paged_list.dart</code> (PagedListView)</dd>
+      <dt>Rute</dt><dd><code>/events</code> (tab Event di AppShell, StatefulShellBranch)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama: Mendatang, Semua</li>
+        <li>Gulir penuh + Muat lebih banyak</li>
+        <li>Pencarian + kategori dipilih</li>
+        <li>Lampau</li>
+        <li>Kosong: belum ada event mendatang</li>
+        <li>Kosong: hasil filter</li>
+        <li>Galat (offline)</li>
+        <li>Memuat</li>
+        <li>Galat halaman berikutnya (digulir ke akhir)</li>
+        <li>Bukan anggota aktif (KTA kedaluwarsa)</li>
+        <li>Lembar tab Event terkunci</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Data contoh fiktif; hari ini dianggap Minggu, 18 Okt 2026. Label pendaftaran dari registrationStateStyle (event_format.dart) dan dihitung server. Ketuk kartu untuk membuka Detail Event, ikon tiket di app bar ke Tiket Saya.</p>
+  </header>
+
+  <main class="frames">
+
+    <h2 class="frames__group-title">Daftar event</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Utama: Mendatang, Semua</figcaption>
+      <div class="device" role="group" aria-label="Daftar Event, keadaan utama">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <h2 class="appbar__title"><span>Event</span></h2>
+            <div class="appbar__actions"><a class="icon-btn" href="tickets.html" aria-label="Tiket Saya"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="screen__body">
+            <div class="ev-filter">
+              <div class="input input--search"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" enterkeyhint="search" maxlength="100" aria-label="Cari event" placeholder="Cari event…"></div>
+              <div class="underline-tabs" role="tablist" aria-label="Kategori event"><button class="underline-tab is-selected" type="button" role="tab" aria-selected="true">Semua</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Silaturahmi</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Jejaring</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Workshop</button></div>
+            </div>
+            <div class="ev-period"><div class="segmented" role="radiogroup" aria-label="Periode event"><button class="segmented__item is-selected" type="button" role="radio" aria-checked="true">Mendatang</button><button class="segmented__item" type="button" role="radio" aria-checked="false">Lampau</button></div></div>
+            <div class="scroll-viewport">
+              <div class="ev-list">
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt=""></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Silaturahmi</span>
+                  <p class="event-card__title clamp-2 mt-6px">Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Gratis</span></div>
+                </div>
+              </a>
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+                <div class="event-card__body">
+                  <p class="event-card__title clamp-2">Kajian Rutin Alumni Bulanan</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 7 Nov 2026</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Masjid Alumni, Pekanbaru</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--warning"><span class="ic ic-group_off" aria-hidden="true"></span>Kuota Penuh</span><span class="price">Gratis</span></div>
+                </div>
+              </a>
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-3-temu-jejaring.jpg" alt=""></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Jejaring</span>
+                  <p class="event-card__title clamp-2 mt-6px">Temu Jejaring Alumni Lintas Profesi</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 14 Nov 2026</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Google Meet</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Gratis</span><span class="status-badge status-badge--success"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span>Terkonfirmasi</span></div>
+                </div>
+              </a>
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Workshop</span>
+                  <p class="event-card__title clamp-2 mt-6px">Workshop Kewirausahaan Alumni</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 28 Nov 2026</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Rp75.000</span><span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu Verifikasi</span></div>
+                </div>
+              </a>
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Workshop</span>
+                  <p class="event-card__title clamp-2 mt-6px">Seminar Karier Alumni Muda</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 12 Des 2026</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span><span class="price">Rp50.000</span></div>
+                </div>
+              </a>
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Silaturahmi</span>
+                  <p class="event-card__title clamp-2 mt-6px">Halal Bihalal dan Silaturahmi Akbar Alumni</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Rp150.000</span></div>
+                </div>
+              </a>
+              </div>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item is-selected" href="events.html" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-event" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-school_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tab kategori: "Semua" dibuat klien, sisanya kategori event aktif dari server (contoh: Silaturahmi, Jejaring, Workshop). Baris tab bergulir horizontal (SingleChildScrollView), jadi tab terakhir terpotong di tepi; bila kategori gagal dimuat hanya "Semua" yang tampil. Lencana kedua di kartu = status tiket Anda di event itu (ticketStatusStyle).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Gulir penuh + Muat lebih banyak</figcaption>
+      <div class="device device--tall" role="group" aria-label="Daftar Event, seluruh isi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <h2 class="appbar__title"><span>Event</span></h2>
+            <div class="appbar__actions"><a class="icon-btn" href="tickets.html" aria-label="Tiket Saya"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="screen__body">
+            <div class="ev-filter">
+              <div class="input input--search"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" enterkeyhint="search" maxlength="100" aria-label="Cari event" placeholder="Cari event…"></div>
+              <div class="underline-tabs" role="tablist" aria-label="Kategori event"><button class="underline-tab is-selected" type="button" role="tab" aria-selected="true">Semua</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Silaturahmi</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Jejaring</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Workshop</button></div>
+            </div>
+            <div class="ev-period"><div class="segmented" role="radiogroup" aria-label="Periode event"><button class="segmented__item is-selected" type="button" role="radio" aria-checked="true">Mendatang</button><button class="segmented__item" type="button" role="radio" aria-checked="false">Lampau</button></div></div>
+            <div class="scroll-viewport">
+              <div class="ev-list">
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt=""></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Silaturahmi</span>
+                  <p class="event-card__title clamp-2 mt-6px">Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Gratis</span></div>
+                </div>
+              </a>
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+                <div class="event-card__body">
+                  <p class="event-card__title clamp-2">Kajian Rutin Alumni Bulanan</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 7 Nov 2026</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Masjid Alumni, Pekanbaru</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--warning"><span class="ic ic-group_off" aria-hidden="true"></span>Kuota Penuh</span><span class="price">Gratis</span></div>
+                </div>
+              </a>
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-3-temu-jejaring.jpg" alt=""></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Jejaring</span>
+                  <p class="event-card__title clamp-2 mt-6px">Temu Jejaring Alumni Lintas Profesi</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 14 Nov 2026</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Google Meet</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Gratis</span><span class="status-badge status-badge--success"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span>Terkonfirmasi</span></div>
+                </div>
+              </a>
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Workshop</span>
+                  <p class="event-card__title clamp-2 mt-6px">Workshop Kewirausahaan Alumni</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 28 Nov 2026</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Rp75.000</span><span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu Verifikasi</span></div>
+                </div>
+              </a>
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Workshop</span>
+                  <p class="event-card__title clamp-2 mt-6px">Seminar Karier Alumni Muda</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 12 Des 2026</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span><span class="price">Rp50.000</span></div>
+                </div>
+              </a>
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Silaturahmi</span>
+                  <p class="event-card__title clamp-2 mt-6px">Halal Bihalal dan Silaturahmi Akbar Alumni</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Rp150.000</span></div>
+                </div>
+              </a>
+              <div class="ev-list__more"><button class="btn-text" type="button">Muat lebih banyak</button></div>
+              </div>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item is-selected" href="events.html" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-event" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-school_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Halaman berikutnya dimuat otomatis saat sisa gulir &lt; 400 px; tombol "Muat lebih banyak" adalah cadangan bila daftar terlalu pendek (mis. teks diperbesar). Saat memuat berikutnya tombol diganti CircularProgressIndicator 24 px.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Pencarian + kategori dipilih</figcaption>
+      <div class="device" role="group" aria-label="Daftar Event, hasil pencarian dengan kategori Silaturahmi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <h2 class="appbar__title"><span>Event</span></h2>
+            <div class="appbar__actions"><a class="icon-btn" href="tickets.html" aria-label="Tiket Saya"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="screen__body">
+            <div class="ev-filter">
+              <div class="input input--search"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" enterkeyhint="search" maxlength="100" aria-label="Cari event" placeholder="Cari event…" value="silaturahmi"><span class="input__suffix"><button class="icon-btn" type="button" aria-label="Hapus pencarian"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
+              <div class="underline-tabs" role="tablist" aria-label="Kategori event"><button class="underline-tab" type="button" role="tab" aria-selected="false">Semua</button><button class="underline-tab is-selected" type="button" role="tab" aria-selected="true">Silaturahmi</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Jejaring</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Workshop</button></div>
+            </div>
+            <div class="ev-period"><div class="segmented" role="radiogroup" aria-label="Periode event"><button class="segmented__item is-selected" type="button" role="radio" aria-checked="true">Mendatang</button><button class="segmented__item" type="button" role="radio" aria-checked="false">Lampau</button></div></div>
+            <div class="scroll-viewport">
+              <div class="ev-list">
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt=""></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Silaturahmi</span>
+                  <p class="event-card__title clamp-2 mt-6px">Peluncuran KAPDH Apps dan Silaturahmi Alumni</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Gratis</span></div>
+                </div>
+              </a>
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Silaturahmi</span>
+                  <p class="event-card__title clamp-2 mt-6px">Halal Bihalal dan Silaturahmi Akbar Alumni</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Rp150.000</span></div>
+                </div>
+              </a>
+              </div>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item is-selected" href="events.html" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-event" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-school_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Kata kunci diterapkan 400 ms setelah berhenti mengetik (maks 100 karakter). Tombol close (tooltip "Hapus pencarian") hanya muncul bila kolom berisi.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Lampau</figcaption>
+      <div class="device" role="group" aria-label="Daftar Event, periode lampau">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <h2 class="appbar__title"><span>Event</span></h2>
+            <div class="appbar__actions"><a class="icon-btn" href="tickets.html" aria-label="Tiket Saya"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="screen__body">
+            <div class="ev-filter">
+              <div class="input input--search"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" enterkeyhint="search" maxlength="100" aria-label="Cari event" placeholder="Cari event…"></div>
+              <div class="underline-tabs" role="tablist" aria-label="Kategori event"><button class="underline-tab is-selected" type="button" role="tab" aria-selected="true">Semua</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Silaturahmi</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Jejaring</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Workshop</button></div>
+            </div>
+            <div class="ev-period"><div class="segmented" role="radiogroup" aria-label="Periode event"><button class="segmented__item" type="button" role="radio" aria-checked="false">Mendatang</button><button class="segmented__item is-selected" type="button" role="radio" aria-checked="true">Lampau</button></div></div>
+            <div class="scroll-viewport">
+              <div class="ev-list">
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Silaturahmi</span>
+                  <p class="event-card__title clamp-2 mt-6px">Reuni Akbar Lintas Angkatan</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 3 Okt 2026</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>Event Dibatalkan</span><span class="price">Rp100.000</span><span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatalkan</span></div>
+                </div>
+              </a>
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Workshop</span>
+                  <p class="event-card__title clamp-2 mt-6px">Seminar Literasi Keuangan Keluarga</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 12 Sep 2026</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--danger"><span class="ic ic-event_busy" aria-hidden="true"></span>Pendaftaran Ditutup</span><span class="price">Rp50.000</span></div>
+                </div>
+              </a>
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Silaturahmi</span>
+                  <p class="event-card__title clamp-2 mt-6px">Buka Puasa Bersama Alumni</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 14 Mar 2026</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--danger"><span class="ic ic-event_busy" aria-hidden="true"></span>Pendaftaran Ditutup</span><span class="price">Gratis</span><span class="status-badge status-badge--success"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span>Terkonfirmasi</span></div>
+                </div>
+              </a>
+              </div>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item is-selected" href="events.html" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-event" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-school_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <h2 class="frames__group-title">Kosong, galat, memuat</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Kosong: belum ada event mendatang</figcaption>
+      <div class="device" role="group" aria-label="Daftar Event, kosong">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <h2 class="appbar__title"><span>Event</span></h2>
+            <div class="appbar__actions"><a class="icon-btn" href="tickets.html" aria-label="Tiket Saya"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="screen__body">
+            <div class="ev-filter">
+              <div class="input input--search"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" enterkeyhint="search" maxlength="100" aria-label="Cari event" placeholder="Cari event…"></div>
+              <div class="underline-tabs" role="tablist" aria-label="Kategori event"><button class="underline-tab is-selected" type="button" role="tab" aria-selected="true">Semua</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Silaturahmi</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Jejaring</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Workshop</button></div>
+            </div>
+            <div class="ev-period"><div class="segmented" role="radiogroup" aria-label="Periode event"><button class="segmented__item is-selected" type="button" role="radio" aria-checked="true">Mendatang</button><button class="segmented__item" type="button" role="radio" aria-checked="false">Lampau</button></div></div>
+            <div class="scroll-viewport"><div class="ev-list"><div class="ev-fill ev-fill--events-empty"><div class="state">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-event_busy_outlined"></span></div>
+              <h3 class="state__title">Belum ada event mendatang</h3>
+              <p class="state__message">Event dari pengurus akan tampil di sini. Anda juga mendapat notifikasi saat event baru dibuka.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button">Muat ulang</button>
+            </div></div></div></div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item is-selected" href="events.html" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-event" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-school_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Periode Lampau memakai judul "Belum ada event lampau" dengan pesan dan tombol yang sama.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Kosong: hasil filter</figcaption>
+      <div class="device" role="group" aria-label="Daftar Event, tidak ada hasil filter">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <h2 class="appbar__title"><span>Event</span></h2>
+            <div class="appbar__actions"><a class="icon-btn" href="tickets.html" aria-label="Tiket Saya"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="screen__body">
+            <div class="ev-filter">
+              <div class="input input--search"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" enterkeyhint="search" maxlength="100" aria-label="Cari event" placeholder="Cari event…" value="fotografi"><span class="input__suffix"><button class="icon-btn" type="button" aria-label="Hapus pencarian"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
+              <div class="underline-tabs" role="tablist" aria-label="Kategori event"><button class="underline-tab" type="button" role="tab" aria-selected="false">Semua</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Silaturahmi</button><button class="underline-tab is-selected" type="button" role="tab" aria-selected="true">Jejaring</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Workshop</button></div>
+            </div>
+            <div class="ev-period"><div class="segmented" role="radiogroup" aria-label="Periode event"><button class="segmented__item is-selected" type="button" role="radio" aria-checked="true">Mendatang</button><button class="segmented__item" type="button" role="radio" aria-checked="false">Lampau</button></div></div>
+            <div class="scroll-viewport"><div class="ev-list"><div class="ev-fill ev-fill--events-empty"><div class="state">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-event_busy_outlined"></span></div>
+              <h3 class="state__title">Event tidak ditemukan</h3>
+              <p class="state__message">Coba kata kunci atau kategori lain.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button">Hapus filter</button>
+            </div></div></div></div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item is-selected" href="events.html" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-event" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-school_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Galat (offline)</figcaption>
+      <div class="device" role="group" aria-label="Daftar Event, galat koneksi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <h2 class="appbar__title"><span>Event</span></h2>
+            <div class="appbar__actions"><a class="icon-btn" href="tickets.html" aria-label="Tiket Saya"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="status-strip" role="status"><span class="ic ic-cloud_off" aria-hidden="true"></span><span class="status-strip__text"><strong>Offline</strong>. Tersinkron 18 Okt 2026, 09.30 WIB</span><button class="btn-text" type="button">Coba lagi</button></div>
+          <div class="screen__body">
+            <div class="ev-filter">
+              <div class="input input--search"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" enterkeyhint="search" maxlength="100" aria-label="Cari event" placeholder="Cari event…"></div>
+              <div class="underline-tabs" role="tablist" aria-label="Kategori event"><button class="underline-tab is-selected" type="button" role="tab" aria-selected="true">Semua</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Silaturahmi</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Jejaring</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Workshop</button></div>
+            </div>
+            <div class="ev-period"><div class="segmented" role="radiogroup" aria-label="Periode event"><button class="segmented__item is-selected" type="button" role="radio" aria-checked="true">Mendatang</button><button class="segmented__item" type="button" role="radio" aria-checked="false">Lampau</button></div></div>
+            <div class="scroll-viewport"><div class="ev-fill ev-fill--events-error-strip"><div class="state state--error">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off"></span></div>
+              <h3 class="state__title">Tidak ada koneksi</h3>
+              <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+            </div></div></div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item is-selected" href="events.html" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-event" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-school_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">ErrorState.fromException mengisi 60 % tinggi area daftar (tarik untuk memuat ulang tetap aktif). Pita Offline global (AppBannerScope) tampil di bawah app bar; galat lain menampilkan "Kode bantuan: ..." bila ada request_id.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">8</span> Memuat</figcaption>
+      <div class="device" role="group" aria-label="Daftar Event, memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <h2 class="appbar__title"><span>Event</span></h2>
+            <div class="appbar__actions"><a class="icon-btn" href="tickets.html" aria-label="Tiket Saya"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="screen__body">
+            <div class="ev-filter">
+              <div class="input input--search"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" enterkeyhint="search" maxlength="100" aria-label="Cari event" placeholder="Cari event…"></div>
+              <div class="underline-tabs" role="tablist" aria-label="Kategori event"><button class="underline-tab is-selected" type="button" role="tab" aria-selected="true">Semua</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Silaturahmi</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Jejaring</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Workshop</button></div>
+            </div>
+            <div class="ev-period"><div class="segmented" role="radiogroup" aria-label="Periode event"><button class="segmented__item is-selected" type="button" role="radio" aria-checked="true">Mendatang</button><button class="segmented__item" type="button" role="radio" aria-checked="false">Lampau</button></div></div>
+            <div class="scroll-viewport"><div class="skeleton" role="status" aria-label="Memuat event"><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div></div></div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item is-selected" href="events.html" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-event" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-school_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">9</span> Galat halaman berikutnya (digulir ke akhir)</figcaption>
+      <div class="device" role="group" aria-label="Daftar Event, galat memuat halaman berikutnya">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <h2 class="appbar__title"><span>Event</span></h2>
+            <div class="appbar__actions"><a class="icon-btn" href="tickets.html" aria-label="Tiket Saya"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span></a></div>
+          </header>
+          <div class="screen__body">
+            <div class="ev-filter">
+              <div class="input input--search"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" enterkeyhint="search" maxlength="100" aria-label="Cari event" placeholder="Cari event…"></div>
+              <div class="underline-tabs" role="tablist" aria-label="Kategori event"><button class="underline-tab is-selected" type="button" role="tab" aria-selected="true">Semua</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Silaturahmi</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Jejaring</button><button class="underline-tab" type="button" role="tab" aria-selected="false">Workshop</button></div>
+            </div>
+            <div class="ev-period"><div class="segmented" role="radiogroup" aria-label="Periode event"><button class="segmented__item is-selected" type="button" role="radio" aria-checked="true">Mendatang</button><button class="segmented__item" type="button" role="radio" aria-checked="false">Lampau</button></div></div>
+            <div class="scroll-viewport scroll-end">
+              <div class="ev-list">
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Workshop</span>
+                  <p class="event-card__title clamp-2 mt-6px">Workshop Kewirausahaan Alumni</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 28 Nov 2026</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Rp75.000</span><span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu Verifikasi</span></div>
+                </div>
+              </a>
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover img-ph"><span class="ic ic-event" aria-hidden="true"></span></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Workshop</span>
+                  <p class="event-card__title clamp-2 mt-6px">Seminar Karier Alumni Muda</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 12 Des 2026</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span><span class="price">Rp50.000</span></div>
+                </div>
+              </a>
+              <a class="card card--pad event-card" href="event-detail.html">
+                <div class="event-card__cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt=""></div>
+                <div class="event-card__body">
+                  <span class="category-chip">Silaturahmi</span>
+                  <p class="event-card__title clamp-2 mt-6px">Halal Bihalal dan Silaturahmi Akbar Alumni</p>
+                  <p class="icon-line mt-1"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027</span></p>
+                  <p class="icon-line mt-2px"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni</span></p>
+                  <div class="event-card__meta"><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span><span class="price">Rp150.000</span></div>
+                </div>
+              </a>
+              <div class="ev-list__footer-notice"><div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div></div>
+              </div>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item is-selected" href="events.html" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-event" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-school_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Daftar yang sudah tampil tetap ada; InfoBox peringatan + "Coba lagi" di bawah item terakhir.</p>
+    </figure>
+
+    <h2 class="frames__group-title">Status keanggotaan</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">10</span> Bukan anggota aktif (KTA kedaluwarsa)</figcaption>
+      <div class="device" role="group" aria-label="Daftar Event untuk anggota dengan KTA kedaluwarsa">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <h2 class="appbar__title"><span>Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="ev-member-only">
+              <div class="status-hero tone-danger">
+                <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-lock_outline"></span></div>
+                <span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>KTA Kedaluwarsa</span>
+                <h3 class="status-hero__title">Event khusus anggota aktif</h3>
+                <p class="status-hero__message">Event hanya untuk anggota aktif. Perpanjang KTA untuk membukanya kembali. Tiket yang sudah lunas tetap dapat dibuka di Tiket Saya.</p>
+              </div>
+              <div class="mt-5"><button class="btn btn--primary" type="button">Perpanjang KTA</button></div>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item is-selected" href="events.html" aria-current="page" aria-label="Event, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-event" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ic-lock"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item" href="#" aria-label="Jejaring, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ic-lock"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">MemberOnlyNotice: hanya sesaat sebelum router mengalihkan status nonaktif (tanpa request daftar, tanpa aksi Tiket Saya). KTA tidak aktif (unverified): pesan "Event terbuka setelah KTA aktif. Selesaikan iuran pendaftaran agar pengurus dapat memverifikasi keanggotaan Anda." + tombol "Bayar iuran".</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">11</span> Lembar tab Event terkunci</figcaption>
+      <div class="device" role="group" aria-label="Lembar tab Event terkunci di atas Beranda">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="home-header">
+            <img class="home-header__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH">
+            <div class="home-header__text"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div>
+            <button class="icon-btn" type="button" aria-label="Notifikasi"><span class="ic ic-notifications_outlined" aria-hidden="true"></span></button>
+          </header>
+          <div class="screen__body"><div class="ev-shell-placeholder"></div></div>
+          <nav class="bottom-nav" aria-label="Navigasi utama">
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-home" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="events.html" aria-label="Event, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-event_outlined" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ic-lock"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Event</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item" href="#" aria-label="Jejaring, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school_outlined" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ic-lock"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+          </nav>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-locked-event">
+          <div class="sheet__body">
+            <div class="status-hero tone-danger">
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-lock_outline"></span></div>
+              <span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>KTA Kedaluwarsa</span>
+              <h3 class="status-hero__title" id="sheet-locked-event">Event terkunci</h3>
+              <p class="status-hero__message">Event hanya untuk anggota aktif. Perpanjang KTA untuk membuka kembali fitur ini. Tiket yang sudah lunas tetap dapat dibuka di Tiket Saya.</p>
+            </div>
+            <div class="mt-5"><button class="btn btn--primary" type="button">Perpanjang KTA</button></div>
+            <div class="mt-2"><a class="btn btn--outline" href="tickets.html"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span>Lihat Tiket Saya</a></div>
+            <div class="mt-2"><button class="btn-text w-full" type="button">Tutup</button></div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">showLockedTabSheet (lib/app/app_shell.dart) saat tab Event yang terkunci diketuk. Tombol "Lihat Tiket Saya" hanya untuk status expired di tab Event. Latar Beranda disederhanakan (lihat grup home).</p>
+    </figure>
+
+  </main>
+</body>
+</html>

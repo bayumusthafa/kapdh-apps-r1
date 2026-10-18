@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Preferensi Notifikasi - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Preferensi Notifikasi aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/akun.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <nav class="page-header__nav" aria-label="Layar grup Akun">
+      <a href="account.html">Akun</a>
+      <a href="profile-edit.html">Ubah Profil</a>
+      <a href="privacy.html">Privasi Profil</a>
+      <a href="notification-preferences.html" aria-current="page">Preferensi Notifikasi</a>
+      <a href="sessions.html">Sesi Perangkat</a>
+      <a href="change-password.html">Ganti Password</a>
+      <a href="delete-account.html">Hapus Akun</a>
+      <a href="blocked-users.html">Pengguna Diblokir</a>
+      <a href="my-reports.html">Laporan Saya</a>
+    </nav>
+    <h1 class="page-header__title">Preferensi Notifikasi</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/account/notification_preferences_screen.dart</code> (NotificationPreferencesScreen, _DevicePushCard, _PreferenceSwitch, _MandatoryRow) + <code>lib/features/notifications/push_permission.dart</code> (PushPermissionState)</dd>
+      <dt>Rute</dt><dd><code>/account/notifications</code> (di atas cangkang, tanpa navigasi bawah)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama: push aktif</li>
+        <li>Gulir penuh</li>
+        <li>Izin belum diminta (Izinkan)</li>
+        <li>Izin ditolak (Periksa lagi)</li>
+        <li>Push tidak tersedia di perangkat</li>
+        <li>Memeriksa izin perangkat</li>
+        <li>Menyimpan (saklar nonaktif)</li>
+        <li>Gagal menyimpan: nilai dikembalikan</li>
+        <li>Memuat</li>
+        <li>Galat memuat</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Kartu atas mengikuti izin push perangkat: memeriksa (available null), tidak tersedia, aktif (granted/provisional), ditolak, belum diminta. Judul bagian ditulis "Notifikasi push" dan "Email" (bukan huruf kapital seperti bagian Akun lain). Kategori wajib (mandatory_categories dari server: Keamanan akun, Akun) tampil "Selalu aktif" dengan gembok. Perubahan langsung tampil lalu disimpan (PUT); bila gagal nilai dikembalikan.</p>
+  </header>
+
+  <main class="frames">
+
+    <h2 class="frames__group-title">Izin push perangkat</h2>
+
+    <figure class="frame" id="frame-1">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Utama: push aktif</figcaption>
+      <div class="device" role="group" aria-label="Preferensi Notifikasi, push aktif">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Preferensi Notifikasi</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div>
+                  <div class="info-box"><span class="ic ic-notifications_active_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Notifikasi push aktif</p><p class="info-box__message">Perangkat ini menerima push untuk kategori yang Anda aktifkan di bawah.</p></div></div>
+                  <div class="akun-link-row"><button class="btn-link" type="button"><span class="ic ic-inbox_outlined" aria-hidden="true"></span>Buka kotak masuk</button></div>
+                </div>
+                <div class="mt-4"><div class="info-box"><span class="ic ic-inbox_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kotak masuk di aplikasi selalu menyimpan seluruh notifikasi, termasuk kategori yang push atau emailnya Anda matikan.</p></div></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-1">
+                    <h3 class="account-section__title" id="sec-1">Notifikasi push</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Hasil verifikasi iuran dan tiket, penolakan bukti, refund.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi, pengingat 30 hari sebelum berakhir dan perpanjangan.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Pengingat H-3 dan H-1, perubahan dan pembatalan event.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Berita</span><span class="akun-tile__subtitle">Pengumuman dan berita resmi pengurus.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Chat</span><span class="akun-tile__subtitle">Pesan dan undangan grup. Isi pesan tidak ditampilkan di layar kunci.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Keamanan akun</span><span class="akun-tile__subtitle">Login, penggantian password dan pencabutan sesi. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Akun</span><span class="akun-tile__subtitle">Pembatasan, banding dan penghapusan akun. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-2">
+                    <h3 class="account-section__title" id="sec-2">Email</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Ringkasan keputusan pembayaran ke email Anda.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi dan pengingat perpanjangan.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Tiket dan perubahan event yang Anda ikuti.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Kode OTP, keamanan dan akun</span><span class="akun-tile__subtitle">Email ini wajib dan tidak dapat dimatikan.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-2">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Gulir penuh</figcaption>
+      <div class="device device--tall" role="group" aria-label="Preferensi Notifikasi, seluruh isi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Preferensi Notifikasi</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div>
+                  <div class="info-box"><span class="ic ic-notifications_active_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Notifikasi push aktif</p><p class="info-box__message">Perangkat ini menerima push untuk kategori yang Anda aktifkan di bawah.</p></div></div>
+                  <div class="akun-link-row"><button class="btn-link" type="button"><span class="ic ic-inbox_outlined" aria-hidden="true"></span>Buka kotak masuk</button></div>
+                </div>
+                <div class="mt-4"><div class="info-box"><span class="ic ic-inbox_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kotak masuk di aplikasi selalu menyimpan seluruh notifikasi, termasuk kategori yang push atau emailnya Anda matikan.</p></div></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-3">
+                    <h3 class="account-section__title" id="sec-3">Notifikasi push</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Hasil verifikasi iuran dan tiket, penolakan bukti, refund.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi, pengingat 30 hari sebelum berakhir dan perpanjangan.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Pengingat H-3 dan H-1, perubahan dan pembatalan event.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Berita</span><span class="akun-tile__subtitle">Pengumuman dan berita resmi pengurus.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Chat</span><span class="akun-tile__subtitle">Pesan dan undangan grup. Isi pesan tidak ditampilkan di layar kunci.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Keamanan akun</span><span class="akun-tile__subtitle">Login, penggantian password dan pencabutan sesi. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Akun</span><span class="akun-tile__subtitle">Pembatasan, banding dan penghapusan akun. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-4">
+                    <h3 class="account-section__title" id="sec-4">Email</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Ringkasan keputusan pembayaran ke email Anda.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi dan pengingat perpanjangan.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Tiket dan perubahan event yang Anda ikuti.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Kode OTP, keamanan dan akun</span><span class="akun-tile__subtitle">Email ini wajib dan tidak dapat dimatikan.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-3">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Izin belum diminta (Izinkan)</figcaption>
+      <div class="device" role="group" aria-label="Preferensi Notifikasi, izin belum diminta">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Preferensi Notifikasi</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div>
+                  <div class="info-box"><span class="ic ic-notifications_none" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Izinkan notifikasi push</p><p class="info-box__message">Terima hasil pembayaran, pengingat masa KTA dan event langsung di perangkat ini.</p></div><button class="btn-text info-box__trailing" type="button">Izinkan</button></div>
+                  <div class="akun-link-row"><button class="btn-link" type="button"><span class="ic ic-inbox_outlined" aria-hidden="true"></span>Buka kotak masuk</button></div>
+                </div>
+                <div class="mt-4"><div class="info-box"><span class="ic ic-inbox_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kotak masuk di aplikasi selalu menyimpan seluruh notifikasi, termasuk kategori yang push atau emailnya Anda matikan.</p></div></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-5">
+                    <h3 class="account-section__title" id="sec-5">Notifikasi push</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Hasil verifikasi iuran dan tiket, penolakan bukti, refund.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi, pengingat 30 hari sebelum berakhir dan perpanjangan.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Pengingat H-3 dan H-1, perubahan dan pembatalan event.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Berita</span><span class="akun-tile__subtitle">Pengumuman dan berita resmi pengurus.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Chat</span><span class="akun-tile__subtitle">Pesan dan undangan grup. Isi pesan tidak ditampilkan di layar kunci.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Keamanan akun</span><span class="akun-tile__subtitle">Login, penggantian password dan pencabutan sesi. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Akun</span><span class="akun-tile__subtitle">Pembatasan, banding dan penghapusan akun. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-6">
+                    <h3 class="account-section__title" id="sec-6">Email</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Ringkasan keputusan pembayaran ke email Anda.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi dan pengingat perpanjangan.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Tiket dan perubahan event yang Anda ikuti.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Kode OTP, keamanan dan akun</span><span class="akun-tile__subtitle">Email ini wajib dan tidak dapat dimatikan.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Selama permintaan izin berjalan (busy) tombol "Izinkan" nonaktif.</p>
+    </figure>
+
+    <figure class="frame" id="frame-4">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Izin ditolak (Periksa lagi)</figcaption>
+      <div class="device" role="group" aria-label="Preferensi Notifikasi, izin ditolak">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Preferensi Notifikasi</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div>
+                  <div class="info-box info-box--warning"><span class="ic ic-notifications_off_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Izin notifikasi ditolak</p><p class="info-box__message">Aplikasi tetap berfungsi dan semua notifikasi tersimpan di kotak masuk. Untuk menerima push, aktifkan izin notifikasi KAPDH di Pengaturan perangkat (Aplikasi &gt; KAPDH &gt; Notifikasi), lalu periksa lagi.</p></div><button class="btn-text info-box__trailing" type="button">Periksa lagi</button></div>
+                  <div class="akun-link-row"><button class="btn-link" type="button"><span class="ic ic-inbox_outlined" aria-hidden="true"></span>Buka kotak masuk</button></div>
+                </div>
+                <div class="mt-4"><div class="info-box"><span class="ic ic-inbox_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kotak masuk di aplikasi selalu menyimpan seluruh notifikasi, termasuk kategori yang push atau emailnya Anda matikan.</p></div></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-7">
+                    <h3 class="account-section__title" id="sec-7">Notifikasi push</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Hasil verifikasi iuran dan tiket, penolakan bukti, refund.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi, pengingat 30 hari sebelum berakhir dan perpanjangan.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Pengingat H-3 dan H-1, perubahan dan pembatalan event.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Berita</span><span class="akun-tile__subtitle">Pengumuman dan berita resmi pengurus.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Chat</span><span class="akun-tile__subtitle">Pesan dan undangan grup. Isi pesan tidak ditampilkan di layar kunci.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Keamanan akun</span><span class="akun-tile__subtitle">Login, penggantian password dan pencabutan sesi. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Akun</span><span class="akun-tile__subtitle">Pembatasan, banding dan penghapusan akun. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-8">
+                    <h3 class="account-section__title" id="sec-8">Email</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Ringkasan keputusan pembayaran ke email Anda.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi dan pengingat perpanjangan.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Tiket dan perubahan event yang Anda ikuti.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Kode OTP, keamanan dan akun</span><span class="akun-tile__subtitle">Email ini wajib dan tidak dapat dimatikan.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-5">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Push tidak tersedia di perangkat</figcaption>
+      <div class="device" role="group" aria-label="Preferensi Notifikasi, push tidak tersedia">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Preferensi Notifikasi</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div>
+                  <div class="info-box"><span class="ic ic-notifications_off_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Push tidak tersedia di perangkat ini</p><p class="info-box__message">Notifikasi tetap masuk ke kotak masuk aplikasi. Buka menu Notifikasi untuk melihat semua riwayat keputusan dan pengingat.</p></div></div>
+                  <div class="akun-link-row"><button class="btn-link" type="button"><span class="ic ic-inbox_outlined" aria-hidden="true"></span>Buka kotak masuk</button></div>
+                </div>
+                <div class="mt-4"><div class="info-box"><span class="ic ic-inbox_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kotak masuk di aplikasi selalu menyimpan seluruh notifikasi, termasuk kategori yang push atau emailnya Anda matikan.</p></div></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-9">
+                    <h3 class="account-section__title" id="sec-9">Notifikasi push</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Hasil verifikasi iuran dan tiket, penolakan bukti, refund.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi, pengingat 30 hari sebelum berakhir dan perpanjangan.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Pengingat H-3 dan H-1, perubahan dan pembatalan event.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Berita</span><span class="akun-tile__subtitle">Pengumuman dan berita resmi pengurus.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Chat</span><span class="akun-tile__subtitle">Pesan dan undangan grup. Isi pesan tidak ditampilkan di layar kunci.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Keamanan akun</span><span class="akun-tile__subtitle">Login, penggantian password dan pencabutan sesi. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Akun</span><span class="akun-tile__subtitle">Pembatasan, banding dan penghapusan akun. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-10">
+                    <h3 class="account-section__title" id="sec-10">Email</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Ringkasan keputusan pembayaran ke email Anda.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi dan pengingat perpanjangan.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Tiket dan perubahan event yang Anda ikuti.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Kode OTP, keamanan dan akun</span><span class="akun-tile__subtitle">Email ini wajib dan tidak dapat dimatikan.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-6">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Memeriksa izin perangkat</figcaption>
+      <div class="device" role="group" aria-label="Preferensi Notifikasi, memeriksa izin">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Preferensi Notifikasi</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div>
+                  <div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Memeriksa notifikasi push perangkat...</p></div></div>
+                  <div class="akun-link-row"><button class="btn-link" type="button"><span class="ic ic-inbox_outlined" aria-hidden="true"></span>Buka kotak masuk</button></div>
+                </div>
+                <div class="mt-4"><div class="info-box"><span class="ic ic-inbox_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kotak masuk di aplikasi selalu menyimpan seluruh notifikasi, termasuk kategori yang push atau emailnya Anda matikan.</p></div></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-11">
+                    <h3 class="account-section__title" id="sec-11">Notifikasi push</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Hasil verifikasi iuran dan tiket, penolakan bukti, refund.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi, pengingat 30 hari sebelum berakhir dan perpanjangan.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Pengingat H-3 dan H-1, perubahan dan pembatalan event.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Berita</span><span class="akun-tile__subtitle">Pengumuman dan berita resmi pengurus.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Chat</span><span class="akun-tile__subtitle">Pesan dan undangan grup. Isi pesan tidak ditampilkan di layar kunci.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Keamanan akun</span><span class="akun-tile__subtitle">Login, penggantian password dan pencabutan sesi. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Akun</span><span class="akun-tile__subtitle">Pembatasan, banding dan penghapusan akun. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-12">
+                    <h3 class="account-section__title" id="sec-12">Email</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Ringkasan keputusan pembayaran ke email Anda.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi dan pengingat perpanjangan.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Tiket dan perubahan event yang Anda ikuti.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Kode OTP, keamanan dan akun</span><span class="akun-tile__subtitle">Email ini wajib dan tidak dapat dimatikan.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">InfoBox nada info tanpa judul, ikon bawaan info_outline.</p>
+    </figure>
+
+    <h2 class="frames__group-title">Menyimpan</h2>
+
+    <figure class="frame" id="frame-7">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Menyimpan (saklar nonaktif)</figcaption>
+      <div class="device" role="group" aria-label="Preferensi Notifikasi, sedang menyimpan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Preferensi Notifikasi</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div>
+                  <div class="info-box"><span class="ic ic-notifications_active_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Notifikasi push aktif</p><p class="info-box__message">Perangkat ini menerima push untuk kategori yang Anda aktifkan di bawah.</p></div></div>
+                  <div class="akun-link-row"><button class="btn-link" type="button"><span class="ic ic-inbox_outlined" aria-hidden="true"></span>Buka kotak masuk</button></div>
+                </div>
+                <div class="mt-4"><div class="info-box"><span class="ic ic-inbox_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kotak masuk di aplikasi selalu menyimpan seluruh notifikasi, termasuk kategori yang push atau emailnya Anda matikan.</p></div></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-13">
+                    <h3 class="account-section__title" id="sec-13">Notifikasi push</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile is-disabled" role="switch" aria-checked="true" tabindex="-1" aria-disabled="true">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Hasil verifikasi iuran dan tiket, penolakan bukti, refund.</span></span>
+                        <span class="switch is-on is-disabled" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile is-disabled" role="switch" aria-checked="true" tabindex="-1" aria-disabled="true">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi, pengingat 30 hari sebelum berakhir dan perpanjangan.</span></span>
+                        <span class="switch is-on is-disabled" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile is-disabled" role="switch" aria-checked="true" tabindex="-1" aria-disabled="true">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Pengingat H-3 dan H-1, perubahan dan pembatalan event.</span></span>
+                        <span class="switch is-on is-disabled" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile is-disabled" role="switch" aria-checked="true" tabindex="-1" aria-disabled="true">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Berita</span><span class="akun-tile__subtitle">Pengumuman dan berita resmi pengurus.</span></span>
+                        <span class="switch is-on is-disabled" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile is-disabled" role="switch" aria-checked="true" tabindex="-1" aria-disabled="true">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Chat</span><span class="akun-tile__subtitle">Pesan dan undangan grup. Isi pesan tidak ditampilkan di layar kunci.</span></span>
+                        <span class="switch is-on is-disabled" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Keamanan akun</span><span class="akun-tile__subtitle">Login, penggantian password dan pencabutan sesi. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Akun</span><span class="akun-tile__subtitle">Pembatasan, banding dan penghapusan akun. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-14">
+                    <h3 class="account-section__title" id="sec-14">Email</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile is-disabled" role="switch" aria-checked="true" tabindex="-1" aria-disabled="true">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Ringkasan keputusan pembayaran ke email Anda.</span></span>
+                        <span class="switch is-on is-disabled" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile is-disabled" role="switch" aria-checked="true" tabindex="-1" aria-disabled="true">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi dan pengingat perpanjangan.</span></span>
+                        <span class="switch is-on is-disabled" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile is-disabled" role="switch" aria-checked="false" tabindex="-1" aria-disabled="true">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Tiket dan perubahan event yang Anda ikuti.</span></span>
+                        <span class="switch is-disabled" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Kode OTP, keamanan dan akun</span><span class="akun-tile__subtitle">Email ini wajib dan tidak dapat dimatikan.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Setelah menyalakan Berita: nilai baru langsung tampil, semua saklar dikunci selama satu PUT berjalan.</p>
+    </figure>
+
+    <figure class="frame" id="frame-8">
+      <figcaption class="frame__label"><span class="frame__num">8</span> Gagal menyimpan: nilai dikembalikan</figcaption>
+      <div class="device" role="group" aria-label="Preferensi Notifikasi, gagal menyimpan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Preferensi Notifikasi</span></h2>
+          </header>
+          <div class="screen__body">
+            <div>
+              <div class="pad-screen pt-4 pb-8">
+                <div>
+                  <div class="info-box"><span class="ic ic-notifications_active_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Notifikasi push aktif</p><p class="info-box__message">Perangkat ini menerima push untuk kategori yang Anda aktifkan di bawah.</p></div></div>
+                  <div class="akun-link-row"><button class="btn-link" type="button"><span class="ic ic-inbox_outlined" aria-hidden="true"></span>Buka kotak masuk</button></div>
+                </div>
+                <div class="mt-4"><div class="info-box"><span class="ic ic-inbox_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kotak masuk di aplikasi selalu menyimpan seluruh notifikasi, termasuk kategori yang push atau emailnya Anda matikan.</p></div></div></div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-15">
+                    <h3 class="account-section__title" id="sec-15">Notifikasi push</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Hasil verifikasi iuran dan tiket, penolakan bukti, refund.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi, pengingat 30 hari sebelum berakhir dan perpanjangan.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Pengingat H-3 dan H-1, perubahan dan pembatalan event.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Berita</span><span class="akun-tile__subtitle">Pengumuman dan berita resmi pengurus.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Chat</span><span class="akun-tile__subtitle">Pesan dan undangan grup. Isi pesan tidak ditampilkan di layar kunci.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Keamanan akun</span><span class="akun-tile__subtitle">Login, penggantian password dan pencabutan sesi. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Akun</span><span class="akun-tile__subtitle">Pembatasan, banding dan penghapusan akun. Selalu dikirim.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="mt-5">
+                  <section aria-labelledby="sec-16">
+                    <h3 class="account-section__title" id="sec-16">Email</h3>
+                    <div class="account-section__card">
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Pembayaran</span><span class="akun-tile__subtitle">Ringkasan keputusan pembayaran ke email Anda.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="true" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Masa KTA</span><span class="akun-tile__subtitle">Aktivasi dan pengingat perpanjangan.</span></span>
+                        <span class="switch is-on" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-switch-tile" role="switch" aria-checked="false" tabindex="0">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Event</span><span class="akun-tile__subtitle">Tiket dan perubahan event yang Anda ikuti.</span></span>
+                        <span class="switch" aria-hidden="true"></span>
+                      </div>
+                      <div class="akun-tile-row">
+                        <span class="akun-tile__body"><span class="akun-tile__title">Kode OTP, keamanan dan akun</span><span class="akun-tile__subtitle">Email ini wajib dan tidak dapat dimatikan.</span></span>
+                        <span class="akun-always-on"><span class="ic ic-lock_outline" aria-hidden="true"></span><span>Selalu aktif</span></span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="snackbar" role="status"><span class="snackbar__text">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</span><button class="btn-text" type="button">Coba lagi</button></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">ErrorPresenter: snackbar dengan aksi emas "Coba lagi" yang mengulang penyimpanan.</p>
+    </figure>
+
+    <h2 class="frames__group-title">Memuat dan galat</h2>
+
+    <figure class="frame" id="frame-9">
+      <figcaption class="frame__label"><span class="frame__num">9</span> Memuat</figcaption>
+      <div class="device" role="group" aria-label="Preferensi Notifikasi, memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Preferensi Notifikasi</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="skeleton" role="status" aria-label="Memuat preferensi">
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+              <div class="skeleton__line"></div>
+              <div class="skeleton__line is-short"></div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame" id="frame-10">
+      <figcaption class="frame__label"><span class="frame__num">10</span> Galat memuat</figcaption>
+      <div class="device" role="group" aria-label="Preferensi Notifikasi, galat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Preferensi Notifikasi</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="state state--error">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off"></span></div>
+              <h3 class="state__title">Tidak ada koneksi</h3>
+              <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+  </main>
+</body>
+</html>

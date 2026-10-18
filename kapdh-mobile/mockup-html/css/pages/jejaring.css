@@ -1,0 +1,357 @@
+/* =====================================================================================================================
+   KAPDH mockup HTML: GRUP JEJARING (lib/features/network/*, lib/features/chat/*)
+   Gaya khusus layar Jejaring, profil alumni, laporan/blokir, chat (daftar room, percakapan, info, undangan, grup baru,
+   pemilih alumni). Hanya memakai token dari tokens.css; komponen bersama tetap di components.css (tidak diubah).
+   Awalan kelas: .jj-  (jejaring). Angka dp diambil dari Dart dan diukur dengan uji widget Flutter 3.47.2 (360 x 800).
+   ===================================================================================================================== */
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   UMUM
+   --------------------------------------------------------------------------------------------------------------------- */
+/* TextField tanpa `style` (pencarian Jejaring, komposer chat, pemilih alumni): teks masukan bodyLarge 16 ls .5,
+   petunjuk hintStyle 14. Tinggi terukur 51 = 14 + 23.2 + 14. */
+.jj-input-typed .input__control { line-height: 23.2px; text-overflow: ellipsis; }   /* baris 16 x 1.45 */
+.jj-input-typed .input__control:not(:placeholder-shown) { font-size: var(--fs-body-lg); }
+
+/* Spinner 24 (PagedFooter, riwayat pesan lama): .spinner.spinner--24 dari components.css. */
+
+/* Judul lembar bawah: TextStyle(fontSize 18, w600) mewarisi bodyMedium (tinggi 1.45, ls .25), bukan titleMedium. */
+.jj-sheet-title { font-size: var(--fs-h3); font-weight: var(--fw-semibold); line-height: var(--lh-normal); }
+.jj-sheet-head { display: flex; align-items: center; min-height: 48px; }
+.jj-sheet-head .jj-sheet-title { flex: 1 1 auto; min-width: 0; }
+
+/* Lembar di atas keyboard tiruan (.keyboard 268 + inset): isi diberi padding viewInsets oleh Dart */
+.sheet.jj-sheet--above-kb { bottom: calc(268px + var(--inset-bottom)); padding-bottom: 0; max-height: calc(100% - var(--inset-top) - 268px - var(--inset-bottom)); }
+/* isi digulir sampai akhir (field fokus / tombol terlihat); kelebihan terpotong di atas. --end: tanpa keyboard */
+.sheet.jj-sheet--above-kb .sheet__body, .sheet.jj-sheet--end .sheet__body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+.sheet.jj-sheet--above-kb .sheet__body > *, .sheet.jj-sheet--end .sheet__body > * { flex: none; }
+
+/* Lembar bawah berisi ListTile langsung (tanpa padding 20): pemilih foto, tindakan pesan. */
+.jj-sheet-list { overflow: hidden; }
+
+/* ListTile dengan contentPadding: EdgeInsets.zero (RadioListTile, SwitchListTile, ListTile di Info Percakapan).
+   Terukur: Radio 40 di x 0, judul di x 56; ikon 24 di x 0, judul di x 40; avatar 40, judul di x 56; Switch 60 rata
+   kanan, celah judul 16. */
+/* minVerticalPadding 8 hanya untuk teks; leading/trailing (mis. IconButton 48) dipusatkan tanpa menambah tinggi. */
+.jj-tile { display: flex; align-items: center; gap: var(--s4); min-height: 56px; padding: 0; width: 100%; text-align: left; }
+.jj-tile--two-line { min-height: 72px; }
+.jj-tile__leading { flex: none; display: grid; place-items: center; color: var(--color-text-muted); }
+.jj-tile__body { flex: 1 1 auto; min-width: 0; padding: var(--s2) 0; }
+.jj-tile__title { display: block; font-size: var(--fs-body-lg); letter-spacing: var(--ls-body-lg); color: var(--color-text); }
+.jj-tile__subtitle { display: block; font-size: var(--fs-body); color: var(--color-text-muted); }
+.jj-tile__trailing { flex: none; display: flex; align-items: center; color: var(--color-text-muted); }
+.jj-tile--danger .jj-tile__leading, .jj-tile--danger .jj-tile__title { color: var(--color-danger); }
+.jj-tile .radio, .jj-tile .switch { flex: none; }
+.jj-tile.is-disabled .jj-tile__title, .jj-tile.is-disabled .jj-tile__subtitle { color: rgba(28, 27, 31, .38); }
+
+/* SectionHeader tanpa aksi: tinggi baris teks (20), bukan 48. */
+.jj-section-header--bare { min-height: 0; }
+
+/* InputChip bawaan M3 dengan chipTheme (side: none): TANPA latar dan TANPA garis (warna null), label labelLarge
+   14 w600 ls .1 abu (onSurfaceVariant), Icons.clear 18 (glyph sama dengan close). Terukur: label x 16, celah 9,
+   ikon 18, kanan 9; tinggi tata letak 48 (target sentuh padded). */
+.jj-input-chip {
+  display: inline-flex; align-items: center; gap: 9px;
+  height: 48px; padding: 0 9px 0 16px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-label); font-weight: var(--fw-semibold); line-height: 1.43; letter-spacing: var(--ls-label);
+  color: var(--color-text-muted); background: transparent;
+  white-space: nowrap;
+}
+.jj-input-chip .icon-btn { width: 18px; height: 18px; color: var(--color-text-muted); }
+.jj-input-chip .icon-btn .ic { --ic-size: 18px; }
+.jj-input-chip.is-disabled { color: rgba(28, 27, 31, .38); }
+
+/* Avatar 88 (Info Percakapan, Grup Baru). Ikon pengganti 0.5 x ukuran = 44. */
+.jj-avatar-88 { --av: 88px; }
+
+/* App bar M3 bawaan tanpa garis bawah (MemberPickerPage memakai AppBar langsung, bukan AppScaffold). */
+.appbar.jj-appbar-plain { border-bottom: 0; height: calc(var(--size-app-bar) + var(--inset-top)); }
+
+/* Kotak InfoBox di dalam baris dengan padding tertentu */
+.jj-inline-notice { padding: 0 var(--s4) var(--s2); }
+
+/* Isi TabBarView / Expanded: kepala tetap, daftar di bawahnya bergulir. Frame "digulir" memakai --scroll untuk
+   menggeser isi ke atas di dalam area yang terpotong (meniru posisi gulir, tanpa JavaScript). */
+.jj-tabview { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+/* Posisi gulir tiruan: pakai utilitas bersama .scroll-viewport / .scroll-end / .scroll-offset (components.css). */
+
+/* Tombol spasi keyboard tiruan */
+.keyboard__key.jj-key-space { max-width: 160px; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   TAB JEJARING  network_screen.dart, directory_tab.dart
+   --------------------------------------------------------------------------------------------------------------------- */
+/* Baris cari + filter: padding 16/12/16/8, celah 8; tombol filter IconButton.filledTonal 48 radius 10 green50. */
+.jj-search-row { display: flex; align-items: center; gap: var(--s2); padding: var(--s3) var(--s4) var(--s2); }
+.jj-search-row > .input { flex: 1 1 auto; min-width: 0; }
+.jj-search-row .badge-host { flex: none; }
+/* "Ketik minimal 2 huruf untuk mencari nama." padding 16/0/16/4, 12 abu */
+.jj-query-hint { padding: 0 var(--s4) var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
+
+/* _ActiveFilters: padding 16/8; chip filter Wrap jarak 8/4; "N alumni ditemukan" 12 abu. Tanpa chip dan total: 8. */
+.jj-filters { padding: var(--s2) var(--s4); }
+.jj-filters__chips { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); }
+.jj-filters__count { font-size: var(--fs-caption); color: var(--color-text-muted); }
+.jj-filters-spacer { height: var(--s2); flex: none; }
+
+/* Daftar direktori: padding 16/0/16/24, jarak kartu 12 */
+.jj-dir-list { display: flex; flex-direction: column; gap: var(--s3); padding: 0 var(--s4) var(--s6); }
+.jj-dir-list--picker { gap: var(--s2); padding: var(--s4); } /* MemberPickerPage: padding 16, jarak 8 */
+
+/* PagedFooter: memuat (padding 16, indikator 24), galat (InfoBox, padding vertikal 8), "Muat lebih banyak", akhir (8) */
+.jj-footer-loading { display: flex; justify-content: center; padding: var(--s4); }
+.jj-footer-error { padding: var(--s2) 0; }
+.jj-footer-more { display: flex; justify-content: center; }
+.jj-footer-end { height: var(--s2); }
+
+/* Checkbox mandiri di kartu pemilih (materialTapTargetSize.padded: 48 x 48), tanpa celah sebelum trailing */
+.jj-check48 { width: 48px; height: 48px; margin-left: calc(-1 * var(--s3)); }
+
+/* Lembar filter: label "Urutkan" 14 w500 */
+.jj-label-md { font-size: var(--fs-label); font-weight: var(--fw-medium); }
+.jj-master-loading { padding: var(--s3) 0; color: var(--color-text-muted); }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   PROFIL ALUMNI  member_profile_screen.dart
+   --------------------------------------------------------------------------------------------------------------------- */
+/* BrandHeader(minHeight 112, padding 4/4/4/0) + inset status bar: tombol kembali dan menu titik tiga putih. */
+.brand-band.jj-profile-band {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  min-height: calc(112px + var(--inset-top));
+  padding: calc(var(--s1) + var(--inset-top)) var(--s1) 0;
+}
+.jj-profile-band .icon-btn { color: var(--color-on-primary); }
+/* Baris avatar 72 + nama: padding 20/16, celah 16; nama 20 w700 (tinggi 1.45 diwarisi) */
+.jj-profile-head { display: flex; align-items: flex-start; gap: var(--s4); padding: var(--s4) var(--s5); }
+.jj-profile-head__text { flex: 1 1 auto; min-width: 0; }
+.jj-profile-name { font-size: var(--fs-h2); font-weight: var(--fw-bold); }
+/* _IconLine: padding atas 4, ikon 16 abu, celah 4, teks 12 abu */
+.jj-icon-line { display: flex; align-items: center; gap: var(--s1); padding-top: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
+.jj-icon-line .ic { --ic-size: 16px; }
+.jj-profile-note { padding: 0 var(--s5) var(--s3); }
+/* Bagian: SliverList dipisah Divider(height 24); judul 14 w600, jarak 8, nilai 14 abu */
+.jj-sections { padding: 0 var(--s5) var(--s4); }
+.jj-divider-24 { height: 24px; border: 0; margin: 0; background: linear-gradient(var(--color-divider), var(--color-divider)) center / 100% 1px no-repeat; }
+.jj-section__title { font-size: var(--fs-body); font-weight: var(--fw-semibold); }
+.jj-section__body { margin-top: var(--s2); }
+.jj-value { color: var(--color-text-muted); }
+.jj-value--bio { line-height: 1.5; }
+/* _PhoneLink: ikon call 18 primary, celah 8, nomor bergaris bawah primary, tinggi minimal 48 */
+.jj-phone { display: inline-flex; align-items: center; gap: var(--s2); min-height: 48px; color: var(--color-primary); }
+.jj-phone .ic { --ic-size: 18px; }
+.jj-phone__text { text-decoration: underline; }
+/* _SocialLink: Wrap jarak 16/4, tiap tautan min 140 x 48, ikon 18 abu + celah 8 */
+.jj-social { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); }
+.jj-social__item { display: inline-flex; align-items: center; gap: var(--s2); min-height: 48px; min-width: 140px; color: var(--color-text-muted); }
+.jj-social__item .ic { --ic-size: 18px; }
+/* Area pesan di bawah (SafeArea): padding 20/8/20/16 di atas inset gestur, latar surface */
+.jj-profile-bottom { flex: none; padding: var(--s2) var(--s5) calc(var(--s4) + var(--inset-bottom)); background: var(--color-surface); }
+/* PopupMenuButton di kepala: menu menempel tombol (atas sama), 8 dari tepi kanan, lebar kelipatan 56 (min 112) */
+.jj-popup { position: absolute; z-index: 31; }
+.jj-popup--profile { top: calc(var(--inset-top) + var(--s1)); right: var(--s2); width: 112px; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   LAPORAN SAYA, PENGGUNA DIBLOKIR, UNDANGAN GRUP (kartu Card radius 10, garis divider)
+   --------------------------------------------------------------------------------------------------------------------- */
+.jj-card-list { display: flex; flex-direction: column; gap: var(--s3); padding: var(--s4); }
+.jj-card-list--tight { gap: var(--s2); }
+.jj-card-16 { padding: 15px; }   /* padding 16 dikurangi garis 1 */
+.jj-card-12 { padding: 11px; }   /* padding 12 dikurangi garis 1 */
+/* _ReportCard: Wrap kategori w600 + StatusBadge (jarak 8/4), objek abu, "Dikirim ..." 12 abu, hasil 12 */
+.jj-report__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); }
+.jj-report__cat { font-weight: var(--fw-semibold); }
+.jj-report__line { margin-top: var(--s1); color: var(--color-text-muted); }
+.jj-report__date { margin-top: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
+.jj-report__outcome { margin-top: var(--s2); font-size: var(--fs-caption); }
+/* Kartu pengguna diblokir: avatar 44 + 12 + nama w600 / "Diblokir sejak ..." 12 abu; tombol di baris sendiri, kanan */
+.jj-person { display: flex; align-items: center; gap: var(--s3); }
+.jj-person__name { font-weight: var(--fw-semibold); }
+.jj-person__meta { font-size: var(--fs-caption); color: var(--color-text-muted); }
+.jj-card-actions-end { display: flex; justify-content: flex-end; }
+/* Kartu undangan: tombol Tolak (garis) | Terima (solid) masing-masing Expanded, celah 12 */
+.jj-invite__actions { display: flex; gap: var(--s3); margin-top: var(--s3); }
+.jj-invite__actions > .btn { flex: 1 1 0; min-width: 0; }
+/* Lembar detail laporan: ListView padding 20/0/20/24 */
+.jj-detail { padding: 0 var(--s5) var(--s6); }
+.jj-detail__label { font-weight: var(--fw-medium); }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   DAFTAR ROOM  chat_list_view.dart (tab Pesan dan Pesan Grup)
+   --------------------------------------------------------------------------------------------------------------------- */
+/* _GroupActions: padding 16/8/16/0, Wrap jarak 8, lalu SizedBox 8 */
+.jj-group-actions { display: flex; flex-wrap: wrap; gap: var(--s2); padding: var(--s2) var(--s4) 0; margin-bottom: var(--s2); }
+.jj-group-actions .btn-m3 { color: var(--color-primary); }
+/* ChatRoomTile: min 72, padding 16/12, avatar 48 + 12 */
+.jj-room { display: flex; align-items: center; gap: var(--s3); min-height: 72px; padding: var(--s3) var(--s4); width: 100%; text-align: left; }
+.jj-room__body { flex: 1 1 auto; min-width: 0; }
+.jj-room__top, .jj-room__bottom { display: flex; align-items: center; }
+.jj-room__bottom { margin-top: 2px; }
+.jj-room__title { flex: 1 1 auto; min-width: 0; font-weight: var(--fw-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jj-room__time { flex: none; font-size: var(--fs-overline); color: var(--color-text-muted); }
+.jj-room__preview { flex: 1 1 auto; min-width: 0; font-size: var(--fs-caption); color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jj-room__preview.is-deleted { font-style: italic; }
+.jj-room.is-unread .jj-room__title { font-weight: var(--fw-bold); }
+.jj-room.is-unread .jj-room__time { color: var(--color-primary); }
+.jj-room.is-unread .jj-room__preview { color: var(--color-text); }
+.jj-room__unsent { --ic-size: 16px; margin-right: var(--s1); color: var(--color-danger); }
+.jj-room__muted { --ic-size: 16px; margin-left: var(--s1); color: var(--color-text-muted); }
+/* Pil jumlah belum dibaca: 2 x 7, pil primary (neutral500 bila dibisukan), 11 w600 putih */
+.jj-unread-pill { flex: none; margin-left: var(--s2); padding: 2px 7px; border-radius: var(--r-pill); background: var(--color-primary); color: var(--color-on-primary); font-size: var(--fs-overline); font-weight: var(--fw-semibold); }
+.jj-unread-pill--muted { background: var(--color-neutral-500); }
+/* Divider(height 1, indent 76) antarbaris */
+.jj-room-sep { height: 1px; margin-left: 76px; background: var(--color-divider); flex: none; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   PERCAKAPAN  chat_room_screen.dart, chat_message_widgets.dart
+   --------------------------------------------------------------------------------------------------------------------- */
+/* AppBar khusus: titleSpacing 0, judul = avatar 36 + 8 + (nama 17 w600, subjudul 12 abu). Subjudul mewarisi
+   titleTextStyle (w600, ls 0) karena TextStyle hanya mengganti ukuran dan warna. Aksi rata kanan tanpa padding. */
+.jj-chat-title { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--s2); height: var(--size-app-bar); text-align: left; }
+.jj-chat-title__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.jj-chat-title__name { font-size: var(--fs-appbar); font-weight: var(--fw-semibold); letter-spacing: 0; line-height: var(--lh-poppins); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jj-chat-title__sub { font-size: var(--fs-caption); font-weight: var(--fw-semibold); letter-spacing: 0; line-height: var(--lh-poppins); color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jj-chat-appbar .appbar__actions { margin-left: 0; }
+.jj-chat-mute { margin-right: var(--s1); }
+
+/* _ConnectionNotice: warningBg, padding 16/8, ikon sync_problem 18 + 8, teks 12 warning; TextButton bawaan (primary) */
+.jj-conn { flex: none; display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--s4); background: var(--color-warning-bg); color: var(--color-warning); font-size: var(--fs-caption); }
+.jj-conn > .ic { --ic-size: 18px; }
+.jj-conn__text { flex: 1 1 auto; min-width: 0; }
+
+/* Riwayat (ListView reverse): padding 12/8; isi pendek menempel ke bawah. Tiap item padding vertikal 3. */
+.jj-timeline { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: var(--s2) var(--s3); background: var(--color-background); }
+.device--tall .jj-timeline { justify-content: flex-start; overflow: visible; }
+.jj-item { padding: 3px 0; display: flex; flex-direction: column; }
+/* Kepala riwayat: memuat, galat, "Muat pesan lama", atau keterangan awal (12 abu, tengah, padding 12) */
+.jj-history { padding: var(--s3); text-align: center; font-size: var(--fs-caption); color: var(--color-text-muted); }
+.jj-history-loading { display: flex; justify-content: center; padding: var(--s3); }
+.jj-history-error { padding: var(--s2); }
+.jj-history-more { display: flex; justify-content: center; }
+/* DateSeparator: Divider | 11 abu (padding 8) | Divider, padding vertikal 8 */
+.jj-date { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) 0; font-size: var(--fs-overline); color: var(--color-text-muted); }
+.jj-date::before, .jj-date::after { content: ""; flex: 1 1 auto; height: 1px; background: var(--color-divider); }
+/* SystemMessageView: pil neutralBg di tengah, margin 4, padding 12/4, 12 neutral */
+.jj-system { display: flex; justify-content: center; }
+.jj-system__pill { margin: var(--s1) 0; padding: var(--s1) var(--s3); border-radius: var(--r-pill); background: var(--color-neutral-bg); color: var(--color-neutral); font-size: var(--fs-caption); text-align: center; }
+
+/* ChatBubble: lebar maks 0.78 x 360 = 280.8; padding 12/8/12/4; radius 14 dengan sudut ekor 4.
+   Milik sendiri green700 teks putih; orang lain putih bergaris divider. */
+.jj-msg { display: flex; flex-direction: column; align-items: flex-start; max-width: 280.8px; align-self: flex-start; }
+.jj-msg--mine { align-items: flex-end; align-self: flex-end; }
+.jj-bubble {
+  display: flex; flex-direction: column; align-items: flex-start;
+  max-width: 100%;
+  padding: var(--s2) var(--s3) var(--s1);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--r-lg) var(--r-lg) var(--r-lg) 4px;
+  background: var(--color-surface); color: var(--color-text);
+}
+.jj-msg--mine .jj-bubble { border: 0; border-radius: var(--r-lg) var(--r-lg) 4px var(--r-lg); background: var(--color-green-700); color: var(--color-on-primary); }
+.jj-bubble__sender { padding-bottom: 2px; font-size: var(--fs-caption); font-weight: var(--fw-semibold); color: var(--color-primary); }
+.jj-bubble__body { font-size: var(--fs-body); line-height: 1.4; }
+.jj-bubble__deleted { font-style: italic; color: var(--color-text-muted); }
+.jj-msg--mine .jj-bubble__deleted { color: var(--color-muted-on-dark); }
+/* BubbleMeta: jarak 2 dari isi. Align(centerRight, widthFactor: 1) di Column crossAxisAlignment.start sehingga
+   waktu dan status TERLETAK DI KIRI bawah isi (terukur), bukan di kanan. Waktu 11 abu, status ikon 14 + 2 + 11. */
+.jj-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s1); margin-top: 2px; font-size: var(--fs-overline); color: var(--color-text-muted); }
+.jj-msg--mine .jj-meta { color: var(--color-muted-on-dark); }
+.jj-meta__status { display: inline-flex; align-items: center; gap: 2px; }
+.jj-meta__status .ic { --ic-size: 14px; }
+.jj-meta__status--read { color: var(--color-info); }
+.jj-msg--mine .jj-meta__status--read { color: var(--color-gold-400); }
+.jj-meta__status--failed { color: var(--color-danger); }
+.jj-msg--mine .jj-meta__status--failed { color: #FFB4AB; } /* literal 0xFFFFB4AB di BubbleMeta */
+/* Footer pesan keluar: 11, rata kanan; galat danger, ditahan warning */
+.jj-msg__footer { margin-top: 2px; font-size: var(--fs-overline); text-align: right; color: var(--color-danger); }
+.jj-msg__footer--held { color: var(--color-warning); }
+/* ReactionRow: Wrap jarak 4; chip min 44 x 32, padding 8/2, pil; reaksi saya green100 + garis primary */
+.jj-reactions { display: flex; flex-wrap: wrap; gap: var(--s1); margin-top: 2px; }
+.jj-reaction { display: inline-flex; align-items: center; gap: 4px; min-width: 44px; min-height: 32px; padding: 2px var(--s2); border-radius: var(--r-pill); background: var(--color-surface); border: 1px solid var(--color-divider); color: var(--color-text); }
+.jj-reaction.is-mine { background: var(--color-green-100); border-color: var(--color-primary); }
+.jj-reaction__emoji { font-size: var(--fs-body); line-height: 1.45; }
+.jj-reaction__count { font-size: var(--fs-caption); }
+/* ReplyQuote: margin bawah 4, padding 8/4, radius 6, garis kiri 3; di gelembung sendiri putih 15 % + emas */
+.jj-quote { margin-bottom: var(--s1); padding: var(--s1) var(--s2); border-radius: var(--r-sm); border-left: 3px solid var(--color-primary); background: var(--color-green-50); max-width: 100%; }
+.jj-quote__name { font-size: var(--fs-overline); font-weight: var(--fw-semibold); color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jj-quote__text { font-size: var(--fs-caption); color: var(--color-text-muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.jj-quote__text.is-unavailable { font-style: italic; }
+.jj-quote--on-dark { background: rgba(255, 255, 255, .15); border-left-color: var(--color-gold-400); }
+.jj-quote--on-dark .jj-quote__name { color: var(--color-on-primary); }
+.jj-quote--on-dark .jj-quote__text { color: var(--color-muted-on-dark); }
+/* ChatImageView: lebar 220, rasio dari server (dibatasi 0.5..2, bawaan 4:3), radius 6, jarak bawah 4 */
+.jj-photo { position: relative; display: block; width: 220px; aspect-ratio: 4 / 3; margin-bottom: var(--s1); border-radius: var(--r-sm); overflow: hidden; background: var(--color-neutral-100); flex: none; }
+.jj-photo > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.jj-photo--center { display: grid; place-items: center; }
+.jj-photo .btn-text { background: transparent; }
+/* FloatingActionButton.small primary (pesan baru di bawah): kanan/bawah 12 */
+.fab-small.jj-fab { position: absolute; z-index: 5; right: var(--s3); bottom: var(--s3); background: var(--color-primary); color: var(--color-on-primary); }
+
+/* Komposer: Container putih bergaris atas, padding 8; Row rata bawah: foto (IconButton abu) | TextField | Kirim.
+   SafeArea membungkus Container, jadi inset gestur di bawahnya berwarna latar Scaffold. */
+.jj-composer { flex: none; background: var(--color-surface); border-top: 1px solid var(--color-divider); padding: var(--s2); }
+.jj-composer__row { display: flex; align-items: flex-end; }
+.jj-composer__reply { display: flex; align-items: center; }
+.jj-composer__reply .jj-quote { flex: 1 1 auto; min-width: 0; }
+.jj-composer .icon-btn { color: var(--color-text-muted); }
+.jj-composer__field { flex: 1 1 auto; min-width: 0; }
+.jj-composer__field textarea.input__control { resize: none; display: block; overflow: hidden; }
+.jj-help-row { display: flex; gap: var(--s4); padding: var(--s1) 20px 0; font-size: var(--fs-caption); letter-spacing: var(--ls-body-sm); color: var(--color-text-muted); }
+.jj-help-row__error { color: var(--color-danger); }
+.jj-help-row__counter { margin-left: auto; }
+/* IconButton.filled Kirim: primary/putih; nonaktif bawaan M3 (onSurface 12 % / 38 %) */
+.icon-btn.jj-send { background: var(--color-primary); color: var(--color-on-primary); }
+.icon-btn.jj-send:disabled { background: rgba(28, 27, 31, .12); color: rgba(28, 27, 31, .38); }
+.jj-safe-bottom { flex: none; height: var(--inset-bottom); background: var(--color-background); }
+/* _NoticeBar: putih bergaris atas, padding 12, InfoBox warning */
+.jj-notice-bar { flex: none; background: var(--color-surface); border-top: 1px solid var(--color-divider); padding: var(--s3); }
+
+/* Keyboard terbuka: Scaffold mengecil sampai tepi atas keyboard (inset gestur tidak lagi dipakai) */
+.screen.jj-screen--kb { bottom: calc(268px + var(--inset-bottom)); }
+/* CircularProgressIndicator(strokeWidth: 2) ukuran bawaan 36 (foto memuat) */
+.jj-spinner-thin { --spinner-width: 2px; }
+
+/* Lembar tindakan pesan: Wrap reaksi cepat (IconButton 48, emoji 24), lalu ListTile */
+.jj-reaction-picker { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s1); padding: 0 var(--s4); }
+.jj-emoji-btn { font-size: 24px; line-height: 1; letter-spacing: 0; }
+.list-tile .list-tile__leading.c-danger { color: var(--color-danger); }
+
+/* Penampil foto layar penuh (Dialog.fullscreen hitam): foto di tengah, tombol tutup putih di SafeArea kiri atas */
+.jj-viewer { position: absolute; inset: 0; z-index: 31; background: #000000; display: grid; place-items: center; }
+.jj-viewer > img { width: 100%; height: auto; }
+.jj-viewer__close { position: absolute; top: var(--inset-top); left: 0; color: var(--color-on-primary); }
+.jj-viewer__error { color: var(--color-on-primary); }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   INFO PERCAKAPAN  chat_info_screen.dart
+   --------------------------------------------------------------------------------------------------------------------- */
+.jj-info { display: flex; flex-direction: column; padding: var(--s5); }
+.jj-info__avatar { display: flex; justify-content: center; }
+.jj-info__title { margin-top: var(--s3); font-size: var(--fs-h2); font-weight: var(--fw-bold); text-align: center; }
+.jj-info__sub { text-align: center; color: var(--color-text-muted); }
+.jj-info__manage { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 var(--s2); margin-top: var(--s2); }
+.jj-popup--member { right: var(--s2); width: 224px; } /* "Keluarkan dari grup" + 24, dibulatkan ke kelipatan 56 */
+/* AlertDialog saat keyboard terbuka: dipusatkan di ruang di atas keyboard (268 + inset) */
+.dialog.jj-dialog--above-kb { top: calc((100% - 268px - var(--inset-bottom)) / 2); }
+/* TextField bawaan di dialog (tanpa KapdhTextField): teks masukan 16 (bodyLarge) */
+.jj-dialog-field .input__control { font-size: var(--fs-body-lg); line-height: 23.2px; }
+/* Avatar grup berfoto */
+.avatar > img.jj-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   GRUP BARU  new_group_screen.dart; PEMILIH ALUMNI member_picker.dart
+   --------------------------------------------------------------------------------------------------------------------- */
+.jj-form { display: flex; flex-direction: column; padding: var(--s5); }
+.jj-avatar-pick { display: flex; justify-content: center; }
+.jj-avatar-pick .avatar { border-radius: 50%; }
+.jj-caption-center { margin-top: var(--s1); text-align: center; font-size: var(--fs-caption); color: var(--color-text-muted); }
+.jj-chips { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); }
+.jj-chips--8 { gap: var(--s2); } /* Wrap spacing 8, runSpacing 8 (Skill di profil) */
+/* Baris pilihan horizontal (tinggi 56, padding 16/8): chip dibatasi tinggi 40 */
+.jj-chip-strip { flex: none; display: flex; align-items: center; gap: var(--s2); height: 56px; padding: var(--s2) var(--s4); overflow: hidden; }
+.jj-chip-strip .jj-input-chip { height: 40px; flex: none; }
+.jj-picker-search { padding: var(--s3) var(--s4) 0; }
+
+/* Menu DropdownButtonFormField terbuka di atas lembar: selebar field (20 dari tepi), item terpilih sejajar field
+   (top = atas field - 6). Posisi vertikal per frame lewat style="top:..". */
+.dropdown-menu.jj-dropdown-open { position: absolute; z-index: 32; left: var(--s5); right: var(--s5); }

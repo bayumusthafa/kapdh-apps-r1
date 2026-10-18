@@ -1,0 +1,990 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Detail Event - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Detail Event aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/event.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+      <a href="events.html">Event</a>
+      <a href="event-detail.html" aria-current="page">Detail Event</a>
+      <a href="reservation.html">Konfirmasi Pendaftaran</a>
+      <a href="tickets.html">Tiket Saya</a>
+      <a href="ticket-detail.html">Detail Tiket</a>
+    </nav>
+    <h1 class="page-header__title">Detail Event</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/events/event_detail_screen.dart</code> (EventDetailScreen, _EventContent, _InfoCard, _Quota, _MyTicketCard, _Participants, _ActionBar), <code>lib/features/events/reservation.dart</code> (dialog dan snackbar hasil reservasi)</dd>
+      <dt>Rute</dt><dd><code>/events/:eventId</code> (navigator akar, tanpa navigasi bawah)</dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama: berbayar, pendaftaran dibuka</li>
+        <li>Gulir penuh</li>
+        <li>Sudah punya tiket aktif</li>
+        <li>Kuota penuh</li>
+        <li>Pendaftaran belum dibuka (tanpa cover)</li>
+        <li>Event dibatalkan</li>
+        <li>Pemeliharaan</li>
+        <li>Anggota KTA kedaluwarsa (tiket lama berakhir)</li>
+        <li>Event gratis</li>
+        <li>Dialog: Daftar event gratis?</li>
+        <li>Mendaftarkan…</li>
+        <li>Snackbar: koneksi terputus</li>
+        <li>Peserta: memuat</li>
+        <li>Peserta: galat</li>
+        <li>Peserta: kosong</li>
+        <li>Memuat</li>
+        <li>Event tidak tersedia (404)</li>
+        <li>Galat</li>
+        <li>Khusus anggota aktif (403)</li>
+        <li>Gagal diperbarui (offline)</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Data contoh fiktif; hari ini dianggap Minggu, 18 Okt 2026. Teks "Pembatalan dan refund" berasal dari server (<code>cancellation_policy.summary</code>). Tombol bawah dan catatannya mengikuti <code>can_reserve</code> dan <code>reservation_blocked_reason</code> dari server. Frame yang "digulir" memotong isi daftar secara statis.</p>
+  </header>
+
+  <main class="frames">
+
+    <h2 class="frames__group-title">Event berbayar</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Utama: berbayar, pendaftaran dibuka</figcaption>
+      <div class="device" role="group" aria-label="Detail Event berbayar, keadaan utama">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="ev-cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt="Cover event Halal Bihalal dan Silaturahmi Akbar Alumni"></div>
+              <div class="ev-chips"><span class="category-chip">Silaturahmi</span><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span></div>
+              <h3 class="ev-title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+              <p class="ev-desc">Mari pererat silaturahmi lintas angkatan dalam Halal Bihalal dan Silaturahmi Akbar Alumni. Inilah kesempatan untuk bertemu kembali dengan sahabat seangkatan dan keluarga besar alumni, saling bermaafan, serta meneguhkan ukhuwah Islamiah.
+
+Susunan acara:
+- Registrasi dan check-in peserta
+- Pembukaan dan tilawah Al-Qur'an
+- Sambutan pengurus KAPDH
+- Tausiyah halal bihalal
+- Saling bermaafan dan ramah tamah
+- Doa dan penutup</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni
+Jl. Contoh Raya No. 10, Pekanbaru, Riau</span></p>
+                <button class="btn-text btn-text--icon ev-map-link" type="button"><span class="ic ic-open_in_new" role="img" aria-label="tautan luar"></span>Buka peta lokasi (tautan luar)</button>
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 72 kursi tersedia dari 200"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">72/200</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Rp150.000 (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 18 Okt 2026, 08.00 WIB – 17 Mar 2027, 23.59 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 21 Mar 2027, 06.00 WIB – 21 Mar 2027, 12.00 WIB</span></p>
+              </div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Event berbayar: kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup, mana yang lebih dahulu. Kirim bukti transfer sebelum batas waktu.</p></div></div></div>
+              <section class="ev-gap-5">
+                <h3 class="ev-participants__title">Peserta (118)</h3>
+                <p class="ev-participants__note">Hanya peserta terkonfirmasi yang tampil di direktori alumni.</p>
+                <div class="ev-participants__list">
+                  <a class="card ev-participant" href="#" aria-label="Ahmad Fauzi, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">AF</span><span class="col"><span class="ev-participant__name">Ahmad Fauzi</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Siti Rahmah, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">SR</span><span class="col"><span class="ev-participant__name">Siti Rahmah</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Muhammad Rizki, KAPDH 10. Buka profil."><span class="avatar avatar--40" aria-hidden="true">MR</span><span class="col"><span class="ev-participant__name">Muhammad Rizki</span><span class="ev-participant__cohort">#KAPDH10</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Nur Aisyah, KAPDH 15. Buka profil."><span class="avatar avatar--40" aria-hidden="true">NA</span><span class="col"><span class="ev-participant__name">Nur Aisyah</span><span class="ev-participant__cohort">#KAPDH15</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Fajar Hidayat, KAPDH 09. Buka profil."><span class="avatar avatar--40" aria-hidden="true">FH</span><span class="col"><span class="ev-participant__name">Fajar Hidayat</span><span class="ev-participant__cohort">#KAPDH09</span></span></a>
+                  <div class="ev-participants__more"><button class="btn-text" type="button">Lihat peserta lainnya</button></div>
+                </div>
+              </section>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button">Daftar Sekarang</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tombol "Daftar Sekarang" (KapdhButton gradasi 52) hanya aktif bila server mengizinkan (<code>can_reserve</code>). Event berbayar membuka layar Konfirmasi Pendaftaran.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">2</span> Gulir penuh</figcaption>
+      <div class="device device--tall" role="group" aria-label="Detail Event berbayar, seluruh isi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="ev-cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt="Cover event Halal Bihalal dan Silaturahmi Akbar Alumni"></div>
+              <div class="ev-chips"><span class="category-chip">Silaturahmi</span><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span></div>
+              <h3 class="ev-title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+              <p class="ev-desc">Mari pererat silaturahmi lintas angkatan dalam Halal Bihalal dan Silaturahmi Akbar Alumni. Inilah kesempatan untuk bertemu kembali dengan sahabat seangkatan dan keluarga besar alumni, saling bermaafan, serta meneguhkan ukhuwah Islamiah.
+
+Susunan acara:
+- Registrasi dan check-in peserta
+- Pembukaan dan tilawah Al-Qur'an
+- Sambutan pengurus KAPDH
+- Tausiyah halal bihalal
+- Saling bermaafan dan ramah tamah
+- Doa dan penutup</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni
+Jl. Contoh Raya No. 10, Pekanbaru, Riau</span></p>
+                <button class="btn-text btn-text--icon ev-map-link" type="button"><span class="ic ic-open_in_new" role="img" aria-label="tautan luar"></span>Buka peta lokasi (tautan luar)</button>
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 72 kursi tersedia dari 200"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">72/200</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Rp150.000 (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 18 Okt 2026, 08.00 WIB – 17 Mar 2027, 23.59 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 21 Mar 2027, 06.00 WIB – 21 Mar 2027, 12.00 WIB</span></p>
+              </div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Event berbayar: kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup, mana yang lebih dahulu. Kirim bukti transfer sebelum batas waktu.</p></div></div></div>
+              <section class="ev-gap-5">
+                <h3 class="ev-participants__title">Peserta (118)</h3>
+                <p class="ev-participants__note">Hanya peserta terkonfirmasi yang tampil di direktori alumni.</p>
+                <div class="ev-participants__list">
+                  <a class="card ev-participant" href="#" aria-label="Ahmad Fauzi, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">AF</span><span class="col"><span class="ev-participant__name">Ahmad Fauzi</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Siti Rahmah, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">SR</span><span class="col"><span class="ev-participant__name">Siti Rahmah</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Muhammad Rizki, KAPDH 10. Buka profil."><span class="avatar avatar--40" aria-hidden="true">MR</span><span class="col"><span class="ev-participant__name">Muhammad Rizki</span><span class="ev-participant__cohort">#KAPDH10</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Nur Aisyah, KAPDH 15. Buka profil."><span class="avatar avatar--40" aria-hidden="true">NA</span><span class="col"><span class="ev-participant__name">Nur Aisyah</span><span class="ev-participant__cohort">#KAPDH15</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Fajar Hidayat, KAPDH 09. Buka profil."><span class="avatar avatar--40" aria-hidden="true">FH</span><span class="col"><span class="ev-participant__name">Fajar Hidayat</span><span class="ev-participant__cohort">#KAPDH09</span></span></a>
+                  <div class="ev-participants__more"><button class="btn-text" type="button">Lihat peserta lainnya</button></div>
+                </div>
+              </section>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button">Daftar Sekarang</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Bagian Peserta hanya untuk anggota aktif; avatar inisial (AlumniAvatar 40). Kotak "kursi ditahan" hanya untuk event berbayar yang masih dapat dipesan.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">3</span> Sudah punya tiket aktif</figcaption>
+      <div class="device" role="group" aria-label="Detail Event, anggota sudah memiliki tiket">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail scroll-offset" style="--scroll:620px">
+              <div class="ev-cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt="Cover event Halal Bihalal dan Silaturahmi Akbar Alumni"></div>
+              <div class="ev-chips"><span class="category-chip">Silaturahmi</span><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span></div>
+              <h3 class="ev-title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+              <p class="ev-desc">Mari pererat silaturahmi lintas angkatan dalam Halal Bihalal dan Silaturahmi Akbar Alumni. Inilah kesempatan untuk bertemu kembali dengan sahabat seangkatan dan keluarga besar alumni, saling bermaafan, serta meneguhkan ukhuwah Islamiah.
+
+Susunan acara:
+- Registrasi dan check-in peserta
+- Pembukaan dan tilawah Al-Qur'an
+- Sambutan pengurus KAPDH
+- Tausiyah halal bihalal
+- Saling bermaafan dan ramah tamah
+- Doa dan penutup</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni
+Jl. Contoh Raya No. 10, Pekanbaru, Riau</span></p>
+                <button class="btn-text btn-text--icon ev-map-link" type="button"><span class="ic ic-open_in_new" role="img" aria-label="tautan luar"></span>Buka peta lokasi (tautan luar)</button>
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 72 kursi tersedia dari 200"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">72/200</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Rp150.000 (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 18 Okt 2026, 08.00 WIB – 17 Mar 2027, 23.59 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 21 Mar 2027, 06.00 WIB – 21 Mar 2027, 12.00 WIB</span></p>
+              </div>
+              <a class="card card--pad ev-myticket ev-gap-4" href="ticket-detail.html" aria-label="Tiket Anda: Menunggu Pembayaran. Buka detail tiket."><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span><div class="ev-myticket__body grow"><p class="ev-myticket__label">Tiket Anda</p><span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span></div><span class="ic ic-chevron_right" aria-hidden="true"></span></a>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <section class="ev-gap-5">
+                <h3 class="ev-participants__title">Peserta (118)</h3>
+                <p class="ev-participants__note">Hanya peserta terkonfirmasi yang tampil di direktori alumni.</p>
+                <div class="ev-participants__list">
+                  <a class="card ev-participant" href="#" aria-label="Ahmad Fauzi, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">AF</span><span class="col"><span class="ev-participant__name">Ahmad Fauzi</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Siti Rahmah, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">SR</span><span class="col"><span class="ev-participant__name">Siti Rahmah</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Muhammad Rizki, KAPDH 10. Buka profil."><span class="avatar avatar--40" aria-hidden="true">MR</span><span class="col"><span class="ev-participant__name">Muhammad Rizki</span><span class="ev-participant__cohort">#KAPDH10</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Nur Aisyah, KAPDH 15. Buka profil."><span class="avatar avatar--40" aria-hidden="true">NA</span><span class="col"><span class="ev-participant__name">Nur Aisyah</span><span class="ev-participant__cohort">#KAPDH15</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Fajar Hidayat, KAPDH 09. Buka profil."><span class="avatar avatar--40" aria-hidden="true">FH</span><span class="col"><span class="ev-participant__name">Fajar Hidayat</span><span class="ev-participant__cohort">#KAPDH09</span></span></a>
+                  <div class="ev-participants__more"><button class="btn-text" type="button">Lihat peserta lainnya</button></div>
+                </div>
+              </section>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><a class="btn btn--solid" href="ticket-detail.html"><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span>Lihat Tiket Saya</a></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Digulir ke kartu "Tiket Anda" (status tiket terbaru). Satu tiket aktif per anggota per event: tombol bawah berganti KapdhButton.solid "Lihat Tiket Saya".</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Kuota penuh</figcaption>
+      <div class="device" role="group" aria-label="Detail Event, kuota penuh">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail scroll-offset" style="--scroll:380px">
+              <div class="ev-cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt="Cover event Halal Bihalal dan Silaturahmi Akbar Alumni"></div>
+              <div class="ev-chips"><span class="category-chip">Silaturahmi</span><span class="status-badge status-badge--warning"><span class="ic ic-group_off" aria-hidden="true"></span>Kuota Penuh</span></div>
+              <h3 class="ev-title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+              <p class="ev-desc">Mari pererat silaturahmi lintas angkatan dalam Halal Bihalal dan Silaturahmi Akbar Alumni. Inilah kesempatan untuk bertemu kembali dengan sahabat seangkatan dan keluarga besar alumni, saling bermaafan, serta meneguhkan ukhuwah Islamiah.
+
+Susunan acara:
+- Registrasi dan check-in peserta
+- Pembukaan dan tilawah Al-Qur'an
+- Sambutan pengurus KAPDH
+- Tausiyah halal bihalal
+- Saling bermaafan dan ramah tamah
+- Doa dan penutup</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni
+Jl. Contoh Raya No. 10, Pekanbaru, Riau</span></p>
+                <button class="btn-text btn-text--icon ev-map-link" type="button"><span class="ic ic-open_in_new" role="img" aria-label="tautan luar"></span>Buka peta lokasi (tautan luar)</button>
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 0 kursi tersedia dari 200"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">0/200</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Rp150.000 (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 18 Okt 2026, 08.00 WIB – 17 Mar 2027, 23.59 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 21 Mar 2027, 06.00 WIB – 21 Mar 2027, 12.00 WIB</span></p>
+              </div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <section class="ev-gap-5">
+                <h3 class="ev-participants__title">Peserta (118)</h3>
+                <p class="ev-participants__note">Hanya peserta terkonfirmasi yang tampil di direktori alumni.</p>
+                <div class="ev-participants__list">
+                  <a class="card ev-participant" href="#" aria-label="Ahmad Fauzi, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">AF</span><span class="col"><span class="ev-participant__name">Ahmad Fauzi</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Siti Rahmah, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">SR</span><span class="col"><span class="ev-participant__name">Siti Rahmah</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Muhammad Rizki, KAPDH 10. Buka profil."><span class="avatar avatar--40" aria-hidden="true">MR</span><span class="col"><span class="ev-participant__name">Muhammad Rizki</span><span class="ev-participant__cohort">#KAPDH10</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Nur Aisyah, KAPDH 15. Buka profil."><span class="avatar avatar--40" aria-hidden="true">NA</span><span class="col"><span class="ev-participant__name">Nur Aisyah</span><span class="ev-participant__cohort">#KAPDH15</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Fajar Hidayat, KAPDH 09. Buka profil."><span class="avatar avatar--40" aria-hidden="true">FH</span><span class="col"><span class="ev-participant__name">Fajar Hidayat</span><span class="ev-participant__cohort">#KAPDH09</span></span></a>
+                  <div class="ev-participants__more"><button class="btn-text" type="button">Lihat peserta lainnya</button></div>
+                </div>
+              </section>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><p class="ev-bar__note">Kursi dapat tersedia kembali bila ada reservasi yang berakhir atau dibatalkan.</p><button class="btn btn--primary" type="button" disabled>Kuota Penuh</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Digulir ke kartu info (kuota 0/200). Pendaftaran Ditutup: tombol nonaktif "Pendaftaran Ditutup" tanpa catatan.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">5</span> Pendaftaran belum dibuka (tanpa cover)</figcaption>
+      <div class="device" role="group" aria-label="Detail Event, pendaftaran belum dibuka">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="ev-cover img-ph" role="img" aria-label="Cover event Seminar Karier Alumni Muda"><span class="ic ic-event" aria-hidden="true"></span></div>
+              <div class="ev-chips"><span class="category-chip">Workshop</span><span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span></div>
+              <h3 class="ev-title">Seminar Karier Alumni Muda</h3>
+              <p class="ev-desc">Berbagi pengalaman memasuki dunia kerja bersama alumni lintas profesi.</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 12 Des 2026 · 13.00–16.00 WIB</span></p>
+                
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 60 kursi tersedia dari 60"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">60/60</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Rp50.000 (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 1 Nov 2026, 08.00 WIB – 10 Des 2026, 23.59 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 12 Des 2026, 11.00 WIB – 12 Des 2026, 16.00 WIB</span></p>
+              </div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 9 Des 2026 13.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <section class="ev-gap-5">
+                <h3 class="ev-participants__title">Peserta (0)</h3>
+                <p class="ev-participants__note">Hanya peserta terkonfirmasi yang tampil di direktori alumni.</p>
+                <div class="ev-participants__list">
+                  <p class="ev-participants__empty">Belum ada peserta terkonfirmasi yang tampil di direktori.</p>
+                </div>
+              </section>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><p class="ev-bar__note">Pendaftaran dibuka 1 Nov 2026, 08.00 WIB.</p><button class="btn btn--primary" type="button" disabled>Pendaftaran Belum Dibuka</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Cover kosong memakai tempat kosong RemoteImage (green50 + Icons.event). Event tanpa lokasi: baris tempat tidak tampil (juga di kartu daftar).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">6</span> Event dibatalkan</figcaption>
+      <div class="device" role="group" aria-label="Detail Event yang dibatalkan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="ev-cover img-ph" role="img" aria-label="Cover event Reuni Akbar Lintas Angkatan"><span class="ic ic-event" aria-hidden="true"></span></div>
+              <div class="ev-chips"><span class="category-chip">Silaturahmi</span><span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>Event Dibatalkan</span></div>
+              <h3 class="ev-title">Reuni Akbar Lintas Angkatan</h3>
+              <div class="ev-gap-3"><div class="info-box info-box--danger"><span class="ic ic-cancel_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Event dibatalkan</p><p class="info-box__message">Alasan: Lokasi acara tidak dapat digunakan. Seluruh QR tiket tidak berlaku. Peserta berbayar mendapat refund penuh yang diproses bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <p class="ev-desc">Temu kangen alumni lintas angkatan bersama keluarga.</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 3 Okt 2026 · 08.00–14.00 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni
+Jl. Contoh Raya No. 10, Pekanbaru, Riau</span></p>
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 0 kursi tersedia dari 300"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">0/300</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Rp100.000 (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 1 Sep 2026, 08.00 WIB – 29 Sep 2026, 23.59 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 3 Okt 2026, 06.00 WIB – 3 Okt 2026, 14.00 WIB</span></p>
+              </div>
+              <a class="card card--pad ev-myticket ev-gap-4" href="ticket-detail.html" aria-label="Tiket Anda: Dibatalkan. Buka detail tiket."><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span><div class="ev-myticket__body grow"><p class="ev-myticket__label">Tiket Anda</p><span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatalkan</span></div><span class="ic ic-chevron_right" aria-hidden="true"></span></a>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 30 Sep 2026 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <section class="ev-gap-5">
+                <h3 class="ev-participants__title">Peserta (0)</h3>
+                <p class="ev-participants__note">Hanya peserta terkonfirmasi yang tampil di direktori alumni.</p>
+                <div class="ev-participants__list">
+                  <p class="ev-participants__empty">Belum ada peserta terkonfirmasi yang tampil di direktori.</p>
+                </div>
+              </section>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button" disabled>Event Dibatalkan</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">7</span> Pemeliharaan</figcaption>
+      <div class="device" role="group" aria-label="Detail Event saat pemeliharaan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="status-strip" role="status"><span class="ic ic-build_outlined" aria-hidden="true"></span><span class="status-strip__text"><strong>Pemeliharaan</strong>. Perubahan data ditunda sementara.</span><button class="btn-text" type="button">Detail</button></div>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="ev-cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt="Cover event Halal Bihalal dan Silaturahmi Akbar Alumni"></div>
+              <div class="ev-chips"><span class="category-chip">Silaturahmi</span><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span></div>
+              <h3 class="ev-title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+              <p class="ev-desc">Mari pererat silaturahmi lintas angkatan dalam Halal Bihalal dan Silaturahmi Akbar Alumni. Inilah kesempatan untuk bertemu kembali dengan sahabat seangkatan dan keluarga besar alumni, saling bermaafan, serta meneguhkan ukhuwah Islamiah.
+
+Susunan acara:
+- Registrasi dan check-in peserta
+- Pembukaan dan tilawah Al-Qur'an
+- Sambutan pengurus KAPDH
+- Tausiyah halal bihalal
+- Saling bermaafan dan ramah tamah
+- Doa dan penutup</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni
+Jl. Contoh Raya No. 10, Pekanbaru, Riau</span></p>
+                <button class="btn-text btn-text--icon ev-map-link" type="button"><span class="ic ic-open_in_new" role="img" aria-label="tautan luar"></span>Buka peta lokasi (tautan luar)</button>
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 72 kursi tersedia dari 200"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">72/200</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Rp150.000 (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 18 Okt 2026, 08.00 WIB – 17 Mar 2027, 23.59 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 21 Mar 2027, 06.00 WIB – 21 Mar 2027, 12.00 WIB</span></p>
+              </div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Event berbayar: kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup, mana yang lebih dahulu. Kirim bukti transfer sebelum batas waktu.</p></div></div></div>
+              <section class="ev-gap-5">
+                <h3 class="ev-participants__title">Peserta (118)</h3>
+                <p class="ev-participants__note">Hanya peserta terkonfirmasi yang tampil di direktori alumni.</p>
+                <div class="ev-participants__list">
+                  <a class="card ev-participant" href="#" aria-label="Ahmad Fauzi, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">AF</span><span class="col"><span class="ev-participant__name">Ahmad Fauzi</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Siti Rahmah, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">SR</span><span class="col"><span class="ev-participant__name">Siti Rahmah</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Muhammad Rizki, KAPDH 10. Buka profil."><span class="avatar avatar--40" aria-hidden="true">MR</span><span class="col"><span class="ev-participant__name">Muhammad Rizki</span><span class="ev-participant__cohort">#KAPDH10</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Nur Aisyah, KAPDH 15. Buka profil."><span class="avatar avatar--40" aria-hidden="true">NA</span><span class="col"><span class="ev-participant__name">Nur Aisyah</span><span class="ev-participant__cohort">#KAPDH15</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Fajar Hidayat, KAPDH 09. Buka profil."><span class="avatar avatar--40" aria-hidden="true">FH</span><span class="col"><span class="ev-participant__name">Fajar Hidayat</span><span class="ev-participant__cohort">#KAPDH09</span></span></a>
+                  <div class="ev-participants__more"><button class="btn-text" type="button">Lihat peserta lainnya</button></div>
+                </div>
+              </section>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><p class="ev-bar__note">Pendaftaran ditunda selama pemeliharaan. Coba lagi setelah layanan normal.</p><button class="btn btn--primary" type="button" disabled>Daftar Sekarang</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Pita Pemeliharaan global di bawah app bar; "Daftar Sekarang" nonaktif dengan catatan.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">8</span> Anggota KTA kedaluwarsa (tiket lama berakhir)</figcaption>
+      <div class="device" role="group" aria-label="Detail Event untuk anggota dengan KTA kedaluwarsa">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail scroll-offset" style="--scroll:620px">
+              <div class="ev-cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt="Cover event Halal Bihalal dan Silaturahmi Akbar Alumni"></div>
+              <div class="ev-chips"><span class="category-chip">Silaturahmi</span><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span></div>
+              <h3 class="ev-title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+              <p class="ev-desc">Mari pererat silaturahmi lintas angkatan dalam Halal Bihalal dan Silaturahmi Akbar Alumni. Inilah kesempatan untuk bertemu kembali dengan sahabat seangkatan dan keluarga besar alumni, saling bermaafan, serta meneguhkan ukhuwah Islamiah.
+
+Susunan acara:
+- Registrasi dan check-in peserta
+- Pembukaan dan tilawah Al-Qur'an
+- Sambutan pengurus KAPDH
+- Tausiyah halal bihalal
+- Saling bermaafan dan ramah tamah
+- Doa dan penutup</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni
+Jl. Contoh Raya No. 10, Pekanbaru, Riau</span></p>
+                <button class="btn-text btn-text--icon ev-map-link" type="button"><span class="ic ic-open_in_new" role="img" aria-label="tautan luar"></span>Buka peta lokasi (tautan luar)</button>
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 72 kursi tersedia dari 200"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">72/200</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Rp150.000 (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 18 Okt 2026, 08.00 WIB – 17 Mar 2027, 23.59 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 21 Mar 2027, 06.00 WIB – 21 Mar 2027, 12.00 WIB</span></p>
+              </div>
+              <a class="card card--pad ev-myticket ev-gap-4" href="ticket-detail.html" aria-label="Tiket Anda: Kedaluwarsa. Buka detail tiket."><span class="ic ic-confirmation_number_outlined" aria-hidden="true"></span><div class="ev-myticket__body grow"><p class="ev-myticket__label">Tiket Anda</p><span class="status-badge status-badge--neutral"><span class="ic ic-timer_off_outlined" aria-hidden="true"></span>Kedaluwarsa</span></div><span class="ic ic-chevron_right" aria-hidden="true"></span></a>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><p class="ev-bar__note">Perpanjang KTA untuk mendaftar event baru.</p><button class="btn btn--primary" type="button">Perpanjang KTA</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Alasan <code>membership_required</code>: KTA kedaluwarsa = "Perpanjang KTA" (ke /renewal); KTA tidak aktif = catatan "Selesaikan iuran pendaftaran agar KTA aktif." + "Bayar iuran"; status lain = tombol nonaktif "Khusus anggota aktif". Bagian Peserta disembunyikan.</p>
+    </figure>
+
+    <h2 class="frames__group-title">Event gratis dan proses mendaftar</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">9</span> Event gratis</figcaption>
+      <div class="device" role="group" aria-label="Detail Event gratis">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="ev-cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt="Cover event Peluncuran KAPDH Apps dan Silaturahmi Alumni"></div>
+              <div class="ev-chips"><span class="category-chip">Silaturahmi</span><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span></div>
+              <h3 class="ev-title">Peluncuran KAPDH Apps dan Silaturahmi Alumni</h3>
+              <p class="ev-desc">Alhamdulillah, KAPDH Apps kini hadir sebagai wadah digital silaturahmi alumni. Mari rayakan peluncurannya bersama dalam pertemuan daring lintas angkatan.
+
+Susunan acara:
+- Pembukaan dan tilawah Al-Qur'an
+- Sambutan pengurus KAPDH
+- Pengenalan KAPDH Apps: KTA digital, Event, Jejaring, Pesan, dan Notifikasi
+- Tanya jawab dan doa penutup</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026 · 20.00–21.30 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 312 kursi tersedia dari 500"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">312/500</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Gratis (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 18 Okt 2026, 08.00 WIB – 31 Okt 2026, 19.00 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 31 Okt 2026, 18.00 WIB – 31 Okt 2026, 21.30 WIB</span></p>
+              </div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Event gratis: batalkan sebelum acara dimulai (31 Okt 2026 20.00 WIB) untuk melepas kursi; tidak ada refund.</p></div></div></div>
+              <section class="ev-gap-5">
+                <h3 class="ev-participants__title">Peserta (186)</h3>
+                <p class="ev-participants__note">Hanya peserta terkonfirmasi yang tampil di direktori alumni.</p>
+                <div class="ev-participants__list">
+                  <a class="card ev-participant" href="#" aria-label="Ahmad Fauzi, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">AF</span><span class="col"><span class="ev-participant__name">Ahmad Fauzi</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Siti Rahmah, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">SR</span><span class="col"><span class="ev-participant__name">Siti Rahmah</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Muhammad Rizki, KAPDH 10. Buka profil."><span class="avatar avatar--40" aria-hidden="true">MR</span><span class="col"><span class="ev-participant__name">Muhammad Rizki</span><span class="ev-participant__cohort">#KAPDH10</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Nur Aisyah, KAPDH 15. Buka profil."><span class="avatar avatar--40" aria-hidden="true">NA</span><span class="col"><span class="ev-participant__name">Nur Aisyah</span><span class="ev-participant__cohort">#KAPDH15</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Fajar Hidayat, KAPDH 09. Buka profil."><span class="avatar avatar--40" aria-hidden="true">FH</span><span class="col"><span class="ev-participant__name">Fajar Hidayat</span><span class="ev-participant__cohort">#KAPDH09</span></span></a>
+                  <div class="ev-participants__more"><button class="btn-text" type="button">Lihat peserta lainnya</button></div>
+                </div>
+              </section>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button">Daftar Sekarang</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">10</span> Dialog: Daftar event gratis?</figcaption>
+      <div class="device" role="group" aria-label="Detail Event gratis, dialog konfirmasi">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="ev-cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt="Cover event Peluncuran KAPDH Apps dan Silaturahmi Alumni"></div>
+              <div class="ev-chips"><span class="category-chip">Silaturahmi</span><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span></div>
+              <h3 class="ev-title">Peluncuran KAPDH Apps dan Silaturahmi Alumni</h3>
+              <p class="ev-desc">Alhamdulillah, KAPDH Apps kini hadir sebagai wadah digital silaturahmi alumni. Mari rayakan peluncurannya bersama dalam pertemuan daring lintas angkatan.
+
+Susunan acara:
+- Pembukaan dan tilawah Al-Qur'an
+- Sambutan pengurus KAPDH
+- Pengenalan KAPDH Apps: KTA digital, Event, Jejaring, Pesan, dan Notifikasi
+- Tanya jawab dan doa penutup</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026 · 20.00–21.30 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 312 kursi tersedia dari 500"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">312/500</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Gratis (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 18 Okt 2026, 08.00 WIB – 31 Okt 2026, 19.00 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 31 Okt 2026, 18.00 WIB – 31 Okt 2026, 21.30 WIB</span></p>
+              </div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Event gratis: batalkan sebelum acara dimulai (31 Okt 2026 20.00 WIB) untuk melepas kursi; tidak ada refund.</p></div></div></div>
+              <section class="ev-gap-5">
+                <h3 class="ev-participants__title">Peserta (186)</h3>
+                <p class="ev-participants__note">Hanya peserta terkonfirmasi yang tampil di direktori alumni.</p>
+                <div class="ev-participants__list">
+                  <a class="card ev-participant" href="#" aria-label="Ahmad Fauzi, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">AF</span><span class="col"><span class="ev-participant__name">Ahmad Fauzi</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Siti Rahmah, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">SR</span><span class="col"><span class="ev-participant__name">Siti Rahmah</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Muhammad Rizki, KAPDH 10. Buka profil."><span class="avatar avatar--40" aria-hidden="true">MR</span><span class="col"><span class="ev-participant__name">Muhammad Rizki</span><span class="ev-participant__cohort">#KAPDH10</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Nur Aisyah, KAPDH 15. Buka profil."><span class="avatar avatar--40" aria-hidden="true">NA</span><span class="col"><span class="ev-participant__name">Nur Aisyah</span><span class="ev-participant__cohort">#KAPDH15</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Fajar Hidayat, KAPDH 09. Buka profil."><span class="avatar avatar--40" aria-hidden="true">FH</span><span class="col"><span class="ev-participant__name">Fajar Hidayat</span><span class="ev-participant__cohort">#KAPDH09</span></span></a>
+                  <div class="ev-participants__more"><button class="btn-text" type="button">Lihat peserta lainnya</button></div>
+                </div>
+              </section>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button">Daftar Sekarang</button></div>
+        </div><div class="scrim"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-1">
+          <h3 class="dialog__title" id="dlg-1">Daftar event gratis?</h3>
+          <div class="dialog__content"><p class="c-muted ev-pre">Peluncuran KAPDH Apps dan Silaturahmi Alumni
+Sabtu, 31 Okt 2026 · 20.00–21.30 WIB
+
+Satu tiket untuk Anda sendiri. Tiket langsung terbit tanpa pembayaran.</p></div>
+          <div class="dialog__actions"><button class="btn-text" type="button">Batal</button><button class="btn-text" type="button">Daftar</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">AlertDialog (judul 24 w600, isi 14 onSurfaceVariant). "Daftar" mengirim reservasi; tiket gratis langsung lunas lalu Detail Tiket dibuka dengan snackbar "Pendaftaran berhasil. Tiket Anda sudah terbit."</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">11</span> Mendaftarkan…</figcaption>
+      <div class="device" role="group" aria-label="Detail Event gratis, sedang mendaftarkan">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="ev-cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt="Cover event Peluncuran KAPDH Apps dan Silaturahmi Alumni"></div>
+              <div class="ev-chips"><span class="category-chip">Silaturahmi</span><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span></div>
+              <h3 class="ev-title">Peluncuran KAPDH Apps dan Silaturahmi Alumni</h3>
+              <p class="ev-desc">Alhamdulillah, KAPDH Apps kini hadir sebagai wadah digital silaturahmi alumni. Mari rayakan peluncurannya bersama dalam pertemuan daring lintas angkatan.
+
+Susunan acara:
+- Pembukaan dan tilawah Al-Qur'an
+- Sambutan pengurus KAPDH
+- Pengenalan KAPDH Apps: KTA digital, Event, Jejaring, Pesan, dan Notifikasi
+- Tanya jawab dan doa penutup</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026 · 20.00–21.30 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 312 kursi tersedia dari 500"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">312/500</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Gratis (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 18 Okt 2026, 08.00 WIB – 31 Okt 2026, 19.00 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 31 Okt 2026, 18.00 WIB – 31 Okt 2026, 21.30 WIB</span></p>
+              </div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Event gratis: batalkan sebelum acara dimulai (31 Okt 2026 20.00 WIB) untuk melepas kursi; tidak ada refund.</p></div></div></div>
+              <section class="ev-gap-5">
+                <h3 class="ev-participants__title">Peserta (186)</h3>
+                <p class="ev-participants__note">Hanya peserta terkonfirmasi yang tampil di direktori alumni.</p>
+                <div class="ev-participants__list">
+                  <a class="card ev-participant" href="#" aria-label="Ahmad Fauzi, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">AF</span><span class="col"><span class="ev-participant__name">Ahmad Fauzi</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Siti Rahmah, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">SR</span><span class="col"><span class="ev-participant__name">Siti Rahmah</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Muhammad Rizki, KAPDH 10. Buka profil."><span class="avatar avatar--40" aria-hidden="true">MR</span><span class="col"><span class="ev-participant__name">Muhammad Rizki</span><span class="ev-participant__cohort">#KAPDH10</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Nur Aisyah, KAPDH 15. Buka profil."><span class="avatar avatar--40" aria-hidden="true">NA</span><span class="col"><span class="ev-participant__name">Nur Aisyah</span><span class="ev-participant__cohort">#KAPDH15</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Fajar Hidayat, KAPDH 09. Buka profil."><span class="avatar avatar--40" aria-hidden="true">FH</span><span class="col"><span class="ev-participant__name">Fajar Hidayat</span><span class="ev-participant__cohort">#KAPDH09</span></span></a>
+                  <div class="ev-participants__more"><button class="btn-text" type="button">Lihat peserta lainnya</button></div>
+                </div>
+              </section>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary is-busy" type="button" disabled aria-busy="true"><span class="spinner spinner--18" aria-hidden="true"></span>Mendaftarkan…</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">12</span> Snackbar: koneksi terputus</figcaption>
+      <div class="device" role="group" aria-label="Detail Event, snackbar koneksi terputus">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="ev-cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt="Cover event Peluncuran KAPDH Apps dan Silaturahmi Alumni"></div>
+              <div class="ev-chips"><span class="category-chip">Silaturahmi</span><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span></div>
+              <h3 class="ev-title">Peluncuran KAPDH Apps dan Silaturahmi Alumni</h3>
+              <p class="ev-desc">Alhamdulillah, KAPDH Apps kini hadir sebagai wadah digital silaturahmi alumni. Mari rayakan peluncurannya bersama dalam pertemuan daring lintas angkatan.
+
+Susunan acara:
+- Pembukaan dan tilawah Al-Qur'an
+- Sambutan pengurus KAPDH
+- Pengenalan KAPDH Apps: KTA digital, Event, Jejaring, Pesan, dan Notifikasi
+- Tanya jawab dan doa penutup</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026 · 20.00–21.30 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 312 kursi tersedia dari 500"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">312/500</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Gratis (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 18 Okt 2026, 08.00 WIB – 31 Okt 2026, 19.00 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 31 Okt 2026, 18.00 WIB – 31 Okt 2026, 21.30 WIB</span></p>
+              </div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Event gratis: batalkan sebelum acara dimulai (31 Okt 2026 20.00 WIB) untuk melepas kursi; tidak ada refund.</p></div></div></div>
+              <section class="ev-gap-5">
+                <h3 class="ev-participants__title">Peserta (186)</h3>
+                <p class="ev-participants__note">Hanya peserta terkonfirmasi yang tampil di direktori alumni.</p>
+                <div class="ev-participants__list">
+                  <a class="card ev-participant" href="#" aria-label="Ahmad Fauzi, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">AF</span><span class="col"><span class="ev-participant__name">Ahmad Fauzi</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Siti Rahmah, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">SR</span><span class="col"><span class="ev-participant__name">Siti Rahmah</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Muhammad Rizki, KAPDH 10. Buka profil."><span class="avatar avatar--40" aria-hidden="true">MR</span><span class="col"><span class="ev-participant__name">Muhammad Rizki</span><span class="ev-participant__cohort">#KAPDH10</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Nur Aisyah, KAPDH 15. Buka profil."><span class="avatar avatar--40" aria-hidden="true">NA</span><span class="col"><span class="ev-participant__name">Nur Aisyah</span><span class="ev-participant__cohort">#KAPDH15</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Fajar Hidayat, KAPDH 09. Buka profil."><span class="avatar avatar--40" aria-hidden="true">FH</span><span class="col"><span class="ev-participant__name">Fajar Hidayat</span><span class="ev-participant__cohort">#KAPDH09</span></span></a>
+                  <div class="ev-participants__more"><button class="btn-text" type="button">Lihat peserta lainnya</button></div>
+                </div>
+              </section>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button">Daftar Sekarang</button></div>
+        </div><div class="snackbar ev-snackbar--above-bar" role="status"><span class="snackbar__text">Pendaftaran belum terkirim karena koneksi terputus. Anda tidak terdaftar dua kali; coba lagi.</span><button class="btn-text" type="button">Coba lagi</button></div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Didahului snackbar "Koneksi terputus. Memeriksa status pendaftaran Anda…". Bila tiket ternyata tercatat: "Pendaftaran Anda sudah tercatat. Tiket Anda dibuka." Harga berubah: "Harga tiket berubah menjadi Rp25.000. Periksa kembali sebelum mendaftar." Sudah terdaftar: "Anda sudah terdaftar di event ini. Tiket Anda dibuka."</p>
+    </figure>
+
+    <h2 class="frames__group-title">Bagian peserta (digulir ke akhir)</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">13</span> Peserta: memuat</figcaption>
+      <div class="device" role="group" aria-label="Detail Event, peserta sedang dimuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport scroll-end">
+            <div class="ev-detail">
+              <div class="ev-cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt="Cover event Peluncuran KAPDH Apps dan Silaturahmi Alumni"></div>
+              <div class="ev-chips"><span class="category-chip">Silaturahmi</span><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span></div>
+              <h3 class="ev-title">Peluncuran KAPDH Apps dan Silaturahmi Alumni</h3>
+              <p class="ev-desc">Alhamdulillah, KAPDH Apps kini hadir sebagai wadah digital silaturahmi alumni. Mari rayakan peluncurannya bersama dalam pertemuan daring lintas angkatan.
+
+Susunan acara:
+- Pembukaan dan tilawah Al-Qur'an
+- Sambutan pengurus KAPDH
+- Pengenalan KAPDH Apps: KTA digital, Event, Jejaring, Pesan, dan Notifikasi
+- Tanya jawab dan doa penutup</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026 · 20.00–21.30 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 312 kursi tersedia dari 500"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">312/500</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Gratis (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 18 Okt 2026, 08.00 WIB – 31 Okt 2026, 19.00 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 31 Okt 2026, 18.00 WIB – 31 Okt 2026, 21.30 WIB</span></p>
+              </div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Event gratis: batalkan sebelum acara dimulai (31 Okt 2026 20.00 WIB) untuk melepas kursi; tidak ada refund.</p></div></div></div>
+              <section class="ev-gap-5">
+                <h3 class="ev-participants__title">Peserta (186)</h3>
+                <p class="ev-participants__note">Hanya peserta terkonfirmasi yang tampil di direktori alumni.</p>
+                <div class="ev-participants__list">
+                  <div class="skeleton" role="status" aria-label="Memuat peserta"><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div></div>
+                </div>
+              </section>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button">Daftar Sekarang</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">14</span> Peserta: galat</figcaption>
+      <div class="device" role="group" aria-label="Detail Event, peserta gagal dimuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport scroll-end">
+            <div class="ev-detail">
+              <div class="ev-cover"><img class="img-cover" src="../assets/sample/event-1-peluncuran.jpg" alt="Cover event Peluncuran KAPDH Apps dan Silaturahmi Alumni"></div>
+              <div class="ev-chips"><span class="category-chip">Silaturahmi</span><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span></div>
+              <h3 class="ev-title">Peluncuran KAPDH Apps dan Silaturahmi Alumni</h3>
+              <p class="ev-desc">Alhamdulillah, KAPDH Apps kini hadir sebagai wadah digital silaturahmi alumni. Mari rayakan peluncurannya bersama dalam pertemuan daring lintas angkatan.
+
+Susunan acara:
+- Pembukaan dan tilawah Al-Qur'an
+- Sambutan pengurus KAPDH
+- Pengenalan KAPDH Apps: KTA digital, Event, Jejaring, Pesan, dan Notifikasi
+- Tanya jawab dan doa penutup</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 31 Okt 2026 · 20.00–21.30 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Daring melalui Zoom</span></p>
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 312 kursi tersedia dari 500"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">312/500</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Gratis (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 18 Okt 2026, 08.00 WIB – 31 Okt 2026, 19.00 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 31 Okt 2026, 18.00 WIB – 31 Okt 2026, 21.30 WIB</span></p>
+              </div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Event gratis: batalkan sebelum acara dimulai (31 Okt 2026 20.00 WIB) untuk melepas kursi; tidak ada refund.</p></div></div></div>
+              <section class="ev-gap-5">
+                <h3 class="ev-participants__title">Peserta (186)</h3>
+                <p class="ev-participants__note">Hanya peserta terkonfirmasi yang tampil di direktori alumni.</p>
+                <div class="ev-participants__list">
+                  <div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+                </div>
+              </section>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button">Daftar Sekarang</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">15</span> Peserta: kosong</figcaption>
+      <div class="device" role="group" aria-label="Detail Event, belum ada peserta">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="scroll-viewport scroll-end">
+            <div class="ev-detail">
+              <div class="ev-cover img-ph" role="img" aria-label="Cover event Seminar Karier Alumni Muda"><span class="ic ic-event" aria-hidden="true"></span></div>
+              <div class="ev-chips"><span class="category-chip">Workshop</span><span class="status-badge status-badge--info"><span class="ic ic-schedule" aria-hidden="true"></span>Pendaftaran Belum Dibuka</span></div>
+              <h3 class="ev-title">Seminar Karier Alumni Muda</h3>
+              <p class="ev-desc">Berbagi pengalaman memasuki dunia kerja bersama alumni lintas profesi.</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Sabtu, 12 Des 2026 · 13.00–16.00 WIB</span></p>
+                
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 60 kursi tersedia dari 60"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">60/60</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Rp50.000 (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 1 Nov 2026, 08.00 WIB – 10 Des 2026, 23.59 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 12 Des 2026, 11.00 WIB – 12 Des 2026, 16.00 WIB</span></p>
+              </div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 9 Des 2026 13.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <section class="ev-gap-5">
+                <h3 class="ev-participants__title">Peserta (0)</h3>
+                <p class="ev-participants__note">Hanya peserta terkonfirmasi yang tampil di direktori alumni.</p>
+                <div class="ev-participants__list">
+                  <p class="ev-participants__empty">Belum ada peserta terkonfirmasi yang tampil di direktori.</p>
+                </div>
+              </section>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><p class="ev-bar__note">Pendaftaran dibuka 1 Nov 2026, 08.00 WIB.</p><button class="btn btn--primary" type="button" disabled>Pendaftaran Belum Dibuka</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Halaman peserta berikutnya: "Lihat peserta lainnya" (galat: "Coba lagi"); saat memuat diganti CircularProgressIndicator garis 2.</p>
+    </figure>
+
+    <h2 class="frames__group-title">Memuat, kosong, galat</h2>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">16</span> Memuat</figcaption>
+      <div class="device" role="group" aria-label="Detail Event, memuat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body"><div class="skeleton" role="status" aria-label="Memuat event"><div class="skeleton__card"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div><div class="skeleton__line"></div><div class="skeleton__line is-short"></div></div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Tanpa bilah bawah selama event belum dimuat.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">17</span> Event tidak tersedia (404)</figcaption>
+      <div class="device" role="group" aria-label="Detail Event, event tidak tersedia">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body"><div class="state">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-event_busy_outlined"></span></div>
+              <h3 class="state__title">Event tidak tersedia</h3>
+              <p class="state__message">Event ini belum diterbitkan atau sudah dihapus pengurus.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button">Lihat event lain</button>
+            </div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">Anggota tidak aktif melihat tombol "Lihat tiket saya" (ke /tickets).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">18</span> Galat</figcaption>
+      <div class="device" role="group" aria-label="Detail Event, galat">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body"><div class="state state--error">
+              <div class="state__icon" aria-hidden="true"><span class="ic ic-error_outline"></span></div>
+              <h3 class="state__title">Terjadi kesalahan</h3>
+              <p class="state__message">Terjadi kesalahan. Coba lagi.</p>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+              <p class="state__footnote">Kode bantuan: req_7f3a91c2</p>
+            </div></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">ErrorState.fromException: offline = "Tidak ada koneksi" (cloud_off), pemeliharaan = "Sedang pemeliharaan" (build_outlined), dll. Kode bantuan = request_id.</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">19</span> Khusus anggota aktif (403)</figcaption>
+      <div class="device" role="group" aria-label="Detail Event, khusus anggota aktif">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="screen__body">
+            <div class="ev-member-only">
+              <div class="status-hero tone-danger">
+                <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-lock_outline"></span></div>
+                <span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>KTA Kedaluwarsa</span>
+                <h3 class="status-hero__title">Event khusus anggota aktif</h3>
+                <p class="status-hero__message">Event hanya untuk anggota aktif. Perpanjang KTA untuk membukanya kembali. Tiket yang sudah lunas tetap dapat dibuka di Tiket Saya.</p>
+              </div>
+              <div class="mt-5"><button class="btn btn--primary" type="button">Perpanjang KTA</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">403 MEMBERSHIP_REQUIRED untuk anggota nonaktif yang tidak memiliki tiket di event ini (MemberOnlyNotice).</p>
+    </figure>
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">20</span> Gagal diperbarui (offline)</figcaption>
+      <div class="device" role="group" aria-label="Detail Event, gagal diperbarui saat offline">
+        <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen">
+          <header class="appbar">
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <h2 class="appbar__title"><span>Detail Event</span></h2>
+          </header>
+          <div class="status-strip" role="status"><span class="ic ic-cloud_off" aria-hidden="true"></span><span class="status-strip__text"><strong>Offline</strong>. Tersinkron 18 Okt 2026, 09.30 WIB</span><button class="btn-text" type="button">Coba lagi</button></div>
+          <div class="screen__body">
+            <div class="scroll-viewport">
+            <div class="ev-detail">
+              <div class="info-box info-box--warning info-box--refresh" role="status"><span class="ic ic-cloud_off" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Belum dapat diperbarui</p><p class="info-box__message">Periksa koneksi internet Anda. Data di bawah adalah keadaan terakhir yang dimuat.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+              <div class="ev-cover"><img class="img-cover" src="../assets/sample/event-2-halal-bihalal.jpg" alt="Cover event Halal Bihalal dan Silaturahmi Akbar Alumni"></div>
+              <div class="ev-chips"><span class="category-chip">Silaturahmi</span><span class="status-badge status-badge--success"><span class="ic ic-event_available" aria-hidden="true"></span>Pendaftaran Dibuka</span></div>
+              <h3 class="ev-title">Halal Bihalal dan Silaturahmi Akbar Alumni</h3>
+              <p class="ev-desc">Mari pererat silaturahmi lintas angkatan dalam Halal Bihalal dan Silaturahmi Akbar Alumni. Inilah kesempatan untuk bertemu kembali dengan sahabat seangkatan dan keluarga besar alumni, saling bermaafan, serta meneguhkan ukhuwah Islamiah.
+
+Susunan acara:
+- Registrasi dan check-in peserta
+- Pembukaan dan tilawah Al-Qur'an
+- Sambutan pengurus KAPDH
+- Tausiyah halal bihalal
+- Saling bermaafan dan ramah tamah
+- Doa dan penutup</p>
+              <div class="ev-info ev-gap-4">
+                <p class="icon-line ev-line"><span class="ic ic-calendar_today_outlined" aria-hidden="true"></span><span>Minggu, 21 Mar 2027 · 08.00–12.00 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-place_outlined" aria-hidden="true"></span><span>Gedung Serbaguna Alumni
+Jl. Contoh Raya No. 10, Pekanbaru, Riau</span></p>
+                <button class="btn-text btn-text--icon ev-map-link" type="button"><span class="ic ic-open_in_new" role="img" aria-label="tautan luar"></span>Buka peta lokasi (tautan luar)</button>
+                <div class="ev-quota" role="group" aria-label="Kuota peserta: 72 kursi tersedia dari 200"><span class="ic ic-groups_outlined" aria-hidden="true"></span><span class="ev-quota__value" aria-hidden="true">72/200</span><span class="ev-quota__label" aria-hidden="true">Kuota Peserta</span></div>
+                <p class="icon-line ev-line"><span class="ic ic-payments_outlined" aria-hidden="true"></span><span>Harga tiket: Rp150.000 (satu tiket untuk Anda sendiri)</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-how_to_reg_outlined" aria-hidden="true"></span><span>Pendaftaran: 18 Okt 2026, 08.00 WIB – 17 Mar 2027, 23.59 WIB</span></p>
+                <p class="icon-line ev-line"><span class="ic ic-qr_code_scanner" aria-hidden="true"></span><span>Check-in: 21 Mar 2027, 06.00 WIB – 21 Mar 2027, 12.00 WIB</span></p>
+              </div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ic-policy_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Pembatalan dan refund</p><p class="info-box__message">Batalkan sampai 18 Mar 2027 08.00 WIB (H-3) untuk refund penuh; setelah itu tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-3"><div class="info-box"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Event berbayar: kursi ditahan maksimal 24 jam atau sampai pendaftaran ditutup, mana yang lebih dahulu. Kirim bukti transfer sebelum batas waktu.</p></div></div></div>
+              <section class="ev-gap-5">
+                <h3 class="ev-participants__title">Peserta (118)</h3>
+                <p class="ev-participants__note">Hanya peserta terkonfirmasi yang tampil di direktori alumni.</p>
+                <div class="ev-participants__list">
+                  <a class="card ev-participant" href="#" aria-label="Ahmad Fauzi, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">AF</span><span class="col"><span class="ev-participant__name">Ahmad Fauzi</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Siti Rahmah, KAPDH 12. Buka profil."><span class="avatar avatar--40" aria-hidden="true">SR</span><span class="col"><span class="ev-participant__name">Siti Rahmah</span><span class="ev-participant__cohort">#KAPDH12</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Muhammad Rizki, KAPDH 10. Buka profil."><span class="avatar avatar--40" aria-hidden="true">MR</span><span class="col"><span class="ev-participant__name">Muhammad Rizki</span><span class="ev-participant__cohort">#KAPDH10</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Nur Aisyah, KAPDH 15. Buka profil."><span class="avatar avatar--40" aria-hidden="true">NA</span><span class="col"><span class="ev-participant__name">Nur Aisyah</span><span class="ev-participant__cohort">#KAPDH15</span></span></a>
+                  <a class="card ev-participant" href="#" aria-label="Fajar Hidayat, KAPDH 09. Buka profil."><span class="avatar avatar--40" aria-hidden="true">FH</span><span class="col"><span class="ev-participant__name">Fajar Hidayat</span><span class="ev-participant__cohort">#KAPDH09</span></span></a>
+                  <div class="ev-participants__more"><button class="btn-text" type="button">Lihat peserta lainnya</button></div>
+                </div>
+              </section>
+            </div>
+            </div>
+          </div>
+          <div class="ev-bar"><button class="btn btn--primary" type="button">Daftar Sekarang</button></div>
+        </div>
+        <div class="sysnav" aria-hidden="true"></div>
+      </div>
+      <p class="frame__note">RefreshFailedNotice: data terakhir tetap tampil. Galat server memakai ikon sync_problem dan pesan server.</p>
+    </figure>
+
+  </main>
+</body>
+</html>

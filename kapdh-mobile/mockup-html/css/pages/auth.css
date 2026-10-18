@@ -1,0 +1,187 @@
+/* =====================================================================================================================
+   KAPDH mockup HTML: GRUP "auth"
+   Layar: login, register, otp, forgot-password, forgot-otp, reset-password (lib/features/auth), splash, maintenance,
+   update-required, not-found, config-error (lib/features/system), onboarding-fees (lib/features/onboarding),
+   restricted, deletion-status (lib/features/status).
+   Hanya gaya khusus layar grup ini. Komponen bersama ada di components.css dan TIDAK diubah dari sini; aturan di
+   bawah yang sebenarnya bersifat lintas grup ditandai "USULAN BERSAMA" (lihat catatan halaman).
+   1 px CSS = 1 dp Flutter. Nilai diambil dari kode Dart (komentar menyebut sumbernya).
+   ===================================================================================================================== */
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   BrandSheetScaffold (lib/design/brand_header.dart)
+   Lembar digeser ke atas sejauh overlap dengan Transform.translate, jadi ukuran tata letaknya tidak berubah: isi
+   lembar berakhir overlap + inset gestur (SafeArea(top: false)) dari dasar layar. Material lembar memakai
+   Clip.antiAlias, sehingga isi yang tergulir terpotong di sudut 20.
+   --------------------------------------------------------------------------------------------------------------------- */
+.auth-sheet {
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: calc(var(--overlap, 12px) + var(--inset-bottom));
+}
+/* Badan lembar = SingleChildScrollView/ListView: .scroll-viewport > .scroll-offset (+ .scroll-end) dari components.css. */
+
+/* Padding badan lembar */
+.auth-body { padding: var(--s4) var(--s5) var(--s8); }              /* EdgeInsets.fromLTRB(20, 16, 20, 32) */
+.auth-body--otp { padding-bottom: var(--s4); }                       /* OTP: fromLTRB(20, 16, 20, 16) */
+.auth-portal-body { padding: var(--s6) var(--s5) var(--s6); }        /* portal status: fromLTRB(20, 24, 20, 24) */
+
+/* Keyboard virtual terbuka: Scaffold(resizeToAvoidBottomInset) menyusut, inset gestur jadi 0 di atas keyboard. */
+.auth-kb { bottom: calc(268px + var(--sys-nav-h)); --inset-bottom: 0px; overflow: hidden; }
+/* Papan angka (OtpBoxes: TextInputType.number). */
+.auth-keypad { grid-template-rows: repeat(4, 1fr); }
+.auth-keypad .keyboard__row { padding: 0 var(--s2); gap: var(--s2); }
+.auth-keypad .keyboard__key {
+  max-width: none; display: grid; place-items: center;
+  font-family: Roboto, 'Segoe UI', system-ui, sans-serif; font-size: 20px; line-height: 1; letter-spacing: 0; color: #1C1B1F;
+}
+.auth-keypad .keyboard__key--fn { background: #D3D6DB; }
+
+/* Area status bar tetap hijau saat pita login tergulir (Positioned top, warna pertama bandGradient #215E1E). */
+.auth-statusfill { position: absolute; z-index: 3; top: 0; left: 0; right: 0; height: var(--inset-top); background: var(--color-green-700); }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   LOGIN (login_screen.dart): BrandSheetScaffold(scrollable: true, overlap: s4), BrandHeader bermotif
+   padding fromLTRB(24, 16, 16, 48), logo 84 rata kanan, sapaan 22 w600 h1.3, tagline 12 putih.
+   --------------------------------------------------------------------------------------------------------------------- */
+.auth-band-login { padding: calc(var(--s4) + var(--inset-top)) var(--s4) calc(var(--s8) + var(--s4)) var(--s6); }
+.auth-login-logo { width: 84px; height: 84px; object-fit: contain; margin-left: auto; }
+.auth-login-greeting { margin-top: var(--s4); font-size: 22px; font-weight: 600; line-height: 1.3; color: var(--color-text-on-dark); }
+.auth-login-greeting__accent { color: var(--color-accent); }
+.auth-login-tagline { margin-top: var(--s3); font-size: var(--fs-caption); color: var(--color-text-on-dark); }
+.auth-login-body { display: flex; flex-direction: column; padding: var(--s8) var(--s5) var(--s6); } /* fromLTRB(20, 32, 20, 24) */
+/* _ForgotPasswordLink: TextButton 12 w600 bergaris bawah, padding 0 4, target 48, rata kanan */
+.auth-forgot {
+  align-self: flex-end;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 48px; min-width: 48px; padding: 0 var(--s1);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-caption); font-weight: 600; letter-spacing: 0; line-height: var(--lh-poppins);
+  color: var(--color-primary); text-decoration: underline; text-decoration-color: var(--color-primary);
+}
+.auth-note { font-size: var(--fs-caption); color: var(--color-text-muted); } /* teks 12 muted (cooldown, versi) */
+
+/* Wrap rata tengah: "Belum ada akun?" + KapdhLinkButton */
+.auth-wrap { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; }
+.auth-wrap__text { font-size: 13px; color: var(--color-primary); }
+.auth-links { display: flex; flex-wrap: wrap; gap: 0 var(--s2); }             /* Wrap(spacing: s2) */
+.auth-links--between { justify-content: space-between; gap: 0; }               /* WrapAlignment.spaceBetween */
+
+/* USULAN BERSAMA: KapdhLinkButton nonaktif (onPressed null) memakai warna nonaktif TextButton M3. */
+.btn-link:disabled { color: rgba(28, 27, 31, .38); cursor: default; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   JUDUL DAN TEKS DI DALAM LEMBAR
+   --------------------------------------------------------------------------------------------------------------------- */
+.auth-h22 { font-size: 22px; font-weight: 600; line-height: 1.25; }                    /* TextStyle(22, w600, h1.25) */
+.auth-lead { font-size: var(--fs-body); line-height: 1.5; color: var(--color-text-muted); } /* 14 h1.5 muted */
+.auth-lead strong { font-weight: 600; color: var(--color-text); }
+.auth-label { font-size: var(--fs-label); font-weight: 500; }                          /* 'Kode OTP', judul kecil 14 w500 */
+.auth-countdown { font-size: var(--fs-caption); color: var(--color-text-muted); }      /* 'Selesaikan dalam 9:12' */
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   OTP (otp_challenge.dart OtpEntrySection)
+   --------------------------------------------------------------------------------------------------------------------- */
+.auth-otp-label { margin-top: var(--s5); }
+.auth-otp-label + .otp { margin-top: 10px; }
+.auth-attempts { margin-top: 10px; font-size: var(--fs-caption); color: var(--color-text-muted); }
+.auth-attempts.is-danger { color: var(--color-danger); }
+/* Baris "Tidak menerima kode?": green50 radius 10, padding 4 x 14, Wrap spaceBetween */
+.auth-resend {
+  margin-top: var(--s5);
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+  padding: var(--s1) 14px;
+  background: var(--color-green-50); border-radius: var(--r-md);
+}
+.auth-resend__text { padding: var(--s2) 0; font-size: 13px; }
+.auth-resend .btn-text { font-weight: 600; }
+.auth-resend .btn-text:disabled { color: var(--color-text-muted); }                    /* disabledForegroundColor textMuted */
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   DAFTAR (register_screen.dart)
+   --------------------------------------------------------------------------------------------------------------------- */
+.auth-class-row { display: flex; align-items: flex-start; gap: var(--s3); }            /* _ClassFields Row, jarak 12 */
+.auth-class-row > .field { flex: 1 1 0; min-width: 0; }
+.auth-value-clip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* lihat catatan frame */
+/* _AcademicYearsCard: judul 14 w500, kotak gradasi buttonPrimary radius 14 padding 12, sel putih radius 10 */
+.auth-years { margin-top: var(--s2); display: flex; gap: var(--s2); padding: var(--s3); border-radius: var(--r-lg); background: var(--gradient-button-primary); }
+.auth-years__cell { flex: 1 1 0; min-width: 0; padding: var(--s3) var(--s1); border-radius: var(--r-md); background: var(--color-surface); text-align: center; }
+.auth-years__value { display: block; font-size: var(--fs-h3); font-weight: 600; color: var(--color-primary); }
+.auth-years__label { display: block; font-size: var(--fs-overline); }
+/* _ConsentField: CheckboxListTile(contentPadding: zero, leading): kotak 40 di x 0, judul di x 56, 13 ls .5 */
+.auth-consent .list-tile { padding-left: 0; padding-right: 0; gap: var(--s4); }
+.auth-consent__title { font-size: 13px; letter-spacing: var(--ls-body-lg); }
+.auth-consent__version { padding-bottom: var(--s1); }
+.auth-consent__error { padding-top: var(--s1); font-size: var(--fs-caption); color: var(--color-danger); }
+.auth-consent .info-box { margin-top: 0; }
+
+/* Menu dropdown terbuka (_DropdownRoute): menuTop = tombol.top - padding daftar 8 - (item 48 - tombol 52) / 2,
+   jadi item pertama menumpuk tombol; lebar menu = lebar tombol. Tombol dimulai di bawah label (20.3 + 8). */
+.auth-anchor { position: relative; }
+.auth-dropdown-pop { position: absolute; z-index: 5; left: 0; right: 0; top: calc(20.3px + var(--s2) - 6px); }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   AuthResultPanel (auth_widgets.dart): ikon 64, judul 20 w600, pesan 14 h1.5 muted, aksi berjarak 8
+   --------------------------------------------------------------------------------------------------------------------- */
+.auth-result { display: flex; flex-direction: column; text-align: center; }
+.auth-result > .ic { --ic-size: 64px; align-self: center; }
+.auth-result__title { margin-top: var(--s4); font-size: var(--fs-h2); font-weight: 600; }
+.auth-result__message { margin-top: var(--s2); font-size: var(--fs-body); line-height: 1.5; color: var(--color-text-muted); }
+.auth-result__actions { margin-top: var(--s6); }
+.auth-result__actions > * + * { margin-top: var(--s2); }
+
+/* Lembar bawah "Ubah alamat email" (email_correction_sheet.dart): padding fromLTRB(20, 0, 20, 24), judul 20 w600 */
+.auth-sheet-body { padding-bottom: var(--s6); }
+.auth-sheet-title { font-size: var(--fs-h2); font-weight: 600; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   LAYAR GELAP: Splash (splash_screen.dart) dan ConfigErrorApp. Scaffold surfaceDark, SafeArea, Center,
+   padding 24, logo 120, judul 16 w600, spinner 32 emas, masalah koneksi: ikon 40 emas, 18 w600, 14 h1.5 mutedOnDark.
+   --------------------------------------------------------------------------------------------------------------------- */
+.auth-dark {
+  background: var(--color-surface-dark); color: var(--color-text-on-dark);
+  justify-content: center; align-items: center; text-align: center;
+  padding: var(--inset-top) 0 var(--inset-bottom);
+}
+.auth-dark__inner { display: flex; flex-direction: column; align-items: center; padding: var(--s6); }
+.auth-splash-logo { width: 120px; height: 120px; object-fit: contain; }
+.auth-splash-title { margin-top: var(--s4); font-size: var(--fs-body-lg); font-weight: 600; }
+.auth-splash-spinner { margin-top: var(--s8); --spinner-size: 32px; color: var(--color-accent); }
+.auth-problem { margin-top: var(--s8); display: flex; flex-direction: column; align-items: center; }
+.auth-problem > .ic { --ic-size: 40px; color: var(--color-accent); }
+.auth-dark__title { margin-top: var(--s3); font-size: var(--fs-h3); font-weight: 600; }
+.auth-dark__message { margin-top: var(--s2); font-size: var(--fs-body); line-height: 1.5; color: var(--color-muted-on-dark); }
+.auth-dark__detail { margin-top: var(--s4); font-size: var(--fs-caption); color: var(--color-muted-on-dark); }
+.auth-config-icon { --ic-size: 48px; color: var(--color-accent); }
+.auth-config-icon + .auth-dark__title { margin-top: var(--s4); }
+/* OutlinedButton.icon emas, padding horizontal 24 (styleFrom) */
+.auth-btn-accent { margin-top: var(--s5); padding: 0 var(--s6); border-color: var(--color-accent); color: var(--color-accent); }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   LAYAR SISTEM TERANG: Maintenance, Wajib Update. Scaffold background, SafeArea, padding 20, SizedBox 32 di atas.
+   --------------------------------------------------------------------------------------------------------------------- */
+.auth-system { padding: calc(var(--s5) + var(--s8) + var(--inset-top)) var(--s5) calc(var(--s5) + var(--inset-bottom)); }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   PORTAL STATUS: Dibatasi (restricted_screen.dart) dan Status Akun (deletion_status_screen.dart)
+   GreetingHeader / _PortalHeader: BrandHeader tanpa motif, padding 20 + overlap 16 di bawah.
+   --------------------------------------------------------------------------------------------------------------------- */
+.auth-band-greeting { padding-bottom: calc(var(--s5) + var(--s4)); }
+.auth-portal-title { font-size: var(--fs-body-lg); font-weight: 600; color: var(--color-text-on-dark); }
+.auth-section-header { min-height: 0; }                       /* SectionHeader tanpa aksi: tinggi baris teks saja */
+.auth-checked { margin-top: var(--s2); text-align: center; font-size: var(--fs-caption); color: var(--color-text-muted); }
+/* Kartu putih bergaris padding 16 (formulir banding, DeletionStatusCheck) */
+.auth-panel { padding: 15px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); }
+.auth-panel__title { font-size: var(--fs-body); font-weight: 600; }
+.auth-panel__text { margin-top: var(--s1); font-size: var(--fs-caption); line-height: 1.5; color: var(--color-text-muted); }
+.auth-check-text { font-size: 13px; line-height: 1.5; }
+.auth-textarea-5 { min-height: calc(5 * 20.3px + 26px); }      /* maxLines: 5 */
+.auth-right { display: flex; justify-content: flex-end; }       /* Align(centerRight) */
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   BIAYA KTA (onboarding_fees_screen.dart): ListView padding fromLTRB(20, 16, 20, 16), jarak 18 dan 6
+   --------------------------------------------------------------------------------------------------------------------- */
+.auth-fees-title { font-size: var(--fs-h2); font-weight: 600; }
+.auth-fees-sub { margin-top: 6px; font-size: 13px; line-height: 1.5; color: var(--color-text-muted); }
+.auth-mt-18 { margin-top: 18px; }
+.auth-sheet-banner { padding: var(--s3) var(--s5) 0; }          /* SheetStatusBanner: fromLTRB(20, 12, 20, 0) */
