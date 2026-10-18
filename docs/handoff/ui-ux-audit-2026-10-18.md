@@ -11,6 +11,10 @@ dari DOM dan CSS terkompilasi, bukan perkiraan.
   Cincin fokus Flutter: `lib/app/theme/kapdh_focus.dart` (`KapdhFocusTheme`, `DarkSurfaceFocus`), garis 3 px tombol
   Material dan `KapdhButton`.
 - P2-3 `.tag-chip--input` 40 dp sudah diperbaiki sebelumnya (commit `5959651`, target 48).
+- **P2-2 dan P2-3 selesai di mockup** (belum di Flutter): mode gelap untuk 52 layar (`:root[data-theme="dark"]`,
+  audit 10.218 teks 0 gagal), pratinjau teks 200 % dan tablet 800 x 1280, token ikon `--ic-xs`…`--ic-xl`.
+  Tombol Tema / Teks / Perangkat di strip kepala (`js/theme.js`). Rincian, kontras dan temuan 200 % di
+  `kapdh-mobile/mockup-html/REDESAIN.md` bagian *Mode gelap, teks 200 %, tablet dan token ikon*.
 - Proyek tidak punya uji golden; perubahan warna/radius tertangkap uji widget.
 
 ## Konteks branch

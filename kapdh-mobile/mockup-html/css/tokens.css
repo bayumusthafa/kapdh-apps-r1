@@ -96,6 +96,18 @@
                                               Kini green600 5,4:1; emas tetap dipakai di atas permukaan gelap lewat --color-focus-ring-on-dark] */
   --color-focus-ring-on-dark:     #E6D312; /* [v2 baru] cincin fokus di header hijau, kartu KTA, kotak nominal, snackbar (6,6:1) */
   --color-card-border:            #E6EBE3; /* [v2 baru] garis rambut kartu; kedalaman utama dari --shadow-sm */
+  /* [v2 P2-2] Token semantik untuk mode gelap. Nilai terang = nilai lama, jadi tampilan terang tidak berubah. */
+  --color-tint:                   var(--color-green-50);  /* latar bernada hijau: ubin, chip, kotak info */
+  --color-tint-strong:            var(--color-green-100); /* latar hijau lebih tegas: avatar, ikon, indikator */
+  --color-surface-raised:         var(--color-surface);   /* dialog, sheet, menu */
+  --color-icon-accent:            var(--color-green-600); /* ikon meta kartu event */
+  --color-on-surface-disabled:    rgba(28, 27, 31, .38);  /* teks/ikon nonaktif Material 3 (onSurface 38 %) */
+  --color-on-surface-disabled-bg: rgba(28, 27, 31, .12);  /* isi nonaktif Material 3 (onSurface 12 %) */
+  --color-statusbar:              #1C1B1F;                /* ikon status bar di atas app bar terang */
+  --color-sysnav:                 rgba(28, 27, 31, .82);  /* pegangan navigasi gestur */
+  --color-skeleton:               #E4E9E1;
+  --color-skeleton-shine:         #F0F3EE;
+  --color-on-danger:              #FFFFFF;                /* teks di atas danger (lencana) */
 
   /* WARNA STATUS  (KapdhColors.* | tokens.json color.status) */
   --color-success:    #1E7A46; /* KapdhColors.success */
@@ -156,18 +168,18 @@
   --font-heading: 'Poppins', system-ui, sans-serif;            /* KapdhTheme.useTelegraf = false: heading Poppins SemiBold */
   --font-mono:    'JetBrains Mono', ui-monospace, monospace;   /* tokens.json font.family.mono (tidak dipakai aplikasi) */
 
-  --fs-display:  32px; /* KapdhFontSize.display  -> textTheme.displaySmall */
-  --fs-h1:       24px; /* KapdhFontSize.h1       -> headlineSmall (judul AlertDialog) */
-  --fs-h2:       20px; /* KapdhFontSize.h2       -> titleLarge (judul lembar, StatusHero) */
-  --fs-h3:       18px; /* KapdhFontSize.h3       -> titleMedium (judul EmptyState/ErrorState) */
-  --fs-body-lg:  16px; /* KapdhFontSize.bodyLg   -> bodyLarge (judul ListTile, nama di header) */
-  --fs-body:     14px; /* KapdhFontSize.body     -> bodyMedium (teks bawaan) */
-  --fs-label:    14px; /* KapdhFontSize.label    -> labelLarge (tombol) */
-  --fs-caption:  12px; /* KapdhFontSize.caption  -> bodySmall / labelMedium */
-  --fs-overline: 11px; /* KapdhFontSize.overline -> labelSmall */
-  --fs-appbar:   17px; /* AppBarTheme.titleTextStyle fontSize 17 w600 */
-  --fs-title-sm: 15px; /* textTheme.titleSmall 15 w600 h1.3 (label TabBar) */
-  --fs-13:       13px; /* literal 13 di kode: tombol teks, isi InfoBox judul, IconLine, dll. */
+  --fs-display:  calc(32px * var(--ts, 1)); /* KapdhFontSize.display  -> textTheme.displaySmall */
+  --fs-h1:       calc(24px * var(--ts, 1)); /* KapdhFontSize.h1       -> headlineSmall (judul AlertDialog) */
+  --fs-h2:       calc(20px * var(--ts, 1)); /* KapdhFontSize.h2       -> titleLarge (judul lembar, StatusHero) */
+  --fs-h3:       calc(18px * var(--ts, 1)); /* KapdhFontSize.h3       -> titleMedium (judul EmptyState/ErrorState) */
+  --fs-body-lg:  calc(16px * var(--ts, 1)); /* KapdhFontSize.bodyLg   -> bodyLarge (judul ListTile, nama di header) */
+  --fs-body:     calc(14px * var(--ts, 1)); /* KapdhFontSize.body     -> bodyMedium (teks bawaan) */
+  --fs-label:    calc(14px * var(--ts, 1)); /* KapdhFontSize.label    -> labelLarge (tombol) */
+  --fs-caption:  calc(12px * var(--ts, 1)); /* KapdhFontSize.caption  -> bodySmall / labelMedium */
+  --fs-overline: calc(11px * var(--ts, 1)); /* KapdhFontSize.overline -> labelSmall */
+  --fs-appbar:   calc(17px * var(--ts, 1)); /* AppBarTheme.titleTextStyle fontSize 17 w600 */
+  --fs-title-sm: calc(15px * var(--ts, 1)); /* textTheme.titleSmall 15 w600 h1.3 (label TabBar) */
+  --fs-13:       calc(13px * var(--ts, 1)); /* literal 13 di kode: tombol teks, isi InfoBox judul, IconLine, dll. */
 
   --fw-regular:  400; /* FontWeight.w400 | tokens.json font.weight.regular */
   --fw-medium:   500; /* FontWeight.w500 */
@@ -282,6 +294,16 @@
   --banner-aspect: 2.2;           /* bannerAspectRatio (1760 x 800 px) */
   --banner-viewport-fraction: .92; /* bannerViewportFraction */
 
+  /* UKURAN IKON  [v2 P2-3, usulan KapdhIconSize]  Phosphor, kotak persegi. Dipakai lewat --ic-size di komponen dan
+     kelas .ic-s14/16/18/20/24/28. Ukuran lain (10, 12, 15, 22, 26, 30-64) tetap literal: ilustrasi keadaan kosong,
+     lencana, status bar, ubin akses cepat dan navigasi bawah memang ukuran khusus. */
+  --ic-xs:  14px;  /* meta baris ikon (IconLine), lencana status, suka di kartu berita */
+  --ic-sm:  16px;  /* ikon di teks kecil, aturan password, "Lihat semua", chip input */
+  --ic-btn: 18px;  /* ikon di tombol M3 (ButtonStyle iconSize 18), chip pilihan */
+  --ic-md:  20px;  /* ikon di KapdhButton, prefiks field, keadaan bagian kosong */
+  --ic-lg:  24px;  /* IconTheme bawaan Material: app bar, daftar, navigasi */
+  --ic-xl:  28px;  /* ikon besar di kartu (unggah, gambar placeholder) */
+
   /* PERANGKAT (frame ponsel Android) */
   --device-w: 360px;             /* lebar logis acuan (dp) */
   --device-h: 800px;             /* tinggi logis acuan (dp) */
@@ -296,4 +318,110 @@
   --dialog-min-w: 280px;         /* M3 Dialog lebar minimum; inset 40 px kiri-kanan */
   --dialog-max-w: 560px;         /* M3 Dialog lebar maksimum */
   --text-scale-stack: 1.3;       /* StatusActionCard & register_screen menumpuk aksi bila skala teks > 1.3 */
+  --content-max-w: 600px;        /* [v2 P2-3, usulan] lebar baca maksimum isi layar di tablet (>= 600 dp) */
+
+  /* SKALA TEKS  [v2 P2-3]  MediaQuery.textScaler. Semua ukuran huruf layar = calc(Npx * var(--ts, 1)); ikon, jarak dan
+     tinggi komponen tidak ikut (sama seperti Flutter), jadi teks yang tidak muat akan terlihat terpotong atau meluap. */
+  --ts: 1;
+}
+
+/* =====================================================================================================================
+   PRATINJAU TEKS 200 % DAN TABLET  [v2 P2-3, usulan]
+   Aktif lewat tombol "Teks 100 % / 200 %" dan "Ponsel / Tablet" di strip kepala (js/theme.js), atau ?ts=2 dan
+   ?device=tablet di URL. 200 % dipakai linear (kasus terburuk WCAG 1.4.4); Android 14 menskalakan huruf besar secara
+   nonlinier sehingga hasil nyata sedikit lebih ringan untuk judul. Tablet: 800 x 1280 dp (kelas lebar "medium" M3),
+   isi dibatasi --content-max-w di tengah, latar/app bar/navigasi tetap selebar layar.
+   ===================================================================================================================== */
+:root[data-ts="2"] { --ts: 2; }
+:root[data-device="tablet"] {
+  --device-w: 800px;
+  --device-h: 1280px;
+}
+
+/* =====================================================================================================================
+   MODE GELAP  [v2 P2-2, usulan; belum ada di Flutter]
+   Aktif bila <html data-theme="dark"> (tombol Terang / Gelap / Sistem di strip kepala halaman, js/theme.js).
+   Prinsip (skill ui-ux-pro-max "color-dark-mode"): varian tonal yang lebih terang dan tidak jenuh, bukan warna dibalik;
+   permukaan bertingkat (latar < permukaan < permukaan terangkat), merek hijau tetap dominan lewat pita/kartu KTA yang
+   sudah gelap. Kontras terukur (WCAG): teks 13,5-14,9:1, teks redup 6,5-8,0:1, garis 3,9:1, primary sebagai teks
+   9,1:1, status 7,1-8,7:1, cincin fokus emas 10,5:1. Flutter: KapdhTheme.dark() dengan token yang sama.
+   Pita hijau (header, Welcome, KTA) memakai palet merek tetap sehingga tidak ikut berubah.
+   ===================================================================================================================== */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Permukaan */
+  --color-background:   #0F1A0E;
+  --color-surface:      #172416;
+  --color-surface-raised: #1D2C1B; /* dialog, sheet, menu */
+  --color-surface-brand: #172416;
+  --color-neutral-50:   #0F1A0E;
+  --color-neutral-100:  #222D21;
+  --color-neutral-200:  #2B3929;
+  --color-neutral-300:  #4A5648;
+  --color-tint:         #1B2D19;
+  --color-tint-strong:  #23401F;
+
+  /* Teks dan garis */
+  --color-text:         #E7ECE5;
+  --color-text-muted:   #A5B0A2;
+  --color-border:       #74806F;
+  --color-divider:      #2B3929;
+  --color-card-border:  #263424;
+  --color-icon-accent:  #8BD47E;
+  --color-statusbar:    #E7ECE5;
+  --color-sysnav:       rgba(231, 236, 229, .82);
+
+  /* Merek: primary terang sebagai teks/isi, teks gelap di atasnya (pola Material 3 mode gelap) */
+  --color-primary:       #8BD47E;
+  --color-on-primary:    #0E280C;
+  --color-primary-hover: #9EDD92;
+  --gradient-button-primary: linear-gradient(180deg, #9EDD92 0%, #8BD47E 100%);
+
+  /* Nonaktif */
+  --color-disabled-bg:   #263124;
+  --color-disabled-text: #9AA597;
+  --color-on-surface-disabled: rgba(231, 236, 229, .38);
+  --color-on-surface-disabled-bg: rgba(231, 236, 229, .12);
+
+  /* Fokus: emas di seluruh permukaan gelap */
+  --color-focus-ring: #E6D312;
+
+  /* Status */
+  --color-success: #6FD49B; --color-success-bg: #10301E;
+  --color-warning: #F2C14E; --color-warning-bg: #33270A;
+  --color-danger:  #FF8A80; --color-danger-bg:  #3A1512; --color-on-danger: #3A1512;
+  --color-info:    #8DB8F2; --color-info-bg:    #13243A;
+  --color-neutral: #B8C2B5; --color-neutral-bg: #2A332A;
+  --color-rejection-border: #5A2A26;
+  --status-verified-fg: #6FD49B;       --status-verified-bg: #10301E;
+  --status-expiring-fg: #F2C14E;       --status-expiring-bg: #33270A;
+  --status-expired-fg: #FF8A80;        --status-expired-bg: #3A1512;
+  --status-unverified-fg: #FF8A80;     --status-unverified-bg: #3A1512;
+  --status-pending-review-fg: #8DB8F2; --status-pending-review-bg: #13243A;
+  --status-suspended-fg: #B8C2B5;      --status-suspended-bg: #2A332A;
+
+  /* Turunan Material 3 */
+  --m3-primary-container:      #2A5524;
+  --m3-on-primary-container:   #BFF0B1;
+  --m3-secondary-container:    #2E4529;
+  --m3-on-secondary-container: #CFE6C6;
+  --m3-surface-container-low:  #1A2719;
+  --m3-surface-container:      #222F20;
+  --m3-surface-container-high: #283626;
+  --m3-surface-container-highest: #2E3B2C;
+  --m3-scrim: rgba(0, 0, 0, .64);
+
+  /* Kedalaman: bayangan lebih pekat (permukaan gelap) + garis rambut yang terlihat */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, .35);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .30), 0 2px 8px rgba(0, 0, 0, .28);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, .32), 0 8px 20px rgba(0, 0, 0, .36);
+  --shadow-lg: 0 4px 8px rgba(0, 0, 0, .36), 0 16px 40px rgba(0, 0, 0, .50);
+  --shadow-primary-btn: 0 1px 2px rgba(0, 0, 0, .30), 0 4px 12px rgba(139, 212, 126, .18);
+  --shadow-bar-top: 0 -1px 0 var(--color-divider), 0 -6px 20px rgba(0, 0, 0, .30);
+  --ring-focus-field: 0 0 0 4px rgba(139, 212, 126, .22);
+
+  /* Skeleton */
+  --color-skeleton:       #243022;
+  --color-skeleton-shine: #2E3B2C;
 }
