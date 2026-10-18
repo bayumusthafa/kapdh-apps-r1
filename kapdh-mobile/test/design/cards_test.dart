@@ -67,6 +67,44 @@ void main() {
       await pumpDesign(tester, KtaCard(data: KtaCardData.fromMemberCard(cardOf())), textScale: 2);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('kepala kartu: nama perkumpulan dan label KTA DIGITAL', (tester) async {
+      await pumpDesign(tester, KtaCard(data: KtaCardData.fromMemberCard(cardOf())));
+      expect(find.text('KELUARGA ALUMNI'), findsOneWidget);
+      expect(find.text('PESANTREN DAREL HIKMAH'), findsOneWidget);
+      expect(find.text('KTA DIGITAL'), findsOneWidget);
+    });
+
+    testWidgets('nama panjang: di atas QR (tidak terhalang), huruf mengecil, tanpa meluap', (tester) async {
+      const longName = 'Muhammad Abdurrahman Hafizhuddin Al-Faruqi Nasution';
+      final data = KtaCardData.fromMemberCard(cardOf());
+      await pumpDesign(
+        tester,
+        KtaCard(
+          data: KtaCardData(
+            fullName: longName,
+            subtitle: data.subtitle,
+            cohortCode: data.cohortCode,
+            memberNumber: data.memberNumber,
+            city: data.city,
+            validityText: data.validityText,
+            qrData: data.qrData,
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      final name = tester.getRect(find.text(longName));
+      final qr = tester.getRect(find.byKey(const ValueKey('kta-qr')));
+      expect(name.bottom, lessThanOrEqualTo(qr.top), reason: 'nama selalu di atas baris QR');
+      expect(tester.widget<Text>(find.text(longName)).style!.fontSize, lessThan(24));
+    });
+
+    test('ukuran huruf nama dan sisi QR', () {
+      expect(KtaCard.nameFontSize('Ahmad Fauzi', 230, TextScaler.noScaling), 24);
+      expect(KtaCard.qrSize(324), closeTo(123.1, 0.1));
+      expect(KtaCard.qrSize(500), KapdhComponentSize.ktaQr);
+      expect(KtaCard.qrSize(200), 96);
+    });
   });
 
   testWidgets('KtaMiniCard (prototipe layar 2)', (tester) async {
