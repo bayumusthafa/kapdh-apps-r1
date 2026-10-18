@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app/theme/kapdh_tokens.dart';
 import 'design_constants.dart';
+import '../app/theme/kapdh_focus.dart';
 
 /// Motif geometris tipis pada pita hijau (guideline hal. 5 latar login): kisi lingkaran bertumpuk yang membentuk
 /// pola quatrefoil, garis putih transparan.
@@ -139,7 +140,8 @@ class BrandHeader extends StatelessWidget {
               },
         child: Padding(
           padding: padding.copyWith(top: padding.top + top),
-          child: child,
+          // Kontrol di pita hijau memakai cincin fokus emas.
+          child: child == null ? null : DarkSurfaceFocus(child: child!),
         ),
       ),
     );

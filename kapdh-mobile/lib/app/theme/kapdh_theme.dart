@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'kapdh_tokens.dart';
+import 'kapdh_focus.dart';
 
 /// Tema Material 3 KAPDH berdasarkan Guidelines KAPDH Platform v1.0 (D15, PRD 4.6).
 ///
@@ -77,6 +78,11 @@ abstract final class KapdhTheme {
       borderSide: const BorderSide(color: KapdhColors.border),
     );
 
+    // Cincin fokus hijau 3 px di permukaan terang (KapdhFocusTheme; emas lewat DarkSurfaceFocus di permukaan gelap).
+    return KapdhFocusTheme.withRing(_base(scheme, textTheme, fieldBorder), KapdhColors.focusRing);
+  }
+
+  static ThemeData _base(ColorScheme scheme, TextTheme textTheme, OutlineInputBorder fieldBorder) {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../app/theme/kapdh_tokens.dart';
 import '../../design/design.dart';
+import '../../app/theme/kapdh_focus.dart';
 
 /// Membuka pratinjau KTA layar penuh landscape.
 Future<void> showKtaFullScreen(BuildContext context, KtaCardData data) =>
@@ -58,43 +59,45 @@ class _KtaFullScreenState extends State<KtaFullScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF020702),
-      body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => Navigator.of(context).maybePop(),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(KapdhSpace.s6, KapdhSpace.s4, KapdhSpace.s6, KapdhSpace.s4),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final width = (constraints.maxHeight * KtaCard.idCardAspectRatio).clamp(
-                        0.0,
-                        constraints.maxWidth,
-                      );
-                      return Center(
-                        child: SizedBox(
-                          key: const ValueKey('kta-fullscreen-card'),
-                          width: width,
-                          height: width / KtaCard.idCardAspectRatio,
-                          child: KtaCard(data: widget.data, fill: true),
-                        ),
-                      );
-                    },
+      body: DarkSurfaceFocus(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => Navigator.of(context).maybePop(),
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(KapdhSpace.s6, KapdhSpace.s4, KapdhSpace.s6, KapdhSpace.s4),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = (constraints.maxHeight * KtaCard.idCardAspectRatio).clamp(
+                          0.0,
+                          constraints.maxWidth,
+                        );
+                        return Center(
+                          child: SizedBox(
+                            key: const ValueKey('kta-fullscreen-card'),
+                            width: width,
+                            height: width / KtaCard.idCardAspectRatio,
+                            child: KtaCard(data: widget.data, fill: true),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-              PositionedDirectional(
-                top: 0,
-                end: 0,
-                child: IconButton(
-                  tooltip: KtaFullScreen.closeTooltip,
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  icon: const Icon(KapdhIcons.close, color: KapdhColors.textOnDark),
+                PositionedDirectional(
+                  top: 0,
+                  end: 0,
+                  child: IconButton(
+                    tooltip: KtaFullScreen.closeTooltip,
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(KapdhIcons.close, color: KapdhColors.textOnDark),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
