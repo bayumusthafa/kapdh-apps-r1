@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
@@ -221,7 +222,7 @@ class ChatRoomTile extends StatelessWidget {
                               formatRelative(lastAt, now: now),
                               style: TextStyle(
                                 fontSize: KapdhFontSize.overline,
-                                color: unread > 0 ? KapdhColors.primary : KapdhColors.textMuted,
+                                color: unread > 0 ? context.kc.primary : context.kc.textMuted,
                               ),
                             ),
                         ],
@@ -230,9 +231,9 @@ class ChatRoomTile extends StatelessWidget {
                       Row(
                         children: [
                           if (hasUnsent)
-                            const Padding(
-                              padding: EdgeInsets.only(right: KapdhSpace.s1),
-                              child: Icon(KapdhIcons.errorOutline, size: 16, color: KapdhColors.danger),
+                            Padding(
+                              padding: const EdgeInsets.only(right: KapdhSpace.s1),
+                              child: Icon(KapdhIcons.errorOutline, size: 16, color: context.kc.danger),
                             ),
                           Expanded(
                             child: Text(
@@ -241,15 +242,15 @@ class ChatRoomTile extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: KapdhFontSize.caption,
-                                color: unread > 0 ? KapdhColors.text : KapdhColors.textMuted,
+                                color: unread > 0 ? context.kc.text : context.kc.textMuted,
                                 fontStyle: room.lastMessage?.deleted ?? false ? FontStyle.italic : FontStyle.normal,
                               ),
                             ),
                           ),
                           if (room.muted)
-                            const Padding(
-                              padding: EdgeInsets.only(left: KapdhSpace.s1),
-                              child: Icon(KapdhIcons.notificationsOffOutlined, size: 16, color: KapdhColors.textMuted),
+                            Padding(
+                              padding: const EdgeInsets.only(left: KapdhSpace.s1),
+                              child: Icon(KapdhIcons.notificationsOffOutlined, size: 16, color: context.kc.textMuted),
                             ),
                           if (unread > 0)
                             Container(
@@ -257,13 +258,13 @@ class ChatRoomTile extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                               decoration: BoxDecoration(
                                 // Dibisukan: neutral700 (9,3:1 dengan teks putih; dulu neutral500 3,3:1 gagal WCAG).
-                                color: room.muted ? KapdhColors.neutral700 : KapdhColors.primary,
+                                color: room.muted ? KapdhColors.neutral700 : context.kc.primary,
                                 borderRadius: BorderRadius.circular(KapdhRadius.pill),
                               ),
                               child: Text(
                                 unread > 99 ? '99+' : '$unread',
-                                style: const TextStyle(
-                                  color: KapdhColors.onPrimary,
+                                style: TextStyle(
+                                  color: room.muted ? KapdhColors.onPrimary : context.kc.onPrimary,
                                   fontSize: KapdhFontSize.overline,
                                   fontWeight: FontWeight.w600,
                                 ),

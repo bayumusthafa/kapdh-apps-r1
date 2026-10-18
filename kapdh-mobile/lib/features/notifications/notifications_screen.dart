@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/redirect.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
@@ -263,8 +264,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            SizedBox(
-              height: 420,
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 420),
               child: EmptyState(
                 icon: KapdhIcons.notificationsNone,
                 title: _unreadOnly ? 'Semua notifikasi sudah dibaca' : 'Belum ada notifikasi',
@@ -312,7 +313,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             Text(
               moreError.message,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.danger),
+              style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.danger),
             ),
             KapdhLinkButton(label: 'Coba lagi', icon: KapdhIcons.refresh, onPressed: _loadMore),
           ],
@@ -354,7 +355,7 @@ class NotificationTile extends StatelessWidget {
       label: [if (unread) 'Belum dibaca', style.label, notification.title, ?body, when].join(', '),
       excludeSemantics: true,
       child: Material(
-        color: unread ? KapdhColors.green50 : KapdhColors.surface,
+        color: unread ? context.kc.tint : context.kc.surface,
         child: InkWell(
           onTap: onTap,
           child: Padding(
@@ -365,8 +366,8 @@ class NotificationTile extends StatelessWidget {
                 Container(
                   width: 40,
                   height: 40,
-                  decoration: const BoxDecoration(color: KapdhColors.green100, shape: BoxShape.circle),
-                  child: Icon(style.icon, size: 20, color: KapdhColors.primary),
+                  decoration: BoxDecoration(color: context.kc.tintStrong, shape: BoxShape.circle),
+                  child: Icon(style.icon, size: 20, color: context.kc.primary),
                 ),
                 const SizedBox(width: KapdhSpace.s3),
                 Expanded(
@@ -378,7 +379,7 @@ class NotificationTile extends StatelessWidget {
                         style: TextStyle(
                           fontSize: KapdhFontSize.body,
                           fontWeight: unread ? FontWeight.w600 : FontWeight.w500,
-                          color: KapdhColors.text,
+                          color: context.kc.text,
                         ),
                       ),
                       if (body != null && body.isNotEmpty) ...[
@@ -387,13 +388,13 @@ class NotificationTile extends StatelessWidget {
                           body,
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 13, height: 1.45, color: KapdhColors.textMuted),
+                          style: TextStyle(fontSize: 13, height: 1.45, color: context.kc.textMuted),
                         ),
                       ],
                       const SizedBox(height: KapdhSpace.s1),
                       Text(
                         '${style.label} · $when',
-                        style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                        style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
                       ),
                     ],
                   ),
@@ -404,12 +405,12 @@ class NotificationTile extends StatelessWidget {
                     margin: const EdgeInsets.only(top: 6),
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: KapdhColors.primary,
+                      color: context.kc.primary,
                       borderRadius: BorderRadius.circular(KapdhRadius.pill),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Baru',
-                      style: TextStyle(fontSize: KapdhFontSize.overline, color: KapdhColors.onPrimary),
+                      style: TextStyle(fontSize: KapdhFontSize.overline, color: context.kc.onPrimary),
                     ),
                   ),
                 ],

@@ -178,10 +178,15 @@ void main() {
     expect(find.byType(CustomPaint), findsWidgets);
   });
 
-  testWidgets('BrandHeader bermotif (guideline hal. 5)', (tester) async {
+  testWidgets('BrandHeader: mesh zamrud v2, motif opsional (guideline hal. 5)', (tester) async {
     await pumpDesign(tester, const BrandHeader(child: Text('Selamat')), scaffold: false);
-    final paints = tester.widgetList<CustomPaint>(find.byType(CustomPaint));
-    expect(paints.any((p) => p.painter is BrandPatternPainter), isTrue);
+    var paints = tester.widgetList<CustomPaint>(find.byType(CustomPaint));
+    expect(paints.any((p) => p.painter is BrandMeshPainter), isTrue);
+    expect(paints.any((p) => p.foregroundPainter is BrandPatternPainter), isFalse, reason: 'v2 tanpa motif bawaan');
+
+    await pumpDesign(tester, const BrandHeader(motif: BrandMotif.quatrefoil, child: Text('Selamat')), scaffold: false);
+    paints = tester.widgetList<CustomPaint>(find.byType(CustomPaint));
+    expect(paints.any((p) => p.foregroundPainter is BrandPatternPainter), isTrue);
   });
 
   testWidgets('SectionHeader dan SupportContactCard', (tester) async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../app/theme/kapdh_palette.dart';
 import '../../../app/theme/kapdh_tokens.dart';
 import '../../../design/design.dart';
 import '../proof_file.dart';
@@ -39,7 +40,7 @@ Future<ProofSource?> showProofSourceSheet(BuildContext context) {
             ])
               ListTile(
                 minTileHeight: KapdhSize.touchTargetMin + KapdhSpace.s2,
-                leading: Icon(icon, color: KapdhColors.primary),
+                leading: Icon(icon, color: context.kc.primary),
                 title: Text(title),
                 subtitle: Text(subtitle),
                 onTap: () => Navigator.of(sheetContext).pop(source),
@@ -100,9 +101,9 @@ class ProofUploadSection extends StatelessWidget {
           emptySubtitle: 'Foto JPG/PNG atau PDF',
         ),
         const SizedBox(height: KapdhSpace.s2),
-        const Text(
+        Text(
           proofRulesCaption,
-          style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
         ),
         const SizedBox(height: KapdhSpace.s4),
         KapdhTextField(

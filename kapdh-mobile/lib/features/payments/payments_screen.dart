@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/format/formatters.dart';
@@ -240,47 +241,54 @@ class PaymentTile extends StatelessWidget {
       label: '$title, $amount, $date, status ${badge.label}',
       excludeSemantics: true,
       onTap: onTap,
-      child: Material(
-        color: KapdhColors.surface,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: KapdhColors.divider),
-          borderRadius: BorderRadius.circular(KapdhRadius.lg),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: 14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(color: KapdhColors.green50, borderRadius: BorderRadius.circular(10)),
-                  child: Icon(icon, color: KapdhColors.primary, size: 22),
-                ),
-                const SizedBox(width: KapdhSpace.s3),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$amount · $date',
-                        style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
-                      ),
-                      const SizedBox(height: KapdhSpace.s2),
-                      StatusBadge(badge),
-                    ],
+      // [v2] Garis rambut cardBorder + --shadow-sm.
+      child: DecoratedBox(
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(KapdhRadius.lg), boxShadow: context.kc.shadowSm),
+        child: Material(
+          color: context.kc.surface,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(color: context.kc.cardBorder),
+            borderRadius: BorderRadius.circular(KapdhRadius.lg),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: context.kc.tint,
+                      borderRadius: BorderRadius.circular(KapdhRadius.md),
+                    ),
+                    child: Icon(icon, color: context.kc.primary, size: 22),
                   ),
-                ),
-                const Icon(KapdhIcons.chevronRight, color: KapdhColors.textMuted),
-              ],
+                  const SizedBox(width: KapdhSpace.s3),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$amount · $date',
+                          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
+                        ),
+                        const SizedBox(height: KapdhSpace.s2),
+                        StatusBadge(badge),
+                      ],
+                    ),
+                  ),
+                  Icon(KapdhIcons.chevronRight, color: context.kc.textMuted),
+                ],
+              ),
             ),
           ),
         ),

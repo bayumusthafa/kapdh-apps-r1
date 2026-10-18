@@ -38,28 +38,34 @@ class WelcomeScreen extends ConsumerWidget {
         body: DarkSurfaceFocus(
           child: BrandMeshBackground(
             child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(KapdhSpace.s6, 0, KapdhSpace.s6, KapdhSpace.s5),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) => SingleChildScrollView(
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                            child: const Center(child: _Intro()),
+              // Latar mesh tetap selebar layar; isi dibatasi 600 dp di tengah pada tablet.
+              child: ContentWidth(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(KapdhSpace.s6, 0, KapdhSpace.s6, KapdhSpace.s5),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) => SingleChildScrollView(
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                              child: const Center(child: _Intro()),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: KapdhSpace.s4),
-                    KapdhButton.accent(label: registerLabel, onPressed: () => _open(context, ref, AppRoutes.register)),
-                    const SizedBox(height: KapdhSpace.s3),
-                    KapdhButton.outlinedOnDark(
-                      label: loginLabel,
-                      onPressed: () => _open(context, ref, AppRoutes.login),
-                    ),
-                  ],
+                      const SizedBox(height: KapdhSpace.s4),
+                      KapdhButton.accent(
+                        label: registerLabel,
+                        onPressed: () => _open(context, ref, AppRoutes.register),
+                      ),
+                      const SizedBox(height: KapdhSpace.s3),
+                      KapdhButton.outlinedOnDark(
+                        label: loginLabel,
+                        onPressed: () => _open(context, ref, AppRoutes.login),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -81,11 +87,12 @@ class _Intro extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Cahaya lembut di belakang logo: lingkaran hijau logo tetap terpisah dari latar hijau gelap.
+          // Halo lembut hanya di luar lingkaran gambar (BlurStyle.outer, seperti box-shadow luar di mockup): celah
+          // transparan logo tetap hijau gelap. Tanpa spreadRadius agar halo dimulai tepat di batas gambar.
           DecoratedBox(
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: Color(0x2EFFFFFF), blurRadius: 48, spreadRadius: 6)],
+              boxShadow: [BoxShadow(color: Color(0x2EFFFFFF), blurRadius: 48, blurStyle: BlurStyle.outer)],
             ),
             child: Image.asset('assets/logo-kapdh.png', width: logo, height: logo, semanticLabel: 'Logo KAPDH'),
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/app_gate/app_gate.dart';
@@ -55,46 +56,49 @@ class _UpdateRequiredScreenState extends ConsumerState<UpdateRequiredScreen> {
         : 'Aplikasi perlu diperbarui untuk menampilkan status akun Anda dengan benar.';
 
     return Scaffold(
-      backgroundColor: KapdhColors.background,
+      backgroundColor: context.kc.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(KapdhSpace.s5),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: KapdhSpace.s8),
-              StatusHero(
-                status: const StatusBadgeStyle(
-                  label: 'Wajib Update',
-                  icon: KapdhIcons.systemUpdate,
-                  foreground: KapdhColors.warning,
-                  background: KapdhColors.warningBg,
+        // Tablet: isi dibatasi 600 dp di tengah; ContentWidth di luar scroll (urutan sama dengan AppScaffold).
+        child: ContentWidth(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(KapdhSpace.s5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: KapdhSpace.s8),
+                StatusHero(
+                  status: StatusBadgeStyle(
+                    label: 'Wajib Update',
+                    icon: KapdhIcons.systemUpdate,
+                    foreground: context.kc.warning,
+                    background: context.kc.warningBg,
+                  ),
+                  title: 'Perbarui aplikasi KAPDH',
+                  message: message,
                 ),
-                title: 'Perbarui aplikasi KAPDH',
-                message: message,
-              ),
-              const SizedBox(height: KapdhSpace.s6),
-              if (storeUrl != null)
-                KapdhButton(
-                  label: 'Perbarui di $storeName',
-                  icon: KapdhIcons.openInNew,
-                  onPressed: () => _openStore(storeUrl),
-                )
-              else
-                const InfoBox(
-                  tone: InfoBoxTone.warning,
-                  message: 'Tautan toko aplikasi belum tersedia. Hubungi pengurus untuk mendapatkan versi terbaru.',
+                const SizedBox(height: KapdhSpace.s6),
+                if (storeUrl != null)
+                  KapdhButton(
+                    label: 'Perbarui di $storeName',
+                    icon: KapdhIcons.openInNew,
+                    onPressed: () => _openStore(storeUrl),
+                  )
+                else
+                  const InfoBox(
+                    tone: InfoBoxTone.warning,
+                    message: 'Tautan toko aplikasi belum tersedia. Hubungi pengurus untuk mendapatkan versi terbaru.',
+                  ),
+                const SizedBox(height: KapdhSpace.s3),
+                KapdhButton.outlined(
+                  label: 'Periksa lagi',
+                  busyLabel: 'Memeriksa...',
+                  busy: _checking,
+                  onPressed: _recheck,
                 ),
-              const SizedBox(height: KapdhSpace.s3),
-              KapdhButton.outlined(
-                label: 'Periksa lagi',
-                busyLabel: 'Memeriksa...',
-                busy: _checking,
-                onPressed: _recheck,
-              ),
-              const SizedBox(height: KapdhSpace.s6),
-              const SupportSection(subject: 'Pembaruan Aplikasi KAPDH'),
-            ],
+                const SizedBox(height: KapdhSpace.s6),
+                const SupportSection(subject: 'Pembaruan Aplikasi KAPDH'),
+              ],
+            ),
           ),
         ),
       ),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
@@ -274,10 +275,10 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
           onPressed: _canSubmit ? () => unawaited(_submit()) : null,
         ),
         const SizedBox(height: KapdhSpace.s3),
-        const Text(
+        Text(
           'Anda akan diminta memasukkan password untuk konfirmasi.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
         ),
       ],
     );
@@ -297,7 +298,7 @@ class _Bullet extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ExcludeSemantics(child: Icon(icon, size: 18, color: KapdhColors.primary)),
+          ExcludeSemantics(child: Icon(icon, size: 18, color: context.kc.primary)),
           const SizedBox(width: KapdhSpace.s3),
           Expanded(child: Text(text, style: const TextStyle(fontSize: 13, height: 1.5))),
         ],
@@ -429,9 +430,9 @@ class _Warnings extends StatelessWidget {
       children: [
         Semantics(
           header: true,
-          child: const Text(
+          child: Text(
             'Perhatikan sebelum menghapus',
-            style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600, color: KapdhColors.danger),
+            style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600, color: context.kc.danger),
           ),
         ),
         for (final card in cards) ...[const SizedBox(height: KapdhSpace.s3), card],
@@ -459,18 +460,18 @@ class _DangerButton extends StatelessWidget {
         width: double.infinity,
         child: FilledButton.icon(
           style: FilledButton.styleFrom(
-            backgroundColor: KapdhColors.danger,
-            foregroundColor: KapdhColors.onPrimary,
-            disabledBackgroundColor: KapdhColors.disabledBg,
+            backgroundColor: context.kc.danger,
+            foregroundColor: context.kc.onDanger,
+            disabledBackgroundColor: context.kc.disabledBg,
             minimumSize: const Size.fromHeight(KapdhSize.buttonHeight),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KapdhRadius.md)),
           ),
           onPressed: enabled ? onPressed : null,
           icon: busy
-              ? const SizedBox(
+              ? SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: KapdhColors.onPrimary),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: context.kc.disabledText),
                 )
               : const Icon(KapdhIcons.deleteForeverOutlined),
           label: Text(busy ? 'Memproses...' : label),

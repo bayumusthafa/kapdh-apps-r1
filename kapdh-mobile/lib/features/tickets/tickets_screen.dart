@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/format/formatters.dart';
@@ -30,29 +31,23 @@ class TicketsScreen extends ConsumerWidget {
       child: AppScaffold(
         title: 'Tiket Saya',
         fallbackLocation: AppRoutes.home,
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        // TabBar selebar layar (tablet: tidak ikut dibatasi 600); isi tab dibatasi ContentWidth.
+        header: ColoredBox(
+          color: context.kc.surface,
+          child: TabBar(
+            labelColor: context.kc.primary,
+            unselectedLabelColor: context.kc.textMuted,
+            indicatorColor: context.kc.primary,
+            tabs: const [
+              Tab(text: 'Aktif'),
+              Tab(text: 'Riwayat'),
+            ],
+          ),
+        ),
+        body: TabBarView(
           children: [
-            const ColoredBox(
-              color: KapdhColors.surface,
-              child: TabBar(
-                labelColor: KapdhColors.primary,
-                unselectedLabelColor: KapdhColors.textMuted,
-                indicatorColor: KapdhColors.primary,
-                tabs: [
-                  Tab(text: 'Aktif'),
-                  Tab(text: 'Riwayat'),
-                ],
-              ),
-            ),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  _TicketList(view: TicketListView.active, canBrowseEvents: active),
-                  _TicketList(view: TicketListView.history, canBrowseEvents: active),
-                ],
-              ),
-            ),
+            _TicketList(view: TicketListView.active, canBrowseEvents: active),
+            _TicketList(view: TicketListView.history, canBrowseEvents: active),
           ],
         ),
       ),
@@ -141,10 +136,10 @@ class TicketCard extends StatelessWidget {
                   style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: KapdhSpace.s1),
-                IconLine(icon: KapdhIcons.calendarTodayOutlined, text: day),
+                IconLine(icon: KapdhIcons.calendarTodayOutlined, text: day, iconColor: context.kc.iconAccent),
                 if (event.locationName != null) ...[
                   const SizedBox(height: 2),
-                  IconLine(icon: KapdhIcons.placeOutlined, text: event.locationName!),
+                  IconLine(icon: KapdhIcons.placeOutlined, text: event.locationName!, iconColor: context.kc.iconAccent),
                 ],
                 const SizedBox(height: 6),
                 Wrap(
@@ -157,7 +152,7 @@ class TicketCard extends StatelessWidget {
                 ),
                 if (holdText != null) ...[
                   const SizedBox(height: 6),
-                  IconLine(icon: KapdhIcons.timerOutlined, text: holdText, color: KapdhColors.warning),
+                  IconLine(icon: KapdhIcons.timerOutlined, text: holdText, color: context.kc.warning),
                 ],
               ],
             ),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/cache/kta_avatar_cache.dart';
@@ -318,8 +319,11 @@ class _OfflineUnavailable extends StatelessWidget {
               child: Container(
                 width: 64,
                 height: 64,
-                decoration: const BoxDecoration(color: KapdhColors.dangerBg, shape: BoxShape.circle),
-                child: const Icon(KapdhIcons.cloudOff, size: 30, color: KapdhColors.danger),
+                decoration: BoxDecoration(
+                  color: context.kc.dangerBg,
+                  borderRadius: BorderRadius.circular(KapdhRadius.xl),
+                ),
+                child: Icon(KapdhIcons.cloudOff, size: 30, color: context.kc.danger),
               ),
             ),
           ),
@@ -336,7 +340,7 @@ class _OfflineUnavailable extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhColors.textMuted),
+            style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: context.kc.textMuted),
           ),
           const SizedBox(height: KapdhSpace.s5),
           KapdhButton.outlined(
@@ -366,12 +370,12 @@ class _SyncedAt extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(KapdhIcons.sync, size: 14, color: KapdhColors.textMuted),
+          Icon(KapdhIcons.sync, size: 14, color: context.kc.textMuted),
           const SizedBox(width: KapdhSpace.s1),
           Flexible(
             child: Text(
               text,
-              style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+              style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
             ),
           ),
         ],
@@ -394,8 +398,8 @@ class _LockedFeatures extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: 14),
       decoration: BoxDecoration(
-        color: KapdhColors.surface,
-        border: Border.all(color: KapdhColors.divider),
+        color: context.kc.surface,
+        border: Border.all(color: context.kc.divider),
         borderRadius: BorderRadius.circular(KapdhRadius.lg),
       ),
       child: Column(
@@ -412,7 +416,7 @@ class _LockedFeatures extends StatelessWidget {
             const SizedBox(height: KapdhSpace.s2),
             Row(
               children: [
-                Icon(icon, size: 18, color: KapdhColors.textMuted),
+                Icon(icon, size: 18, color: context.kc.textMuted),
                 const SizedBox(width: 10),
                 Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
               ],

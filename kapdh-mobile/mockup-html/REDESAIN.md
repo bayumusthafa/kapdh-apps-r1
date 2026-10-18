@@ -59,19 +59,19 @@ Kontras diukur dengan rumus WCAG 2.2.
 | `--r-sm` / `--r-md` / `--r-lg` / `--r-xl` | 6 / 10 / 14 / 20 | 8 / 12 / 16 / 24 | `tokens.json` `radius` -> `KapdhRadius` |
 | `--r-12`, `--r-16` (literal) | 12, 16 | sama dengan `--r-md`, `--r-lg` | hapus literal 12/16 di Dart, pakai `KapdhRadius.md/lg` |
 | `--shadow-xs/sm/md/lg`, `--shadow-kta`, `--shadow-primary-btn`, `--shadow-bar-top`, `--ring-focus-field` | | baru | token baru `shadow.*` -> `KapdhShadows` (`List<BoxShadow>`) |
-| `--dur-press/fast/base/slow`, `--ease-standard`, `--ease-out` | | 100 / 150 / 250 / 350 ms | token baru `motion.*` -> `KapdhMotion` (`Duration`, `Curves.easeOutCubic`) |
+| `--dur-press/fast/base/slow`, `--ease-standard`, `--ease-out` | | 100 / 150 / 250 / 350 ms; `cubic-bezier(.2,0,0,1)` / `(.215,.61,.355,1)` | token `motion.*` + `easing.*` -> `KapdhMotion` (`Duration`, `KapdhMotion.easeStandard` / `easeOut` sebagai `Cubic`) |
 | `--fw-heading` | | 700 | `KapdhTheme`: `displaySmall`, `headlineSmall`, `titleLarge` jadi `w700` |
 
 ## Perubahan komponen (`css/components.css`)
 
 | Komponen | Perubahan v2 | Widget Dart |
 | --- | --- | --- |
-| Semua elemen yang dapat diketuk | State layer 8 % (hover) / 12 % (tekan) sebagai bayangan inset: mengikuti radius, tata letak tidak bergeser. Transisi 100-150 ms. Tanpa transisi bila *reduce motion*. | Sudah ada lewat `InkWell` / `overlayColor`; sesuaikan `splashFactory`/durasi bila perlu |
-| Cincin fokus | Hijau `#2D7A28` di permukaan terang, emas di header hijau, kartu KTA, kotak nominal, snackbar | `FocusTheme`/`focusColor` per permukaan |
+| Semua elemen yang dapat diketuk | State layer 8 % (hover) / 12 % (tekan) sebagai bayangan inset: mengikuti radius, tata letak tidak bergeser. Transisi 100-150 ms. Tanpa transisi bila *reduce motion*. | `InkWell` / `overlayColor`; tema `splashFactory: InkRipple` dan `animationDuration: KapdhMotion.fast` pada tombol; `NoSplash` bila *reduce motion* (`app.dart`) |
+| Cincin fokus | Hijau `#2D7A28` di permukaan terang, emas di header hijau, kartu KTA, kotak nominal, snackbar | `KapdhFocusTheme` (tema tombol + `DarkSurfaceFocus`), `KapdhFocusRing` untuk kontrol `InkWell` kustom (tombol kaca, kartu KTA, ubin, kartu, banner), `KapdhFocusTheme.ringedSide` untuk tombol yang menimpa `side`, `KapdhSnackBarAction` |
 | `.card`, `.summary-card`, `.status-action-card`, `.qris-card`, `.support-card`, `.account-section__card`, `.quick-access` | Garis `--color-card-border` + `--shadow-sm` | `CardTheme` (elevation 0 + `shape`), `TappableCard`, `SummaryCard`, `StatusActionCard`, `QrisImageCard`, `SupportContactCard`, `AccountSection`, `QuickAccessRow` |
 | `.btn--primary` | Bayangan hijau `--shadow-primary-btn`; hilang saat nonaktif/sibuk | `KapdhButton` (`lib/design/kapdh_button.dart`) |
 | `.input` | Fokus: garis 2 px primary + halo 4 px, ikon awalan ikut hijau; galat: halo merah | `KapdhTextField` (halo lewat `AnimatedContainer` + `BoxShadow` saat `Focus`) |
-| `.otp__box` | Terisi: garis primary + isi `green50`. Aktif: garis primary + halo + kursor berkedip (dulu garis emas) | `OtpBoxes` (`lib/design/otp_boxes.dart`) |
+| `.otp__box` | Terisi: garis primary + isi `green50`. Aktif: garis primary + halo + kursor berkedip (dulu garis emas) | `OtpBoxes` (`lib/design/otp_boxes.dart`; kursor berkedip lewat `Timer`, statis bila *reduce motion*) |
 | `.choice-chip` | Garis rambut pada chip tidak terpilih; chip primary terpilih dengan `--shadow-xs` | `chipTheme.side`, `ChoiceChip` Berita |
 | `.quick-access__icon` | Kotak membulat 14 berlatar `green100` (dulu lingkaran `green50`) | `QuickAccessRow` (`home/widgets/home_widgets.dart`) |
 | `.section-empty` | Garis putus-putus `neutral300`: "belum ada isi" dibedakan dari kartu | `SectionEmpty` (perlu `CustomPaint` garis putus) |
@@ -82,12 +82,12 @@ Kontras diukur dengan rumus WCAG 2.2.
 | `.info-box` | Garis 1 px bernada 20 %; ukuran luar tetap | `InfoBox` (`lib/design/info_box.dart`) |
 | `.state__icon` | Lingkaran `green100` (dulu `green50`) | `EmptyState` (`lib/design/states.dart`) |
 | `.skeleton*` | Kilau (shimmer) 1,4 s bernada hijau menggantikan denyut opasitas; statis bila *reduce motion* | `LoadingSkeleton` |
-| `.bottom-nav` | Garis rambut + bayangan ke atas `--shadow-bar-top`; indikator beranimasi 250 ms | `AppShell` `NavigationBarTheme` (`shadowColor`, `elevation`) |
+| `.bottom-nav` | Garis rambut + bayangan ke atas `--shadow-bar-top`; indikator beranimasi 250 ms | `AppShell` (dekorasi bilah + `NavigationBar.animationDuration: KapdhMotion.base`, nol bila *reduce motion*) |
 | `.snackbar` | Radius 12, margin 16 / 12, `--shadow-lg` | `SnackBarTheme` (`shape`, `insetPadding`) |
 | `.dialog` | Radius 24, `--shadow-lg`, judul 20 w700 | `DialogTheme` (`shape`, `titleTextStyle`) |
 | `.sheet` | `--shadow-lg`, judul w700 | `BottomSheetTheme` |
-| `.popup-menu`, `.dropdown-menu` | Putih, garis rambut, radius 12, `--shadow-md` (dulu `surfaceContainer`, radius 4) | `PopupMenuThemeData`, `DropdownMenuThemeData` |
-| `.fab-small` | `--shadow-md` | `FloatingActionButtonThemeData` |
+| `.popup-menu`, `.dropdown-menu` | Putih, garis rambut, radius 12, `--shadow-md` (dulu `surfaceContainer`, radius 4) | `PopupMenuThemeData`, `DropdownMenuThemeData`, `MenuThemeData`. `KapdhDropdownField` (menu `DropdownButtonFormField`) mendapat warna, radius 12 dan bayangan, tanpa garis rambut: rute menu bawaan tidak menerima garis tepi |
+| `.fab-small` | `--shadow-md` | `FloatingActionButtonThemeData` (warna, radius 12) + `DecoratedBox` `shadowMd` di FAB ruang chat |
 | `.ev-bar` (event), `.jj-profile-bottom` (jejaring) | `--shadow-bar-top` sebagai pemisah dari isi yang digulir | `lib/features/events/event_detail_screen.dart`, `lib/features/network/member_profile_screen.dart` |
 
 Etalase `components.html` punya bagian baru **Radius, kedalaman dan interaksi (v2)** untuk mencoba state layer dan
@@ -104,7 +104,7 @@ tab KTA menjadi tombol tengah yang menonjol di semua layar, dan font tetap Poppi
 | Header | Gradasi "mesh" zamrud + cahaya emas, cincin dekoratif, sudut bawah membulat, bayangan hijau, tombol kaca persegi membulat, lencana emas bercincin | Logo KAPDH tetap ada (dalam bingkai kaca bercincin emas), bukan avatar inisial. Tombol lonceng 48 x 48 (desain 40, di bawah target 48 dp). Tombol Cari dan pil angkatan tidak diambil karena fiturnya belum ada di `HomeHeader` | `HomeHeader` |
 | Navigasi bawah | Tab KTA jadi tombol tengah 56 bergradasi, naik di atas bilah | Label tetap "KTA" (teks Dart). Terpilih = cincin emas. Kolom tab tetap 72 x 64. Berlaku di 7 halaman ber-AppShell | `AppShell` |
 | Banner | Titik di dalam banner (aktif emas), judul tebal | Subjudul dan tombol CTA tidak diambil karena data banner hanya berisi gambar, judul dan tautan. Gradasi kiri tidak dipakai agar ilustrasi banner tidak tertutup | `BannerCarousel` |
-| Akses cepat | Ubin 48 radius 16 `green50` bergaris `green100`, padding kartu 16 | Isi tetap KTA, Notifikasi, Tiket Saya, Berita. Teks detail tetap 11 px (desain 9 px, terlalu kecil) | `QuickAccessRow` |
+| Akses cepat | Kartu putih bergaris rambut + `shadowSm`, padding 15/3/13; ikon lingkaran 56 bergradasi (lihat *Akses cepat di atas banner*) | Isi: Pesan (anggota aktif) atau KTA (tidak aktif/kedaluwarsa), Notifikasi, Tiket Saya, Berita. Teks detail tetap 11 px (desain 9 px, terlalu kecil) | `QuickAccessRow` |
 | Judul bagian | "Lihat semua" jadi pil tonal + chevron | Area sentuh tetap 48. Subjudul bagian tidak diambil (teks baru) | `HomeSectionTitle` |
 | Kartu event | Sampul 80 x 80, ikon meta hijau, footer bergaris: status di kiri, harga di kanan | Berlaku juga di daftar Event (widget yang sama) | `EventCard` |
 | Berita | Kartu pertama hero (kategori dan tanggal/suka di atas gambar), sisanya baris ringkas 80 x 80 | Hanya di Beranda; halaman Berita tetap `PostCard` biasa | `PostCard` varian hero/compact |
@@ -125,11 +125,11 @@ regular, fill dan duotone dalam satu keluarga.
 
 | Tempat | Gaya | Material lama -> Phosphor | Dart |
 | --- | --- | --- | --- |
-| Akses cepat Pesan (anggota aktif; menggantikan KTA) | Duotone | `chat_bubble_outline` -> `chat-circle-dots-duotone` | `KapdhIcons.chatCircleDotsDuotone` |
-| Akses cepat KTA (KTA tidak aktif/kedaluwarsa) | Duotone | `badge_outlined` -> `identification-card-duotone` | `KapdhIcons.identificationCardDuotone` |
-| Akses cepat Notifikasi | Duotone | `notifications_outlined` -> `bell-simple-ringing-duotone` | `KapdhIcons.bellSimpleRingingDuotone` |
-| Akses cepat Tiket Saya | Duotone | `confirmation_number_outlined` -> `ticket-duotone` | `KapdhIcons.ticketDuotone` |
-| Akses cepat Berita | Duotone | `article_outlined` -> `newspaper-clipping-duotone` | `KapdhIcons.newspaperClippingDuotone` |
+| Akses cepat Pesan (anggota aktif; menggantikan KTA) | Fill bergradasi | `chat_bubble_outline` -> `chat-circle-dots-fill` | `KapdhIcons.chatBubble` |
+| Akses cepat KTA (KTA tidak aktif/kedaluwarsa) | Fill bergradasi | `badge_outlined` -> `identification-card-fill` | `KapdhIcons.badge` |
+| Akses cepat Notifikasi | Fill bergradasi | `notifications_outlined` -> `bell-simple-ringing-fill` | `KapdhIcons.notificationsActive` |
+| Akses cepat Tiket Saya | Fill bergradasi | `confirmation_number_outlined` -> `ticket-fill` | `KapdhIcons.confirmationNumber` |
+| Akses cepat Berita | Fill bergradasi | `article_outlined` -> `newspaper-clipping-fill` | `KapdhIcons.newspaper` |
 | Tab Beranda | Regular / Fill | `home_outlined` / `home` -> `house-simple` / `house-simple-fill` | `KapdhIcons.homeOutlined / KapdhIcons.home` |
 | Tab Event | Regular / Fill | `event_outlined` / `event` -> `calendar-dots` / `calendar-dots-fill` | `KapdhIcons.eventOutlined / KapdhIcons.event` |
 | Tab KTA (tengah) | Fill | `badge_outlined` / `badge` -> `identification-card-fill` | `KapdhIcons.badgeOutlined / KapdhIcons.badge` |
@@ -279,15 +279,15 @@ Beranda, sebelum banner, juga di skeleton memuat. Ikon menjadi lingkaran 56 dp:
 - jumlah belum dibaca pindah dari teks kecil ke lencana emas di pojok lingkaran. Teks status KTA (keadaan tidak aktif
   atau kedaluwarsa) tetap di bawah label.
 
-Isi menu tetap: Pesan, Notifikasi, Tiket Saya, Berita (KTA ada di tab tengah). Flutter nanti: `QuickAccessRow` dipindah
-ke atas `BannerCarousel` di `_ActiveHome`; ikon `Container(shape: circle, gradient)` + `ShaderMask` di atas
-`Icon(KapdhIcons.*Fill)` (codepoint fill keempat ikon perlu ditambah ke `phosphor-codepoints.json`) + `Badge`.
+Isi menu tetap: Pesan, Notifikasi, Tiket Saya, Berita (KTA ada di tab tengah). Di Flutter: `QuickAccessRow` di atas
+`BannerCarousel` dalam `_ActiveHome`; ikon lingkaran `qaCircle` + `ShaderMask` `qaIcon` di atas `Icon(KapdhIcons.*)`
+fill (codepoint fill sudah di `phosphor-codepoints.json`) + lencana emas.
 
 **Akses cepat: Pesan menggantikan KTA** (usulan). Untuk anggota aktif, ubin pertama kini "Pesan" (jumlah percakapan
 belum dibaca, ke tab Jejaring > Pesan), karena KTA sudah bisa dibuka dari tombol tengah navigasi bawah sehingga ubin KTA
-dobel. Pada KTA tidak aktif atau kedaluwarsa ubin KTA tetap (status KTA penting di sana dan Jejaring terkunci). Flutter
-nanti: `QuickAction` pertama di `_QuickAccess` memakai `KapdhIcons.chatCircleDotsDuotone` dan penghitung belum dibaca
-chat; `HomeQuickAccess` perlu field jumlah pesan belum dibaca (API `/home` atau penghitung chat yang sudah ada).
+dobel. Pada KTA tidak aktif atau kedaluwarsa ubin KTA tetap (status KTA penting di sana dan Jejaring terkunci). Di
+Flutter: `QuickAction` pertama di `_QuickAccess` memakai `KapdhIcons.chatBubble` (`ph:chat-circle-dots-fill`) dengan
+lencana dari penghitung chat yang sudah ada (`chatBadgeCountsProvider`) dan membuka tab Jejaring > Pesan.
 
 **Semua pita hijau disamakan** (usulan). Sebelumnya ada empat gaya pita: gradasi datar (Status Akun, Dibatasi,
 alur daftar/OTP/lupa password, pembayaran), quatrefoil (Akun), gelombang (Masuk) dan mesh zamrud (Beranda, Profil
@@ -318,11 +318,33 @@ karena memang khusus (ilustrasi keadaan kosong, lencana, status bar, ubin akses 
 - Kontras pasangan baru diukur dengan rumus WCAG: teks redup 5,5:1 di latar dan 6,0:1 di putih, cincin fokus 5,4:1
   (terang) dan 6,6:1 (gelap), garis field 3,3:1, titik carousel 3,1:1.
 
+## Implementasi Flutter (18 Oktober 2026)
+
+Usulan v2 di dokumen ini sudah diterapkan ke `kapdh-mobile` (tanpa perubahan kontrak server):
+
+| Bagian | Di Flutter |
+| --- | --- |
+| Token | `tokens.json` v2 (latar, teks redup, garis, garis kartu, tint, radius 8/12/16/24, bayangan `elevation`, `motion`, ukuran `icon`, gradasi mesh/splash, palet `dark`) -> `build.mjs` -> `KapdhColors`, `KapdhDarkColors`, `KapdhShadows(Dark)`, `KapdhMotion`, `KapdhIconSize`. Admin dan web ikut mendapat radius dan warna v2 lewat `kapdh-theme.css`. |
+| Tema | `KapdhPalette` (ThemeExtension, `context.kc`) untuk terang dan gelap; `KapdhTheme.dark()` + `themeMode: ThemeMode.system`. Judul w700, dialog/lembar radius 24, menu dan snackbar radius 12 bergaris rambut, chip tidak terpilih bergaris, halo fokus field (`KapdhHaloBorder`), tombol teks berfont Poppins. |
+| Komponen | Tombol utama berbayangan, OTP aktif bergaris primary + halo + kursor berkedip (statis bila *reduce motion*), kartu bergaris rambut + `shadowSm` (TappableCard, SummaryCard, StatusActionCard, QRIS, kontak, AccountSection, akses cepat), InfoBox bergaris 20 %, keadaan kosong/galat berikon persegi membulat, skeleton berkilau (`KapdhShimmer`), SectionEmpty bergaris putus, bilah aksi bawah berbayangan. |
+| Pita hijau | `BrandMeshPainter` di semua `BrandHeader`; `BrandIconButton` (tombol kaca), `BrandLogoFrame`; header Beranda, Akun dan Profil Alumni bersudut bawah 24. Masuk tetap bermotif gelombang. |
+| Beranda | Akses cepat di atas banner, ikon fill bergradasi dalam lingkaran 56, Pesan (membuka tab Jejaring > Pesan) menggantikan KTA untuk anggota aktif, lencana emas belum dibaca; tombol KTA tengah menonjol; titik banner di dalam gambar; judul bagian dengan pil "Lihat semua"; kartu event berfooter; berita hero + baris ringkas; skeleton berbentuk Beranda; Beranda terkunci dalam satu kartu; tombol Perpanjang terisi. |
+| Layar lain | Splash abu terang (gelap tetap hijau tua; latar peluncuran Android/iOS ikut), Ubah Profil (kartu Profesi & Keahlian dengan cip yang dapat dihapus, Riwayat Pendidikan, Media Sosial berlogo), Profil Alumni (Riwayat Pendidikan, Keahlian, Media Sosial berupa baris). |
+| Teks 200 % | Label navigasi dan judul banner dibatasi 1,3; kepala Beranda 1,3 seperti app bar; akses cepat 2 x 2; stepper hanya label aktif; judul bagian membungkus. |
+| Tablet | `ContentWidth`: isi selebar 600 di tengah pada layar > 640 (AppScaffold, BrandSheetScaffold, Beranda, Jejaring, Akun, Profil Alumni). |
+| Fokus dan gerak | Cincin fokus 3 px di semua kontrol yang dapat diketuk (emas di permukaan hijau), `KapdhMotion` + kurva `easeStandard`/`easeOut` di navigasi bawah, banner, KTA layar penuh dan gulir chat; semuanya diam bila *reduce motion*. Status bar berikon terang di semua pita hijau (`kBrandStatusBarOverlay`); Akun dan Profil Alumni menahan area status bar tetap hijau saat pita tergulir (`BrandStatusBarFill`). |
+| Ikon | Phosphor di seluruh layar, termasuk ikon bawaan (tombol kembali/tutup AppBar lewat `actionIconTheme`, hapus cip, menu titik tiga); ukuran ikon komponen inti memakai `KapdhIconSize`. Satu pengecualian: tombol luapan (titik tiga/kembali) toolbar seleksi teks Android ditulis langsung di SDK dan tetap Material; menggantinya butuh `contextMenuBuilder` kustom di setiap field. |
+
+Verifikasi: `flutter analyze` bersih dan seluruh uji widget lolos; pratinjau render (font nyata) Beranda terang,
+gelap, teks 200 % dan tablet dibandingkan dengan mockup.
+
 ## Belum dikerjakan
 
-- **Mode gelap, teks 200 % dan tablet di Flutter.** Sudah dimockup (bagian sebelumnya), belum ada di aplikasi:
-  perlu `KapdhTheme.dark()` + `themeMode`, pembatasan skala label navigasi, ubin akses cepat 2 x 2, dan
-  `ConstrainedBox` lebar 600 untuk tablet.
-- **Token ikon** baru ada di mockup (`--ic-*`); belum masuk `tokens.json` sebagai `KapdhIconSize`.
-- Nilai v2 belum masuk `kapdh-platform/packages/design-tokens/tokens.json`. Setelah disetujui, ikuti langkah 3-6 di
-  `README.md` bagian *Alur redesain kembali ke Flutter*, lalu perbarui uji golden.
+- **Kontrak profil berulang** (keputusan pemilik: menyusul). `professions[]`, `education[]`
+  (`institution, major, level, graduation_year`) dan `social_links[]` (maks. 10) di OpenAPI, basis data, API, SDK
+  Dart, admin dan filter direktori. Sampai itu Ubah Profil/Profil Alumni memakai satu profesi, satu pendidikan
+  (institusi + kota) dan empat media sosial tetap; tombol "Tambah Riwayat"/"Tambah tautan" dan Strata/Tahun Tamat belum
+  ada di aplikasi.
+- **NavigationRail** untuk layar >= 840 dp (tablet melebar): belum dimockup.
+- **Peluncuran iOS** memakai warna bernama `LaunchBackground` (terang/gelap) di `LaunchScreen.storyboard`; belum
+  dibangun di Mac.

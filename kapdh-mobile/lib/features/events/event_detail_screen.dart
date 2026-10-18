@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/app_gate/app_gate.dart';
@@ -247,14 +248,14 @@ class _EventContent extends ConsumerWidget {
             IconLine(
               icon: KapdhIcons.calendarTodayOutlined,
               text: formatEventSchedule(event.startsAt, event.endsAt, zone),
-              color: KapdhColors.text,
+              color: context.kc.text,
               size: 13,
             ),
             if (event.locationName != null || event.locationAddress != null)
               IconLine(
                 icon: KapdhIcons.placeOutlined,
                 text: [?event.locationName, ?event.locationAddress].join('\n'),
-                color: KapdhColors.text,
+                color: context.kc.text,
                 size: 13,
               ),
             if (event.locationUrl != null) _MapLink(url: event.locationUrl!),
@@ -263,7 +264,7 @@ class _EventContent extends ConsumerWidget {
               icon: KapdhIcons.paymentsOutlined,
               text:
                   'Harga tiket: ${formatEventPrice(event.price, isFree: event.isFree)} (satu tiket untuk Anda sendiri)',
-              color: KapdhColors.text,
+              color: context.kc.text,
               size: 13,
             ),
             IconLine(
@@ -271,7 +272,7 @@ class _EventContent extends ConsumerWidget {
               text:
                   'Pendaftaran: ${formatDateTime(event.registrationOpensAt, zone: zone)} – '
                   '${formatDateTime(event.registrationClosesAt, zone: zone)}',
-              color: KapdhColors.text,
+              color: context.kc.text,
               size: 13,
             ),
             IconLine(
@@ -279,7 +280,7 @@ class _EventContent extends ConsumerWidget {
               text:
                   'Check-in: ${formatDateTime(event.checkinOpensAt, zone: zone)} – '
                   '${formatDateTime(event.checkinClosesAt, zone: zone)}',
-              color: KapdhColors.text,
+              color: context.kc.text,
               size: 13,
             ),
           ],
@@ -319,8 +320,8 @@ class _InfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(KapdhSpace.s4),
       decoration: BoxDecoration(
-        color: KapdhColors.surface,
-        border: Border.all(color: KapdhColors.divider),
+        color: context.kc.surface,
+        border: Border.all(color: context.kc.divider),
         borderRadius: BorderRadius.circular(KapdhRadius.lg),
       ),
       child: Column(
@@ -348,22 +349,18 @@ class _Quota extends StatelessWidget {
       excludeSemantics: true,
       child: Row(
         children: [
-          const Icon(KapdhIcons.groupsOutlined, size: 18, color: KapdhColors.primary),
+          Icon(KapdhIcons.groupsOutlined, size: 18, color: context.kc.primary),
           const SizedBox(width: 6),
           Text(
             '$available/$total',
             key: const ValueKey('event-quota'),
-            style: const TextStyle(
-              fontSize: KapdhFontSize.body,
-              fontWeight: FontWeight.w700,
-              color: KapdhColors.primary,
-            ),
+            style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w700, color: context.kc.primary),
           ),
           const SizedBox(width: KapdhSpace.s1),
-          const Expanded(
+          Expanded(
             child: Text(
               'Kuota Peserta',
-              style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+              style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
             ),
           ),
         ],
@@ -403,7 +400,7 @@ class _MyTicketCard extends StatelessWidget {
       semanticsLabel: 'Tiket Anda: ${style.label}. Buka detail tiket.',
       child: Row(
         children: [
-          const Icon(KapdhIcons.confirmationNumberOutlined, color: KapdhColors.primary),
+          Icon(KapdhIcons.confirmationNumberOutlined, color: context.kc.primary),
           const SizedBox(width: KapdhSpace.s3),
           Expanded(
             child: Column(
@@ -415,7 +412,7 @@ class _MyTicketCard extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(KapdhIcons.chevronRight, color: KapdhColors.textMuted),
+          Icon(KapdhIcons.chevronRight, color: context.kc.textMuted),
         ],
       ),
     );
@@ -446,9 +443,9 @@ class _Participants extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: KapdhSpace.s1),
-        const Text(
+        Text(
           'Hanya peserta terkonfirmasi yang tampil di direktori alumni.',
-          style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
         ),
         const SizedBox(height: KapdhSpace.s3),
         if (!state.loaded && state.loading)
@@ -460,9 +457,9 @@ class _Participants extends ConsumerWidget {
             trailing: TextButton(onPressed: () => unawaited(controller.refresh()), child: const Text('Coba lagi')),
           )
         else if (state.items.isEmpty)
-          const Text(
+          Text(
             'Belum ada peserta terkonfirmasi yang tampil di direktori.',
-            style: TextStyle(fontSize: 13, color: KapdhColors.textMuted),
+            style: TextStyle(fontSize: 13, color: context.kc.textMuted),
           )
         else ...[
           for (final participant in state.items) _ParticipantTile(participant: participant),
@@ -511,7 +508,7 @@ class _ParticipantTile extends StatelessWidget {
                   Text(participant.fullName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   Text(
                     '#${participant.cohortCode.replaceAll(' ', '')}',
-                    style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                    style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
                   ),
                 ],
               ),
@@ -603,9 +600,11 @@ class _ActionBar extends StatelessWidget {
       note = hint;
     }
     return Container(
-      decoration: const BoxDecoration(
-        color: KapdhColors.surface,
-        border: Border(top: BorderSide(color: KapdhColors.divider)),
+      decoration: BoxDecoration(
+        color: context.kc.surface,
+        border: Border(top: BorderSide(color: context.kc.divider)),
+        // [v2] --shadow-bar-top: bilah aksi terpisah dari isi yang digulir.
+        boxShadow: context.kc.shadowBarTop,
       ),
       child: SafeArea(
         top: false,
@@ -619,7 +618,7 @@ class _ActionBar extends StatelessWidget {
                 Text(
                   note,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                  style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
                 ),
                 const SizedBox(height: KapdhSpace.s2),
               ],

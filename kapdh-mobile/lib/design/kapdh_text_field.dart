@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../app/theme/kapdh_palette.dart';
+import '../app/theme/kapdh_theme.dart';
 import '../app/theme/kapdh_tokens.dart';
 import 'kapdh_icons.dart';
 
@@ -26,13 +28,13 @@ class _LabelAbove extends StatelessWidget {
               text: label,
               children: [
                 if (requiredMark)
-                  const TextSpan(
+                  TextSpan(
                     text: ' *',
-                    style: TextStyle(color: KapdhColors.danger),
+                    style: TextStyle(color: context.kc.danger),
                   ),
               ],
             ),
-            style: const TextStyle(fontSize: KapdhFontSize.label, fontWeight: FontWeight.w500, color: KapdhColors.text),
+            style: TextStyle(fontSize: KapdhFontSize.label, fontWeight: FontWeight.w500, color: context.kc.text),
           ),
         ),
         const SizedBox(height: KapdhSpace.s2),
@@ -67,6 +69,7 @@ class KapdhTextField extends StatefulWidget {
     this.enabled = true,
     this.autofocus = false,
     this.maxLines = 1,
+    this.minLines,
     this.requiredMark = false,
     this.focusNode,
   });
@@ -95,6 +98,10 @@ class KapdhTextField extends StatefulWidget {
   final bool enabled;
   final bool autofocus;
   final int maxLines;
+
+  /// Jumlah baris minimum untuk field multibaris. Bila diisi lebih kecil dari [maxLines], tinggi kotak tumbuh
+  /// mengikuti isi dari [minLines] sampai [maxLines] baris; null (bawaan) mempertahankan tinggi tetap [maxLines].
+  final int? minLines;
   final bool requiredMark;
   final FocusNode? focusNode;
 
@@ -117,7 +124,7 @@ class _KapdhTextFieldState extends State<KapdhTextField> {
               trailing,
               style: TextStyle(
                 fontSize: KapdhFontSize.caption,
-                color: widget.trailingTextColor ?? KapdhColors.textMuted,
+                color: widget.trailingTextColor ?? context.kc.textMuted,
               ),
             ),
           ),
@@ -147,15 +154,16 @@ class _KapdhTextFieldState extends State<KapdhTextField> {
         inputFormatters: widget.inputFormatters,
         textCapitalization: widget.textCapitalization,
         maxLines: widget.obscurable ? 1 : widget.maxLines,
+        minLines: widget.obscurable ? null : widget.minLines,
         onChanged: widget.onChanged,
         onFieldSubmitted: widget.onSubmitted,
         validator: widget.validator,
-        style: const TextStyle(fontSize: KapdhFontSize.body, color: KapdhColors.text),
+        style: TextStyle(fontSize: KapdhFontSize.body, color: context.kc.text),
         decoration: InputDecoration(
           hintText: widget.hint,
           errorText: widget.errorText,
           helperText: widget.helperText,
-          prefixIcon: widget.prefixIcon == null ? null : Icon(widget.prefixIcon, size: 20),
+          prefixIcon: widget.prefixIcon == null ? null : Icon(widget.prefixIcon, size: KapdhIconSize.md),
           suffixIcon: suffix.isEmpty
               ? null
               : Row(
@@ -206,7 +214,11 @@ class KapdhDropdownField<T> extends StatelessWidget {
         validator: validator,
         isExpanded: true,
         icon: const Icon(KapdhIcons.keyboardArrowDown),
-        style: const TextStyle(fontSize: KapdhFontSize.body, color: KapdhColors.text),
+        iconEnabledColor: context.kc.text,
+        dropdownColor: context.kc.surfaceRaised,
+        borderRadius: BorderRadius.circular(KapdhRadius.md),
+        elevation: 3,
+        style: KapdhTheme.font(fontSize: KapdhFontSize.body, color: context.kc.text),
         decoration: InputDecoration(hintText: hint, errorText: errorText),
       ),
     );

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/theme/kapdh_tokens.dart';
+import '../../../app/theme/kapdh_palette.dart';
 import '../../../core/deep_link/deep_links.dart';
 import '../../../core/ui/app_keys.dart';
 import '../../../core/ui/external_links.dart';
@@ -92,7 +92,7 @@ Future<bool> confirmExternalLink(BuildContext context, Uri uri) async {
   final result = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      icon: const Icon(KapdhIcons.openInNew, color: KapdhColors.primary),
+      icon: Icon(KapdhIcons.openInNew, color: context.kc.primary),
       title: const Text('Buka tautan luar?'),
       content: Text.rich(
         TextSpan(
@@ -117,14 +117,15 @@ Future<bool> confirmExternalLink(BuildContext context, Uri uri) async {
 
 /// Penanda tautan luar: ikon panah keluar dan label pembaca layar (PRD 3.8, N-11).
 class ExternalLinkMark extends StatelessWidget {
-  const ExternalLinkMark({super.key, this.color = KapdhColors.primary, this.size = 14});
+  const ExternalLinkMark({super.key, this.color, this.size = 14});
 
-  final Color color;
+  /// Bawaan primary palet aktif.
+  final Color? color;
   final double size;
 
   @override
   Widget build(BuildContext context) => Semantics(
     label: 'tautan luar',
-    child: Icon(KapdhIcons.openInNew, size: size, color: color),
+    child: Icon(KapdhIcons.openInNew, size: size, color: color ?? context.kc.primary),
   );
 }
