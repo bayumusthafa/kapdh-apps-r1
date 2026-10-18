@@ -374,21 +374,19 @@ a { color: inherit; text-decoration: none; }
   display: flex; align-items: center; gap: var(--s3);
   height: calc(var(--size-home-header) + var(--inset-top));
   padding: var(--inset-top) var(--s4) 0 var(--s5);
-  background:
-    radial-gradient(circle at 92% 0%, rgba(230, 211, 18, .20) 0, transparent 46%),
-    radial-gradient(circle at 6% 100%, rgba(63, 154, 56, .34) 0, transparent 55%),
-    linear-gradient(135deg, var(--color-green-950) 0%, var(--color-green-800) 55%, var(--color-green-700) 100%);
+  background: var(--gradient-brand-mesh);
   border-radius: 0 0 var(--r-xl) var(--r-xl);
   box-shadow: 0 12px 28px -10px rgba(14, 40, 12, .55), inset 0 -1px 0 rgba(230, 211, 18, .22);
   color: var(--color-text-on-dark);
   overflow: hidden;
   isolation: isolate;
 }
-.home-header::before, .home-header::after { content: ""; position: absolute; z-index: -1; border-radius: 50%; pointer-events: none; }
-.home-header::before { top: -70px; right: -56px; width: 200px; height: 200px; border: 26px solid rgba(255, 255, 255, .04); }
-.home-header::after { bottom: -96px; left: -48px; width: 170px; height: 170px; border: 16px solid rgba(230, 211, 18, .06); }
+/* [v2] Dua cincin dekoratif, sama di header Beranda dan semua pita hijau (.brand-band). */
+.home-header::before, .home-header::after, .brand-band::before, .brand-band::after { content: ""; position: absolute; z-index: -1; border-radius: 50%; pointer-events: none; }
+.home-header::before, .brand-band::before { top: -70px; right: -56px; width: 200px; height: 200px; border: 26px solid rgba(255, 255, 255, .04); }
+.home-header::after, .brand-band::after { bottom: -96px; left: -48px; width: 170px; height: 170px; border: 16px solid rgba(230, 211, 18, .06); }
 .home-header__logo, .brand-logo { width: 44px; height: 44px; object-fit: contain; flex: none; }
-.home-header .home-header__logo {
+.home-header .home-header__logo, .greeting-band .brand-logo { /* [v2] logo dalam bingkai kaca bercincin emas di semua pita */
   width: 48px; height: 48px; padding: 5px; border-radius: var(--r-lg);
   background: linear-gradient(145deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .05));
   box-shadow: inset 0 0 0 1.5px rgba(230, 211, 18, .55), 0 6px 16px -4px rgba(0, 0, 0, .35);
@@ -396,7 +394,7 @@ a { color: inherit; text-decoration: none; }
 .home-header__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .greeting__hello { font-size: var(--fs-caption); font-weight: 500; letter-spacing: .3px; color: var(--color-green-100); }     /* "Assalamu'alaikum," */
 .greeting__name { font-size: calc(17px * var(--ts, 1)); font-weight: var(--fw-heading); letter-spacing: 0; color: var(--color-text-on-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* [v2: dulu 16 w600] */
-.home-header .icon-btn {
+.home-header .icon-btn, .brand-band .icon-btn { /* [v2] tombol kaca di semua pita hijau */
   --elev: inset 0 0 0 1px rgba(255, 255, 255, .18), 0 4px 12px -2px rgba(0, 0, 0, .22);
   border-radius: var(--r-lg);
   background: linear-gradient(145deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .06));
@@ -404,17 +402,20 @@ a { color: inherit; text-decoration: none; }
 }
 .home-header .badge--accent { min-width: 18px; height: 18px; border-radius: 9px; top: -6px; font-weight: 700; box-shadow: 0 0 0 2px var(--color-green-800); }
 
-/* BrandHeader: pita hijau bergradasi (+ motif quatrefoil BrandPatternPainter, sel 44, r 31.68, garis 1.2 putih 8 %). */
+/* BrandHeader: pita hijau bergradasi (+ motif quatrefoil BrandPatternPainter, sel 44, r 31.68, garis 1.2 putih 8 %).
+   [v2] Semua pita memakai dasar yang sama dengan header Beranda: --gradient-brand-mesh + dua cincin + tombol kaca + logo
+   berbingkai kaca. Motif (quatrefoil, gelombang) menumpuk di atas dasar itu. Flutter: BrandHeader memakai
+   KapdhGradients.brandMesh dan CustomPaint cincin yang sama dengan HomeHeader. */
 .brand-band {
-  position: relative;
+  position: relative; isolation: isolate; overflow: hidden;
   padding: calc(var(--s5) + var(--inset-top)) var(--s5) var(--s5);
-  background: var(--gradient-band);
+  background: var(--gradient-brand-mesh);
   color: var(--color-text-on-dark);
 }
 .brand-band--pattern {
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='88' fill='none' stroke='%23fff' stroke-opacity='.08' stroke-width='1.2'%3E%3Ccircle cx='0' cy='0' r='31.68'/%3E%3Ccircle cx='44' cy='0' r='31.68'/%3E%3Ccircle cx='-22' cy='44' r='31.68'/%3E%3Ccircle cx='22' cy='44' r='31.68'/%3E%3Ccircle cx='66' cy='44' r='31.68'/%3E%3Ccircle cx='0' cy='88' r='31.68'/%3E%3Ccircle cx='44' cy='88' r='31.68'/%3E%3C/svg%3E") 0 0 / 44px 88px repeat,
-    var(--gradient-band);
+    var(--gradient-brand-mesh);
 }
 /* [v2] BrandMotif.waves (BrandWavePainter, layar Masuk): pita gelombang diagonal putih tembus pandang dengan kilau ke
    kanan dan garis sorot, digambar relatif ke ukuran pita, ditambah cahaya lembut di kiri atas. */
@@ -422,7 +423,7 @@ a { color: inherit; text-decoration: none; }
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='a'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.05'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='.12'/%3E%3C/linearGradient%3E%3ClinearGradient id='b'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.02'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='.06'/%3E%3C/linearGradient%3E%3ClinearGradient id='c'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.04'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='.16'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23a)' d='M0 10C35 4 55 52 100 40L100 64C60 80 35 24 0 36Z'/%3E%3Cpath fill='url(%23b)' d='M0 48C30 40 62 86 100 72L100 90C60 102 30 60 0 68Z'/%3E%3Cpath fill='none' stroke='url(%23c)' stroke-width='1.5' vector-effect='non-scaling-stroke' d='M0 10C35 4 55 52 100 40'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat,
     radial-gradient(ellipse at 30% 5%, rgba(255, 255, 255, .08) 0, transparent 60%),
-    var(--gradient-band);
+    var(--gradient-brand-mesh);
 }
 .brand-band--thin { padding: var(--inset-top) 0 var(--overlap, 12px); min-height: calc(28px + var(--inset-top)); } /* BrandSheetScaffold tanpa header */
 
