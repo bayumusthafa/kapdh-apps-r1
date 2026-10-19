@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { sessions, users } from "@kapdh/database";
+import { alumni, sessions, users } from "@kapdh/database";
 import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 import { type AccessClaims, TokenService } from "../identity/token.service.js";
 import type { Clock } from "../adapters/clock.js";
@@ -7,7 +7,10 @@ import type { Db } from "../db/types.js";
 import type { SessionRevokedReason } from "../realtime/envelope.js";
 import { CLOCK, DB } from "../tokens.js";
 
-/** Baris sesi + akun terbaru yang dibutuhkan pemeriksaan sesi (HTTP dan socket). */
+/**
+ * Baris sesi + akun terbaru yang dibutuhkan pemeriksaan sesi (HTTP dan socket), dibaca dalam SATU pernyataan SQL
+ * (sessions, users, alumni) sehingga seluruh kolomnya berasal dari snapshot yang sama.
+ */
 export interface SessionRow {
   sessionId: string;
   /** Keluarga sesi (identitas perangkat yang stabil selama rotasi refresh, Session.id kontrak C1). */
@@ -21,6 +24,14 @@ export interface SessionRow {
   userStatus: string;
   userKind: string;
   sessionVersion: number;
+  /**
+   * Fakta keanggotaan profil alumni (null bila tidak ada profil, mis. sesi admin) dari snapshot yang sama dengan
+   * `userStatus`. AuthGuard menilai @MemberAccess dari sini, bukan dari bacaan kedua: di READ COMMITTED setiap
+   * pernyataan memakai snapshot sendiri, sehingga bacaan kedua dapat melihat commit request lain yang belum terlihat
+   * saat sesi diperiksa (mis. hapus akun dari perangkat lain: akun deletion_pending) lalu menolak 403
+   * MEMBERSHIP_REQUIRED request yang sesinya baru saja dinilai sah (AC F14-1).
+   */
+  member: { expiresAt: Date | null; suspendedAt: Date | null } | null;
 }
 
 export interface ValidatedSession {
@@ -149,10 +160,22 @@ export class SessionValidator {
         userStatus: users.status,
         userKind: users.kind,
         sessionVersion: users.sessionVersion,
+        memberUserId: alumni.userId,
+        memberExpiresAt: alumni.expiresAt,
+        memberSuspendedAt: alumni.suspendedAt,
       })
       .from(sessions)
       .innerJoin(users, eq(users.id, sessions.userId))
+      .leftJoin(alumni, eq(alumni.userId, users.id))
       .where(ids.length === 1 ? eq(sessions.id, ids[0]!) : inArray(sessions.id, ids));
-    return new Map(found.map((row) => [row.sessionId, row]));
+    return new Map(
+      found.map(({ memberUserId, memberExpiresAt, memberSuspendedAt, ...row }) => [
+        row.sessionId,
+        {
+          ...row,
+          member: memberUserId ? { expiresAt: memberExpiresAt, suspendedAt: memberSuspendedAt } : null,
+        },
+      ]),
+    );
   }
 }

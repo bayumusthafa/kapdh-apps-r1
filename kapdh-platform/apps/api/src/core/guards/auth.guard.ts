@@ -10,12 +10,13 @@ import type { Db } from "../db/types.js";
 import { AppException, forbidden, reauthRequired, unauthenticated } from "../errors/app-exception.js";
 import { TokenService } from "../identity/token.service.js";
 import type { MemberAccessLevel } from "../membership/access.js";
+import { type AccountStatus, effectiveStatus } from "../membership/effective-status.js";
 import { MembershipKernel } from "../membership/membership.kernel.js";
 import { RealtimeService } from "../realtime/realtime.service.js";
 import { CLOCK, DB, ROOT_LOGGER } from "../tokens.js";
 import type { AuthContext, AuthedRequest } from "./auth-context.js";
 import { routeAuthMeta } from "./decorators.js";
-import { SessionValidator } from "./session-validator.js";
+import { type SessionRow, SessionValidator } from "./session-validator.js";
 
 /** Idle timeout admin di server (N-08, AC F02-5). */
 export const ADMIN_IDLE_MS = 30 * 60_000;
@@ -33,9 +34,9 @@ const REAUTH_HEADER = "x-reauth-token";
  *   2. access token (aud, exp) dan token tahap sandi admin → 403 MFA_REQUIRED (AC F02-2),
  *   3. keadaan database terbaru: sesi belum dicabut/kedaluwarsa, session_version, akun `active`, jenis akun,
  *      admin aktif + idle 30 menit (AC F02-5, F02-6), izin admin dari database (AC F15-1, F16-3),
- *   4. @MemberAccess (effective_status, PRD 2.2), @RequirePermission (semua), @RequireAnyPermission (salah satu),
- *      @RequireRole (Super Admin), @RequireReauth (X-Reauth-Token wajib) dan @ConditionalReauth (diverifikasi bila
- *      dikirim; layanan yang menegakkan untuk isi kredensial, ADR-025).
+ *   4. @MemberAccess (effective_status dari baris langkah 3, PRD 2.2), @RequirePermission (semua),
+ *      @RequireAnyPermission (salah satu), @RequireRole (Super Admin), @RequireReauth (X-Reauth-Token wajib) dan
+ *      @ConditionalReauth (diverifikasi bila dikirim; layanan yang menegakkan untuk isi kredensial, ADR-025).
  * Konteks request (aktor) diisi untuk audit dan log.
  */
 @Injectable()
@@ -155,7 +156,7 @@ export class AuthGuard implements CanActivate {
 
     // effective_status hanya bermakna untuk identitas alumni (sesi mobile, PRD 2.2).
     if (meta.memberAccess && auth.audience === "mobile")
-      await this.checkMemberAccess(auth, meta.memberAccess, now);
+      this.checkMemberAccess(auth, meta.memberAccess, row, now);
     if (meta.permissions.length > 0) {
       const missing = meta.permissions.filter((permission) => !auth.permissions.has(permission));
       if (missing.length > 0) throw forbidden();
@@ -189,13 +190,19 @@ export class AuthGuard implements CanActivate {
   }
 
   /**
-   * PRD 2.2 lewat MembershipKernel (data canonical saat request; AC F07-3): suspended → 403 ACCOUNT_SUSPENDED; status
-   * lain di luar tingkat → 403 MEMBERSHIP_REQUIRED.
+   * PRD 2.2 dari data canonical saat request (AC F07-3): suspended → 403 ACCOUNT_SUSPENDED; status lain di luar
+   * tingkat → 403 MEMBERSHIP_REQUIRED. effective_status dihitung dari baris pemeriksaan sesi (status akun + fakta
+   * alumni dalam satu snapshot, {@link SessionRow.member}), bukan bacaan kedua. Bacaan kedua dapat melihat commit
+   * request lain di antara keduanya: permintaan hapus akun dari perangkat lain menjadikan akun deletion_pending
+   * sehingga POST /me/deletion yang sesinya sudah dinilai sah ditolak 403 MEMBERSHIP_REQUIRED, padahal layanan
+   * mengembalikan permintaan terbuka yang sama (AC F14-1). Dengan satu snapshot, request yang lolos pemeriksaan sesi
+   * dinilai seolah tiba sebelum commit itu; layanan yang butuh keadaan terkini mengunci barisnya sendiri.
    */
-  private async checkMemberAccess(auth: AuthContext, level: MemberAccessLevel, now: Date) {
-    const snapshot = await this.membership.effectiveStatusFor(auth.userId, { now });
+  private checkMemberAccess(auth: AuthContext, level: MemberAccessLevel, row: SessionRow, now: Date) {
     // Akun alumni tanpa profil (data rusak) diperlakukan unverified: tidak pernah membuka akses aktif.
-    const status = snapshot?.status ?? "unverified";
+    const status = row.member
+      ? effectiveStatus({ accountStatus: row.userStatus as AccountStatus, ...row.member }, now)
+      : "unverified";
     auth.effectiveStatus = status;
     if (!this.membership.allows(level, status)) {
       // Penolakan berarti status tidak aktif: langganan room socket pengguna dicabut seketika, tidak menunggu
