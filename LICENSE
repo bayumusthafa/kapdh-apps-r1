@@ -1,0 +1,90 @@
+Hak Cipta (c) 2026 Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH). Seluruh hak dilindungi.
+
+LISENSI PROPRIETARY KAPDH APPS
+
+Pemegang hak cipta adalah Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH), badan hukum perkumpulan
+berdasarkan Akta Nomor 01 tanggal 27 Maret 2023 dan Keputusan Menteri Hukum dan Hak Asasi Manusia Republik Indonesia
+Nomor AHU-0002732.AH.01.07.TAHUN 2023 ("KAPDH").
+
+1. Materi. Lisensi ini berlaku untuk seluruh isi repositori ini, termasuk kode sumber, dokumen, desain, mockup,
+   gambar, data contoh, dan berkas konfigurasi ("Materi"), kecuali komponen pihak ketiga pada butir 5.
+
+2. Melihat. Bila repositori ini dipublikasikan, Anda boleh melihat dan membaca Materi melalui layanan tempat
+   repositori itu dihosting. Hak yang wajib diberikan ketentuan layanan hosting tersebut kepada penggunanya
+   (misalnya melihat dan membuat fork di dalam layanan itu) tetap berlaku sebatas ketentuan itu, tanpa memberi hak
+   lain.
+
+3. Tanpa izin lain. Tanpa izin tertulis dari pengurus KAPDH, tidak ada izin yang diberikan untuk memakai,
+   menjalankan, menyalin, mengubah, menggabungkan, menerbitkan, mendistribusikan, mensublisensikan, menjual, atau
+   membuat karya turunan dari Materi, seluruhnya atau sebagian, termasuk untuk membangun, menerbitkan, atau
+   mengoperasikan aplikasi, situs, atau layanan.
+
+4. Nama dan merek. Nama "KAPDH", "Keluarga Alumni Pondok Pesantren Darel Hikmah", dan "Perkumpulan Keluarga Alumni
+   Pesantren Darel Hikmah", logo dan ikon aplikasi KAPDH, nama "Pondok Pesantren Darel Hikmah", serta pedoman merek
+   KAPDH (termasuk docs/reference/Guidelines_KAPDH_v1.0.txt dan docs/reference/guidelines/) tidak dilisensikan. Tidak
+   ada hak atas nama, logo, ikon, atau merek tersebut yang diberikan, baik secara tegas maupun tersirat.
+
+5. Komponen pihak ketiga. Komponen pihak ketiga yang dibundel atau disalin ke repositori ini (antara lain font, ikon,
+   dan potongan kode) tunduk pada lisensinya masing-masing sebagaimana tercantum di THIRD_PARTY_NOTICES.md dan berkas
+   lisensi di sebelah komponen itu. Lisensi ini tidak membatasi hak yang diberikan lisensi tersebut atas komponen
+   itu. Dependensi yang dipasang lewat manajer paket (pnpm, pub) bukan bagian dari Materi dan tunduk pada lisensinya
+   sendiri.
+
+6. Tanpa jaminan. MATERI DISEDIAKAN "SEBAGAIMANA ADANYA", TANPA JAMINAN APA PUN, TERSURAT MAUPUN TERSIRAT, TERMASUK
+   TETAPI TIDAK TERBATAS PADA JAMINAN KELAYAKAN UNTUK DIPERDAGANGKAN, KESESUAIAN UNTUK TUJUAN TERTENTU, DAN TIDAK
+   MELANGGAR HAK PIHAK LAIN. DALAM KEADAAN APA PUN KAPDH, PENGURUSNYA, ATAU KONTRIBUTORNYA TIDAK BERTANGGUNG JAWAB
+   ATAS KLAIM, KERUGIAN, ATAU TANGGUNG JAWAB LAIN, BAIK DALAM GUGATAN WANPRESTASI, PERBUATAN MELAWAN HUKUM, MAUPUN
+   LAINNYA, YANG TIMBUL DARI, KARENA, ATAU SEHUBUNGAN DENGAN MATERI ATAU PENGGUNAANNYA.
+
+7. Permohonan izin. Permohonan izin diajukan secara tertulis kepada pengurus KAPDH melalui kanal kontak resminya.
+   Izin hanya sah bila diberikan secara tertulis oleh pengurus KAPDH dan berlaku sebatas yang disebut di dalamnya.
+
+8. Bahasa. Naskah ini dibuat dalam Bahasa Indonesia dengan terjemahan Bahasa Inggris di bawah. Bila terdapat
+   perbedaan tafsir, naskah Bahasa Indonesia yang berlaku.
+
+--------------------------------------------------------------------------------------------------------------------
+ENGLISH TRANSLATION (for convenience only; the Indonesian text prevails)
+--------------------------------------------------------------------------------------------------------------------
+
+Copyright (c) 2026 Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH). All rights reserved.
+
+KAPDH APPS PROPRIETARY LICENSE
+
+The copyright holder is Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH), an association (perkumpulan) with
+legal entity status under Deed Number 01 dated 27 March 2023 and Decree of the Minister of Law and Human Rights of the
+Republic of Indonesia Number AHU-0002732.AH.01.07.TAHUN 2023 ("KAPDH").
+
+1. Materials. This license applies to the entire contents of this repository, including source code, documents,
+   designs, mockups, images, sample data, and configuration files (the "Materials"), except the third-party
+   components described in clause 5.
+
+2. Viewing. If this repository is made public, you may view and read the Materials through the service hosting the
+   repository. Rights that the hosting service's terms require to be granted to its users (for example, viewing and
+   forking within that service) apply only to the extent of those terms and grant no other rights.
+
+3. No other permission. Without written permission from the board of KAPDH, no permission is granted to use, run,
+   copy, modify, merge, publish, distribute, sublicense, sell, or create derivative works of the Materials, in whole
+   or in part, including to build, publish, or operate any application, website, or service.
+
+4. Names and trademarks. The names "KAPDH", "Keluarga Alumni Pondok Pesantren Darel Hikmah", and "Perkumpulan
+   Keluarga Alumni Pesantren Darel Hikmah", the KAPDH logo and app icon, the name "Pondok Pesantren Darel Hikmah", and
+   the KAPDH brand guidelines (including docs/reference/Guidelines_KAPDH_v1.0.txt and docs/reference/guidelines/) are
+   not licensed. No right to these names, logos, icons, or trademarks is granted, either expressly or by implication.
+
+5. Third-party components. Third-party components bundled with or copied into this repository (including fonts,
+   icons, and code excerpts) are governed by their own licenses as listed in THIRD_PARTY_NOTICES.md and in the license
+   files next to those components. This license does not restrict the rights granted by those licenses for those
+   components. Dependencies installed through package managers (pnpm, pub) are not part of the Materials and are
+   governed by their own licenses.
+
+6. No warranty. THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+   NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO
+   EVENT SHALL KAPDH, ITS BOARD, OR ITS CONTRIBUTORS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN
+   AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE MATERIALS OR THEIR USE.
+
+7. Permission requests. Requests for permission must be submitted in writing to the board of KAPDH through its
+   official contact channels. A permission is valid only if granted in writing by the board of KAPDH and only to the
+   extent stated in it.
+
+8. Language. This license is made in Indonesian, with this English translation. In case of any difference in
+   interpretation, the Indonesian text prevails.
