@@ -162,9 +162,8 @@ class KapdhButton extends StatelessWidget {
           Icon(icon, size: KapdhIconSize.md, color: foreground),
           const SizedBox(width: KapdhSpace.s2),
         ],
-        // Lebar penuh: label boleh membungkus saat teks diperbesar. Lebar intrinsik: tanpa Flexible karena
-        // lebar induk bisa tak terbatas (mis. di dalam Row).
-        if (expand) Flexible(child: labelText) else labelText,
+        // Label boleh membungkus saat teks diperbesar (N-11).
+        Flexible(child: labelText),
       ],
     );
 
@@ -194,7 +193,13 @@ class KapdhButton extends StatelessWidget {
                 borderRadius: radius,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: KapdhSpace.s3),
-                  child: Center(widthFactor: expand ? null : 1, child: content),
+                  // Lebar intrinsik: IntrinsicWidth memberi Row lebar isinya yang dibatasi lebar induk, jadi
+                  // Flexible tetap sah saat induk tak terbatas (mis. di dalam Row) dan label membungkus saat induk
+                  // lebih sempit (teks 200 % di 320 dp). Bukan LayoutBuilder: AlertDialog mengukur lebar intrinsik.
+                  child: Center(
+                    widthFactor: expand ? null : 1,
+                    child: expand ? content : IntrinsicWidth(child: content),
+                  ),
                 ),
               ),
             ),
