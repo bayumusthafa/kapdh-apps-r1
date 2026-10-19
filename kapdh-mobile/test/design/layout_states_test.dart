@@ -70,8 +70,8 @@ void main() {
     expect(find.text('Kartu Tanda Anggota'), findsOneWidget);
     expect(find.textContaining('Offline'), findsOneWidget);
     // Panah kiri di app bar (prototipe layar 6, 7; guideline hal. 6).
-    expect(find.byIcon(Icons.arrow_back), findsOneWidget);
-    expect(find.byIcon(Icons.chevron_left), findsNothing);
+    expect(find.byIcon(KapdhIcons.arrowBack), findsOneWidget);
+    expect(find.byIcon(KapdhIcons.chevronLeft), findsNothing);
     await tester.tap(find.byTooltip('Kembali'));
     await tester.pumpAndSettle();
     expect(find.text('beranda'), findsOneWidget);
@@ -178,10 +178,15 @@ void main() {
     expect(find.byType(CustomPaint), findsWidgets);
   });
 
-  testWidgets('BrandHeader bermotif (guideline hal. 5)', (tester) async {
+  testWidgets('BrandHeader: mesh zamrud v2, motif opsional (guideline hal. 5)', (tester) async {
     await pumpDesign(tester, const BrandHeader(child: Text('Selamat')), scaffold: false);
-    final paints = tester.widgetList<CustomPaint>(find.byType(CustomPaint));
-    expect(paints.any((p) => p.painter is BrandPatternPainter), isTrue);
+    var paints = tester.widgetList<CustomPaint>(find.byType(CustomPaint));
+    expect(paints.any((p) => p.painter is BrandMeshPainter), isTrue);
+    expect(paints.any((p) => p.foregroundPainter is BrandPatternPainter), isFalse, reason: 'v2 tanpa motif bawaan');
+
+    await pumpDesign(tester, const BrandHeader(motif: BrandMotif.quatrefoil, child: Text('Selamat')), scaffold: false);
+    paints = tester.widgetList<CustomPaint>(find.byType(CustomPaint));
+    expect(paints.any((p) => p.foregroundPainter is BrandPatternPainter), isTrue);
   });
 
   testWidgets('SectionHeader dan SupportContactCard', (tester) async {

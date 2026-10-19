@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../app/theme/kapdh_palette.dart';
 import '../app/theme/kapdh_tokens.dart';
+import 'kapdh_icons.dart';
 
 enum TimelineState {
   /// Sudah terjadi: lingkaran hijau dengan centang.
@@ -49,34 +51,34 @@ class Timeline extends StatelessWidget {
         TimelineState.done => Container(
           width: size,
           height: size,
-          decoration: const BoxDecoration(color: KapdhColors.primary, shape: BoxShape.circle),
-          child: const Icon(Icons.check, size: 14, color: KapdhColors.onPrimary),
+          decoration: BoxDecoration(color: context.kc.primary, shape: BoxShape.circle),
+          child: Icon(KapdhIcons.check, size: KapdhIconSize.xs, color: context.kc.onPrimary),
         ),
         TimelineState.current => Container(
           width: size,
           height: size,
           alignment: Alignment.center,
-          decoration: const BoxDecoration(color: KapdhColors.info, shape: BoxShape.circle),
+          decoration: BoxDecoration(color: context.kc.info, shape: BoxShape.circle),
           child: Container(
             width: 8,
             height: 8,
-            decoration: const BoxDecoration(color: KapdhColors.surface, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: context.kc.surface, shape: BoxShape.circle),
           ),
         ),
         TimelineState.upcoming => Container(
           width: size,
           height: size,
           decoration: BoxDecoration(
-            color: KapdhColors.surface,
+            color: context.kc.surface,
             shape: BoxShape.circle,
-            border: Border.all(color: KapdhColors.border, width: 1.5),
+            border: Border.all(color: context.kc.border, width: 1.5),
           ),
         ),
         TimelineState.failed => Container(
           width: size,
           height: size,
-          decoration: const BoxDecoration(color: KapdhColors.danger, shape: BoxShape.circle),
-          child: const Icon(Icons.close, size: 14, color: KapdhColors.onPrimary),
+          decoration: BoxDecoration(color: context.kc.danger, shape: BoxShape.circle),
+          child: Icon(KapdhIcons.close, size: KapdhIconSize.xs, color: context.kc.onDanger),
         ),
       };
     }
@@ -104,7 +106,7 @@ class Timeline extends StatelessWidget {
                       if (entries[i].subtitle != null)
                         Text(
                           entries[i].subtitle!,
-                          style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
                         ),
                     ],
                   ),

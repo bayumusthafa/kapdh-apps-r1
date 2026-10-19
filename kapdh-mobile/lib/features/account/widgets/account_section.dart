@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/theme/kapdh_palette.dart';
 import '../../../app/theme/kapdh_tokens.dart';
+import '../../../design/kapdh_icons.dart';
 
 /// Kelompok menu/pengaturan Akun: judul bagian lalu kartu putih bergaris (gaya kartu prototipe layar 2, 4) dengan
 /// pemisah antarbaris.
@@ -22,30 +24,37 @@ class AccountSection extends StatelessWidget {
             header: true,
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: KapdhFontSize.caption,
                 fontWeight: FontWeight.w600,
-                color: KapdhColors.textMuted,
+                color: context.kc.textMuted,
                 letterSpacing: 0.3,
               ),
             ),
           ),
         ),
-        Material(
-          color: KapdhColors.surface,
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(color: KapdhColors.divider),
+        // [v2] Garis rambut cardBorder + --shadow-sm.
+        DecoratedBox(
+          decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(KapdhRadius.lg),
+            boxShadow: context.kc.shadowSm,
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var i = 0; i < children.length; i++) ...[
-                if (i > 0) const Divider(height: 1, indent: KapdhSpace.s4, endIndent: KapdhSpace.s4),
-                children[i],
+          child: Material(
+            color: context.kc.surface,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(color: context.kc.cardBorder),
+              borderRadius: BorderRadius.circular(KapdhRadius.lg),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < children.length; i++) ...[
+                  if (i > 0) const Divider(height: 1, indent: KapdhSpace.s4, endIndent: KapdhSpace.s4),
+                  children[i],
+                ],
               ],
-            ],
+            ),
           ),
         ),
         if (footnote != null)
@@ -53,10 +62,78 @@ class AccountSection extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(KapdhSpace.s1, KapdhSpace.s2, KapdhSpace.s1, 0),
             child: Text(
               footnote!,
-              style: const TextStyle(fontSize: KapdhFontSize.caption, height: 1.5, color: KapdhColors.textMuted),
+              style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.5, color: context.kc.textMuted),
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Kartu form berkepala (Ubah Profil v2: Profesi & Keahlian, Riwayat Pendidikan, Media Sosial): kartu permukaan
+/// radius 16 bergaris rambut dan berbayangan, kepala ikon 24 primary + judul 17 w700 (+ deskripsi 12 abu), garis
+/// pemisah, lalu isi padding 16.
+class AccountFormCard extends StatelessWidget {
+  const AccountFormCard({super.key, required this.icon, required this.title, required this.child, this.description});
+
+  final IconData icon;
+  final String title;
+  final String? description;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.kc;
+    // Material (bukan Container berwarna) agar tinta InkWell/Ink di dalam kartu (cip, pemilih) tergambar DI ATAS
+    // warna permukaan kartu: state layer tekan/hover dan sorotan fokus tetap terlihat (pola sama dengan AccountSection).
+    return DecoratedBox(
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(KapdhRadius.lg), boxShadow: p.shadowSm),
+      child: Material(
+        color: p.surface,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: p.cardBorder),
+          borderRadius: BorderRadius.circular(KapdhRadius.lg),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(KapdhSpace.s4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, size: KapdhIconSize.lg, color: p.primary),
+                  const SizedBox(width: KapdhSpace.s3),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Semantics(
+                          header: true,
+                          child: Text(
+                            title,
+                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, height: 1.4),
+                          ),
+                        ),
+                        if (description != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            description!,
+                            style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.45, color: p.textMuted),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: p.divider),
+            Padding(padding: const EdgeInsets.all(KapdhSpace.s4), child: child),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -93,7 +170,7 @@ class AccountMenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? KapdhColors.danger : KapdhColors.primary;
+    final color = danger ? context.kc.danger : context.kc.primary;
     final subtitle = paused ? 'Ditunda selama pemeliharaan' : this.subtitle;
     final muted = locked || paused;
     final semantics = [
@@ -114,7 +191,7 @@ class AccountMenuTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: KapdhSpace.s3),
             child: Row(
               children: [
-                Icon(icon, size: 22, color: muted ? KapdhColors.textMuted : color),
+                Icon(icon, size: 22, color: muted ? context.kc.textMuted : color),
                 const SizedBox(width: KapdhSpace.s3),
                 Expanded(
                   child: Column(
@@ -126,13 +203,13 @@ class AccountMenuTile extends StatelessWidget {
                         style: TextStyle(
                           fontSize: KapdhFontSize.body,
                           fontWeight: FontWeight.w500,
-                          color: danger ? KapdhColors.danger : KapdhColors.text,
+                          color: danger ? context.kc.danger : context.kc.text,
                         ),
                       ),
                       if (subtitle != null)
                         Text(
                           subtitle,
-                          style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
                         ),
                     ],
                   ),
@@ -157,12 +234,12 @@ class AccountMenuTile extends StatelessWidget {
                 const SizedBox(width: KapdhSpace.s2),
                 Icon(
                   paused
-                      ? Icons.build_outlined
+                      ? KapdhIcons.buildOutlined
                       : locked
-                      ? Icons.lock_outline
-                      : Icons.chevron_right,
+                      ? KapdhIcons.lockOutline
+                      : KapdhIcons.chevronRight,
                   size: 20,
-                  color: KapdhColors.textMuted,
+                  color: context.kc.textMuted,
                 ),
               ],
             ),

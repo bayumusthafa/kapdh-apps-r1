@@ -179,3 +179,4 @@ visibility_off
 signal_cellular_alt
 wifi
 battery_full
+content_paste

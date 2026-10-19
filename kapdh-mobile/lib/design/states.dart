@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../app/theme/kapdh_palette.dart';
 import '../app/theme/kapdh_tokens.dart';
 import 'kapdh_button.dart';
+import 'kapdh_icons.dart';
 
 /// Keadaan kosong dengan pesan dan tindakan spesifik (PRD 4.5, N-03).
 class EmptyState extends StatelessWidget {
@@ -10,7 +12,7 @@ class EmptyState extends StatelessWidget {
     super.key,
     required this.title,
     this.message,
-    this.icon = Icons.inbox_outlined,
+    this.icon = KapdhIcons.inboxOutlined,
     this.actionLabel,
     this.onAction,
   });
@@ -25,8 +27,8 @@ class EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return _CenteredState(
       icon: icon,
-      iconColor: KapdhColors.primary,
-      iconBackground: KapdhColors.green50,
+      iconColor: context.kc.primary,
+      iconBackground: context.kc.tintStrong,
       title: title,
       message: message,
       action: actionLabel != null && onAction != null
@@ -43,7 +45,7 @@ class ErrorState extends StatelessWidget {
     super.key,
     required this.title,
     required this.message,
-    this.icon = Icons.error_outline,
+    this.icon = KapdhIcons.errorOutline,
     this.onRetry,
     this.retryLabel = 'Coba lagi',
     this.requestId,
@@ -51,13 +53,13 @@ class ErrorState extends StatelessWidget {
 
   factory ErrorState.fromException(ApiException error, {Key? key, VoidCallback? onRetry}) {
     final (String title, IconData icon) = switch (error.ui.action) {
-      ErrorUiAction.showOffline => ('Tidak ada koneksi', Icons.cloud_off),
-      ErrorUiAction.showNotFound => ('Data tidak ditemukan', Icons.search_off),
-      ErrorUiAction.showForbidden => ('Akses ditolak', Icons.lock_outline),
-      ErrorUiAction.refreshStatus || ErrorUiAction.goToRestricted => ('Akses belum tersedia', Icons.lock_outline),
-      ErrorUiAction.showMaintenance => ('Sedang pemeliharaan', Icons.build_outlined),
-      ErrorUiAction.showCountdown => ('Terlalu banyak permintaan', Icons.timer_outlined),
-      _ => ('Terjadi kesalahan', Icons.error_outline),
+      ErrorUiAction.showOffline => ('Tidak ada koneksi', KapdhIcons.cloudOff),
+      ErrorUiAction.showNotFound => ('Data tidak ditemukan', KapdhIcons.searchOff),
+      ErrorUiAction.showForbidden => ('Akses ditolak', KapdhIcons.lockOutline),
+      ErrorUiAction.refreshStatus || ErrorUiAction.goToRestricted => ('Akses belum tersedia', KapdhIcons.lockOutline),
+      ErrorUiAction.showMaintenance => ('Sedang pemeliharaan', KapdhIcons.buildOutlined),
+      ErrorUiAction.showCountdown => ('Terlalu banyak permintaan', KapdhIcons.timerOutlined),
+      _ => ('Terjadi kesalahan', KapdhIcons.errorOutline),
     };
     // Coba lagi tidak ditawarkan bila mengulang tidak akan mengubah hasil (izin/data tidak ada).
     final retryable = switch (error.ui.action) {
@@ -85,13 +87,13 @@ class ErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     return _CenteredState(
       icon: icon,
-      iconColor: KapdhColors.danger,
-      iconBackground: KapdhColors.dangerBg,
+      iconColor: context.kc.danger,
+      iconBackground: context.kc.dangerBg,
       title: title,
       message: message,
       footnote: requestId == null ? null : 'Kode bantuan: $requestId',
       action: onRetry != null
-          ? KapdhButton.outlined(label: retryLabel, onPressed: onRetry, icon: Icons.refresh, expand: false)
+          ? KapdhButton.outlined(label: retryLabel, onPressed: onRetry, icon: KapdhIcons.refresh, expand: false)
           : null,
     );
   }
@@ -128,7 +130,8 @@ class _CenteredState extends StatelessWidget {
               child: Container(
                 width: 64,
                 height: 64,
-                decoration: BoxDecoration(color: iconBackground, shape: BoxShape.circle),
+                // [v2] Persegi membulat 24 (dulu lingkaran).
+                decoration: BoxDecoration(color: iconBackground, borderRadius: BorderRadius.circular(KapdhRadius.xl)),
                 child: Icon(icon, size: 30, color: iconColor),
               ),
             ),
@@ -146,7 +149,7 @@ class _CenteredState extends StatelessWidget {
               Text(
                 message!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhColors.textMuted),
+                style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: context.kc.textMuted),
               ),
             ],
             if (action != null) ...[const SizedBox(height: KapdhSpace.s5), action!],
@@ -155,7 +158,7 @@ class _CenteredState extends StatelessWidget {
               SelectableText(
                 footnote!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: KapdhFontSize.overline, color: KapdhColors.textMuted),
+                style: TextStyle(fontSize: KapdhFontSize.overline, color: context.kc.textMuted),
               ),
             ],
           ],
@@ -165,8 +168,90 @@ class _CenteredState extends StatelessWidget {
   }
 }
 
-/// Kerangka pemuatan berdenyut (N-03); diumumkan pembaca layar sebagai "Memuat".
-class LoadingSkeleton extends StatefulWidget {
+/// Kilau (shimmer) v2 di atas kerangka pemuatan: blok anak digambar warna [KapdhPalette.skeleton], lalu pita terang
+/// bergeser 1,4 s. Statis bila pengguna mematikan animasi (N-11).
+class KapdhShimmer extends StatefulWidget {
+  const KapdhShimmer({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<KapdhShimmer> createState() => _KapdhShimmerState();
+}
+
+class _KapdhShimmerState extends State<KapdhShimmer> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (reduceMotion) {
+      if (_controller.isAnimating) _controller.stop();
+      return widget.child;
+    }
+    if (!_controller.isAnimating) _controller.repeat();
+    final p = context.kc;
+    return AnimatedBuilder(
+      animation: _controller,
+      child: widget.child,
+      builder: (context, child) => ShaderMask(
+        blendMode: BlendMode.srcATop,
+        shaderCallback: (rect) => LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [p.skeleton, p.skeletonShine, p.skeleton],
+          stops: const [0.3, 0.5, 0.7],
+          transform: _SlideGradient(Curves.easeInOutCubic.transform(_controller.value)),
+        ).createShader(rect),
+        child: child,
+      ),
+    );
+  }
+}
+
+/// Menggeser gradasi selebar 3x kotak dari kanan ke kiri (CSS background-position 100% -> 0).
+class _SlideGradient extends GradientTransform {
+  const _SlideGradient(this.t);
+
+  final double t;
+
+  @override
+  Matrix4? transform(Rect bounds, {TextDirection? textDirection}) =>
+      Matrix4.translationValues(bounds.width * (1 - 2 * t), 0, 0)..scaleByDouble(3, 1, 1, 1);
+}
+
+/// Blok kerangka pemuatan berwarna [KapdhPalette.skeleton] (dipakai di dalam [KapdhShimmer]).
+class SkeletonBlock extends StatelessWidget {
+  const SkeletonBlock({super.key, this.width, required this.height, this.radius = KapdhRadius.sm, this.circle = false});
+
+  final double? width;
+  final double height;
+  final double radius;
+  final bool circle;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: width,
+    height: height,
+    decoration: BoxDecoration(
+      color: context.kc.skeleton,
+      shape: circle ? BoxShape.circle : BoxShape.rectangle,
+      borderRadius: circle ? null : BorderRadius.circular(radius),
+    ),
+  );
+}
+
+/// Kerangka pemuatan berkilau (N-03); diumumkan pembaca layar sebagai "Memuat".
+class LoadingSkeleton extends StatelessWidget {
   const LoadingSkeleton({super.key, this.lines = 3, this.showCard = true, this.semanticsLabel = 'Memuat'});
 
   /// Jumlah baris teks tiruan.
@@ -177,51 +262,24 @@ class LoadingSkeleton extends StatefulWidget {
   final String semanticsLabel;
 
   @override
-  State<LoadingSkeleton> createState() => _LoadingSkeletonState();
-}
-
-class _LoadingSkeletonState extends State<LoadingSkeleton> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-    lowerBound: 0.45,
-    upperBound: 1,
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    Widget block({double? width, required double height, double radius = KapdhRadius.sm}) => Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(color: KapdhColors.neutral200, borderRadius: BorderRadius.circular(radius)),
-    );
-    // Pengguna yang mematikan animasi (aksesibilitas sistem) melihat kerangka statis (N-11).
-    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    if (reduceMotion && _controller.isAnimating) _controller.stop();
     return Semantics(
-      label: widget.semanticsLabel,
+      label: semanticsLabel,
       liveRegion: true,
       excludeSemantics: true,
-      child: FadeTransition(
-        opacity: reduceMotion ? const AlwaysStoppedAnimation<double>(0.7) : _controller,
+      child: KapdhShimmer(
         child: Padding(
           padding: const EdgeInsets.all(KapdhSpace.s5),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (widget.showCard) ...[
-                block(height: 160, radius: KapdhRadius.lg),
+              if (showCard) ...[
+                const SkeletonBlock(height: 160, radius: KapdhRadius.lg),
                 const SizedBox(height: KapdhSpace.s5),
               ],
-              for (var i = 0; i < widget.lines; i++) ...[
-                block(height: 14, width: i.isEven ? double.infinity : 180),
+              for (var i = 0; i < lines; i++) ...[
+                SkeletonBlock(height: 14, width: i.isEven ? double.infinity : 180),
                 const SizedBox(height: KapdhSpace.s3),
               ],
             ],

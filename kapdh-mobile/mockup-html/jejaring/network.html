@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Jejaring (direktori) - Mockup KAPDH</title>
   <meta name="description" content="Mockup statis tab Jejaring (direktori alumni, pencarian dan lembar filter) aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <script src="../js/theme.js"></script>
   <link rel="stylesheet" href="../css/tokens.css">
   <link rel="stylesheet" href="../css/components.css">
   <link rel="stylesheet" href="../css/pages/jejaring.css">
@@ -12,7 +13,7 @@
 <body>
   <header class="page-header">
     <nav class="page-header__nav" aria-label="Navigasi mockup">
-      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../index.html"><span class="ic ph-arrow-left ic-s16" aria-hidden="true"></span> Semua layar</a>
       <a href="../components.html">Komponen</a>
       <a href="chat-list.html">Tab Pesan dan Pesan Grup</a>
       <a href="member-profile.html">Profil Alumni</a>
@@ -56,8 +57,8 @@
         <div class="screen">
           <div class="screen__body inset-top">
             <div class="jj-search-row" role="search">
-              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
-              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ph-magnifying-glass"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ph-sliders-horizontal" aria-hidden="true"></span></button></span>
             </div>
             <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
               <button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Jejaring</span></button>
@@ -111,11 +112,11 @@
             </section>
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-calendar-dots" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item bottom-nav__item--kta" href="#"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap-fill" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
@@ -131,8 +132,8 @@
         <div class="screen">
           <div class="screen__body inset-top">
             <div class="jj-search-row" role="search">
-              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
-              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ph-magnifying-glass"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ph-sliders-horizontal" aria-hidden="true"></span></button></span>
             </div>
             <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
               <button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Jejaring</span></button>
@@ -215,11 +216,11 @@
             </section>
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-calendar-dots" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item bottom-nav__item--kta" href="#"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap-fill" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
@@ -235,8 +236,8 @@
         <div class="screen">
           <div class="screen__body inset-top">
             <div class="jj-search-row" role="search">
-              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
-              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni, 2 aktif"><span class="ic ic-tune" aria-hidden="true"></span></button><span class="badge" aria-hidden="true">2</span></span>
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ph-magnifying-glass"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni, 2 aktif"><span class="ic ph-sliders-horizontal" aria-hidden="true"></span></button><span class="badge" aria-hidden="true">2</span></span>
             </div>
             <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
               <button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Jejaring</span></button>
@@ -247,9 +248,9 @@
             <section aria-label="Hasil direktori">
               <div class="jj-filters">
                 <div class="jj-filters__chips">
-                  <span class="tag-chip tag-chip--neutral tag-chip--input">Angkatan 12<button class="icon-btn" type="button" aria-label="Hapus filter Angkatan 12" style="width:16px;height:16px"><span class="ic ic-close" aria-hidden="true"></span></button></span>
-                  <span class="tag-chip tag-chip--neutral tag-chip--input">Pekanbaru<button class="icon-btn" type="button" aria-label="Hapus filter Pekanbaru" style="width:16px;height:16px"><span class="ic ic-close" aria-hidden="true"></span></button></span>
-                  <span class="tag-chip tag-chip--neutral tag-chip--input">Angkatan terbaru<button class="icon-btn" type="button" aria-label="Hapus filter Angkatan terbaru" style="width:16px;height:16px"><span class="ic ic-close" aria-hidden="true"></span></button></span>
+                  <button class="tag-chip tag-chip--neutral tag-chip--input" type="button" aria-label="Hapus filter Angkatan 12">Angkatan 12<span class="ic ph-x" aria-hidden="true"></span></button>
+                  <button class="tag-chip tag-chip--neutral tag-chip--input" type="button" aria-label="Hapus filter Pekanbaru">Pekanbaru<span class="ic ph-x" aria-hidden="true"></span></button>
+                  <button class="tag-chip tag-chip--neutral tag-chip--input" type="button" aria-label="Hapus filter Angkatan terbaru">Angkatan terbaru<span class="ic ph-x" aria-hidden="true"></span></button>
                 </div>
                 <p class="jj-filters__count" role="status">3 alumni ditemukan</p>
               </div>
@@ -289,11 +290,11 @@
             </section>
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-calendar-dots" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item bottom-nav__item--kta" href="#"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap-fill" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
@@ -309,8 +310,8 @@
         <div class="screen">
           <div class="screen__body inset-top">
             <div class="jj-search-row" role="search">
-              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..." value="Siti"><span class="input__suffix"><button class="icon-btn" type="button" aria-label="Hapus pencarian"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
-              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ph-magnifying-glass"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..." value="Siti"><span class="input__suffix"><button class="icon-btn" type="button" aria-label="Hapus pencarian"><span class="ic ph-x" aria-hidden="true"></span></button></span></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ph-sliders-horizontal" aria-hidden="true"></span></button></span>
             </div>
             <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
               <button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Jejaring</span></button>
@@ -336,11 +337,11 @@
             </section>
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-calendar-dots" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item bottom-nav__item--kta" href="#"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap-fill" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
@@ -356,8 +357,8 @@
         <div class="screen">
           <div class="screen__body inset-top">
             <div class="jj-search-row" role="search">
-              <div class="input input--search jj-input-typed is-focused"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..." value="S" aria-describedby="f5-hint"><span class="input__suffix"><button class="icon-btn" type="button" aria-label="Hapus pencarian"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
-              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+              <div class="input input--search jj-input-typed is-focused"><span class="input__prefix" aria-hidden="true"><span class="ic ph-magnifying-glass"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..." value="S" aria-describedby="f5-hint"><span class="input__suffix"><button class="icon-btn" type="button" aria-label="Hapus pencarian"><span class="ic ph-x" aria-hidden="true"></span></button></span></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ph-sliders-horizontal" aria-hidden="true"></span></button></span>
             </div>
             <p class="jj-query-hint" id="f5-hint">Ketik minimal 2 huruf untuk mencari nama.</p>
             <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
@@ -402,8 +403,8 @@
         <div class="screen">
           <div class="screen__body inset-top">
             <div class="jj-search-row" role="search">
-              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
-              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ph-magnifying-glass"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ph-sliders-horizontal" aria-hidden="true"></span></button></span>
             </div>
             <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
               <button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Jejaring</span></button>
@@ -413,17 +414,17 @@
             <hr class="divider">
             <div class="jj-filters"><p class="jj-filters__count" role="status">0 alumni ditemukan</p></div>
             <div class="state">
-              <div class="state__icon" aria-hidden="true"><span class="ic ic-person_search_outlined"></span></div>
+              <div class="state__icon" aria-hidden="true"><span class="ic ph-user-focus"></span></div>
               <h3 class="state__title">Alumni tidak ditemukan</h3>
               <p class="state__message">Belum ada alumni aktif yang menampilkan profilnya di direktori.</p>
             </div>
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-school" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-calendar-dots" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item bottom-nav__item--kta" href="#"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ph-graduation-cap-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
@@ -439,8 +440,8 @@
         <div class="screen">
           <div class="screen__body inset-top">
             <div class="jj-search-row" role="search">
-              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..." value="Zainal"><span class="input__suffix"><button class="icon-btn" type="button" aria-label="Hapus pencarian"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
-              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni, 1 aktif"><span class="ic ic-tune" aria-hidden="true"></span></button><span class="badge" aria-hidden="true">1</span></span>
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ph-magnifying-glass"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..." value="Zainal"><span class="input__suffix"><button class="icon-btn" type="button" aria-label="Hapus pencarian"><span class="ic ph-x" aria-hidden="true"></span></button></span></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni, 1 aktif"><span class="ic ph-sliders-horizontal" aria-hidden="true"></span></button><span class="badge" aria-hidden="true">1</span></span>
             </div>
             <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
               <button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Jejaring</span></button>
@@ -450,23 +451,23 @@
             <hr class="divider">
             <div class="jj-filters">
               <div class="jj-filters__chips">
-                <span class="tag-chip tag-chip--neutral tag-chip--input">Kelas 4 (1 Aliyah)<button class="icon-btn" type="button" aria-label="Hapus filter Kelas 4 (1 Aliyah)" style="width:16px;height:16px"><span class="ic ic-close" aria-hidden="true"></span></button></span>
+                <button class="tag-chip tag-chip--neutral tag-chip--input" type="button" aria-label="Hapus filter Kelas 4 (1 Aliyah)">Kelas 4 (1 Aliyah)<span class="ic ph-x" aria-hidden="true"></span></button>
               </div>
               <p class="jj-filters__count" role="status">0 alumni ditemukan</p>
             </div>
             <div class="state">
-              <div class="state__icon" aria-hidden="true"><span class="ic ic-person_search_outlined"></span></div>
+              <div class="state__icon" aria-hidden="true"><span class="ic ph-user-focus"></span></div>
               <h3 class="state__title">Alumni tidak ditemukan</h3>
               <p class="state__message">Tidak ada alumni yang cocok. Ubah kata kunci atau filter pencarian.</p>
               <button class="btn btn--outline btn--inline state__action" type="button">Atur ulang filter</button>
             </div>
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-calendar-dots" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item bottom-nav__item--kta" href="#"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap-fill" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
@@ -482,8 +483,8 @@
         <div class="screen">
           <div class="screen__body inset-top">
             <div class="jj-search-row" role="search">
-              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
-              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ph-magnifying-glass"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ph-sliders-horizontal" aria-hidden="true"></span></button></span>
             </div>
             <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
               <button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Jejaring</span></button>
@@ -498,11 +499,11 @@
             </div>
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-school" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-calendar-dots" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item bottom-nav__item--kta" href="#"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ph-graduation-cap-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
@@ -518,8 +519,8 @@
         <div class="screen">
           <div class="screen__body inset-top">
             <div class="jj-search-row" role="search">
-              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
-              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ph-magnifying-glass"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ph-sliders-horizontal" aria-hidden="true"></span></button></span>
             </div>
             <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
               <button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Jejaring</span></button>
@@ -529,18 +530,18 @@
             <hr class="divider">
             <div class="jj-filters-spacer"></div>
             <div class="state state--error">
-              <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off"></span></div>
+              <div class="state__icon" aria-hidden="true"><span class="ic ph-cloud-slash"></span></div>
               <h3 class="state__title">Tidak ada koneksi</h3>
               <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
-              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+              <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ph-arrow-clockwise" aria-hidden="true"></span>Coba lagi</button>
             </div>
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ic-school" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-calendar-dots" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item bottom-nav__item--kta" href="#"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ph-graduation-cap-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
@@ -556,10 +557,10 @@
         <div class="screen">
           <div class="screen__body inset-top">
             <div class="jj-search-row" role="search">
-              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
-              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ph-magnifying-glass"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ph-sliders-horizontal" aria-hidden="true"></span></button></span>
             </div>
-            <div class="status-strip" role="status"><span class="ic ic-cloud_off" aria-hidden="true"></span><span class="status-strip__text"><strong>Offline</strong>. Tersinkron 18 Okt 2026, 09.12 WIB</span><button class="btn-text" type="button">Coba lagi</button></div>
+            <div class="status-strip" role="status"><span class="ic ph-cloud-slash" aria-hidden="true"></span><span class="status-strip__text"><strong>Offline</strong>. Tersinkron 18 Okt 2026, 09.12 WIB</span><button class="btn-text" type="button">Coba lagi</button></div>
             <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
               <button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Jejaring</span></button>
               <button class="tab" type="button" role="tab" aria-selected="false" aria-label="Pesan, 2 percakapan belum dibaca"><span class="tab__label"><span class="badge-host">Pesan<span class="badge badge--primary badge--dot"></span></span></span></button>
@@ -569,7 +570,7 @@
             <section aria-label="Hasil direktori">
               <div class="jj-filters"><p class="jj-filters__count" role="status">128 alumni ditemukan</p></div>
               <div class="jj-inline-notice">
-                <div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Hasil terbaru belum dapat dimuat. Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+                <div class="info-box info-box--warning"><span class="ic ph-warning" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Hasil terbaru belum dapat dimuat. Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
               </div>
               <div class="jj-dir-list">
                 <a class="card card--md member-card" href="member-profile.html">
@@ -596,11 +597,11 @@
             </section>
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-calendar-dots" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item bottom-nav__item--kta" href="#"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap-fill" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
@@ -616,8 +617,8 @@
         <div class="screen">
           <div class="screen__body inset-top">
             <div class="jj-search-row" role="search">
-              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
-              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ph-magnifying-glass"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ph-sliders-horizontal" aria-hidden="true"></span></button></span>
             </div>
             <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
               <button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Jejaring</span></button>
@@ -671,11 +672,11 @@
             </section>
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-calendar-dots" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item bottom-nav__item--kta" href="#"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap-fill" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
@@ -691,8 +692,8 @@
         <div class="screen">
           <div class="screen__body inset-top">
             <div class="jj-search-row" role="search">
-              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
-              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ic-tune" aria-hidden="true"></span></button></span>
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ph-magnifying-glass"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..."></div>
+              <span class="badge-host"><button class="icon-btn icon-btn--tonal" type="button" aria-label="Filter alumni"><span class="ic ph-sliders-horizontal" aria-hidden="true"></span></button></span>
             </div>
             <div class="tabs tabs--scrollable" role="tablist" aria-label="Jejaring dan pesan">
               <button class="tab is-selected" type="button" role="tab" aria-selected="true"><span class="tab__label">Jejaring</span></button>
@@ -742,17 +743,17 @@
                   </div>
                 </a>
                 <div class="jj-footer-error">
-                  <div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Terlalu banyak percobaan. Coba lagi nanti.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+                  <div class="info-box info-box--warning"><span class="ic ph-warning" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Terlalu banyak percobaan. Coba lagi nanti.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
                 </div>
               </div></div>
             </section>
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-home_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-event_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-badge_outlined" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ic-school" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
-            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ic-person_outline" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-calendar-dots" aria-hidden="true"></span></span><span class="bottom-nav__label">Event</span></a>
+            <a class="bottom-nav__item bottom-nav__item--kta" href="#"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
+            <a class="bottom-nav__item is-selected" href="#" aria-current="page" aria-label="Jejaring, 3 percakapan belum dibaca, 1 undangan grup"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap-fill" aria-hidden="true"></span><span class="badge badge--primary" aria-hidden="true">4</span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
@@ -768,7 +769,7 @@
         <div class="screen">
           <div class="screen__body inset-top">
             <div class="jj-search-row">
-              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ic-search"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..." tabindex="-1"></div>
+              <div class="input input--search jj-input-typed"><span class="input__prefix" aria-hidden="true"><span class="ic ph-magnifying-glass"></span></span><input class="input__control" type="search" aria-label="Cari relasi dengan alumni" placeholder="Cari relasi dengan alumni ..." tabindex="-1"></div>
             </div>
           </div>
         </div>
@@ -778,10 +779,10 @@
             <div class="jj-sheet-head"><h3 class="jj-sheet-title" id="f13-title">Filter Alumni</h3><button class="btn-text" type="button">Atur ulang</button></div>
             <div class="mt-3 stack-4">
               <div class="field"><label class="field__label" for="f13-cohort">Angkatan</label><div class="input"><input class="input__control" id="f13-cohort" inputmode="numeric" maxlength="2" placeholder="Contoh: 29"></div></div>
-              <div class="field"><span class="field__label" id="f13-class">Kelas</span><button class="input input--dropdown" type="button" aria-labelledby="f13-class"><span class="input__value">Semua</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button></div>
+              <div class="field"><span class="field__label" id="f13-class">Kelas</span><button class="input input--dropdown" type="button" aria-labelledby="f13-class"><span class="input__value">Semua</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button></div>
               <div class="field"><label class="field__label" for="f13-city">Kota</label><div class="input"><input class="input__control" id="f13-city" placeholder="Contoh: Pekanbaru"></div></div>
-              <div class="field"><span class="field__label" id="f13-prof">Profesi</span><button class="input input--dropdown" type="button" aria-labelledby="f13-prof"><span class="input__value">Semua</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button></div>
-              <div class="field"><span class="field__label" id="f13-skill">Keahlian</span><button class="input input--dropdown" type="button" aria-labelledby="f13-skill"><span class="input__value">Semua</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button></div>
+              <div class="field"><span class="field__label" id="f13-prof">Profesi</span><button class="input input--dropdown" type="button" aria-labelledby="f13-prof"><span class="input__value">Semua</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button></div>
+              <div class="field"><span class="field__label" id="f13-skill">Keahlian</span><button class="input input--dropdown" type="button" aria-labelledby="f13-skill"><span class="input__value">Semua</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button></div>
               <div>
                 <p class="jj-label-md" id="f13-sort">Urutkan</p>
                 <div role="radiogroup" aria-labelledby="f13-sort">
@@ -789,7 +790,7 @@
                   <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Angkatan terbaru</span></span></div>
                 </div>
               </div>
-              <button class="btn btn--primary" type="button"><span class="ic ic-check" aria-hidden="true"></span>Terapkan</button>
+              <button class="btn btn--primary" type="button"><span class="ic ph-check" aria-hidden="true"></span>Terapkan</button>
             </div>
           </div>
         </div>
@@ -806,10 +807,10 @@
           <div class="jj-sheet-head"><h3 class="jj-sheet-title" id="f14-title">Filter Alumni</h3><button class="btn-text" type="button">Atur ulang</button></div>
           <div class="mt-3 stack-4">
             <div class="field"><label class="field__label" for="f14-cohort">Angkatan</label><div class="input"><input class="input__control" id="f14-cohort" inputmode="numeric" maxlength="2" placeholder="Contoh: 29" value="12"></div></div>
-            <div class="field"><span class="field__label" id="f14-class">Kelas</span><button class="input input--dropdown" type="button" aria-labelledby="f14-class"><span class="input__value">Kelas 4 (1 Aliyah)</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button></div>
+            <div class="field"><span class="field__label" id="f14-class">Kelas</span><button class="input input--dropdown" type="button" aria-labelledby="f14-class"><span class="input__value">Kelas 4 (1 Aliyah)</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button></div>
             <div class="field"><label class="field__label" for="f14-city">Kota</label><div class="input"><input class="input__control" id="f14-city" placeholder="Contoh: Pekanbaru" value="Pekanbaru"></div></div>
-            <div class="field"><span class="field__label" id="f14-prof">Profesi</span><button class="input input--dropdown" type="button" aria-labelledby="f14-prof"><span class="input__value">Guru</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button></div>
-            <div class="field"><span class="field__label" id="f14-skill">Keahlian</span><button class="input input--dropdown" type="button" aria-labelledby="f14-skill"><span class="input__value">Semua</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button></div>
+            <div class="field"><span class="field__label" id="f14-prof">Profesi</span><button class="input input--dropdown" type="button" aria-labelledby="f14-prof"><span class="input__value">Guru</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button></div>
+            <div class="field"><span class="field__label" id="f14-skill">Keahlian</span><button class="input input--dropdown" type="button" aria-labelledby="f14-skill"><span class="input__value">Semua</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button></div>
             <div>
               <p class="jj-label-md" id="f14-sort">Urutkan</p>
               <div role="radiogroup" aria-labelledby="f14-sort">
@@ -817,7 +818,7 @@
                 <div class="jj-tile" role="radio" aria-checked="true" tabindex="0"><span class="radio is-checked" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Angkatan terbaru</span></span></div>
               </div>
             </div>
-            <button class="btn btn--primary" type="button"><span class="ic ic-check" aria-hidden="true"></span>Terapkan</button>
+            <button class="btn btn--primary" type="button"><span class="ic ph-check" aria-hidden="true"></span>Terapkan</button>
           </div>
         </div>
       </div>
@@ -832,10 +833,10 @@
           <div class="jj-sheet-head"><h3 class="jj-sheet-title" id="f15-title">Filter Alumni</h3><button class="btn-text" type="button">Atur ulang</button></div>
           <div class="mt-3 stack-4">
             <div class="field"><label class="field__label" for="f15-cohort">Angkatan</label><div class="input is-error"><input class="input__control" id="f15-cohort" inputmode="numeric" maxlength="2" placeholder="Contoh: 29" value="0" aria-describedby="f15-cohort-err" aria-invalid="true"></div><p class="field__error" id="f15-cohort-err">Angkatan 1 sampai 99</p></div>
-            <div class="field"><span class="field__label" id="f15-class">Kelas</span><button class="input input--dropdown" type="button" aria-labelledby="f15-class"><span class="input__value">Semua</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button></div>
+            <div class="field"><span class="field__label" id="f15-class">Kelas</span><button class="input input--dropdown" type="button" aria-labelledby="f15-class"><span class="input__value">Semua</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button></div>
             <div class="field"><label class="field__label" for="f15-city">Kota</label><div class="input"><input class="input__control" id="f15-city" placeholder="Contoh: Pekanbaru"></div></div>
             <p class="jj-master-loading" role="status">Memuat daftar profesi…</p>
-            <div class="info-box info-box--warning"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Daftar keahlian belum dapat dimuat.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+            <div class="info-box info-box--warning"><span class="ic ph-warning" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Daftar keahlian belum dapat dimuat.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
             <div>
               <p class="jj-label-md" id="f15-sort">Urutkan</p>
               <div role="radiogroup" aria-labelledby="f15-sort">
@@ -843,7 +844,7 @@
                 <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Angkatan terbaru</span></span></div>
               </div>
             </div>
-            <button class="btn btn--primary" type="button"><span class="ic ic-check" aria-hidden="true"></span>Terapkan</button>
+            <button class="btn btn--primary" type="button"><span class="ic ph-check" aria-hidden="true"></span>Terapkan</button>
           </div>
         </div>
       </div>
@@ -862,10 +863,10 @@
             <div class="jj-sheet-head"><h3 class="jj-sheet-title" id="f16-title">Filter Alumni</h3><button class="btn-text" type="button" tabindex="-1">Atur ulang</button></div>
             <div class="mt-3 stack-4">
               <div class="field"><label class="field__label" for="f16-cohort">Angkatan</label><div class="input"><input class="input__control" id="f16-cohort" inputmode="numeric" placeholder="Contoh: 29" tabindex="-1"></div></div>
-              <div class="field"><span class="field__label" id="f16-class">Kelas</span><button class="input input--dropdown" type="button" aria-labelledby="f16-class" aria-expanded="true"><span class="input__value">Semua</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button></div>
+              <div class="field"><span class="field__label" id="f16-class">Kelas</span><button class="input input--dropdown" type="button" aria-labelledby="f16-class" aria-expanded="true"><span class="input__value">Semua</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button></div>
               <div class="field"><label class="field__label" for="f16-city">Kota</label><div class="input"><input class="input__control" id="f16-city" placeholder="Contoh: Pekanbaru" tabindex="-1"></div></div>
-              <div class="field"><span class="field__label" id="f16-prof">Profesi</span><button class="input input--dropdown" type="button" aria-labelledby="f16-prof" tabindex="-1"><span class="input__value">Semua</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button></div>
-              <div class="field"><span class="field__label" id="f16-skill">Keahlian</span><button class="input input--dropdown" type="button" aria-labelledby="f16-skill" tabindex="-1"><span class="input__value">Semua</span><span class="ic ic-keyboard_arrow_down input__chevron" aria-hidden="true"></span></button></div>
+              <div class="field"><span class="field__label" id="f16-prof">Profesi</span><button class="input input--dropdown" type="button" aria-labelledby="f16-prof" tabindex="-1"><span class="input__value">Semua</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button></div>
+              <div class="field"><span class="field__label" id="f16-skill">Keahlian</span><button class="input input--dropdown" type="button" aria-labelledby="f16-skill" tabindex="-1"><span class="input__value">Semua</span><span class="ic ph-caret-down input__chevron" aria-hidden="true"></span></button></div>
               <div>
                 <p class="jj-label-md" id="f16-sort">Urutkan</p>
                 <div role="radiogroup" aria-labelledby="f16-sort">
@@ -873,7 +874,7 @@
                   <div class="jj-tile" role="radio" aria-checked="false" tabindex="-1"><span class="radio" aria-hidden="true"></span><span class="jj-tile__body"><span class="jj-tile__title">Angkatan terbaru</span></span></div>
                 </div>
               </div>
-              <button class="btn btn--primary" type="button" tabindex="-1"><span class="ic ic-check" aria-hidden="true"></span>Terapkan</button>
+              <button class="btn btn--primary" type="button" tabindex="-1"><span class="ic ph-check" aria-hidden="true"></span>Terapkan</button>
             </div>
           </div>
         </div>

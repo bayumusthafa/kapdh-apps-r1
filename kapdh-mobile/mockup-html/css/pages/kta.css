@@ -35,13 +35,13 @@
    --------------------------------------------------------------------------------------------------------------------- */
 /* _SyncedAt: Row tengah, Icons.sync 14 muted + s1 + teks caption 12 muted */
 .kta-synced { display: flex; align-items: center; justify-content: center; gap: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
-.kta-synced .ic { --ic-size: 14px; }
+.kta-synced .ic { --ic-size: var(--ic-xs); }
 
 /* _LockedFeatures "Terbuka setelah KTA aktif": kartu putih 14 x 16, garis divider, radius 14; baris ikon 18 muted + 10 + 13 */
 .kta-locked { padding: 13px 15px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); }
 .kta-locked__title { font-size: var(--fs-body); font-weight: 600; }
-.kta-locked__item { display: flex; align-items: center; gap: 10px; margin-top: var(--s2); font-size: 13px; }
-.kta-locked__item .ic { --ic-size: 18px; color: var(--color-text-muted); }
+.kta-locked__item { display: flex; align-items: center; gap: 10px; margin-top: var(--s2); font-size: calc(13px * var(--ts, 1)); }
+.kta-locked__item .ic { --ic-size: var(--ic-btn); color: var(--color-text-muted); }
 
 /* _OfflineUnavailable: ListView padding 24 + SizedBox 24, lingkaran 64 dangerBg (pakai .state.state--error),
    tombol Sinkronkan KapdhButton.outlined selebar layar (expand: true). */
@@ -58,7 +58,7 @@
    --------------------------------------------------------------------------------------------------------------------- */
 .pay-tiles > * + * { margin-top: var(--s3); } /* ListView.separated SizedBox(s3) */
 .pay-tile { display: flex; align-items: flex-start; gap: var(--s3); width: 100%; padding: 13px 15px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); text-align: left; }
-.pay-tile__icon { flex: none; width: 40px; height: 40px; border-radius: var(--r-md); display: grid; place-items: center; background: var(--color-green-50); color: var(--color-primary); }
+.pay-tile__icon { flex: none; width: 40px; height: 40px; border-radius: var(--r-md); display: grid; place-items: center; background: var(--color-tint); color: var(--color-primary); }
 .pay-tile__icon .ic { --ic-size: 22px; }
 .pay-tile__body { flex: 1 1 auto; min-width: 0; }
 .pay-tile__title { display: block; font-size: var(--fs-body); font-weight: 600; }
@@ -92,17 +92,17 @@
 /* Layar ditolak: KapdhButton + Center(KapdhLinkButton "Hubungi pengurus") */
 .pay-bottom__link { display: flex; justify-content: center; }
 /* paymentTitle di bawah judul lembar untuk iuran perpanjangan/tiket: 13 muted, jarak 8 */
-.pay-kind { margin-top: var(--s2); font-size: 13px; color: var(--color-text-muted); }
+.pay-kind { margin-top: var(--s2); font-size: calc(13px * var(--ts, 1)); color: var(--color-text-muted); }
 /* Teks aturan berkas di bawah UploadTile: caption 12 muted */
 .pay-rules { margin-top: var(--s2); font-size: var(--fs-caption); color: var(--color-text-muted); }
 /* KapdhTextField(maxLines: 2) catatan untuk pengurus: 14 + 2 x 20.3 + 14 */
 .input--lines-2 { align-items: flex-start; }
 .input--lines-2 .input__control { resize: none; min-height: calc(2 * 20.3px + 26px); }
-.input.is-disabled .input__control::placeholder { color: rgba(28, 27, 31, .38); } /* hint field nonaktif: onSurface 38 % */
+.input.is-disabled .input__control::placeholder { color: var(--color-on-surface-disabled); } /* hint field nonaktif: onSurface 38 % */
 /* Tautan rata kiri (Align centerLeft): "Lihat bukti yang dikirim", "Lihat QRIS", "Ganti rekening tujuan" */
 .pay-link-row { display: flex; justify-content: flex-start; }
 /* KapdhLinkButton dengan ikon: TextButton.icon (padding 0 4, jarak ikon 8) */
-.btn-link.is-busy, .btn-link:disabled { color: rgba(28, 27, 31, .38); }
+.btn-link.is-busy, .btn-link:disabled { color: var(--color-on-surface-disabled); }
 
 /* Lembar "Pilih bukti transfer" (showProofSourceSheet): padding (8, 0, 8, 16); judul padding (16, 0, 16, 8);
    ListTile minTileHeight 56, ikon primary, judul 16, subjudul 14 muted (dua baris = 72). */
@@ -124,12 +124,12 @@
 
 /* ProofImageViewer (Dialog.fullscreen hitam): SafeArea Row [IconButton close putih, label 14 w600 putih];
    gambar BoxFit.contain di tengah; galat: teks 14 putih tengah + TextButton.icon "Muat ulang" putih. */
-.proof-viewer { background: #000000; color: var(--color-on-primary); }
+.proof-viewer { background: #000000; color: var(--color-text-on-dark); }
 .proof-viewer__bar { position: absolute; z-index: 1; left: 0; right: 0; top: var(--inset-top); display: flex; align-items: center; }
 .proof-viewer__label { flex: 1 1 auto; min-width: 0; font-size: var(--fs-body); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .proof-viewer__stage { position: absolute; inset: 0; display: grid; place-items: center; }
 .proof-viewer__message { padding: var(--s5); display: flex; flex-direction: column; align-items: center; text-align: center; font-size: var(--fs-body); }
-.proof-viewer__message .btn-text { margin-top: var(--s3); color: var(--color-on-primary); } /* TextButton.icon: ikon 18, label 13 w500 */
+.proof-viewer__message .btn-text { margin-top: var(--s3); color: var(--color-text-on-dark); } /* TextButton.icon: ikon 18, label 13 w500 */
 /* Tiruan foto bukti transfer (BUKAN data nyata): struk abu-abu tanpa angka yang terbaca. */
 .proof-mock { width: 300px; aspect-ratio: 3 / 5; padding: 28px 24px; background: #F4F4F6; display: flex; flex-direction: column; gap: 14px; }
 .proof-mock__logo { width: 64px; height: 64px; border-radius: 50%; background: #C9C9C9; align-self: center; }
@@ -146,3 +146,15 @@
 .pay-sheet { min-height: 0; overflow: hidden; } /* Material(clipBehavior: antiAlias): isi bergulir terpotong sudut 20 */
 /* StatusActionCard: aksi berlebar intrinsik di samping Expanded(info); tanpa ini tombol inline ikut menyusut. */
 .status-action-card > .btn { flex: none; }
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   PRATINJAU KTA LAYAR PENUH  (lib/features/kta/kta_fullscreen.dart): perangkat landscape 800 x 360 tanpa bilah sistem,
+   latar #020702, kartu proporsi KTP 85,6 : 54 setinggi area (360 - 2 x 16 = 328 -> 520 x 328), isi 296 diskalakan
+   min(496 / 296, 304 / 191) = 1,59.
+   --------------------------------------------------------------------------------------------------------------------- */
+.frame--landscape { width: 800px; }
+.device--landscape { --inset-top: 0px; --inset-bottom: 0px; width: 800px; height: 360px; }
+.kta-full { background: #020702; display: grid; place-items: center; }
+.kta-card--fill { width: 520px; height: 328px; display: grid; place-items: center; }
+.kta-card__fit { width: 296px; flex: none; transform: scale(1.59); }
+.kta-full__close { position: absolute; top: 0; right: 0; color: var(--color-text-on-dark); }

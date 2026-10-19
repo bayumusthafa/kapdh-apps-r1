@@ -79,3 +79,17 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo-kapdh.png
+
+  # Ikon Phosphor 2.1 (MIT, assets/fonts/phosphor/LICENSE; ADR-027). Font dibundel langsung karena paket
+  # phosphor_flutter 2.1.0 tidak kompatibel dengan Flutter 3.47 (meng-extend IconData yang final). Dipangkas otomatis
+  # oleh --tree-shake-icons saat build rilis.
+  fonts:
+    - family: PhosphorRegular
+      fonts:
+        - asset: assets/fonts/phosphor/Phosphor-Regular.ttf
+    - family: PhosphorFill
+      fonts:
+        - asset: assets/fonts/phosphor/Phosphor-Fill.ttf
+    - family: PhosphorDuotone
+      fonts:
+        - asset: assets/fonts/phosphor/Phosphor-Duotone.ttf

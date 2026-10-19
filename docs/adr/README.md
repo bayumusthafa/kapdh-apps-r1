@@ -33,6 +33,7 @@ dalam satu perubahan.
 | [024](024-pipeline-ci-cd.md) | Pipeline CI/CD GitHub Actions, promosi digest yang sama, gerbang kontrak N-13 | PRD 5.5, 7.1, N-13, N-16 |
 | [025](025-reautentikasi-hanya-tindakan-kredensial.md) | Reautentikasi step-up hanya untuk tindakan kredensial (termasuk koreksi email login admin, bersyarat); perubahan pengaturan, metode bayar dan admin lainnya cukup sesi MFA (keputusan PO, menyimpang dari AC F15-3/F16-1; menggantikan ADR-013 butir 6) | PRD 2.3, AC F15-3, AC F16-1 |
 | [026](026-metode-qris-dan-gambar-qr-publik.md) | Metode bayar QRIS statis dengan gambar QR publik (purpose `payment_qr`, unggah khusus `settings.manage`); gambar ikut identitas metode dan snapshot payment; kontrak aditif; gerbang go-live memeriksa gambar dan mencetak sidik jari untuk bendahara (permintaan PO) | PRD 6.2, D13, AC F15-3, N-10 |
+| [027](027-ikon-phosphor-satu-keluarga.md) | Phosphor sebagai satu-satunya keluarga ikon aplikasi lewat `KapdhIcons` dari font yang dibundel (paket `phosphor_flutter` tidak kompatibel dengan Flutter 3.47); pemetaan tunggal untuk mockup dan aplikasi (permintaan PO) | PRD 7.1, 7.3, N-11 |
 
 ADR 023 dan 024 ditulis paralel dengan nomor sementara (ADR-0002 dan ADR-010) lalu dinomori ulang saat integrasi akhir
 R1.0 (`docs/handoff/integration-final.md`); rujukan lama di riwayat git menunjuk ke berkas yang sama.

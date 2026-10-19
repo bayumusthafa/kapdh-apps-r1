@@ -28,7 +28,9 @@ void main() {
       expect(find.text('Ahmad Islam'), findsOneWidget);
       expect(find.byTooltip('Notifikasi, 2 belum dibaca'), findsOneWidget);
       expect(find.bySemanticsLabel(RegExp('^Banner 1 dari 1: Reuni Akbar 2026')), findsOneWidget);
-      expect(find.bySemanticsLabel(RegExp('^KTA, 29.01.01.7')), findsOneWidget);
+      // v2: Pesan menggantikan KTA di akses cepat (KTA ada di tombol tengah navigasi bawah).
+      expect(find.bySemanticsLabel(RegExp('^Pesan')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('^KTA, 29.01.01.7')), findsNothing);
       expect(find.bySemanticsLabel(RegExp('^Notifikasi, 2 belum dibaca')), findsOneWidget);
 
       await scrollUntil(tester, find.text('Event Mendatang'));
@@ -46,7 +48,7 @@ void main() {
       expect(cached?.generatedAt, testNow);
     });
 
-    testWidgets('F-08 akses cepat membuka KTA, notifikasi dan event dari Beranda', (tester) async {
+    testWidgets('F-08 akses cepat membuka Pesan, notifikasi dan event dari Beranda', (tester) async {
       final app = await pumpMemberApp(tester, routes: {'/home': (_) => FakeResponse.json(200, homeJson())});
       await tester.tap(find.byKey(const ValueKey('quick-notifications')));
       await settle(tester);
@@ -54,9 +56,9 @@ void main() {
       app.router.pop();
       await settle(tester);
 
-      await tester.tap(find.byKey(const ValueKey('quick-kta')));
+      await tester.tap(find.byKey(const ValueKey('quick-messages')));
       await settle(tester);
-      expect(app.location, '/kta');
+      expect(app.location, '/network');
 
       app.router.go('/home');
       await settle(tester);
@@ -78,7 +80,7 @@ void main() {
         },
       );
       expect(find.byTooltip('Notifikasi, 3 belum dibaca'), findsOneWidget);
-      expect(find.text('3 belum dibaca'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('^Notifikasi, 3 belum dibaca')), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('home-notifications')));
       await settle(tester);
@@ -91,8 +93,8 @@ void main() {
       expect(app.location, '/home');
       expect(find.byTooltip('Notifikasi'), findsOneWidget);
       expect(find.byTooltip('Notifikasi, 3 belum dibaca'), findsNothing);
-      expect(find.text('3 belum dibaca'), findsNothing);
-      expect(find.text('Semua terbaca'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('^Notifikasi, 3 belum dibaca')), findsNothing);
+      expect(find.bySemanticsLabel(RegExp('^Notifikasi, Semua terbaca')), findsOneWidget);
       expect(app.adapter.requestsTo('/home'), hasLength(1));
     });
 
@@ -110,7 +112,7 @@ void main() {
         },
       );
       expect(find.byTooltip('Notifikasi'), findsOneWidget);
-      expect(find.text('Semua terbaca'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('^Notifikasi, Semua terbaca')), findsOneWidget);
 
       events.add(
         NotificationCreatedPayload.fromJson({
@@ -126,7 +128,7 @@ void main() {
       await settle(tester);
 
       expect(find.byTooltip('Notifikasi, 4 belum dibaca'), findsOneWidget);
-      expect(find.text('4 belum dibaca'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('^Notifikasi, 4 belum dibaca')), findsOneWidget);
     });
 
     testWidgets('AC F08-2 banner yang targetnya sudah tidak tersedia menampilkan pesan yang jelas', (tester) async {
@@ -206,7 +208,7 @@ void main() {
       expect(find.text('Belum ada kabar terbaru'), findsOneWidget);
       expect(find.textContaining('Tarik layar ke bawah untuk memuat ulang'), findsOneWidget);
       // Akses cepat tetap tersedia walau feed kosong.
-      expect(find.byKey(const ValueKey('quick-kta')), findsOneWidget);
+      expect(find.byKey(const ValueKey('quick-messages')), findsOneWidget);
       await scrollAndTap(tester, find.text('Muat ulang'));
       await settle(tester);
       expect(calls, 2);
@@ -281,7 +283,7 @@ void main() {
       );
       expect(find.text('Masa aktif KTA segera berakhir'), findsOneWidget);
       expect(find.textContaining('1 Nov 2026'), findsOneWidget);
-      await tester.tap(find.widgetWithText(TextButton, 'Perpanjang'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Perpanjang'));
       await settle(tester);
       expect(app.location, '/renewal');
     });
@@ -456,7 +458,7 @@ void main() {
       );
       expect(app.adapter.requestsTo('/home'), isEmpty);
       expect(find.byTooltip('Notifikasi, 2 belum dibaca'), findsOneWidget);
-      expect(find.text('2 belum dibaca'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('^Notifikasi, 2 belum dibaca')), findsOneWidget);
     });
   });
 }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/cache/kta_avatar_cache.dart';
@@ -12,6 +13,7 @@ import '../../core/format/formatters.dart';
 import '../../core/session/session_controller.dart';
 import '../../core/session/session_state.dart';
 import '../../design/design.dart';
+import 'kta_fullscreen.dart';
 import '../payments/payment_updates.dart';
 import 'kta_presentation.dart';
 import 'kta_sync.dart';
@@ -180,7 +182,7 @@ class _KtaScreenState extends ConsumerState<KtaScreen> {
           onPressed: _syncing ? null : () => unawaited(_sync()),
           icon: _syncing
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.sync),
+              : const Icon(KapdhIcons.sync),
         ),
       ],
       body: switch (view) {
@@ -200,7 +202,7 @@ class _KtaScreenState extends ConsumerState<KtaScreen> {
       child: ListView(
         padding: const EdgeInsets.all(KapdhSpace.s5),
         children: [
-          KtaCard(data: KtaCardData.fromMemberCard(card, avatar: _avatar(card))),
+          _TappableKta(data: KtaCardData.fromMemberCard(card, avatar: _avatar(card))),
           const SizedBox(height: KapdhSpace.s2),
           _SyncedAt(syncedAt: card.syncedAt),
           const SizedBox(height: KapdhSpace.s4),
@@ -215,7 +217,7 @@ class _KtaScreenState extends ConsumerState<KtaScreen> {
             const SizedBox(height: KapdhSpace.s4),
             const InfoBox(
               key: ValueKey('kta-brightness-tip'),
-              icon: Icons.brightness_high_outlined,
+              icon: KapdhIcons.brightnessHighOutlined,
               message:
                   'Naikkan kecerahan layar saat QR dipindai. Status terkini selalu dicek server saat pemeriksa '
                   'memindai QR, dan QR diperbarui setiap kali KTA disinkronkan.',
@@ -229,7 +231,7 @@ class _KtaScreenState extends ConsumerState<KtaScreen> {
             const SizedBox(height: KapdhSpace.s4),
             InfoBox(
               key: const ValueKey('kta-complete-profile'),
-              icon: Icons.location_city_outlined,
+              icon: KapdhIcons.locationCityOutlined,
               message: 'Kota domisili belum diisi. Lengkapi profil agar kota tampil di KTA.',
               trailing: TextButton(
                 onPressed: () => context.push(AppRoutes.accountProfile),
@@ -249,7 +251,7 @@ class _KtaScreenState extends ConsumerState<KtaScreen> {
       child: ListView(
         padding: const EdgeInsets.all(KapdhSpace.s5),
         children: [
-          KtaCard(
+          _TappableKta(
             data: KtaCardData.fromMemberCard(card, qrUsable: view.qrUsable, avatar: _avatar(card)),
           ),
           const SizedBox(height: KapdhSpace.s4),
@@ -317,8 +319,11 @@ class _OfflineUnavailable extends StatelessWidget {
               child: Container(
                 width: 64,
                 height: 64,
-                decoration: const BoxDecoration(color: KapdhColors.dangerBg, shape: BoxShape.circle),
-                child: const Icon(Icons.cloud_off, size: 30, color: KapdhColors.danger),
+                decoration: BoxDecoration(
+                  color: context.kc.dangerBg,
+                  borderRadius: BorderRadius.circular(KapdhRadius.xl),
+                ),
+                child: Icon(KapdhIcons.cloudOff, size: 30, color: context.kc.danger),
               ),
             ),
           ),
@@ -335,12 +340,12 @@ class _OfflineUnavailable extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhColors.textMuted),
+            style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: context.kc.textMuted),
           ),
           const SizedBox(height: KapdhSpace.s5),
           KapdhButton.outlined(
             label: 'Sinkronkan',
-            icon: Icons.sync,
+            icon: KapdhIcons.sync,
             busy: syncing,
             busyLabel: 'Menyinkronkan...',
             onPressed: syncing ? null : () => unawaited(onSync()),
@@ -365,12 +370,12 @@ class _SyncedAt extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.sync, size: 14, color: KapdhColors.textMuted),
+          Icon(KapdhIcons.sync, size: 14, color: context.kc.textMuted),
           const SizedBox(width: KapdhSpace.s1),
           Flexible(
             child: Text(
               text,
-              style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+              style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
             ),
           ),
         ],
@@ -386,15 +391,15 @@ class _LockedFeatures extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const items = [
-      (Icons.qr_code_2, 'QR KTA untuk verifikasi'),
-      (Icons.groups_outlined, 'Jejaring alumni dan chat'),
-      (Icons.event_outlined, 'Pendaftaran event dan tiket'),
+      (KapdhIcons.qrCode2, 'QR KTA untuk verifikasi'),
+      (KapdhIcons.groupsOutlined, 'Jejaring alumni dan chat'),
+      (KapdhIcons.eventOutlined, 'Pendaftaran event dan tiket'),
     ];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: 14),
       decoration: BoxDecoration(
-        color: KapdhColors.surface,
-        border: Border.all(color: KapdhColors.divider),
+        color: context.kc.surface,
+        border: Border.all(color: context.kc.divider),
         borderRadius: BorderRadius.circular(KapdhRadius.lg),
       ),
       child: Column(
@@ -411,7 +416,7 @@ class _LockedFeatures extends StatelessWidget {
             const SizedBox(height: KapdhSpace.s2),
             Row(
               children: [
-                Icon(icon, size: 18, color: KapdhColors.textMuted),
+                Icon(icon, size: 18, color: context.kc.textMuted),
                 const SizedBox(width: 10),
                 Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
               ],
@@ -421,4 +426,14 @@ class _LockedFeatures extends StatelessWidget {
       ),
     );
   }
+}
+
+/// KTA yang membuka pratinjau layar penuh landscape saat diketuk.
+class _TappableKta extends StatelessWidget {
+  const _TappableKta({required this.data});
+
+  final KtaCardData data;
+
+  @override
+  Widget build(BuildContext context) => KtaCard(data: data, onTap: () => unawaited(showKtaFullScreen(context, data)));
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/kapdh_tokens.dart';
 import '../../design/design_constants.dart';
+import '../../design/kapdh_icons.dart';
 
 /// Layar galat konfigurasi build (PRD 5.3, N-07): ditampilkan bila build rilis dibuat tanpa `KAPDH_ENV`
 /// staging/production atau dengan API non-https. Aplikasi sengaja berhenti di sini daripada mengirim data anggota ke
@@ -28,7 +29,7 @@ class ConfigErrorApp extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.settings_suggest_outlined, size: 48, color: KapdhColors.accent),
+                    const Icon(KapdhIcons.settingsSuggestOutlined, size: 48, color: KapdhColors.accent),
                     const SizedBox(height: KapdhSpace.s4),
                     const Text(
                       'Aplikasi belum dapat dijalankan',

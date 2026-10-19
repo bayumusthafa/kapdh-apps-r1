@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../app/theme/kapdh_palette.dart';
 import '../app/theme/kapdh_tokens.dart';
 import '../core/ui/back_navigation.dart';
+import 'kapdh_icons.dart';
 
 /// Pita status global (Offline, Pemeliharaan) yang dipasang aplikasi di atas Navigator (`MaterialApp.builder`).
 ///
@@ -36,14 +38,19 @@ class AppScaffold extends StatelessWidget {
     this.fallbackLocation = '/',
     this.actions,
     this.banner,
+    this.header,
     this.showGlobalBanner = true,
     this.bottomNavigationBar,
     this.floatingActionButton,
-    this.backgroundColor = KapdhColors.background,
+    this.backgroundColor,
   });
 
   final String title;
   final Widget body;
+
+  /// Bilah selebar layar di bawah app bar dan pita global, di atas isi (mis. TabBar). Tidak ikut dibatasi
+  /// [ContentWidth] di tablet.
+  final Widget? header;
 
   /// Tampilkan tombol kembali; bila tidak ada halaman sebelumnya, kembali ke [fallbackLocation].
   final bool showBack;
@@ -58,7 +65,9 @@ class AppScaffold extends StatelessWidget {
   final bool showGlobalBanner;
   final Widget? bottomNavigationBar;
   final Widget? floatingActionButton;
-  final Color backgroundColor;
+
+  /// Bawaan latar palet aktif (terang/gelap).
+  final Color? backgroundColor;
 
   /// Sama dengan tombol kembali sistem: `PopScope` halaman (mis. "Buang perubahan?" di Ubah Profil) dihormati,
   /// tidak dilewati seperti `GoRouter.pop`, sehingga isian formulir tidak hilang diam-diam (PRD 4.5). Bila tidak ada
@@ -82,7 +91,7 @@ class AppScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final effectiveBanner = banner ?? (showGlobalBanner ? AppBannerScope.of(context) : null);
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: backgroundColor ?? context.kc.background,
       appBar: AppBar(
         title: Semantics(header: true, child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis)),
         automaticallyImplyLeading: false,
@@ -91,19 +100,21 @@ class AppScaffold extends StatelessWidget {
                 tooltip: 'Kembali',
                 // Panah kiri di app bar (prototipe layar 6, 7; guideline hal. 6). Chevron hanya untuk baris judul di
                 // dalam lembar (prototipe layar 1, 3).
-                icon: const Icon(Icons.arrow_back, size: 24),
+                icon: const Icon(KapdhIcons.arrowBack, size: KapdhIconSize.lg),
                 onPressed: () => unawaited(_back(context)),
               )
             : null,
         actions: actions,
         bottom: const PreferredSize(preferredSize: Size.fromHeight(1), child: Divider(height: 1)),
       ),
-      body: effectiveBanner == null
-          ? body
+      body: effectiveBanner == null && header == null
+          ? ContentWidth(child: body)
           : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                effectiveBanner,
-                Expanded(child: body),
+                ?effectiveBanner,
+                ?header,
+                Expanded(child: ContentWidth(child: body)),
               ],
             ),
       bottomNavigationBar: bottomNavigationBar,
@@ -129,12 +140,45 @@ class SectionHeader extends StatelessWidget {
             header: true,
             child: Text(
               title,
-              style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w700), // [v2: dulu w600]
             ),
           ),
         ),
         if (actionLabel != null && onAction != null) TextButton(onPressed: onAction, child: Text(actionLabel!)),
       ],
+    );
+  }
+}
+
+/// Lebar isi maksimum di layar lebar/tablet (redesain v2, mockup `--content-max-w`): bila layar lebih lebar dari
+/// [maxWidth] + gutter 2 x 20, isi dibatasi [maxWidth] di tengah (mengisi tinggi bila induk membatasi tinggi,
+/// menyusut ke tinggi isi di dalam scroll view); latar, app bar dan navigasi tetap selebar layar. Di ponsel [child]
+/// dikembalikan apa adanya sehingga tata letak tidak berubah.
+class ContentWidth extends StatelessWidget {
+  const ContentWidth({super.key, required this.child, this.maxWidth = maxContentWidth});
+
+  /// Lebar baca maksimum isi layar (dp).
+  static const double maxContentWidth = 600;
+
+  final Widget child;
+  final double maxWidth;
+
+  /// Inset horizontal agar isi selebar [maxContentWidth] di tengah (untuk sliver/ListView yang tidak dapat dibungkus);
+  /// di ponsel sama dengan [base].
+  static double inset(BuildContext context, double base) {
+    final width = MediaQuery.sizeOf(context).width;
+    final centered = (width - maxContentWidth) / 2;
+    return centered > base ? centered : base;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    if (width <= maxWidth + 2 * KapdhSpace.s5) return child;
+    return Align(
+      alignment: Alignment.topCenter,
+      heightFactor: 1,
+      child: SizedBox(width: maxWidth, child: child),
     );
   }
 }

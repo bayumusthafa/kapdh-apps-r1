@@ -7,6 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mockup KAPDH</title>
   <meta name="description" content="Indeks mockup HTML+CSS statis untuk setiap layar aplikasi Flutter KAPDH.">
+  <script src="js/theme.js"></script>
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/components.css">
 </head>
@@ -19,16 +20,16 @@
     </nav>
     <h1 class="page-header__title">Mockup HTML aplikasi KAPDH</h1>
     <dl class="page-header__meta">
-      <dt>Isi</dt><dd>51 halaman, 523 frame ponsel 360 x 800, 6 grup</dd>
-      <dt>Cakupan</dt><dd>47 dari 47 layar Flutter (46 <code>*_screen.dart</code> + <code>AppShell</code>), semuanya punya halaman</dd>
+      <dt>Isi</dt><dd>52 halaman, 526 frame ponsel 360 x 800, 6 grup</dd>
+      <dt>Cakupan</dt><dd>48 dari 48 layar Flutter (47 <code>*_screen.dart</code> + <code>AppShell</code>), semuanya punya halaman</dd>
       <dt>Sumber</dt><dd><code>kapdh-mobile/lib</code> (Flutter 3.47.2, <code>KapdhTheme.light()</code>)</dd>
     </dl>
-    <p class="page-header__note">Tiruan statis tampilan Flutter saat ini sebagai bahan iterasi desain. Setiap halaman berisi satu layar dengan semua keadaan pentingnya (utama, gulir penuh, kosong, galat, memuat, terkunci, dialog, lembar bawah) sebagai frame berlabel. Teks disalin dari Dart; data contoh fiktif. Buka lewat Chrome/Edge atau <code>node tools/serve.mjs</code>.</p>
+    <p class="page-header__note">Tiruan statis tampilan Flutter saat ini sebagai bahan iterasi desain. Setiap halaman berisi satu layar dengan semua keadaan pentingnya (utama, gulir penuh, kosong, galat, memuat, terkunci, dialog, lembar bawah) sebagai frame berlabel. Teks disalin dari Dart; data contoh fiktif. Buka lewat Chrome/Edge atau <code>node tools/serve.mjs</code>. Tombol di kanan atas mengganti tema gelap, teks 200 % dan tablet untuk semua layar (usulan v2).</p>
   </header>
 
   <main class="doc">
     <nav class="index-toc" aria-label="Grup layar">
-      <a href="#g-auth">Masuk, pendaftaran, sistem dan status akun <span class="index-toc__count">14</span></a>
+      <a href="#g-auth">Masuk, pendaftaran, sistem dan status akun <span class="index-toc__count">15</span></a>
       <a href="#g-beranda">Beranda, berita, notifikasi, legal dan navigasi bawah <span class="index-toc__count">7</span></a>
       <a href="#g-event">Event dan tiket <span class="index-toc__count">5</span></a>
       <a href="#g-kta">KTA dan pembayaran <span class="index-toc__count">5</span></a>
@@ -39,7 +40,7 @@
 
     <section class="doc-section" id="g-auth" aria-labelledby="h-auth">
       <h2 id="h-auth">Masuk, pendaftaran, sistem dan status akun</h2>
-      <p>Folder <code>auth/</code>, gaya grup <code>css/pages/auth.css</code>. Dart: <code>lib/features/auth, system, onboarding, status</code>. 14 halaman, 110 frame.</p>
+      <p>Folder <code>auth/</code>, gaya grup <code>css/pages/auth.css</code>. Dart: <code>lib/features/auth, system, onboarding, status</code>. 15 halaman, 111 frame.</p>
       <div class="index-list">
           <article class="index-card">
             <h3 class="index-card__title"><a href="auth/login.html">Masuk</a></h3>
@@ -289,6 +290,17 @@
               <li>Pendaftaran belum diverifikasi</li>
               <li>Dengan sesi lama</li>
               <li>Nomor disalin (snackbar)</li>
+            </ol>
+          </article>
+          <article class="index-card">
+            <h3 class="index-card__title"><a href="auth/welcome.html">Welcome</a></h3>
+            <p class="index-card__file"><code>auth/welcome.html</code> · 1 frame</p>
+            <dl class="index-card__meta">
+              <dt>Dart</dt><dd><code>lib/features/system/welcome_screen.dart</code> (WelcomeScreen); penanda <code>lib/core/welcome/welcome_gate.dart</code> (WelcomeController, WelcomeStore)</dd>
+              <dt>Rute</dt><dd><code>/welcome</code></dd>
+            </dl>
+            <ol class="index-card__states" aria-label="Keadaan yang ditampilkan">
+              <li>Utama</li>
             </ol>
           </article>
       </div>
@@ -580,11 +592,11 @@
 
     <section class="doc-section" id="g-kta" aria-labelledby="h-kta">
       <h2 id="h-kta">KTA dan pembayaran</h2>
-      <p>Folder <code>kta/</code>, gaya grup <code>css/pages/kta.css</code>. Dart: <code>lib/features/kta, payments</code>. 5 halaman, 63 frame.</p>
+      <p>Folder <code>kta/</code>, gaya grup <code>css/pages/kta.css</code>. Dart: <code>lib/features/kta, payments</code>. 5 halaman, 64 frame.</p>
       <div class="index-list">
           <article class="index-card">
             <h3 class="index-card__title"><a href="kta/kta.html">Kartu Tanda Anggota</a></h3>
-            <p class="index-card__file"><code>kta/kta.html</code> · 11 frame</p>
+            <p class="index-card__file"><code>kta/kta.html</code> · 12 frame</p>
             <dl class="index-card__meta">
               <dt>Dart</dt><dd><code>lib/features/kta/kta_screen.dart</code> (KtaScreen), <code>kta_presentation.dart</code> (ktaStatusOf, ktaOfflineMissOf), <code>lib/design/kta_card.dart</code> (KtaCard, StatusActionCard)</dd>
               <dt>Rute</dt><dd><code>/kta</code> (tab KTA di AppShell)</dd>
@@ -601,6 +613,7 @@
               <li>Offline: KTA belum tersimpan di perangkat</li>
               <li>Galat dari server</li>
               <li>Memuat</li>
+              <li>Pratinjau layar penuh (landscape, proporsi KTP)</li>
             </ol>
           </article>
           <article class="index-card">
@@ -935,7 +948,7 @@
 
     <section class="doc-section" id="g-akun" aria-labelledby="h-akun">
       <h2 id="h-akun">Akun dan pengaturan</h2>
-      <p>Folder <code>akun/</code>, gaya grup <code>css/pages/akun.css</code>. Dart: <code>lib/features/account</code>. 9 halaman, 82 frame.</p>
+      <p>Folder <code>akun/</code>, gaya grup <code>css/pages/akun.css</code>. Dart: <code>lib/features/account</code>. 9 halaman, 83 frame.</p>
       <div class="index-list">
           <article class="index-card">
             <h3 class="index-card__title"><a href="akun/account.html">Akun</a></h3>
@@ -957,7 +970,7 @@
           </article>
           <article class="index-card">
             <h3 class="index-card__title"><a href="akun/profile-edit.html">Ubah Profil</a></h3>
-            <p class="index-card__file"><code>akun/profile-edit.html</code> · 16 frame</p>
+            <p class="index-card__file"><code>akun/profile-edit.html</code> · 17 frame</p>
             <dl class="index-card__meta">
               <dt>Dart</dt><dd><code>lib/features/account/profile_edit_screen.dart</code> (ProfileEditScreen, _ReadOnlyRow, _PickerField) + <code>widgets/master_picker.dart</code> (lembar profesi/keahlian), <code>widgets/profile_avatar.dart</code>, <code>avatar_image.dart</code></dd>
               <dt>Rute</dt><dd><code>/account/profile</code> (di atas cangkang, tanpa navigasi bawah)</dd>
@@ -979,6 +992,7 @@
               <li>Dialog buang perubahan (kembali)</li>
               <li>Memuat</li>
               <li>Galat memuat</li>
+              <li>Menu platform media sosial</li>
             </ol>
           </article>
           <article class="index-card">
@@ -1343,6 +1357,11 @@
               <td><code>lib/features/system/update_required_screen.dart</code></td>
               <td><a href="auth/update-required.html">Wajib Update</a> <code>auth/update-required.html</code></td>
               <td><code>/update-required</code></td>
+            </tr>
+            <tr>
+              <td><code>lib/features/system/welcome_screen.dart</code></td>
+              <td><a href="auth/welcome.html">Welcome</a> <code>auth/welcome.html</code></td>
+              <td><code>/welcome</code></td>
             </tr>
             <tr>
               <td><code>lib/features/tickets/ticket_detail_screen.dart</code></td>

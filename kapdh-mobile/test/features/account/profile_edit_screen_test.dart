@@ -195,7 +195,7 @@ void main() {
     expect(eleventh.onChanged, isNull);
     await tester.tap(find.byKey(const ValueKey('master-done')));
     await settle(tester);
-    expect(find.text('10 keahlian dipilih'), findsOneWidget);
+    expect(find.text('10 dari 10 dipilih'), findsOneWidget);
     await save(tester);
     expect(bodyOf(patches(app).single), {
       'skill_ids': [for (var i = 1; i <= 10; i++) 's-$i'],

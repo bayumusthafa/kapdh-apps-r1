@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
@@ -228,8 +229,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       case _ResetOutcome.saved:
         return _scaffold(
           AuthResultPanel(
-            icon: Icons.check_circle,
-            iconColor: KapdhColors.success,
+            icon: KapdhIcons.checkCircle,
+            iconColor: context.kc.success,
             title: 'Password berhasil diganti',
             message:
                 'Password baru sudah tersimpan dan semua perangkat yang masuk ke akun ini telah dikeluarkan. Masuk '
@@ -242,8 +243,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       case _ResetOutcome.maybeSaved:
         return _scaffold(
           AuthResultPanel(
-            icon: Icons.help_outline,
-            iconColor: KapdhColors.warning,
+            icon: KapdhIcons.helpOutline,
+            iconColor: context.kc.warning,
             title: 'Password baru mungkin sudah tersimpan',
             message:
                 'Koneksi sempat terputus saat menyimpan, dan tautan pemulihan ini sudah tidak berlaku lagi. Coba '
@@ -271,8 +272,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       case _ResetOutcome.tokenGone:
         return _scaffold(
           AuthResultPanel(
-            icon: Icons.timer_off_outlined,
-            iconColor: KapdhColors.danger,
+            icon: KapdhIcons.timerOffOutlined,
+            iconColor: context.kc.danger,
             title: 'Sesi pemulihan berakhir',
             message:
                 'Izin membuat password baru sudah tidak berlaku (kedaluwarsa atau sudah dipakai). Ulangi lupa password '
@@ -303,16 +304,16 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           ),
         ),
         const SizedBox(height: KapdhSpace.s2),
-        const Text(
+        Text(
           'Setelah disimpan, semua perangkat yang masuk ke akun ini akan dikeluarkan dan Anda masuk kembali dengan '
           'password baru.',
-          style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhColors.textMuted),
+          style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: context.kc.textMuted),
         ),
         if (remaining != null && !timedOut) ...[
           const SizedBox(height: KapdhSpace.s2),
           Text(
             'Selesaikan dalam ${formatCountdown(remaining)}',
-            style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+            style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
           ),
         ],
         const SizedBox(height: KapdhSpace.s5),
@@ -331,7 +332,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                 autofillHints: const [AutofillHints.newPassword],
                 // Kemajuan menuju minimum 8 byte, merah selama belum terpenuhi (guideline hal. 5 "0/8").
                 trailingText: counter.text,
-                trailingTextColor: counter.problem ? KapdhColors.danger : KapdhColors.textMuted,
+                trailingTextColor: counter.problem ? context.kc.danger : context.kc.textMuted,
                 errorText: _fieldErrors['new_password']?.join(' '),
                 onChanged: (_) => setState(() {}),
                 validator: (v) => checkPassword(v ?? '').valid ? null : 'Belum memenuhi aturan password',

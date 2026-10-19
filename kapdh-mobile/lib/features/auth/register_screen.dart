@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
@@ -255,7 +256,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 label: 'Nama Lengkap',
                 controller: _name,
                 hint: 'Masukkan nama lengkap',
-                prefixIcon: Icons.person_outline,
+                prefixIcon: KapdhIcons.personOutline,
                 textCapitalization: TextCapitalization.words,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.name],
@@ -282,7 +283,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 label: 'Email',
                 controller: _email,
                 hint: 'Masukkan email',
-                prefixIcon: Icons.mail_outline,
+                prefixIcon: KapdhIcons.mailOutline,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.email],
@@ -301,7 +302,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 autofillHints: const [AutofillHints.newPassword],
                 // Kemajuan menuju minimum 8 byte, merah selama belum terpenuhi (guideline hal. 5 "0/8").
                 trailingText: counter.text,
-                trailingTextColor: counter.problem ? KapdhColors.danger : KapdhColors.textMuted,
+                trailingTextColor: counter.problem ? context.kc.danger : context.kc.textMuted,
                 errorText: _fieldError('password'),
                 onChanged: (_) => setState(() {}),
                 validator: (v) => checkPassword(v ?? '').valid ? null : 'Belum memenuhi aturan password',
@@ -385,7 +386,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 alignment: WrapAlignment.center,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  const Text('Sudah punya akun?', style: TextStyle(fontSize: 13, color: KapdhColors.primary)),
+                  Text('Sudah punya akun?', style: TextStyle(fontSize: 13, color: context.kc.primary)),
                   KapdhLinkButton(label: 'Masuk', onPressed: () => context.go(AppRoutes.login)),
                 ],
               ),
@@ -438,16 +439,12 @@ class _AcademicYearsCard extends StatelessWidget {
     Widget cell(int year, String label) => Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: KapdhSpace.s3, horizontal: KapdhSpace.s1),
-        decoration: BoxDecoration(color: KapdhColors.surface, borderRadius: BorderRadius.circular(KapdhRadius.md)),
+        decoration: BoxDecoration(color: context.kc.surface, borderRadius: BorderRadius.circular(KapdhRadius.md)),
         child: Column(
           children: [
             Text(
               '$year',
-              style: const TextStyle(
-                fontSize: KapdhFontSize.h3,
-                fontWeight: FontWeight.w600,
-                color: KapdhColors.primary,
-              ),
+              style: TextStyle(fontSize: KapdhFontSize.h3, fontWeight: FontWeight.w600, color: context.kc.primary),
             ),
             Text(
               label,
@@ -474,7 +471,9 @@ class _AcademicYearsCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(KapdhSpace.s3),
             decoration: BoxDecoration(
-              gradient: KapdhGradients.buttonPrimary,
+              // Mode gelap memakai gradasi hijau terang yang sama dengan tombol primer (mockup
+              // .auth-years: var(--gradient-button-primary)) supaya sel gelap tetap terpisah dari bingkai.
+              gradient: context.kc.isDark ? kapdhDarkPrimaryGradient : KapdhGradients.buttonPrimary,
               borderRadius: BorderRadius.circular(KapdhRadius.lg),
             ),
             child: Row(
@@ -553,7 +552,7 @@ class _ConsentField extends StatelessWidget {
             child: Text(
               '${value ? 'Versi yang disetujui' : 'Versi berlaku'}: Kebijakan Privasi versi '
               '${versions!.privacyVersion} · Ketentuan versi ${versions.termsVersion}',
-              style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+              style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
             ),
           ),
         if (consent.hasError && !consent.isLoading)
@@ -573,7 +572,7 @@ class _ConsentField extends StatelessWidget {
             padding: const EdgeInsets.only(top: KapdhSpace.s1),
             child: Text(
               errorText!,
-              style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.danger),
+              style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.danger),
             ),
           ),
       ],

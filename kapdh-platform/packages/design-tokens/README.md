@@ -7,13 +7,13 @@ Token desain KAPDH Apps yang diturunkan dari **Guidelines KAPDH Platform v1.0** 
 | File                            | Fungsi                                                                                    |
 | ------------------------------- | ----------------------------------------------------------------------------------------- |
 | `tokens.json`                   | Sumber tunggal: warna, gradien, font, ukuran, spasi, radius, bayangan, status keanggotaan |
-| `build.py`                      | Pembangkit; jalankan setiap kali `tokens.json` berubah                                    |
+| `build.mjs`                     | Pembangkit; jalankan setiap kali `tokens.json` berubah                                    |
 | `css/kapdh-theme.css`           | Hasil: blok `@theme` Tailwind 4, badge status, fokus keyboard                             |
 | `flutter/lib/kapdh_tokens.dart` | Hasil: `KapdhColors`, `KapdhSpace`, `KapdhRadius`, `KapdhMembershipStatus`, dll.          |
 | `flutter/lib/kapdh_theme.dart`  | Ditulis manual: `ThemeData` Material 3 dan widget `KapdhStatusBadge`                      |
 
 ```bash
-python3 build.py
+node build.mjs
 ```
 
 ## Pemakaian

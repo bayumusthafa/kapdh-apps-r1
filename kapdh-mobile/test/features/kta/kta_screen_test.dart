@@ -174,6 +174,12 @@ void main() {
       expect(find.bySemanticsLabel('Status: KTA Aktif'), findsOneWidget);
       expect(find.text('Seluruh fitur alumni aktif. Perpanjangan dibuka mulai 12 Sep 2027.'), findsOneWidget);
       expect(tester.widget<KapdhButton>(buttonLabelled('Perpanjang')).onPressed, isNull);
+      // Tips kecerahan di bawah kartu status; kartu KTA v2 lebih tinggi sehingga perlu digulir.
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('kta-brightness-tip')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.byKey(const ValueKey('kta-brightness-tip')), findsOneWidget);
       expect(find.textContaining('Naikkan kecerahan layar'), findsOneWidget);
       // Bukan tampilan cache: tidak ada pita Offline.

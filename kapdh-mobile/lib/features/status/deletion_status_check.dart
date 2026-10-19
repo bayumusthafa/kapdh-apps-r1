@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/api/error_presenter.dart';
@@ -188,8 +189,8 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
     return Container(
       padding: const EdgeInsets.all(KapdhSpace.s4),
       decoration: BoxDecoration(
-        color: KapdhColors.surface,
-        border: Border.all(color: KapdhColors.divider),
+        color: context.kc.surface,
+        border: Border.all(color: context.kc.divider),
         borderRadius: BorderRadius.circular(KapdhRadius.lg),
       ),
       child: Column(
@@ -203,9 +204,9 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
             ),
           ),
           const SizedBox(height: KapdhSpace.s1),
-          const Text(
+          Text(
             'Kami kirim kode verifikasi ke email akun. Kode hanya membuka status penghapusan, bukan akses akun.',
-            style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.5, color: KapdhColors.textMuted),
+            style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.5, color: context.kc.textMuted),
           ),
           const SizedBox(height: KapdhSpace.s3),
           if (challenge == null) ...[
@@ -214,7 +215,7 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
               label: 'Email akun',
               controller: _email,
               hint: 'nama@email.com',
-              prefixIcon: Icons.mail_outline,
+              prefixIcon: KapdhIcons.mailOutline,
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],
               errorText: _emailError,
@@ -258,7 +259,7 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
                     : 'Sisa percobaan $_attemptsLeft dari ${challenge.maxAttempts ?? otpMaxAttempts}',
                 style: TextStyle(
                   fontSize: KapdhFontSize.caption,
-                  color: exhausted ? KapdhColors.danger : KapdhColors.textMuted,
+                  color: exhausted ? context.kc.danger : context.kc.textMuted,
                 ),
               ),
             ),

@@ -12,9 +12,13 @@ import 'package:kapdh_mobile/core/config/api_config.dart';
 import 'package:kapdh_mobile/core/config/app_info.dart';
 import 'package:kapdh_mobile/core/storage/secure_store.dart';
 import 'package:kapdh_mobile/core/storage/token_store.dart';
+import 'package:kapdh_mobile/core/welcome/welcome_gate.dart';
 
 /// Identitas build uji: Android 1.2.0.
 const testAppInfo = AppInfo(version: '1.2.0', buildNumber: '7', platform: DevicePlatform.android);
+
+/// Penanda build uji untuk Welcome (`versi+build`).
+const testBuild = '1.2.0+7';
 
 /// API uji (pengembangan, http diizinkan).
 final testApiConfig = ApiConfig(environment: AppEnvironment.development, baseUri: Uri.parse('http://api.test/api/v1'));
@@ -124,6 +128,7 @@ ProviderContainer makeContainer({
   HttpClientAdapter? adapter,
   SecureStore? store,
   TestClock? clock,
+  WelcomeStore? welcome,
   List<Override> overrides = const [],
 }) {
   final testClock = clock ?? TestClock();
@@ -135,6 +140,8 @@ ProviderContainer makeContainer({
       secureStoreProvider.overrideWithValue(store ?? MemorySecureStore()),
       clockProvider.overrideWithValue(testClock.call),
       httpClientAdapterProvider.overrideWithValue(adapter),
+      // Bawaan: Welcome sudah dilihat untuk build uji, sehingga anonim tetap mendarat di /login seperti sebelumnya.
+      welcomeStoreProvider.overrideWithValue(welcome ?? MemoryWelcomeStore(seenBuild: testBuild)),
       ...overrides,
     ],
   );

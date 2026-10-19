@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../../app/theme/kapdh_palette.dart';
 import '../../../app/theme/kapdh_tokens.dart';
 import 'alumni_avatar.dart';
 import 'tag_chip.dart';
@@ -31,60 +32,63 @@ class DirectoryMemberCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final subtitle = professionCityLine(member.profession?.label, member.city);
     final education = educationLine(member.lastEducationInstitution, member.lastEducationCity);
-    return Card(
-      margin: EdgeInsets.zero,
-      color: KapdhColors.surface,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(KapdhRadius.md),
-        side: const BorderSide(color: KapdhColors.divider),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(KapdhRadius.md),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(KapdhSpace.s3),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AlumniAvatar(name: member.fullName, url: member.avatarUrl, size: 48),
-              const SizedBox(width: KapdhSpace.s3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      member.fullName,
-                      style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
-                    ),
-                    if (subtitle.isNotEmpty)
+    // Kartu v2 (.card card--md): garis rambut cardBorder + bayangan sm, sama dengan TappableCard/SummaryCard.
+    final radius = BorderRadius.circular(KapdhRadius.md);
+    return DecoratedBox(
+      decoration: BoxDecoration(borderRadius: radius, boxShadow: context.kc.shadowSm),
+      child: Material(
+        color: context.kc.surface,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: radius,
+          side: BorderSide(color: context.kc.cardBorder),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(KapdhSpace.s3),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AlumniAvatar(name: member.fullName, url: member.avatarUrl, size: 48),
+                const SizedBox(width: KapdhSpace.s3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        subtitle,
-                        style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                        member.fullName,
+                        style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
                       ),
-                    if (education.isNotEmpty)
-                      Text(
-                        education,
-                        style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
-                      ),
-                    if (member.skills.isNotEmpty) ...[
+                      if (subtitle.isNotEmpty)
+                        Text(
+                          subtitle,
+                          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
+                        ),
+                      if (education.isNotEmpty)
+                        Text(
+                          education,
+                          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
+                        ),
+                      if (member.skills.isNotEmpty) ...[
+                        const SizedBox(height: KapdhSpace.s2),
+                        Wrap(
+                          spacing: KapdhSpace.s1,
+                          runSpacing: KapdhSpace.s1,
+                          children: [for (final skill in member.skills) TagChip(label: skill.label)],
+                        ),
+                      ],
                       const SizedBox(height: KapdhSpace.s2),
-                      Wrap(
-                        spacing: KapdhSpace.s1,
-                        runSpacing: KapdhSpace.s1,
-                        children: [for (final skill in member.skills) TagChip(label: skill.label)],
+                      Text(
+                        cohortTag(member.cohortCode),
+                        style: TextStyle(fontSize: KapdhFontSize.overline, color: context.kc.textMuted),
                       ),
                     ],
-                    const SizedBox(height: KapdhSpace.s2),
-                    Text(
-                      cohortTag(member.cohortCode),
-                      style: const TextStyle(fontSize: KapdhFontSize.overline, color: KapdhColors.textMuted),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              ?trailing,
-            ],
+                ?trailing,
+              ],
+            ),
           ),
         ),
       ),

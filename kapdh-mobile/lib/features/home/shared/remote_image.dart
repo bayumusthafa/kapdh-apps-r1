@@ -2,7 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme/kapdh_tokens.dart';
+import '../../../app/theme/kapdh_palette.dart';
+import '../../../design/kapdh_icons.dart';
 
 /// Pembuat [ImageProvider] untuk gambar PUBLIK dari server (cover berita/event, banner, gambar isi berita).
 typedef RemoteImageProviderFactory = ImageProvider<Object> Function(String url);
@@ -40,7 +41,7 @@ class RemoteImage extends ConsumerWidget {
     this.height,
     this.fit = BoxFit.cover,
     this.borderRadius = BorderRadius.zero,
-    this.placeholderIcon = Icons.image_outlined,
+    this.placeholderIcon = KapdhIcons.imageOutlined,
   });
 
   final String? url;
@@ -96,9 +97,9 @@ class _Placeholder extends StatelessWidget {
     return Container(
       width: width,
       height: height,
-      color: KapdhColors.green50,
+      color: context.kc.tint,
       alignment: Alignment.center,
-      child: Icon(icon, color: KapdhColors.green600, size: 28),
+      child: Icon(icon, color: context.kc.iconAccent, size: 28),
     );
   }
 }
