@@ -176,7 +176,7 @@ Map<String, Object?> meJson({
   DateTime? expiresAt,
 }) => {
   'user_id': userId,
-  'email': 'ahmad.islam@email.com',
+  'email': 'ahmad.islam@contoh.test',
   'account_status': _accountStatusFor(status),
   'effective_status': status,
   // Nomor anggota dialokasikan saat OTP pendaftaran terverifikasi (AC F01-2).
@@ -226,7 +226,7 @@ Map<String, Object?> otpChallengeJson({
   DateTime? expiresAt,
   DateTime? resendAvailableAt,
   int attemptsLeft = 5,
-  String emailMasked = 'ahmad.islam@email.com',
+  String emailMasked = 'ahmad.islam@contoh.test',
 }) => {
   'challenge_id': id,
   'purpose': purpose,

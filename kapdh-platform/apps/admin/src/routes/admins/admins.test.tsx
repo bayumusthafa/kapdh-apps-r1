@@ -44,23 +44,23 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     await openPage(user, "/admins", "Manajemen Admin");
     expect(await screen.findByText("2 aktif, 1 diundang, 2 nonaktif")).toBeInTheDocument();
     const table = screen.getByRole("table", { name: "Daftar admin" });
-    const ahmad = within(table).getByRole("link", { name: "Ahmad Zulhadi" }).closest("tr")!;
-    const chips = within(ahmad).getByRole("list", { name: "Peran dan akses" });
+    const hasan = within(table).getByRole("link", { name: "Hasan Basri" }).closest("tr")!;
+    const chips = within(hasan).getByRole("list", { name: "Peran dan akses" });
     expect(
       within(chips)
         .getAllByRole("listitem")
         .map((li) => li.textContent),
     ).toEqual(["USER", "Admin", "Pembayaran", "Konten", "Event"]);
-    expect(within(ahmad).getByText("Aktif")).toBeInTheDocument();
+    expect(within(hasan).getByText("Aktif")).toBeInTheDocument();
     const rina = within(table).getByRole("link", { name: "Rina Kartika" }).closest("tr")!;
     expect(within(rina).getByText("Diundang")).toBeInTheDocument();
     expect(within(rina).getByText(/Undangan s\.d\./)).toBeInTheDocument();
-    const bayu = within(table).getByRole("link", { name: "Bayu Musthafa" }).closest("tr")!;
-    expect(within(bayu).getByText("Semua akses")).toBeInTheDocument();
-    expect(within(bayu).getByText("Akun Anda")).toBeInTheDocument();
-    expect(within(table).getByRole("link", { name: "Kelola Ahmad Zulhadi" })).toHaveAttribute(
+    const fikri = within(table).getByRole("link", { name: "Fikri" }).closest("tr")!;
+    expect(within(fikri).getByText("Semua akses")).toBeInTheDocument();
+    expect(within(fikri).getByText("Akun Anda")).toBeInTheDocument();
+    expect(within(table).getByRole("link", { name: "Kelola Hasan Basri" })).toHaveAttribute(
       "href",
-      `/admins/${MOCK_ADMIN_IDS.ahmad}`,
+      `/admins/${MOCK_ADMIN_IDS.hasan}`,
     );
   });
 
@@ -68,7 +68,7 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     const user = userEvent.setup();
     await openPage(user, "/admins", "Manajemen Admin");
     await screen.findByText("Menampilkan 5 dari 5");
-    await user.type(screen.getByRole("searchbox", { name: "Cari admin" }), "ahmad");
+    await user.type(screen.getByRole("searchbox", { name: "Cari admin" }), "hasan");
     await screen.findByText("Menampilkan 1 dari 1");
     await user.clear(screen.getByRole("searchbox", { name: "Cari admin" }));
     await screen.findByText("Menampilkan 5 dari 5");
@@ -84,13 +84,13 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     await user.click(screen.getByRole("button", { name: "Delegasi User jadi Admin" }));
     const dialog = await screen.findByRole("dialog", { name: "Delegasi User jadi Admin" });
     const list = await within(dialog).findByRole("list", { name: "Kandidat admin" });
-    const bayu = within(list).getByText("Bayu Musthafa Arief").closest("li")!;
-    expect(within(bayu).queryByRole("button")).toBeNull();
-    expect(within(bayu).getByText(/Sudah tertaut ke identitas admin/)).toBeInTheDocument();
+    const fikri = within(list).getByText("Fikri Ramadhan").closest("li")!;
+    expect(within(fikri).queryByRole("button")).toBeNull();
+    expect(within(fikri).getByText(/Sudah tertaut ke identitas admin/)).toBeInTheDocument();
     const sari = within(list).getByText("Sari Dewi").closest("li")!;
     expect(within(sari).getByText(/Sedang dibatasi pengurus/)).toBeInTheDocument();
 
-    await user.click(within(list).getByRole("button", { name: "Jadikan Admin ridwan" }));
+    await user.click(within(list).getByRole("button", { name: "Jadikan Admin ridho" }));
     await user.click(await within(dialog).findByLabelText(/^Putuskan pembayaran/));
     expect(within(dialog).getByLabelText(/^Lihat pembayaran/)).toBeChecked();
     expect(within(dialog).getByText(/Lihat pembayaran ikut dipilih/)).toBeInTheDocument();
@@ -99,10 +99,10 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     await user.click(within(dialog).getByRole("button", { name: "Kirim undangan" }));
     expect(await within(dialog).findByText("Undangan dijadwalkan")).toBeInTheDocument();
     expectNoReauthDialog();
-    expect(within(dialog).getByText("info.kapdh@gmail.com")).toBeInTheDocument();
+    expect(within(dialog).getByText("ridho.pratama@kapdh.test")).toBeInTheDocument();
     const post = writes().find((r) => r.method === "POST" && r.path === "/admin/admins");
     expect(post?.body).toEqual({
-      alumni_user_id: MOCK_CANDIDATE_IDS.ridwan,
+      alumni_user_id: MOCK_CANDIDATE_IDS.ridho,
       role: "admin",
       permissions: ["payments.read", "payments.decide"],
     });
@@ -110,7 +110,7 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     expect(post?.idempotencyKey).toBeTruthy();
     expect(mockAdmins.count()).toBe(6);
     await user.click(within(dialog).getByRole("link", { name: "Lihat detail admin" }));
-    expect(await screen.findByRole("heading", { level: 1, name: "ridwan" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "ridho" })).toBeInTheDocument();
   });
 
   it("F-16: undangan lewat email wajib email dan nama; email bentrok ditolak 409 pada isian email", async () => {
@@ -134,7 +134,7 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
 
   it("AC F16-1, ADR-025: ubah izin admin — ringkasan perubahan dikonfirmasi, If-Match, versi izin naik, tanpa reautentikasi", async () => {
     const user = userEvent.setup();
-    await openDetail(user, MOCK_ADMIN_IDS.ahmad, "Ahmad Zulhadi");
+    await openDetail(user, MOCK_ADMIN_IDS.hasan, "Hasan Basri");
     const card = await section("Peran & izin");
     await user.click(await within(card).findByLabelText(/^Kelola konten/));
     await user.click(within(card).getByRole("button", { name: "Simpan perubahan" }));
@@ -143,17 +143,17 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
       "Izin dicabut: Kelola konten",
     );
     await user.click(within(confirm).getByRole("button", { name: "Simpan perubahan" }));
-    expect(await screen.findByText(/Perubahan Ahmad Zulhadi tersimpan \(versi izin 2\)/)).toBeInTheDocument();
+    expect(await screen.findByText(/Perubahan Hasan Basri tersimpan \(versi izin 2\)/)).toBeInTheDocument();
     expectNoReauthDialog();
     const patch = writes().find((r) => r.method === "PATCH");
     expect(patch).toMatchObject({ ifMatch: "1", reauth: false });
     expect(patch?.body).toEqual({ permissions: ["payments.read", "payments.decide", "events.manage"] });
-    expect(mockAdmins.get(MOCK_ADMIN_IDS.ahmad)?.permissions).not.toContain("content.manage");
+    expect(mockAdmins.get(MOCK_ADMIN_IDS.hasan)?.permissions).not.toContain("content.manage");
   });
 
   it("AC F16-2: Super Admin aktif terakhir tidak dapat diturunkan; dialog konfirmasi tertutup, galat tampil dan difokuskan pada isian peran", async () => {
     const user = userEvent.setup();
-    await openDetail(user, MOCK_ADMIN_IDS.bayu, "Bayu Musthafa");
+    await openDetail(user, MOCK_ADMIN_IDS.fikri, "Fikri");
     const card = await section("Peran & izin");
     expect(within(card).getByRole("note")).toHaveTextContent("Ini akun Anda sendiri");
     await user.click(within(card).getByLabelText(/^Admin/));
@@ -165,26 +165,26 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     await waitFor(() => expect(roleGroup).toContainElement(document.activeElement as HTMLElement));
     expect(document.activeElement).toHaveAttribute("type", "radio");
-    expect(mockAdmins.get(MOCK_ADMIN_IDS.bayu)?.role).toBe("super_admin");
+    expect(mockAdmins.get(MOCK_ADMIN_IDS.fikri)?.role).toBe("super_admin");
     expect(writes().filter((r) => r.method === "PATCH")).toHaveLength(1);
   });
 
   it("AC F15-4: data admin diubah pengurus lain → 409, tampilan dimuat ulang tanpa menimpa", async () => {
     const user = userEvent.setup();
-    await openDetail(user, MOCK_ADMIN_IDS.ahmad, "Ahmad Zulhadi");
+    await openDetail(user, MOCK_ADMIN_IDS.hasan, "Hasan Basri");
     const card = await section("Peran & izin");
-    mockAdmins.changeElsewhere(MOCK_ADMIN_IDS.ahmad, { display_name: "Ahmad Z." });
+    mockAdmins.changeElsewhere(MOCK_ADMIN_IDS.hasan, { display_name: "Hasan B." });
     await user.click(await within(card).findByLabelText(/^Check-in tiket/));
     await saveAccess(user);
     expect(await screen.findByText(/sudah diubah pengurus lain/)).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { level: 1, name: "Ahmad Z." })).toBeInTheDocument();
-    expect(mockAdmins.get(MOCK_ADMIN_IDS.ahmad)?.permissions).not.toContain("events.checkin");
+    expect(await screen.findByRole("heading", { level: 1, name: "Hasan B." })).toBeInTheDocument();
+    expect(mockAdmins.get(MOCK_ADMIN_IDS.hasan)?.permissions).not.toContain("events.checkin");
     expect(writes().filter((r) => r.method === "PATCH")).toHaveLength(1);
   });
 
   it("F-16: nonaktifkan admin wajib alasan dan pernyataan; setelahnya tersedia aktifkan kembali dan pemulihan", async () => {
     const user = userEvent.setup();
-    await openDetail(user, MOCK_ADMIN_IDS.ahmad, "Ahmad Zulhadi");
+    await openDetail(user, MOCK_ADMIN_IDS.hasan, "Hasan Basri");
     const status = await section("Status & pemulihan");
     await user.click(within(status).getByRole("button", { name: "Nonaktifkan admin" }));
     const dialog = await screen.findByRole("alertdialog", { name: "Nonaktifkan admin?" });
@@ -195,7 +195,7 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     await user.type(reason, "Masa jabatan pengurus berakhir");
     await user.click(within(dialog).getByLabelText(/Saya memahami admin ini langsung keluar/));
     await user.click(within(dialog).getByRole("button", { name: "Nonaktifkan" }));
-    expect(await screen.findByText(/Ahmad Zulhadi dinonaktifkan; semua sesinya dicabut/)).toBeInTheDocument();
+    expect(await screen.findByText(/Hasan Basri dinonaktifkan; semua sesinya dicabut/)).toBeInTheDocument();
     expectNoReauthDialog();
     expect(within(status).getByRole("button", { name: "Aktifkan kembali" })).toBeInTheDocument();
     expect(within(status).getByRole("button", { name: /Pulihkan akun/ })).toBeInTheDocument();
@@ -205,7 +205,7 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
 
   it("F-16 pemulihan (tindakan kredensial, ADR-025): reautentikasi tetap diminta; sandi & autentikator direset lewat undangan ulang, sesi dicabut", async () => {
     const user = userEvent.setup();
-    await openDetail(user, MOCK_ADMIN_IDS.ahmad, "Ahmad Zulhadi");
+    await openDetail(user, MOCK_ADMIN_IDS.hasan, "Hasan Basri");
     const status = await section("Status & pemulihan");
     await user.click(within(status).getByRole("button", { name: /Pulihkan akun/ }));
     const dialog = await screen.findByRole("alertdialog", { name: "Pulihkan akun admin?" });
@@ -213,7 +213,7 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
     await user.click(within(dialog).getByLabelText(/Saya sudah memverifikasi identitas/));
     await user.click(within(dialog).getByRole("button", { name: "Pulihkan akun" }));
     expect(await screen.findByRole("dialog", { name: /Konfirmasi identitas/ })).toHaveAccessibleDescription(
-      /Memulihkan akun Ahmad Zulhadi/,
+      /Memulihkan akun Hasan Basri/,
     );
     expect(writes().filter((r) => r.path.endsWith("/recovery"))).toHaveLength(0);
     await confirmReauth(user);
@@ -229,7 +229,7 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
 
   it("akun sendiri tidak menawarkan pemulihan (gunakan ganti sandi/backup code)", async () => {
     const user = userEvent.setup();
-    await openDetail(user, MOCK_ADMIN_IDS.bayu, "Bayu Musthafa");
+    await openDetail(user, MOCK_ADMIN_IDS.fikri, "Fikri");
     const status = await section("Status & pemulihan");
     expect(within(status).queryByRole("button", { name: /Pulihkan akun/ })).toBeNull();
     expect(within(status).getByText(/Akun sendiri tidak dapat dipulihkan dari sini/)).toBeInTheDocument();
@@ -353,7 +353,7 @@ describe("Manajemen Admin (F-16, guideline hlm. 15; server tiruan)", () => {
   it("AC F15-1: admin tanpa admins.manage ditolak di daftar dan detail tanpa memanggil API admin", async () => {
     mockAuth.setAdmin({ role: "admin", permissions: ["audit.read"] });
     const user = userEvent.setup();
-    renderApp(`/admins/${MOCK_ADMIN_IDS.ahmad}`);
+    renderApp(`/admins/${MOCK_ADMIN_IDS.hasan}`);
     await signIn(user);
     expect(await screen.findByRole("heading", { level: 1, name: "Akses ditolak" })).toBeInTheDocument();
     expect(adminRequests.filter((r) => r.path.startsWith("/admin/admins"))).toHaveLength(0);

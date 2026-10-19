@@ -9,7 +9,11 @@
 // Pakai (dari folder mockup-html):  node tools/build-icons.mjs
 // Variabel lingkungan opsional:
 //   FLUTTER_ROOT  default C:/flutter/flutter
-//   FONTKITTEN    path ke dist/index.js paket fontkitten (parser font, ada di pnpm store kapdh-platform)
+//   FONTKITTEN    path ke dist/index.js paket fontkitten (parser font; bawaan: pnpm store kapdh-platform di repo ini)
+//
+// Lisensi: Material Icons oleh Google, CC BY 4.0 menurut materialicons_license.txt di SDK Flutter (salinan:
+// assets/LICENSE-material-icons.txt). Banner keluaran memuat atribusi dan catatan modifikasi; ubah bersama
+// THIRD_PARTY_NOTICES.md di akar repo.
 //
 // Menambah ikon: tulis nama Flutter-nya (mis. `qr_code_scanner`) di tools/icon-list.txt lalu jalankan ulang skrip.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -21,7 +25,7 @@ const root = join(here, '..');
 const flutterRoot = process.env.FLUTTER_ROOT ?? 'C:/flutter/flutter';
 const fontkittenPath =
   process.env.FONTKITTEN ??
-  'C:/Users/Admin/KAPDHAPPS/kapdh-platform/node_modules/.pnpm/fontkitten@1.0.3/node_modules/fontkitten/dist/index.js';
+  join(root, '../../kapdh-platform/node_modules/.pnpm/fontkitten@1.0.3/node_modules/fontkitten/dist/index.js');
 
 const { create } = await import(pathToFileURL(fontkittenPath).href);
 
@@ -77,7 +81,13 @@ if (missing.length) {
   process.exitCode = 1;
 }
 
-const banner = `DIBANGKITKAN oleh tools/build-icons.mjs dari Flutter ${flutterRoot}/bin/cache/artifacts/material_fonts/materialicons-regular.otf (Apache 2.0, lihat assets/LICENSE-material-icons.txt). Jangan edit manual.`;
+// Path SDK ditulis sebagai <FLUTTER_ROOT> agar keluaran sama di setiap mesin dan tidak memuat path lokal.
+const banner =
+  'DIBANGKITKAN oleh tools/build-icons.mjs dari <FLUTTER_ROOT>/bin/cache/artifacts/material_fonts/materialicons-regular.otf. ' +
+  'Material Icons oleh Google, lisensi CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/; naskah lengkap: ' +
+  'assets/LICENSE-material-icons.txt, sama dengan materialicons_license.txt di SDK Flutter; tanpa jaminan, lihat ' +
+  'Section 5 naskah). Diubah: glyph font dikonversi menjadi path SVG 24x24 (koordinat dibulatkan 2 desimal), warna ' +
+  'mengikuti currentColor, hanya ikon di tools/icon-list.txt. Jangan edit manual.';
 
 // css/icons.css
 const css = [

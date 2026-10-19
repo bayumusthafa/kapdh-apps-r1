@@ -214,7 +214,7 @@ class _DeletionStatusCheckState extends ConsumerState<DeletionStatusCheck> {
               key: const ValueKey('deletion-check-email'),
               label: 'Email akun',
               controller: _email,
-              hint: 'nama@email.com',
+              hint: 'nama@example.com',
               prefixIcon: KapdhIcons.mailOutline,
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],

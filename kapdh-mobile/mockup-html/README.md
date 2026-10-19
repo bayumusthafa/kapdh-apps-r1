@@ -46,7 +46,8 @@ mockup-html/
   assets/
     logo-kapdh.png        salinan kapdh-mobile/assets/logo-kapdh.png (aset yang dirender aplikasi)
     icons.svg             DIBANGKITKAN: sprite <symbol id="<nama Flutter>"> untuk desainer
-    LICENSE-material-icons.txt
+    LICENSE-material-icons.txt  CC BY 4.0 (naskah dari SDK Flutter)
+    LICENSE-phosphor.txt  MIT
     sample/               gambar contoh banner, berita, event (dari docs/konten/gambar)
   tools/
     build-index.mjs       pembangkit index.html dari strip kepala halaman + pemeriksa cakupan *_screen.dart
@@ -198,13 +199,24 @@ node tools/build-icons.mjs
 ```
 
 Membaca `tools/icon-list.txt`, kode titik dari `<FLUTTER_ROOT>/packages/flutter/lib/src/material/icons.dart` dan glyph
-dari `<FLUTTER_ROOT>/bin/cache/artifacts/material_fonts/materialicons-regular.otf` (Apache 2.0), lalu menulis
-`css/icons.css`, `assets/icons.svg` dan galeri di `components.html`. Variabel lingkungan `FLUTTER_ROOT` (bawaan
-`C:/flutter/flutter`) dan `FONTKITTEN` (parser font dari pnpm store `kapdh-platform`) dapat diubah bila path berbeda.
+dari `<FLUTTER_ROOT>/bin/cache/artifacts/material_fonts/materialicons-regular.otf` (CC BY 4.0, lihat bagian Lisensi
+aset), lalu menulis `css/icons.css`, `assets/icons.svg` dan galeri di `components.html`. Variabel lingkungan
+`FLUTTER_ROOT` (bawaan `C:/flutter/flutter`) dan `FONTKITTEN` (parser font dari pnpm store `kapdh-platform`) dapat
+diubah bila path berbeda.
 
 ## Lisensi aset
 
-- Poppins: SIL Open Font License 1.1 (`fonts/OFL-Poppins.txt`).
-- Material Icons: Apache License 2.0 (`assets/LICENSE-material-icons.txt`).
-- Phosphor Icons (akses cepat dan navigasi bawah, redesain v2): MIT (`assets/LICENSE-phosphor.txt`).
-- Logo dan gambar contoh: milik KAPDH, hanya untuk keperluan desain internal.
+Mockup ini bagian dari repositori berlisensi proprietary (`LICENSE` di akar repo). Aset pihak ketiga di bawah tetap
+tunduk pada lisensinya masing-masing; daftar lengkap dan teks atribusi ada di `THIRD_PARTY_NOTICES.md` di akar repo.
+
+- Poppins: SIL Open Font License 1.1 (`fonts/OFL-Poppins.txt`), salinan woff2 dari `@fontsource/poppins` 5.3.0.
+- Material Icons oleh Google: Creative Commons Attribution 4.0 International (CC BY 4.0,
+  https://creativecommons.org/licenses/by/4.0/), sesuai `materialicons_license.txt` di SDK Flutter (salinan:
+  `assets/LICENSE-material-icons.txt`). Diubah: glyph font dikonversi menjadi path SVG 24x24 di `css/icons.css` dan
+  `assets/icons.svg` oleh `tools/build-icons.mjs`.
+- Phosphor Icons (keluarga ikon semua layar sejak redesain v2, ADR-027; `css/icons-phosphor.css` dibangkitkan
+  `tools/build-icons-phosphor.mjs`): MIT, Copyright (c) 2023 Phosphor Icons (`assets/LICENSE-phosphor.txt`).
+- Ikon pembanding di `ikon.html` (Solar CC BY 4.0, Hugeicons Free MIT, Fluent UI System Icons MIT): atribusi di
+  halaman itu dan di `THIRD_PARTY_NOTICES.md`.
+- Logo dan gambar contoh: milik KAPDH dan tidak dilisensikan; penggunaan dalam bentuk apa pun memerlukan izin
+  tertulis pengurus KAPDH.

@@ -2,7 +2,7 @@
  * CLI bootstrap Super Admin pertama (PRD 8.2 langkah 3, F-16). Dijalankan sekali di server, TIDAK PERNAH lewat HTTP
  * (tidak ada rute API yang memanggilnya):
  *
- *   pnpm --filter @kapdh/api admin:bootstrap --email admin@kapdh.or.id --name "Bayu Musthafa"
+ *   pnpm --filter @kapdh/api admin:bootstrap --email admin@kapdh.or.id --name "Fikri Ramadhan"
  *   (atau: node dist/cli/bootstrap-admin.js --email ... --name ...)
  *
  * Menolak berjalan bila Super Admin aktif yang dapat login sudah ada. Bila belum, membuat Super Admin berstatus

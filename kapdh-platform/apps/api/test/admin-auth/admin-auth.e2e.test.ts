@@ -130,7 +130,7 @@ describe("ARCHITECTURE §4.3: dekorator AdminAuthController sesuai x-kapdh-acces
 
 describe("F-16 / PRD 8.2: undangan admin dengan token sekali pakai", () => {
   it("F-16: pratinjau menampilkan peran, izin, pengundang dan email tersamar tanpa mengonsumsi token", async () => {
-    const inviter = await createAdmin(t, { role: "super_admin", displayName: "Bayu Musthafa" });
+    const inviter = await createAdmin(t, { role: "super_admin", displayName: "Fikri Ramadhan" });
     const fixture = await invited({
       permissions: ["payments.read", "members.read"],
       displayName: "Siti Pengurus",
@@ -144,7 +144,7 @@ describe("F-16 / PRD 8.2: undangan admin dengan token sekali pakai", () => {
       display_name: "Siti Pengurus",
       role: "admin",
       permissions: PERMISSION_VALUES.filter((p) => p === "payments.read" || p === "members.read"),
-      invited_by_display_name: "Bayu Musthafa",
+      invited_by_display_name: "Fikri Ramadhan",
       expires_at: (await adminRow(fixture.adminId)).inviteExpiresAt!.toISOString(),
     });
     expect(res.json().email_masked).toMatch(/^ad\*\*\*@contoh\.test$/);

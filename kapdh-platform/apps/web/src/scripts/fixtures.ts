@@ -15,7 +15,7 @@ export const iso = (offsetMs: number) => new Date(T0 + offsetMs).toISOString();
 export const CHALLENGE: OtpChallenge = {
   challenge_id: "0192f6a0-1111-7000-8000-000000000001",
   purpose: "deletion",
-  email_masked: "ah***@email.com",
+  email_masked: "ah***@kapdh.test",
   expires_at: iso(10 * 60_000),
   resend_available_at: iso(60_000),
   attempts_left: 5,
@@ -86,7 +86,7 @@ export const DISCLOSURE_WITH_WARNINGS: AccountDeletionDisclosure = {
 };
 
 export const VERIFIED_DELETABLE: WebDeletionVerification = {
-  email_masked: "ah***@email.com",
+  email_masked: "ah***@kapdh.test",
   deletable: true,
   registration_pending: false,
   blocked_reason: null,
@@ -106,7 +106,7 @@ export const DELETION: AccountDeletion = {
 };
 
 export const VERIFIED_IN_PROGRESS: WebDeletionVerification = {
-  email_masked: "ah***@email.com",
+  email_masked: "ah***@kapdh.test",
   deletable: false,
   registration_pending: false,
   blocked_reason: "deletion_in_progress",
@@ -117,7 +117,7 @@ export const VERIFIED_IN_PROGRESS: WebDeletionVerification = {
 };
 
 export const VERIFIED_DISABLED: WebDeletionVerification = {
-  email_masked: "ah***@email.com",
+  email_masked: "ah***@kapdh.test",
   deletable: false,
   registration_pending: false,
   blocked_reason: "account_disabled",

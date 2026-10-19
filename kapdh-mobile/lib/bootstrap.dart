@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'app/app.dart';
+import 'app/app_licenses.dart';
 import 'app/app_services.dart';
 import 'core/api/api_providers.dart';
 import 'core/config/api_config.dart';
@@ -29,6 +30,8 @@ Future<void> bootstrap() async {
     return true;
   };
 
+  // Lisensi font pihak ketiga untuk Akun > Lisensi sumber terbuka; teksnya baru dibaca saat halaman itu dibuka.
+  registerAppLicenses();
   await initFormatting();
   final ApiConfig config;
   try {
