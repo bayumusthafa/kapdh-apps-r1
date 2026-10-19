@@ -38,11 +38,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Runner job: variabel repo CI_RUNS_ON (JSON, mis. ["self-hosted","linux","x64","kapdh"]); kosong = ubuntu-24.04.
+  # Job deploy memakai DEPLOY_RUNS_ON terpisah (_deploy.yml). Runbook ci-cd.md bagian 4.4.
   # ------------------------------------------------------------------------------------------- rilis aplikasi
   app-verify:
     name: Verifikasi tag rilis aplikasi
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 30
     permissions:
       contents: read
@@ -147,7 +149,7 @@ jobs:
   app-gates:
     name: Gerbang kontrak N-13 dan audit dependensi rilis
     needs: app-verify
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 20
     # Tanpa izin tulis: pnpm install (skrip dependensi pihak ketiga) hanya berjalan di job baca-saja.
     permissions:
@@ -198,7 +200,7 @@ jobs:
   app-promote:
     name: Promosi image ${{ github.ref_name }} (digest sama) dan Release draf
     needs: [app-verify, app-gates]
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 20
     permissions:
       contents: write
@@ -297,7 +299,7 @@ jobs:
   app-publish:
     name: Terbitkan GitHub Release ${{ github.ref_name }}
     needs: [app-verify, app-deploy]
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 5
     permissions:
       contents: write
@@ -318,7 +320,7 @@ jobs:
   rollback-verify:
     name: Verifikasi tag rilis untuk deploy ulang
     if: github.event_name == 'workflow_dispatch' && inputs.action == 'deploy-tag'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -423,7 +425,7 @@ jobs:
   contracts-release:
     name: Buat commit dan tag rilis SDK kontrak (tanpa izin tulis)
     if: github.event_name == 'workflow_dispatch' && inputs.action == 'contracts-sdk'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 20
     # Baca-saja: pnpm install menjalankan skrip dependensi pihak ketiga; token tulis tidak pernah ada di job ini.
     permissions:
@@ -476,7 +478,7 @@ jobs:
   contracts-push:
     name: Verifikasi dan dorong tag rilis SDK kontrak
     needs: contracts-release
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 10
     # Satu-satunya job dengan contents: write: tanpa pnpm/Node dan tanpa kode dari bundle yang dijalankan.
     permissions:
@@ -539,7 +541,7 @@ jobs:
         (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/contracts-v')) ||
         needs.contracts-push.result == 'success'
       ) }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 30
     permissions:
       contents: read
@@ -622,7 +624,7 @@ jobs:
     name: Terbitkan rilis SDK kontrak
     needs: contracts-verify
     if: ${{ !cancelled() && needs.contracts-verify.result == 'success' }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
     timeout-minutes: 10
     permissions:
       contents: write
