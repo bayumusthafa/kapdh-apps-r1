@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/format/formatters.dart';
@@ -37,31 +38,31 @@ final myReportDetailProvider = FutureProvider.autoDispose.family<ModerationRepor
 StatusBadgeStyle reportStatusStyle(ModerationReportStatus status) => switch (status) {
   ModerationReportStatus.open => const StatusBadgeStyle(
     label: 'Menunggu tinjauan',
-    icon: Icons.hourglass_top,
+    icon: KapdhIcons.hourglassTop,
     foreground: KapdhColors.info,
     background: KapdhColors.infoBg,
   ),
   ModerationReportStatus.inReview => const StatusBadgeStyle(
     label: 'Sedang ditinjau',
-    icon: Icons.visibility_outlined,
+    icon: KapdhIcons.visibilityOutlined,
     foreground: KapdhColors.warning,
     background: KapdhColors.warningBg,
   ),
   ModerationReportStatus.resolved => const StatusBadgeStyle(
     label: 'Selesai',
-    icon: Icons.check_circle,
+    icon: KapdhIcons.checkCircle,
     foreground: KapdhColors.success,
     background: KapdhColors.successBg,
   ),
   ModerationReportStatus.dismissed => const StatusBadgeStyle(
     label: 'Ditutup',
-    icon: Icons.do_not_disturb_on_outlined,
+    icon: KapdhIcons.doNotDisturbOnOutlined,
     foreground: KapdhColors.neutral,
     background: KapdhColors.neutralBg,
   ),
   ModerationReportStatus.unknown => const StatusBadgeStyle(
     label: 'Status tidak dikenal',
-    icon: Icons.help_outline,
+    icon: KapdhIcons.helpOutline,
     foreground: KapdhColors.neutral,
     background: KapdhColors.neutralBg,
   ),
@@ -107,7 +108,7 @@ class MyReportsScreen extends ConsumerWidget {
       body = ErrorState.fromException(state.error!, onRetry: controller.refresh);
     } else if (state.isEmpty) {
       body = const EmptyState(
-        icon: Icons.flag_outlined,
+        icon: KapdhIcons.flagOutlined,
         title: 'Belum ada laporan',
         message:
             'Laporan pengguna, pesan atau grup yang Anda kirim tampil di sini beserta statusnya. Laporan tidak '
@@ -152,44 +153,48 @@ class _ReportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final outcome = reportOutcomeText(report);
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      color: KapdhColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(KapdhRadius.md),
-        side: const BorderSide(color: KapdhColors.divider),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(KapdhRadius.md),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(KapdhSpace.s4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Wrap: lencana turun ke baris berikut saat teks diperbesar 200 % (N-11).
-              Wrap(
-                spacing: KapdhSpace.s2,
-                runSpacing: KapdhSpace.s1,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text(reportCategoryLabel(report.category), style: const TextStyle(fontWeight: FontWeight.w600)),
-                  StatusBadge(reportStatusStyle(report.status)),
+    // Kartu v2 (card card--md): garis rambut cardBorder + bayangan sm, radius 12.
+    return DecoratedBox(
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(KapdhRadius.md), boxShadow: context.kc.shadowSm),
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        color: context.kc.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(KapdhRadius.md),
+          side: BorderSide(color: context.kc.cardBorder),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(KapdhRadius.md),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(KapdhSpace.s4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Wrap: lencana turun ke baris berikut saat teks diperbesar 200 % (N-11).
+                Wrap(
+                  spacing: KapdhSpace.s2,
+                  runSpacing: KapdhSpace.s1,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(reportCategoryLabel(report.category), style: const TextStyle(fontWeight: FontWeight.w600)),
+                    StatusBadge(reportStatusStyle(report.status)),
+                  ],
+                ),
+                const SizedBox(height: KapdhSpace.s1),
+                Text(reportTargetText(report), style: TextStyle(color: context.kc.textMuted)),
+                const SizedBox(height: KapdhSpace.s1),
+                Text(
+                  'Dikirim ${formatDateTime(report.createdAt)}',
+                  style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
+                ),
+                if (outcome != null) ...[
+                  const SizedBox(height: KapdhSpace.s2),
+                  Text(outcome, style: const TextStyle(fontSize: KapdhFontSize.caption)),
                 ],
-              ),
-              const SizedBox(height: KapdhSpace.s1),
-              Text(reportTargetText(report), style: const TextStyle(color: KapdhColors.textMuted)),
-              const SizedBox(height: KapdhSpace.s1),
-              Text(
-                'Dikirim ${formatDateTime(report.createdAt)}',
-                style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
-              ),
-              if (outcome != null) ...[
-                const SizedBox(height: KapdhSpace.s2),
-                Text(outcome, style: const TextStyle(fontSize: KapdhFontSize.caption)),
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -222,7 +227,8 @@ class _ReportDetailSheet extends ConsumerWidget {
                 header: true,
                 child: Text(
                   reportCategoryLabel(report.category),
-                  style: const TextStyle(fontSize: KapdhFontSize.h3, fontWeight: FontWeight.w600),
+                  // [v2] Judul lembar mengikuti .sheet__title: w700, tinggi baris 1.45.
+                  style: const TextStyle(fontSize: KapdhFontSize.h3, fontWeight: FontWeight.w700, height: 1.45),
                 ),
               ),
               const SizedBox(height: KapdhSpace.s2),

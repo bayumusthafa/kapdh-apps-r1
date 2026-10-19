@@ -15,6 +15,7 @@ import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
 import 'chat_fixtures.dart';
 import 'chat_server.dart';
+import 'package:kapdh_mobile/design/kapdh_icons.dart';
 
 /// Membuka /chat/room-1 di aplikasi lengkap dengan server chat tiruan.
 Future<AppHarness> _openRoom(
@@ -213,7 +214,7 @@ void main() {
       expect(find.text('3900/4000'), findsOneWidget);
       await _type(tester, 'a' * (maxChatTextChars + 1));
       expect(find.text('Pesan maksimal 4000 karakter.'), findsOneWidget);
-      final send = tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.send));
+      final send = tester.widget<IconButton>(find.widgetWithIcon(IconButton, KapdhIcons.send));
       expect(send.onPressed, isNull);
     });
 

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
@@ -200,7 +201,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
         const SizedBox(height: KapdhSpace.s5),
         AccountSection(
           title: 'DATA YANG DIHAPUS',
-          children: [for (final item in d.deletedData) _Bullet(icon: Icons.delete_outline, text: item.description)],
+          children: [for (final item in d.deletedData) _Bullet(icon: KapdhIcons.deleteOutline, text: item.description)],
         ),
         const SizedBox(height: KapdhSpace.s5),
         AccountSection(
@@ -209,7 +210,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
               'Catatan ini disimpan tanpa nama, email, telepon, foto atau data identitas lain, hanya jumlah, tanggal, '
               'status dan nomor referensi minimum (D2).',
           children: [
-            for (final item in d.retainedData) _Bullet(icon: Icons.inventory_2_outlined, text: item.description),
+            for (final item in d.retainedData) _Bullet(icon: KapdhIcons.inventory2Outlined, text: item.description),
           ],
         ),
         const SizedBox(height: KapdhSpace.s5),
@@ -217,13 +218,13 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
           title: 'WAKTU DAN BACKUP',
           children: [
             _Bullet(
-              icon: Icons.schedule,
+              icon: KapdhIcons.schedule,
               text:
                   'Penghapusan selesai paling lambat ${d.estimatedCompletionDays} hari kalender setelah permintaan. '
                   'Anda menerima email nomor permintaan dan email saat selesai.',
             ),
             _Bullet(
-              icon: Icons.backup_outlined,
+              icon: KapdhIcons.backupOutlined,
               text:
                   'Backup harian berotasi ${d.backupRetentionDays} hari untuk pemulihan bencana. Data yang sudah '
                   'dihapus tidak diaktifkan kembali saat backup dipulihkan.',
@@ -237,7 +238,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
             label: d.privacyPolicyVersion == null
                 ? 'Baca kebijakan privasi'
                 : 'Baca kebijakan privasi (versi ${d.privacyPolicyVersion})',
-            icon: Icons.privacy_tip_outlined,
+            icon: KapdhIcons.privacyTipOutlined,
             onPressed: () => context.push(AppRoutes.legal(d.privacyPolicySlug)),
           ),
         ),
@@ -274,10 +275,10 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
           onPressed: _canSubmit ? () => unawaited(_submit()) : null,
         ),
         const SizedBox(height: KapdhSpace.s3),
-        const Text(
+        Text(
           'Anda akan diminta memasukkan password untuk konfirmasi.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
         ),
       ],
     );
@@ -297,7 +298,7 @@ class _Bullet extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ExcludeSemantics(child: Icon(icon, size: 18, color: KapdhColors.primary)),
+          ExcludeSemantics(child: Icon(icon, size: 18, color: context.kc.primary)),
           const SizedBox(width: KapdhSpace.s3),
           Expanded(child: Text(text, style: const TextStyle(fontSize: 13, height: 1.5))),
         ],
@@ -406,7 +407,7 @@ class _Warnings extends StatelessWidget {
       cards.add(
         InfoBox(
           tone: InfoBoxTone.warning,
-          icon: Icons.groups_outlined,
+          icon: KapdhIcons.groupsOutlined,
           message:
               'Anda admin tunggal di ${d.soleAdminGroupCount} grup chat. Kewenangan admin dialihkan otomatis ke '
               'anggota aktif atau grup ditutup; penghapusan tidak menunggu respons anggota lain.',
@@ -417,7 +418,7 @@ class _Warnings extends StatelessWidget {
       cards.add(
         const InfoBox(
           tone: InfoBoxTone.warning,
-          icon: Icons.admin_panel_settings_outlined,
+          icon: KapdhIcons.adminPanelSettingsOutlined,
           message:
               'Akun ini terhubung dengan akun pengurus. Akun pengurus tidak ikut terhapus; pengalihan kewenangan '
               'pengurus dilakukan Super Admin.',
@@ -429,9 +430,9 @@ class _Warnings extends StatelessWidget {
       children: [
         Semantics(
           header: true,
-          child: const Text(
+          child: Text(
             'Perhatikan sebelum menghapus',
-            style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600, color: KapdhColors.danger),
+            style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600, color: context.kc.danger),
           ),
         ),
         for (final card in cards) ...[const SizedBox(height: KapdhSpace.s3), card],
@@ -459,20 +460,20 @@ class _DangerButton extends StatelessWidget {
         width: double.infinity,
         child: FilledButton.icon(
           style: FilledButton.styleFrom(
-            backgroundColor: KapdhColors.danger,
-            foregroundColor: KapdhColors.onPrimary,
-            disabledBackgroundColor: KapdhColors.disabledBg,
+            backgroundColor: context.kc.danger,
+            foregroundColor: context.kc.onDanger,
+            disabledBackgroundColor: context.kc.disabledBg,
             minimumSize: const Size.fromHeight(KapdhSize.buttonHeight),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KapdhRadius.md)),
           ),
           onPressed: enabled ? onPressed : null,
           icon: busy
-              ? const SizedBox(
+              ? SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: KapdhColors.onPrimary),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: context.kc.disabledText),
                 )
-              : const Icon(Icons.delete_forever_outlined),
+              : const Icon(KapdhIcons.deleteForeverOutlined),
           label: Text(busy ? 'Memproses...' : label),
         ),
       ),

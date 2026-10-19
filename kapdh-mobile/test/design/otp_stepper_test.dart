@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_mobile/app/theme/kapdh_tokens.dart';
 import 'package:kapdh_mobile/design/design.dart';
@@ -35,6 +36,46 @@ void main() {
       expect(completed, '482913');
     });
 
+    Opacity caretOpacity(WidgetTester tester) => tester.widget<Opacity>(
+      find.ancestor(
+        of: find.byWidgetPredicate(
+          (w) => w is Container && w.constraints == const BoxConstraints.tightFor(width: 2, height: 24),
+        ),
+        matching: find.byType(Opacity),
+      ),
+    );
+
+    testWidgets('kursor kotak aktif berkedip 500 ms (mockup kapdh-caret 1 s steps(1))', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      await pumpDesign(tester, OtpBoxes(controller: controller, autofocus: true));
+      await tester.pumpAndSettle();
+      expect(caretOpacity(tester).opacity, 1);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(caretOpacity(tester).opacity, 0);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(caretOpacity(tester).opacity, 1);
+    });
+
+    testWidgets('kursor statis bila reduce motion', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      await pumpDesign(
+        tester,
+        Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: OtpBoxes(controller: controller, autofocus: true),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(caretOpacity(tester).opacity, 1);
+      }
+    });
+
     testWidgets('tempel teks berisi kode: hanya digit, maksimal enam', (tester) async {
       final controller = TextEditingController();
       addTearDown(controller.dispose);
@@ -49,6 +90,82 @@ void main() {
       final result = formatter.formatEditUpdate(TextEditingValue.empty, const TextEditingValue(text: 'a1b2c3d4e5f6g7'));
       expect(result.text, '123456');
       expect(result.selection, const TextSelection.collapsed(offset: 6));
+    });
+
+    test('formatter: tempelan kode lengkap mengganti isi lama', () {
+      const formatter = OtpInputFormatter(6);
+      TextEditingValue paste(String old, String inserted) => formatter.formatEditUpdate(
+        TextEditingValue(
+          text: old,
+          selection: TextSelection.collapsed(offset: old.length),
+        ),
+        TextEditingValue(text: old + inserted),
+      );
+      expect(paste('111111', '482913').text, '482913');
+      expect(paste('12', 'Kode: 482 913').text, '482913');
+      // Ketikan biasa tetap disisipkan.
+      expect(paste('12', '3').text, '123');
+      expect(paste('', '482913').text, '482913');
+    });
+
+    group('tombol Tempel kode', () {
+      void mockClipboard(WidgetTester tester, String? text) {
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.getData') return text == null ? null : <String, Object?>{'text': text};
+          return null;
+        });
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null),
+        );
+      }
+
+      testWidgets('mengisi kotak dari papan klip dan memanggil onCompleted', (tester) async {
+        mockClipboard(tester, 'Kode verifikasi KAPDH Anda: 482 913');
+        final controller = TextEditingController(text: '11');
+        addTearDown(controller.dispose);
+        String? completed;
+        final changes = <String>[];
+        await pumpDesign(
+          tester,
+          OtpBoxes(controller: controller, onChanged: changes.add, onCompleted: (code) => completed = code),
+        );
+        await tester.tap(find.text(OtpBoxes.pasteLabel));
+        await tester.pump();
+        expect(controller.text, '482913');
+        expect(changes, ['482913']);
+        expect(completed, '482913');
+        expect(find.text('4'), findsOneWidget);
+      });
+
+      testWidgets('papan klip tanpa angka: pesan, isi tidak berubah', (tester) async {
+        mockClipboard(tester, 'halo');
+        final controller = TextEditingController(text: '12');
+        addTearDown(controller.dispose);
+        await pumpDesign(tester, OtpBoxes(controller: controller));
+        await tester.tap(find.text(OtpBoxes.pasteLabel));
+        await tester.pump();
+        expect(controller.text, '12');
+        expect(find.text(OtpBoxes.pasteEmptyMessage), findsOneWidget);
+      });
+
+      testWidgets('nonaktif saat kotak nonaktif; dapat disembunyikan', (tester) async {
+        final controller = TextEditingController();
+        addTearDown(controller.dispose);
+        await pumpDesign(tester, OtpBoxes(controller: controller, enabled: false));
+        final button = tester.widget<TextButton>(
+          find.descendant(of: find.byKey(const ValueKey('otp-paste')), matching: find.byType(TextButton)),
+        );
+        expect(button.onPressed, isNull);
+        await pumpDesign(tester, OtpBoxes(controller: controller, showPasteButton: false));
+        expect(find.text(OtpBoxes.pasteLabel), findsNothing);
+      });
+
+      testWidgets('target sentuh minimal 48 px', (tester) async {
+        final controller = TextEditingController();
+        addTearDown(controller.dispose);
+        await pumpDesign(tester, OtpBoxes(controller: controller));
+        expect(tester.getSize(find.byKey(const ValueKey('otp-paste'))).height, greaterThanOrEqualTo(48));
+      });
     });
 
     testWidgets('keadaan galat: semua kotak merah dan pesan tampil', (tester) async {
@@ -77,12 +194,12 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('kotak aktif berwarna emas saat fokus', (tester) async {
+    testWidgets('kotak aktif bergaris primary dengan halo saat fokus (v2, dulu emas)', (tester) async {
       final controller = TextEditingController(text: '48');
       addTearDown(controller.dispose);
       await pumpDesign(tester, OtpBoxes(controller: controller, autofocus: true));
       await tester.pump();
-      expect(borderOfBox(tester, 2), KapdhColors.accent);
+      expect(borderOfBox(tester, 2), KapdhColors.primary);
     });
 
     testWidgets('berlabel untuk pembaca layar dan tidak meluap pada teks 200 %', (tester) async {
@@ -98,7 +215,7 @@ void main() {
   group('RegisterStepper', () {
     testWidgets('langkah selesai bercentang, langkah aktif diumumkan', (tester) async {
       await pumpDesign(tester, const RegisterStepper(current: 1));
-      expect(find.byIcon(Icons.check), findsOneWidget);
+      expect(find.byIcon(KapdhIcons.check), findsOneWidget);
       expect(find.bySemanticsLabel('Langkah 2 dari 4: OTP'), findsOneWidget);
       for (final label in ['Data Diri', 'OTP', 'Biaya KTA', 'Pembayaran']) {
         expect(find.text(label), findsOneWidget);
@@ -107,7 +224,7 @@ void main() {
 
     testWidgets('versi ringkas dan teks 200 % tanpa meluap', (tester) async {
       await pumpDesign(tester, const RegisterStepper(current: 3, compact: true), textScale: 2);
-      expect(find.byIcon(Icons.check), findsNWidgets(3));
+      expect(find.byIcon(KapdhIcons.check), findsNWidgets(3));
       expect(tester.takeException(), isNull);
     });
   });

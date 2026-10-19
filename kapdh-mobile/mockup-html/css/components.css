@@ -6,8 +6,10 @@
    Urutan: dasar > ikon > kanvas halaman > perangkat > tipografi/utilitas > app bar > navigasi > tombol > field >
    kontrol > chip/badge > kartu & widget desain > daftar > umpan balik (state, skeleton, pita, snackbar) > overlay.
    File bersama: JANGAN diubah dari grup layar. Gaya khusus layar masuk css/pages/<grup>.css.
+   REDESAIN v2: aturan bertanda [v2] adalah usulan (lihat REDESAIN.md); komentar "dulu ..." = perilaku aplikasi saat ini.
    ===================================================================================================================== */
 @import url('icons.css');
+@import url('icons-phosphor.css'); /* [v2] Phosphor untuk akses cepat dan navigasi bawah */
 
 /* ---------------------------------------------------------------------------------------------------------------------
    DASAR
@@ -23,6 +25,7 @@ body {
   color: var(--color-text);
   background: #E7E9E4; /* kanvas di luar ponsel (bukan warna aplikasi) */
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent; /* [v2] umpan balik tekan digambar sendiri lewat state layer */
 }
 h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd, ol, ul { margin: 0; }
 ol, ul { padding: 0; list-style: none; }
@@ -31,8 +34,35 @@ button, input, select, textarea { font: inherit; color: inherit; letter-spacing:
 button { background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
 a { color: inherit; text-decoration: none; }
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 3px solid var(--color-focus-ring); /* KapdhColors.focusRing */
+  outline: 3px solid var(--focus-ring, var(--color-focus-ring)); /* KapdhColors.focusRing [v2: hijau di terang, emas di gelap] */
   outline-offset: 2px;
+}
+/* [v2] Permukaan gelap memakai cincin fokus emas (6,6:1 terhadap hijau). */
+.home-header, .brand-band, .kta-card, .kta-mini, .amount-box, .snackbar, .specimen__stage--dark { --focus-ring: var(--color-focus-ring-on-dark); }
+
+/* [v2] STATE LAYER (InkWell M3): lapisan warna konten 8 % saat hover, 12 % saat ditekan, digambar sebagai bayangan
+   inset sehingga mengikuti radius dan tidak menggeser tata letak (ui-ux-pro-max: pressed state tanpa layout shift).
+   Komponen yang punya bayangan sendiri mengisinya lewat --elev agar bayangan tidak hilang saat ditekan.
+   Flutter: InkWell / ButtonStyle.overlayColor sudah ada; yang baru hanya durasi transisinya (KapdhMotion.press). */
+:where(.btn, .btn-m3, .btn-text, .btn-link, .icon-btn, .fab-small, .menu-tile, .list-tile, .popup-menu__item,
+  .dropdown-menu__item, .quick-access__item, .contact-row, .choice-chip, .segmented__item, .tab, .underline-tab,
+  .method-card, .upload-tile, .amount-box__copy, .input--dropdown, a.card, button.card, a.event-card, button.tag-chip--input, button.jj-input-chip, button.akun-tag, a.jj-social__item) {
+  box-shadow: var(--elev, 0 0 #0000), inset 0 0 0 999px var(--state-color, transparent);
+  transition: box-shadow var(--dur-press) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
+}
+:where(.btn, .btn-m3, .btn-text, .btn-link, .icon-btn, .fab-small, .menu-tile, .list-tile, .popup-menu__item,
+  .dropdown-menu__item, .quick-access__item, .contact-row, .choice-chip, .segmented__item, .tab, .underline-tab,
+  .method-card, .upload-tile, .amount-box__copy, .input--dropdown, a.card, button.card, a.event-card, button.tag-chip--input, button.jj-input-chip, button.akun-tag, a.jj-social__item):not(:disabled, .is-disabled):hover {
+  --state-color: color-mix(in srgb, currentColor 8%, transparent);   /* --state-hover */
+}
+:where(.btn, .btn-m3, .btn-text, .btn-link, .icon-btn, .fab-small, .menu-tile, .list-tile, .popup-menu__item,
+  .dropdown-menu__item, .quick-access__item, .contact-row, .choice-chip, .segmented__item, .tab, .underline-tab,
+  .method-card, .upload-tile, .amount-box__copy, .input--dropdown, a.card, button.card, a.event-card, button.tag-chip--input, button.jj-input-chip, button.akun-tag, a.jj-social__item):not(:disabled, .is-disabled):active {
+  --state-color: color-mix(in srgb, currentColor 12%, transparent);  /* --state-pressed */
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; }
 }
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
@@ -46,16 +76,16 @@ a { color: inherit; text-decoration: none; }
 .ic {
   display: inline-block;
   flex: none;
-  width: var(--ic-size, 24px);   /* Icon size bawaan 24 */
-  height: var(--ic-size, 24px);
+  width: var(--ic-size, var(--ic-lg));   /* Icon size bawaan 24 */
+  height: var(--ic-size, var(--ic-lg));
   background-color: currentColor;
   -webkit-mask: var(--ic) center / 100% 100% no-repeat;
   mask: var(--ic) center / 100% 100% no-repeat;
   vertical-align: middle;
 }
-.ic-s10 { --ic-size: 10px; } .ic-s12 { --ic-size: 12px; } .ic-s14 { --ic-size: 14px; } .ic-s16 { --ic-size: 16px; }
-.ic-s18 { --ic-size: 18px; } .ic-s20 { --ic-size: 20px; } .ic-s22 { --ic-size: 22px; } .ic-s24 { --ic-size: 24px; }
-.ic-s26 { --ic-size: 26px; } .ic-s28 { --ic-size: 28px; } .ic-s30 { --ic-size: 30px; } .ic-s34 { --ic-size: 34px; }
+.ic-s10 { --ic-size: 10px; } .ic-s12 { --ic-size: 12px; } .ic-s14 { --ic-size: var(--ic-xs); } .ic-s16 { --ic-size: var(--ic-sm); }
+.ic-s18 { --ic-size: var(--ic-btn); } .ic-s20 { --ic-size: var(--ic-md); } .ic-s22 { --ic-size: 22px; } .ic-s24 { --ic-size: var(--ic-lg); }
+.ic-s26 { --ic-size: 26px; } .ic-s28 { --ic-size: var(--ic-xl); } .ic-s30 { --ic-size: 30px; } .ic-s34 { --ic-size: 34px; }
 .ic-s40 { --ic-size: 40px; } .ic-s48 { --ic-size: 48px; } .ic-s56 { --ic-size: 56px; } .ic-s64 { --ic-size: 64px; }
 .ic-svg { width: 24px; height: 24px; fill: currentColor; } /* untuk <svg><use href="../assets/icons.svg#nama"/></svg> via http */
 
@@ -72,7 +102,7 @@ a { color: inherit; text-decoration: none; }
   letter-spacing: 0;
 }
 .page-header__nav { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; }
-.page-header__nav a { color: var(--color-primary); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.page-header__nav a { color: #1A4B17; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
 .page-header__nav a:hover { text-decoration: underline; }
 .page-header__title { font-size: 22px; font-weight: 600; line-height: 1.3; color: #1C1B1F; }
 .page-header__meta { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 12px; font-size: 13px; color: #3F4A3E; }
@@ -85,7 +115,7 @@ a { color: inherit; text-decoration: none; }
 .page-header__states li { counter-increment: st; background: #F1F3EE; border-radius: 999px; padding: 2px 10px; }
 .page-header__states li::before { content: counter(st) ". "; font-weight: 600; }
 .page-header__note { font-size: 12px; color: #6B6B6B; max-width: 960px; }
-.page-header__note a { color: var(--color-primary); font-weight: 600; text-decoration: underline; }
+.page-header__note a { color: #1A4B17; font-weight: 600; text-decoration: underline; }
 .page-header__note--dup { color: #3F4A3E; } /* penanda halaman kembar (layar sama di dua grup) */
 
 .frames {
@@ -100,6 +130,15 @@ a { color: inherit; text-decoration: none; }
 .frame__num { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: #1C1B1F; color: #fff; font-size: 11px; }
 .frame__note { font-size: 12px; line-height: 1.5; color: #575C55; letter-spacing: 0; }
 .frames__group-title { width: 100%; font-size: 15px; font-weight: 600; color: #1C1B1F; letter-spacing: 0; border-bottom: 1px solid #D5D8D1; padding-bottom: 6px; }
+
+/* Tombol pratinjau mockup (js/theme.js): Tema, Teks 100/200 %, Ponsel/Tablet. Bingkai dokumentasi tetap terang; hanya layar ponsel dan
+   spesimen komponen yang mengikuti tema. */
+.preview-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.theme-toggle { display: inline-flex; border: 1px solid #D5D8D1; border-radius: 999px; overflow: hidden; background: #fff; }
+.theme-toggle button { min-height: 32px; padding: 0 12px; font-size: 12px; font-weight: 600; color: #3F4A3E; letter-spacing: 0; }
+.theme-toggle button + button { border-left: 1px solid #D5D8D1; }
+.theme-toggle button[aria-pressed="true"] { background: #1A4B17; color: #fff; }
+.theme-toggle button:focus-visible { outline: 3px solid #2D7A28; outline-offset: -3px; }
 
 /* Etalase komponen (components.html) dan indeks: hanya untuk halaman dokumentasi, bukan layar aplikasi. */
 .doc { max-width: 1240px; margin: 0 auto; padding: 24px 24px 80px; letter-spacing: 0; }
@@ -130,13 +169,13 @@ a { color: inherit; text-decoration: none; }
 .index-card { background: #fff; border: 1px solid #D5D8D1; border-radius: 10px; padding: 14px 16px; font-size: 13px; line-height: 1.5; }
 .index-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
 .index-card li { padding: 2px 0; color: #3F4A3E; }
-.index-card a { color: var(--color-primary); font-weight: 600; }
+.index-card a { color: #1A4B17; font-weight: 600; }
 .index-card a:hover { text-decoration: underline; }
 .index-card .is-planned { color: #6B6B6B; }
 /* Indeks (index.html, dibangkitkan tools/build-index.mjs) */
 .index-toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; font-size: 13px; }
-.index-toc a { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border: 1px solid #D5D8D1; border-radius: 999px; background: #fff; color: var(--color-primary); font-weight: 600; }
-.index-toc a:hover { border-color: var(--color-primary); }
+.index-toc a { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border: 1px solid #D5D8D1; border-radius: 999px; background: #fff; color: #1A4B17; font-weight: 600; }
+.index-toc a:hover { border-color: #1A4B17; }
 .index-toc__count { min-width: 20px; padding: 0 6px; border-radius: 999px; background: #F1F3EE; color: #3F4A3E; font-size: 11px; text-align: center; }
 .index-card { display: flex; flex-direction: column; gap: 6px; }
 .index-card h3.index-card__title { margin-bottom: 0; }
@@ -152,7 +191,7 @@ a { color: inherit; text-decoration: none; }
 .index-table th, .index-table td { padding: 8px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid #E3E3E6; }
 .index-table th { font-weight: 600; background: #F7F8F5; }
 .index-table tr:last-child td { border-bottom: 0; }
-.index-table a, .index-extras a { color: var(--color-primary); font-weight: 600; }
+.index-table a, .index-extras a { color: #1A4B17; font-weight: 600; }
 .index-table a:hover, .index-extras a:hover { text-decoration: underline; }
 .index-table__also { font-size: 11.5px; color: #6B6B6B; }
 .index-table tr.is-missing td { background: var(--color-danger-bg); }
@@ -181,6 +220,10 @@ a { color: inherit; text-decoration: none; }
 .device--tall { height: auto; min-height: var(--device-h); }   /* tinggi gulir penuh */
 .device--tall .screen { position: relative; min-height: var(--device-h); }
 .device--tall .screen__body { overflow: visible; }
+/* Tablet [v2 P2-3, usulan]: isi badan layar di tengah selebar --content-max-w (Flutter: Center + ConstrainedBox
+   maxWidth 600 di tiap layar); app bar, header, navigasi bawah dan latar tetap selebar layar. */
+:root[data-device="tablet"] .device { border-radius: 28px; }
+:root[data-device="tablet"] .screen__body > * { width: 100%; max-width: var(--content-max-w); margin-inline: auto; }
 
 .statusbar {
   position: absolute; z-index: 50; top: 0; left: 0; right: 0;
@@ -189,7 +232,7 @@ a { color: inherit; text-decoration: none; }
   padding: 0 14px 0 20px;
   font-family: Roboto, 'Segoe UI', system-ui, sans-serif;
   font-size: 13px; font-weight: 500; letter-spacing: .2px; line-height: 1;
-  color: #1C1B1F; /* ikon gelap di atas app bar putih */
+  color: var(--color-statusbar); /* ikon gelap di atas app bar putih (terang dalam mode gelap) */
   pointer-events: none;
 }
 .statusbar__icons { display: flex; align-items: center; gap: 3px; }
@@ -202,10 +245,10 @@ a { color: inherit; text-decoration: none; }
   display: flex; align-items: center; justify-content: center;
   pointer-events: none;
 }
-.sysnav::before { content: ""; width: 108px; height: 4px; border-radius: 2px; background: rgba(28, 27, 31, .82); }
+.sysnav::before { content: ""; width: 108px; height: 4px; border-radius: 2px; background: var(--color-sysnav); }
 .sysnav--on-dark::before { background: rgba(255, 255, 255, .9); }
 
-.screen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--color-background); }
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--color-background); overflow-wrap: break-word; } /* [v2 P2-3] Text Flutter memecah kata yang lebih panjang dari barisnya (email, token) */
 .screen--surface { background: var(--color-surface); }
 .screen__body { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .screen__body > .scroll { flex: 1 1 auto; } /* isi daftar; tinggi bebas */
@@ -231,18 +274,18 @@ a { color: inherit; text-decoration: none; }
   position: absolute; z-index: 45; left: 0; right: 0; bottom: 0;
   height: calc(268px + var(--inset-bottom));
   padding: 10px 4px var(--inset-bottom);
-  background: #E8EAED;
+  background: var(--color-keyboard);
   display: grid; grid-template-rows: repeat(4, 1fr); gap: 8px;
 }
 .keyboard__row { display: flex; gap: 6px; justify-content: center; }
-.keyboard__key { flex: 1; max-width: 32px; background: #FFFFFF; border-radius: 6px; box-shadow: 0 1px 0 rgba(0, 0, 0, .2); }
+.keyboard__key { flex: 1; max-width: 32px; background: var(--color-keyboard-key); border-radius: 6px; box-shadow: 0 1px 0 rgba(0, 0, 0, .2); }
 
 /* ---------------------------------------------------------------------------------------------------------------------
    TIPOGRAFI  (TextTheme KapdhTheme.light(); teks biasa = bodyMedium 14 / 1.45 / ls .25)
    --------------------------------------------------------------------------------------------------------------------- */
-.t-display  { font-size: var(--fs-display); font-weight: 600; line-height: var(--lh-heading); letter-spacing: 0; }   /* displaySmall */
-.t-h1       { font-size: var(--fs-h1); font-weight: 600; line-height: var(--lh-heading); letter-spacing: 0; }        /* headlineSmall */
-.t-h2       { font-size: var(--fs-h2); font-weight: 600; line-height: var(--lh-heading); letter-spacing: 0; }        /* titleLarge */
+.t-display  { font-size: var(--fs-display); font-weight: var(--fw-heading); line-height: var(--lh-heading); letter-spacing: 0; }   /* displaySmall */
+.t-h1       { font-size: var(--fs-h1); font-weight: var(--fw-heading); line-height: var(--lh-heading); letter-spacing: 0; }        /* headlineSmall */
+.t-h2       { font-size: var(--fs-h2); font-weight: var(--fw-heading); line-height: var(--lh-heading); letter-spacing: 0; }        /* titleLarge */
 .t-h3       { font-size: var(--fs-h3); font-weight: 600; line-height: var(--lh-heading); letter-spacing: var(--ls-title-md); } /* titleMedium */
 .t-title-sm { font-size: var(--fs-title-sm); font-weight: 600; line-height: 1.3; letter-spacing: var(--ls-label); } /* titleSmall */
 .t-body-lg  { font-size: var(--fs-body-lg); line-height: var(--lh-normal); letter-spacing: var(--ls-body-lg); }     /* bodyLarge */
@@ -252,9 +295,9 @@ a { color: inherit; text-decoration: none; }
 .t-label-md { font-size: var(--fs-caption); font-weight: 500; line-height: 1.33; letter-spacing: var(--ls-label-sm); } /* labelMedium */
 .t-label-sm { font-size: var(--fs-overline); font-weight: 500; line-height: 1.45; letter-spacing: var(--ls-label-sm); } /* labelSmall */
 /* Ukuran literal yang sering muncul dengan TextStyle(fontSize: x) (tetap mewarisi ls .25, h 1.45) */
-.fs-11 { font-size: 11px; } .fs-12 { font-size: 12px; } .fs-13 { font-size: 13px; } .fs-14 { font-size: 14px; }
-.fs-15 { font-size: 15px; } .fs-16 { font-size: 16px; } .fs-17 { font-size: 17px; } .fs-18 { font-size: 18px; }
-.fs-20 { font-size: 20px; } .fs-22 { font-size: 22px; } .fs-24 { font-size: 24px; }
+.fs-11 { font-size: calc(11px * var(--ts, 1)); } .fs-12 { font-size: calc(12px * var(--ts, 1)); } .fs-13 { font-size: calc(13px * var(--ts, 1)); } .fs-14 { font-size: calc(14px * var(--ts, 1)); }
+.fs-15 { font-size: calc(15px * var(--ts, 1)); } .fs-16 { font-size: calc(16px * var(--ts, 1)); } .fs-17 { font-size: calc(17px * var(--ts, 1)); } .fs-18 { font-size: calc(18px * var(--ts, 1)); }
+.fs-20 { font-size: calc(20px * var(--ts, 1)); } .fs-22 { font-size: calc(22px * var(--ts, 1)); } .fs-24 { font-size: calc(24px * var(--ts, 1)); }
 .fw-400 { font-weight: 400; } .fw-500 { font-weight: 500; } .fw-600 { font-weight: 600; } .fw-700 { font-weight: 700; }
 .lh-1  { line-height: 1; } .lh-13 { line-height: 1.3; } .lh-135 { line-height: 1.35; } .lh-14 { line-height: 1.4; }
 .lh-145 { line-height: 1.45; } .lh-15 { line-height: 1.5; } .lh-155 { line-height: 1.55; }
@@ -320,32 +363,67 @@ a { color: inherit; text-decoration: none; }
 
 /* HomeHeader (lib/features/home/widgets/home_widgets.dart): app bar 76 bergradasi band, logo 44, sapaan + nama,
    lonceng notifikasi dengan Badge emas. */
+/* [v2 Beranda] Header "mesh" zamrud: gradasi diagonal green950 -> green700 dengan cahaya emas di kanan atas dan cahaya hijau
+   di kiri bawah, dua cincin dekoratif, sudut bawah membulat 24 dan bayangan hijau. Logo dalam bingkai kaca bercincin
+   emas, lonceng dalam tombol kaca 48 x 48 (target sentuh tetap 48). Isi (logo, sapaan, nama, lonceng) sama dengan Dart.
+   Flutter: HomeHeader -> Container(decoration: BoxDecoration(gradient + borderRadius.vertical(bottom: 24) + boxShadow))
+   dengan Stack untuk cincin (CustomPaint) dan BackdropFilter tidak diperlukan (kaca = putih 6-16 %). */
 .home-header {
   position: relative; z-index: 2;
   flex: none;
   display: flex; align-items: center; gap: var(--s3);
   height: calc(var(--size-home-header) + var(--inset-top));
-  padding: var(--inset-top) var(--s2) 0 var(--s5);
-  background: var(--gradient-band);
+  padding: var(--inset-top) var(--s4) 0 var(--s5);
+  background: var(--gradient-brand-mesh);
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+  box-shadow: 0 12px 28px -10px rgba(14, 40, 12, .55), inset 0 -1px 0 rgba(230, 211, 18, .22);
+  color: var(--color-text-on-dark);
+  overflow: hidden;
+  isolation: isolate;
+}
+/* [v2] Dua cincin dekoratif, sama di header Beranda dan semua pita hijau (.brand-band). */
+.home-header::before, .home-header::after, .brand-band::before, .brand-band::after { content: ""; position: absolute; z-index: -1; border-radius: 50%; pointer-events: none; }
+.home-header::before, .brand-band::before { top: -70px; right: -56px; width: 200px; height: 200px; border: 26px solid rgba(255, 255, 255, .04); }
+.home-header::after, .brand-band::after { bottom: -96px; left: -48px; width: 170px; height: 170px; border: 16px solid rgba(230, 211, 18, .06); }
+.home-header__logo, .brand-logo { width: 44px; height: 44px; object-fit: contain; flex: none; }
+.home-header .home-header__logo, .greeting-band .brand-logo { /* [v2] logo dalam bingkai kaca bercincin emas di semua pita */
+  width: 48px; height: 48px; padding: 5px; border-radius: var(--r-lg);
+  background: linear-gradient(145deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .05));
+  box-shadow: inset 0 0 0 1.5px rgba(230, 211, 18, .55), 0 6px 16px -4px rgba(0, 0, 0, .35);
+}
+.home-header__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.greeting__hello { font-size: var(--fs-caption); font-weight: 500; letter-spacing: .3px; color: var(--color-green-100); }     /* "Assalamu'alaikum," */
+.greeting__name { font-size: calc(17px * var(--ts, 1)); font-weight: var(--fw-heading); letter-spacing: 0; color: var(--color-text-on-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* [v2: dulu 16 w600] */
+.home-header .icon-btn, .brand-band .icon-btn { /* [v2] tombol kaca di semua pita hijau */
+  --elev: inset 0 0 0 1px rgba(255, 255, 255, .18), 0 4px 12px -2px rgba(0, 0, 0, .22);
+  border-radius: var(--r-lg);
+  background: linear-gradient(145deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .06));
   color: var(--color-text-on-dark);
 }
-.home-header__logo, .brand-logo { width: 44px; height: 44px; object-fit: contain; flex: none; }
-.home-header__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
-.greeting__hello { font-size: var(--fs-caption); font-weight: 400; color: var(--color-green-100); }     /* "Assalamu'alaikum," */
-.greeting__name { font-size: var(--fs-body-lg); font-weight: 600; color: var(--color-text-on-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.home-header .icon-btn { color: var(--color-text-on-dark); }
+.home-header .badge--accent { min-width: 18px; height: 18px; border-radius: 9px; top: -6px; font-weight: 700; box-shadow: 0 0 0 2px var(--color-green-800); }
 
-/* BrandHeader: pita hijau bergradasi (+ motif quatrefoil BrandPatternPainter, sel 44, r 31.68, garis 1.2 putih 8 %). */
+/* BrandHeader: pita hijau bergradasi (+ motif quatrefoil BrandPatternPainter, sel 44, r 31.68, garis 1.2 putih 8 %).
+   [v2] Semua pita memakai dasar yang sama dengan header Beranda: --gradient-brand-mesh + dua cincin + tombol kaca + logo
+   berbingkai kaca. Motif (quatrefoil, gelombang) menumpuk di atas dasar itu. Flutter: BrandHeader memakai
+   KapdhGradients.brandMesh dan CustomPaint cincin yang sama dengan HomeHeader. */
 .brand-band {
-  position: relative;
+  position: relative; isolation: isolate; overflow: hidden;
   padding: calc(var(--s5) + var(--inset-top)) var(--s5) var(--s5);
-  background: var(--gradient-band);
+  background: var(--gradient-brand-mesh);
   color: var(--color-text-on-dark);
 }
 .brand-band--pattern {
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='88' fill='none' stroke='%23fff' stroke-opacity='.08' stroke-width='1.2'%3E%3Ccircle cx='0' cy='0' r='31.68'/%3E%3Ccircle cx='44' cy='0' r='31.68'/%3E%3Ccircle cx='-22' cy='44' r='31.68'/%3E%3Ccircle cx='22' cy='44' r='31.68'/%3E%3Ccircle cx='66' cy='44' r='31.68'/%3E%3Ccircle cx='0' cy='88' r='31.68'/%3E%3Ccircle cx='44' cy='88' r='31.68'/%3E%3C/svg%3E") 0 0 / 44px 88px repeat,
-    var(--gradient-band);
+    var(--gradient-brand-mesh);
+}
+/* [v2] BrandMotif.waves (BrandWavePainter, layar Masuk): pita gelombang diagonal putih tembus pandang dengan kilau ke
+   kanan dan garis sorot, digambar relatif ke ukuran pita, ditambah cahaya lembut di kiri atas. */
+.brand-band--waves {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='a'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.05'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='.12'/%3E%3C/linearGradient%3E%3ClinearGradient id='b'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.02'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='.06'/%3E%3C/linearGradient%3E%3ClinearGradient id='c'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.04'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='.16'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23a)' d='M0 10C35 4 55 52 100 40L100 64C60 80 35 24 0 36Z'/%3E%3Cpath fill='url(%23b)' d='M0 48C30 40 62 86 100 72L100 90C60 102 30 60 0 68Z'/%3E%3Cpath fill='none' stroke='url(%23c)' stroke-width='1.5' vector-effect='non-scaling-stroke' d='M0 10C35 4 55 52 100 40'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat,
+    radial-gradient(ellipse at 30% 5%, rgba(255, 255, 255, .08) 0, transparent 60%),
+    var(--gradient-brand-mesh);
 }
 .brand-band--thin { padding: var(--inset-top) 0 var(--overlap, 12px); min-height: calc(28px + var(--inset-top)); } /* BrandSheetScaffold tanpa header */
 
@@ -367,7 +445,7 @@ a { color: inherit; text-decoration: none; }
 
 /* SheetTitleRow / AuthSheetTitle: chevron_left 26-28 dalam tombol 48 + judul 20 w600. */
 .sheet-title-row { display: flex; align-items: center; gap: var(--s1); min-height: 48px; }
-.sheet-title-row__title { font-size: var(--fs-h2); font-weight: 600; line-height: var(--lh-normal); }
+.sheet-title-row__title { font-size: var(--fs-h2); font-weight: var(--fw-heading); line-height: var(--lh-normal); }
 
 /* ---------------------------------------------------------------------------------------------------------------------
    NAVIGASI BAWAH  AppShell (lib/app/app_shell.dart): NavigationBar M3 tinggi 64, 5 tujuan 72 px, indikator 64x32
@@ -381,6 +459,7 @@ a { color: inherit; text-decoration: none; }
   height: calc(var(--size-nav-bar) + var(--inset-bottom));
   padding-bottom: var(--inset-bottom);
   background: var(--color-surface);
+  box-shadow: var(--shadow-bar-top); /* [v2] garis rambut + bayangan ke atas: isi gulir tidak lagi menyatu dengan navigasi */
 }
 .bottom-nav__item {
   flex: 1 1 0; min-width: 0;
@@ -391,12 +470,35 @@ a { color: inherit; text-decoration: none; }
   position: relative;
   width: 64px; height: 32px; border-radius: var(--r-16);
   display: grid; place-items: center;
+  transition: background-color var(--dur-base) var(--ease-out), box-shadow var(--dur-press) var(--ease-standard);
 }
-.bottom-nav__label { font-size: var(--fs-caption); font-weight: 400; line-height: var(--lh-normal); color: var(--color-text-muted); }
+/* [v2] State layer navigasi hanya di indikator pil (seperti NavigationBar M3), bukan seluruh kolom. */
+.bottom-nav__item:hover .bottom-nav__indicator { box-shadow: inset 0 0 0 999px color-mix(in srgb, currentColor 8%, transparent); }
+.bottom-nav__item:active .bottom-nav__indicator { box-shadow: inset 0 0 0 999px color-mix(in srgb, currentColor 12%, transparent); }
+.bottom-nav__label { font-size: calc(12px * min(var(--ts, 1), 1.3)); /* [v2 P2-3] skala label dibatasi 1,3 (MediaQuery.withClampedTextScaling) agar 5 label tidak bertabrakan */ font-weight: 400; line-height: var(--lh-normal); color: var(--color-text-muted); }
 .bottom-nav__item.is-selected { color: var(--color-primary); }
-.bottom-nav__item.is-selected .bottom-nav__indicator { background: var(--color-green-100); }
+.bottom-nav__item.is-selected .bottom-nav__indicator { background: var(--color-tint-strong); }
 .bottom-nav__item.is-selected .bottom-nav__label { font-weight: 600; color: var(--color-primary); }
 .bottom-nav__icon { position: relative; display: inline-flex; }
+/* [v2 Beranda] Tab KTA sebagai tombol tengah menonjol: kotak 56 radius 18 bergradasi hijau, garis putih 4 dan bayangan,
+   naik 20 dp di atas bilah. Kolom tab tetap 72 x 64 (target sentuh tidak berubah); terpilih = isi emas, ikon gelap, cincin primary 2 px.
+   Flutter: AppShell -> NavigationBar diganti Row kustom atau NavigationDestination dengan icon kustom + Stack
+   (clipBehavior: Clip.none) agar tombol dapat keluar dari bilah. */
+.bottom-nav__item--kta .bottom-nav__indicator {
+  width: 56px; height: 56px; margin-top: -26px; border-radius: var(--r-lg);
+  background: linear-gradient(45deg, var(--color-green-800) 0%, var(--color-green-600) 100%);
+  color: var(--color-on-primary);
+  border: 4px solid var(--color-surface);
+  box-shadow: 0 8px 18px -4px rgba(26, 75, 23, .45);
+}
+.bottom-nav__item--kta .bottom-nav__label { font-weight: 600; color: var(--color-primary); }
+/* Terpilih: isi emas + ikon gelap + cincin primary 2 px (11:1 terhadap bilah putih; dulu cincin emas 1,5:1) dan label w700,
+   sehingga keadaan terpilih tidak hanya dibedakan warna lemah. */
+.bottom-nav__item--kta.is-selected .bottom-nav__indicator { background: var(--color-accent); color: var(--color-on-accent); box-shadow: 0 0 0 2px var(--color-primary), 0 8px 18px -4px rgba(26, 75, 23, .45); }
+.bottom-nav__item--kta.is-selected .bottom-nav__label { font-weight: 700; }
+.bottom-nav__item--kta:hover .bottom-nav__indicator { box-shadow: 0 8px 18px -4px rgba(26, 75, 23, .45), inset 0 0 0 999px rgba(255, 255, 255, .10); }
+.bottom-nav__item--kta:active .bottom-nav__indicator { box-shadow: 0 4px 10px -4px rgba(26, 75, 23, .45), inset 0 0 0 999px rgba(255, 255, 255, .16); }
+.bottom-nav__item--kta.is-selected:hover .bottom-nav__indicator { box-shadow: 0 0 0 2px var(--color-primary), 0 8px 18px -4px rgba(26, 75, 23, .45), inset 0 0 0 999px rgba(14, 40, 12, .08); }
 
 /* ---------------------------------------------------------------------------------------------------------------------
    BADGE  (Badge M3): besar 16 tinggi, padding 0 4, label 11 w500; posisi kiri = lebar ikon - 12, atas -4.
@@ -407,8 +509,8 @@ a { color: inherit; text-decoration: none; }
   min-width: 16px; height: 16px; padding: 0 4px;
   border-radius: 8px;
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 500; line-height: 1; letter-spacing: 0;
-  background: var(--color-danger); color: #FFFFFF; /* bawaan M3: error */
+  font-size: calc(11px * var(--ts, 1)); font-weight: 500; line-height: 1; letter-spacing: 0;
+  background: var(--color-danger); color: var(--color-on-danger); /* bawaan M3: error / onError */
   white-space: nowrap;
 }
 .badge--primary { background: var(--color-primary); color: var(--color-on-primary); }  /* lencana tab Jejaring */
@@ -436,22 +538,26 @@ a { color: inherit; text-decoration: none; }
   text-align: center;
   cursor: pointer;
 }
-.btn .ic { --ic-size: 20px; }
-.btn--primary { min-height: var(--size-primary-button); font-size: 15px; background: var(--gradient-button-primary); color: var(--color-on-primary); } /* KapdhButton() */
+.btn .ic { --ic-size: var(--ic-md); }
+.btn--primary { --elev: var(--shadow-primary-btn); min-height: var(--size-primary-button); font-size: calc(15px * var(--ts, 1)); background: var(--gradient-button-primary); color: var(--color-on-primary); } /* KapdhButton() [v2: + bayangan hijau] */
 .btn--solid { background: var(--color-primary); color: var(--color-on-primary); }                                                             /* KapdhButton.solid */
 .btn--outline { background: var(--color-surface); color: var(--color-primary); border: 1px solid var(--color-primary); }                     /* KapdhButton.outlined */
 .btn--inline { display: inline-flex; width: auto; min-width: 48px; }  /* expand: false */
-.btn:disabled, .btn.is-disabled { background: var(--color-disabled-bg); color: var(--color-disabled-text); cursor: not-allowed; }
+/* [v2] Permukaan hijau gelap (Welcome): KapdhButton.accent (emas 52, teks onAccent) dan KapdhButton.outlinedOnDark
+   (garis putih 70 %, isi putih 6 %, teks putih) */
+.btn--accent { --elev: 0 4px 12px rgba(0, 0, 0, .22); min-height: var(--size-primary-button); font-size: calc(15px * var(--ts, 1)); background: var(--color-accent); color: var(--color-on-accent); }
+.btn--outline-on-dark { background: rgba(255, 255, 255, .06); color: var(--color-text-on-dark); border: 1px solid rgba(255, 255, 255, .7); }
+.btn:disabled, .btn.is-disabled { --elev: none; background: var(--color-disabled-bg); color: var(--color-disabled-text); cursor: not-allowed; }
 .btn--outline:disabled, .btn--outline.is-disabled { background: var(--color-surface); border-color: var(--color-divider); color: var(--color-disabled-text); }
-.btn.is-busy { background: var(--color-disabled-bg); color: var(--color-disabled-text); }
+.btn.is-busy { --elev: none; background: var(--color-disabled-bg); color: var(--color-disabled-text); }
 .btn--outline.is-busy { background: var(--color-surface); border-color: var(--color-divider); }
 .btn.is-busy .spinner { --spinner-size: 18px; --spinner-width: 2px; color: currentColor; }
 /* FilledButton.icon merah (delete_account_screen): 48, radius 10, padding 16/24, ikon 18, 14 w600 tanpa ls */
 .btn--danger { background: var(--color-danger); color: var(--color-on-primary); padding: 0 24px 0 16px; letter-spacing: 0; line-height: var(--lh-poppins); }
-.btn--danger .ic { --ic-size: 18px; }
+.btn--danger .ic { --ic-size: var(--ic-btn); }
 /* OutlinedButton.icon merah (ticket_detail "Batalkan"): garis + teks danger */
 .btn--danger-outline { background: transparent; color: var(--color-danger); border: 1px solid var(--color-danger); padding: 0 24px 0 16px; letter-spacing: 0; line-height: var(--lh-poppins); }
-.btn--danger-outline .ic { --ic-size: 18px; }
+.btn--danger-outline .ic { --ic-size: var(--ic-btn); }
 .btn--danger:disabled, .btn--danger.is-disabled { background: var(--color-disabled-bg); color: var(--color-disabled-text); }
 
 /* OutlinedButton / FilledButton bertema (bukan KapdhButton): lebar intrinsik, padding 24 (16/24 dengan ikon), 14 w600 */
@@ -461,7 +567,7 @@ a { color: inherit; text-decoration: none; }
   border-radius: var(--r-md);
   font-size: var(--fs-label); font-weight: 600; letter-spacing: 0; line-height: var(--lh-poppins);
 }
-.btn-m3 .ic { --ic-size: 18px; }
+.btn-m3 .ic { --ic-size: var(--ic-btn); }
 .btn-m3--icon { padding: 0 24px 0 16px; }
 .btn-m3--outlined { border: 1px solid var(--color-primary); color: var(--color-primary); background: transparent; }
 .btn-m3--filled { background: var(--color-primary); color: var(--color-on-primary); }
@@ -474,26 +580,27 @@ a { color: inherit; text-decoration: none; }
   display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
   min-height: 48px; min-width: 48px; padding: 0 12px;
   border-radius: var(--r-pill);
-  font-size: 13px; font-weight: 500; letter-spacing: 0; line-height: var(--lh-poppins);
+  font-size: calc(13px * var(--ts, 1)); font-weight: 500; letter-spacing: 0; line-height: var(--lh-poppins);
   color: var(--color-primary);
-  white-space: nowrap;
+  text-align: center; /* [v2 P2-3] label TextButton boleh pindah baris bila lebar tidak cukup (dulu nowrap: meluap pada teks 200 %) */
 }
-.btn-text .ic { --ic-size: 18px; }
+.btn-text .ic { --ic-size: var(--ic-btn); }
 .btn-text--icon { padding: 0 16px 0 12px; }
 .btn-text--danger { color: var(--color-danger); }
 .btn-text--warning { color: var(--color-warning); }
 .btn-text--accent { color: var(--color-accent); }
 .btn-text--semibold { font-weight: 600; }
-.btn-text:disabled { color: rgba(28, 27, 31, .38); }
+.btn-text:disabled { color: var(--color-on-surface-disabled); }
 /* KapdhLinkButton: 13 w600, padding 0 4, target 48 */
 .btn-link {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
   min-height: 48px; min-width: 48px; padding: 0 var(--s1);
   border-radius: var(--r-pill);
-  font-size: 13px; font-weight: 600; letter-spacing: 0; line-height: var(--lh-poppins);
+  font-size: calc(13px * var(--ts, 1)); font-weight: 600; letter-spacing: 0; line-height: var(--lh-poppins);
   color: var(--color-primary);
 }
-.btn-link .ic { --ic-size: 18px; }
+.btn-link .ic { --ic-size: var(--ic-btn); }
+.btn-link:disabled { color: var(--color-on-surface-disabled); cursor: default; }
 
 /* IconButton 48 x 48 (ikon 24) */
 .icon-btn {
@@ -502,12 +609,13 @@ a { color: inherit; text-decoration: none; }
   color: inherit;
 }
 .icon-btn--muted { color: var(--color-text-muted); }
-.icon-btn--tonal { background: var(--color-green-50); color: var(--color-primary); border-radius: var(--r-md); } /* IconButton.filledTonal filter Jejaring */
-.icon-btn:disabled { color: rgba(28, 27, 31, .38); }
+.icon-btn--tonal { background: var(--color-tint); color: var(--color-primary); border-radius: var(--r-md); } /* IconButton.filledTonal filter Jejaring */
+.icon-btn:disabled { color: var(--color-on-surface-disabled); }
 /* FloatingActionButton.small M3: 40, radius 12, primaryContainer, elevasi 3 */
 .fab-small {
   display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: var(--r-12);
-  background: var(--m3-primary-container); color: var(--m3-on-primary-container); box-shadow: var(--elevation-3);
+  --elev: var(--shadow-md); /* [v2: dulu elevation-3] */
+  background: var(--m3-primary-container); color: var(--m3-on-primary-container); box-shadow: var(--elev), inset 0 0 0 999px var(--state-color, transparent);
 }
 
 /* ---------------------------------------------------------------------------------------------------------------------
@@ -526,9 +634,10 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid var(--color-border);
   border-radius: var(--r-md);
   color: var(--color-text);
+  transition: border-color var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
 }
 .input__prefix { flex: none; width: 48px; height: 46px; display: grid; place-items: center; color: var(--color-text-muted); }
-.input__prefix .ic { --ic-size: 20px; }
+.input__prefix .ic { --ic-size: var(--ic-md); }
 .input__control {
   flex: 1 1 auto; min-width: 0;
   align-self: stretch;
@@ -546,14 +655,15 @@ a { color: inherit; text-decoration: none; }
 .input__trailing-text { font-size: var(--fs-caption); color: var(--color-text-muted); padding-right: var(--s1); white-space: nowrap; }
 .input__suffix .icon-btn { color: var(--color-text-muted); height: 46px; }
 .input:focus-within .input__suffix .icon-btn, .input.is-focused .input__suffix .icon-btn { height: 44px; }
-.input:focus-within, .input.is-focused { border: 2px solid var(--color-primary); }
+.input:focus-within, .input.is-focused { border: 2px solid var(--color-primary); box-shadow: var(--ring-focus-field); } /* [v2: + halo 4 px] */
+.input:focus-within .input__prefix, .input.is-focused .input__prefix { color: var(--color-primary); } /* [v2] ikon awalan ikut berwarna saat fokus */
 .input:focus-within .input__prefix, .input.is-focused .input__prefix { margin-left: -1px; height: 44px; }
 .input:focus-within .input__control, .input.is-focused .input__control { padding-top: 12px; padding-bottom: 12px; }
 .input.is-focused .input__control:first-child, .input:focus-within .input__control:first-child { padding-left: 18px; }
 .input.is-error { border-color: var(--color-danger); }
-.input.is-error:focus-within, .input.is-error.is-focused { border: 2px solid var(--color-danger); }
-.input.is-disabled { border-color: var(--color-divider); color: rgba(28, 27, 31, .38); }
-.input.is-disabled .input__control { color: rgba(28, 27, 31, .38); }
+.input.is-error:focus-within, .input.is-error.is-focused { border: 2px solid var(--color-danger); box-shadow: 0 0 0 4px rgba(179, 38, 30, .14); }
+.input.is-disabled { border-color: var(--color-divider); color: var(--color-on-surface-disabled); }
+.input.is-disabled .input__control { color: var(--color-on-surface-disabled); }
 .input--multiline { align-items: flex-start; }
 .input--multiline .input__control { resize: none; min-height: calc(4 * 20.3px + 26px); }
 .input--dropdown { min-height: 52px; cursor: pointer; }         /* DropdownButtonFormField terukur 52 */
@@ -561,13 +671,13 @@ a { color: inherit; text-decoration: none; }
 .input--dropdown .input__chevron { flex: none; margin-right: 11px; color: var(--color-text); } /* Icons.keyboard_arrow_down 24, 12 dari kanan */
 .input--search { min-height: var(--size-search); }              /* TextField isDense pencarian */
 .input--search .input__prefix { height: 49px; color: var(--color-text-muted); }
-.input--search .input__prefix .ic { --ic-size: 24px; }          /* Icon(Icons.search) bawaan 24 */
+.input--search .input__prefix .ic { --ic-size: var(--ic-lg); }          /* Icon(Icons.search) bawaan 24 */
 .field__error { font-size: var(--fs-caption); line-height: var(--lh-normal); letter-spacing: var(--ls-body-sm); color: var(--color-danger); margin-top: var(--s1); padding-left: 20px; }
 .field__helper { font-size: var(--fs-caption); line-height: var(--lh-normal); letter-spacing: var(--ls-body-sm); color: var(--color-text-muted); margin-top: var(--s1); padding-left: 20px; }
 .field__counter { margin-left: auto; padding-right: 20px; }
 
 /* Dropdown terbuka (menu DropdownButton): kartu putih elevasi 8, item 48 */
-.dropdown-menu { background: var(--color-surface); border-radius: var(--r-4); box-shadow: var(--elevation-3); padding: 8px 0; }
+.dropdown-menu { background: var(--color-surface-raised); border: 1px solid var(--color-card-border); border-radius: var(--r-md); box-shadow: var(--shadow-md); padding: 8px 0; overflow: hidden; } /* [v2: dulu radius 4, elevation-3] */
 .dropdown-menu__item { min-height: 48px; display: flex; align-items: center; padding: 0 16px; font-size: var(--fs-body); }
 .dropdown-menu__item.is-selected { background: rgba(26, 75, 23, .08); }
 
@@ -580,18 +690,24 @@ a { color: inherit; text-decoration: none; }
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--r-md);
-  font-size: 22px; font-weight: 600; color: var(--color-text);
+  font-size: calc(22px * var(--ts, 1)); font-weight: 600; color: var(--color-text);
+  transition: border-color var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard);
 }
-.otp__box.is-filled { border: 2px solid var(--color-primary); }
-.otp__box.is-current { border: 2px solid var(--color-accent); }
-.otp.is-error .otp__box { border: 2px solid var(--color-danger); }
+.otp__box.is-filled { border: 2px solid var(--color-primary); background: var(--color-tint); } /* [v2: + isi green50] */
+/* [v2] Kotak aktif: dulu garis emas 2 px (1,5:1 di putih, nyaris tak terlihat). Kini garis primary + halo + kursor. */
+.otp__box.is-current { border: 2px solid var(--color-primary); box-shadow: var(--ring-focus-field); }
+.otp__box.is-current:empty::after { content: ""; width: 2px; height: 24px; border-radius: 1px; background: var(--color-primary); animation: kapdh-caret 1s steps(1) infinite; }
+@keyframes kapdh-caret { 50% { opacity: 0; } }
+.otp.is-error .otp__box { border: 2px solid var(--color-danger); background: var(--color-surface); box-shadow: none; }
 .otp.is-disabled .otp__box { background: var(--color-neutral-100); }
+/* Tombol "Tempel kode" di bawah kotak (OtpBoxes.showPasteButton): KapdhLinkButton + Icons.content_paste, rata kanan */
+.otp-paste { display: flex; justify-content: flex-end; }
 .otp__error { margin-top: var(--s2); font-size: var(--fs-caption); color: var(--color-danger); }
 
 /* PasswordRules (auth_widgets.dart): Wrap jarak 16/4, ikon 16 check_circle success / radio_button_unchecked muted, 12 */
 .rules { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); padding-top: var(--s2); font-size: var(--fs-caption); }
 .rules__item { display: inline-flex; align-items: center; gap: var(--s1); }
-.rules__item .ic { --ic-size: 16px; color: var(--color-text-muted); }
+.rules__item .ic { --ic-size: var(--ic-sm); color: var(--color-text-muted); }
 .rules__item.is-ok .ic { color: var(--color-success); }
 
 /* ---------------------------------------------------------------------------------------------------------------------
@@ -622,7 +738,7 @@ a { color: inherit; text-decoration: none; }
 .method-card.is-selected .method-card__dot { border-color: var(--color-primary); }
 .method-card.is-selected .method-card__dot::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--color-primary); }
 .method-card__title { font-size: var(--fs-body); font-weight: 600; }
-.method-card__number { margin-top: 2px; font-size: 13px; }
+.method-card__number { margin-top: 2px; font-size: calc(13px * var(--ts, 1)); }
 .method-card__holder, .method-card__hint { font-size: var(--fs-caption); color: var(--color-text-muted); }
 .method-card__hint { margin-top: 2px; }
 .method-card__copy { margin-right: var(--s1); font-size: var(--fs-caption); font-weight: 600; }
@@ -640,7 +756,7 @@ a { color: inherit; text-decoration: none; }
   color: var(--badge-fg, var(--color-neutral)); background: var(--badge-bg, var(--color-neutral-bg));
   vertical-align: middle;
 }
-.status-badge .ic { --ic-size: 14px; }
+.status-badge .ic { --ic-size: var(--ic-xs); }
 .status-badge--success { --badge-fg: var(--color-success); --badge-bg: var(--color-success-bg); }
 .status-badge--warning { --badge-fg: var(--color-warning); --badge-bg: var(--color-warning-bg); }
 .status-badge--danger  { --badge-fg: var(--color-danger);  --badge-bg: var(--color-danger-bg); }
@@ -648,15 +764,15 @@ a { color: inherit; text-decoration: none; }
 .status-badge--neutral { --badge-fg: var(--color-neutral); --badge-bg: var(--color-neutral-bg); }
 
 /* CategoryChip (home/shared/content_widgets.dart): 2 x 8, radius 6, green100, 11 w600 primary */
-.category-chip { display: inline-flex; padding: 2px var(--s2); border-radius: var(--r-sm); background: var(--color-green-100); color: var(--color-primary); font-size: var(--fs-overline); font-weight: 600; line-height: var(--lh-normal); }
+.category-chip { display: inline-flex; padding: 2px var(--s2); border-radius: var(--r-sm); background: var(--color-tint-strong); color: var(--color-primary); font-size: var(--fs-overline); font-weight: 600; line-height: var(--lh-normal); }
 
 /* TagChip (network/widgets/tag_chip.dart): 3 x 8, radius 6, 11 w500. hijau = keahlian kartu, biru = keahlian profil */
 .tag-chip { display: inline-flex; align-items: center; padding: 3px var(--s2); border-radius: var(--r-sm); font-size: var(--fs-overline); font-weight: 500; line-height: var(--lh-normal); color: var(--color-success); background: var(--color-success-bg); }
 .tag-chip--blue { color: var(--color-info); background: var(--color-info-bg); }
 .tag-chip--neutral { color: var(--color-neutral); background: var(--color-neutral-bg); }
-/* TagChip dengan onDeleted = InputChip compact: tinggi visual 24 (target 40), pil, label 16 kiri, close 16 */
-.tag-chip--input { height: 24px; margin: 8px 0; padding: 0 8px 0 16px; gap: 8px; border-radius: var(--r-pill); letter-spacing: var(--ls-label); }
-.tag-chip--input .ic { --ic-size: 16px; }
+/* TagChip dengan onDeleted = InputChip (v2: kepadatan standar, onPressed = hapus): pil 32 (target 48), label 16 kiri, close 16 */
+.tag-chip--input { height: 32px; margin: 8px 0; padding: 0 8px 0 16px; gap: 8px; border-radius: var(--r-pill); letter-spacing: var(--ls-label); } /* [v2] kepadatan standar: pil 32 dalam target 48, seluruh chip = hapus filter */
+.tag-chip--input .ic { --ic-size: var(--ic-sm); }
 
 /* ChoiceChip M3 bertema (chipTheme: pil, tanpa garis). Bawaan (Notifikasi): terpilih secondaryContainer + centang 18,
    tidak terpilih putih teks muted. Label labelLarge 14 w600 ls .1; tinggi visual 32 (target 48). */
@@ -667,48 +783,59 @@ a { color: inherit; text-decoration: none; }
   background: var(--color-surface); color: var(--color-text-muted);
   font-size: var(--fs-label); font-weight: 600; line-height: 1.43; letter-spacing: var(--ls-label);
   white-space: nowrap;
+  --elev: 0 0 0 1px var(--color-card-border); /* [v2] garis rambut: chip putih tetap terbaca di latar baru */
 }
-.choice-chip.is-selected { background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); padding-left: 8px; gap: 10px; }
-.choice-chip .ic { --ic-size: 18px; }
+.choice-chip.is-selected { --elev: none; background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); padding-left: 8px; gap: 10px; }
+.choice-chip .ic { --ic-size: var(--ic-btn); }
 /* Varian Berita (news_list_screen): selectedColor primary, label 12 w600 putih / teks, tanpa centang */
 .choice-chip--primary { font-size: var(--fs-caption); color: var(--color-text); }
-.choice-chip--primary.is-selected { background: var(--color-primary); color: var(--color-on-primary); padding-left: 16px; }
+.choice-chip--primary.is-selected { --elev: var(--shadow-xs); background: var(--color-primary); color: var(--color-on-primary); padding-left: 16px; }
 
 /* ---------------------------------------------------------------------------------------------------------------------
    KARTU
    --------------------------------------------------------------------------------------------------------------------- */
 /* CardTheme / TappableCard: putih, garis divider, radius 14, padding 12 */
-.card { display: block; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); overflow: hidden; }
+/* [v2] Kartu: garis rambut lebih lembut + --shadow-sm (dulu hanya garis divider; putih di latar lama 1,04:1). */
+.card { --elev: var(--shadow-sm); display: block; background: var(--color-surface); border: 1px solid var(--color-card-border); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--elev), inset 0 0 0 999px var(--state-color, transparent); }
 .card--pad { padding: 11px; }            /* TappableCard padding 12 (dikurangi garis) */
 .card--pad-16 { padding: 13px 15px; }    /* kartu putih bergaris padding 14 x 16 (SummaryCard, StatusActionCard) */
 .card--md { border-radius: var(--r-md); } /* DirectoryMemberCard radius 10 */
-.card--flat { border: 0; }
+.card--flat { border: 0; --elev: none; box-shadow: none; }
 
 /* SectionHeader (app_scaffold.dart): 14 w600 + TextButton aksi */
 .section-header { display: flex; align-items: center; min-height: 48px; }
-.section-header__title { flex: 1 1 auto; font-size: var(--fs-body); font-weight: 600; }
+.section-header__title { flex: 1 1 auto; font-size: var(--fs-body); font-weight: var(--fw-heading); } /* [v2: dulu w600] */
 /* HomeSectionTitle (content_widgets.dart): 16 w600 + "Lihat semua" */
 .section-title { display: flex; align-items: center; min-height: 48px; }
-.section-title__title { flex: 1 1 auto; font-size: var(--fs-body-lg); font-weight: 600; }
+.section-title__title { flex: 1 1 auto; font-size: calc(17px * var(--ts, 1)); font-weight: var(--fw-heading); letter-spacing: 0; } /* [v2: dulu 16 w600] */
+/* [v2 Beranda] "Lihat semua": pil tonal green50 32 + chevron_right 16; area sentuh tetap 48 (pseudo-element). */
+.section-title__more { position: relative; min-height: 32px; padding: 0 6px 0 12px; gap: 2px; border-radius: var(--r-md); background: var(--color-tint); font-weight: 600; }
+.section-title__more::before { content: ""; position: absolute; inset: -8px 0; }
+.section-title__more .ic { --ic-size: var(--ic-sm); }
 /* SectionEmpty (home_widgets.dart) */
-.section-empty { display: flex; align-items: center; gap: var(--s3); padding: 15px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); }
-.section-empty .ic { --ic-size: 20px; color: var(--color-text-muted); }
-.section-empty__text { font-size: 13px; line-height: 1.4; color: var(--color-text-muted); }
+.section-empty { display: flex; align-items: center; gap: var(--s3); padding: 15px; background: var(--color-surface); border: 1px dashed var(--color-neutral-300); border-radius: var(--r-lg); } /* [v2] garis putus = "belum ada isi", dibedakan dari kartu */
+.section-empty .ic { --ic-size: var(--ic-md); color: var(--color-text-muted); }
+.section-empty__text { font-size: calc(13px * var(--ts, 1)); line-height: 1.4; color: var(--color-text-muted); }
 
 /* IconLine (content_widgets.dart): ikon (teks + 2) muted, jarak 6, teks 12 muted 1.35 */
 .icon-line { display: flex; align-items: flex-start; gap: 6px; font-size: var(--fs-caption); line-height: 1.35; color: var(--color-text-muted); }
-.icon-line .ic { --ic-size: 14px; margin-top: 1px; }
-.icon-line--14 { font-size: 14px; } .icon-line--14 .ic { --ic-size: 16px; }
+.icon-line .ic { --ic-size: var(--ic-xs); margin-top: 1px; }
+.icon-line--14 { font-size: calc(14px * var(--ts, 1)); } .icon-line--14 .ic { --ic-size: var(--ic-sm); }
 
 /* Gambar jaringan / tempat kosong RemoteImage: green50 + ikon green600 28 */
-.img-ph { display: grid; place-items: center; background: var(--color-green-50); color: var(--color-green-600); overflow: hidden; }
-.img-ph .ic { --ic-size: 28px; }
+.img-ph { display: grid; place-items: center; background: var(--color-tint); color: var(--color-green-600); overflow: hidden; }
+.img-ph .ic { --ic-size: var(--ic-xl); }
 .img-cover { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 /* EventCard (events/widgets/event_card.dart) */
-.event-card { display: flex; align-items: flex-start; gap: var(--s3); }
-.event-card__cover { flex: none; width: 92px; height: 76px; border-radius: var(--r-md); overflow: hidden; }
-.event-card__body { flex: 1 1 auto; min-width: 0; }
+/* [v2 Beranda] EventCard: sampul 80 x 80, ikon meta green600, status + harga pindah ke footer selebar kartu dengan garis
+   pemisah (harga selalu di kanan). Flutter: EventCard -> Column(Row(sampul, isi), Divider, Row(badge..., Spacer, harga)). */
+.event-card { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s3); }
+.event-card__cover { flex: none; width: 80px; height: 80px; border-radius: var(--r-md); overflow: hidden; }
+.event-card .icon-line .ic { color: var(--color-icon-accent); }
+.event-card__foot { flex: 1 0 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); padding-top: 10px; border-top: 1px solid var(--color-divider); }
+.event-card__foot .price { order: 9; margin-left: auto; font-size: calc(13px * var(--ts, 1)); font-weight: var(--fw-bold); }
+.event-card__body { flex: 1 1 0; min-width: 0; } /* [v2] basis 0: tetap di samping sampul walau kartu flex-wrap */
 .event-card__title { font-size: var(--fs-body); font-weight: 600; }
 .event-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s2); margin-top: 6px; }
 .price { font-size: var(--fs-caption); font-weight: 600; color: var(--color-primary); }
@@ -717,18 +844,49 @@ a { color: inherit; text-decoration: none; }
 .post-card__cover { aspect-ratio: 16 / 9; }
 .post-card__body { padding: var(--s3); }
 .post-card__title { font-size: var(--fs-body); font-weight: 600; line-height: 1.35; }
-.post-card__excerpt { margin-top: var(--s1); font-size: 13px; line-height: var(--lh-normal); color: var(--color-text-muted); }
+.post-card__excerpt { margin-top: var(--s1); font-size: calc(13px * var(--ts, 1)); line-height: var(--lh-normal); color: var(--color-text-muted); }
 .post-card__foot { display: flex; align-items: center; gap: var(--s1); margin-top: var(--s2); font-size: var(--fs-caption); color: var(--color-text-muted); }
 .post-card__foot .icon-line { flex: 1 1 auto; }
-.post-card__like .ic, .post-card__foot > .ic { --ic-size: 14px; }
+.post-card__like .ic, .post-card__foot > .ic { --ic-size: var(--ic-xs); }
 .is-liked { color: var(--color-danger); }
+/* [v2 Beranda] PostCard di Beranda: kartu pertama "hero" (sampul 16:9 berscrim, kategori dan tanggal/suka di atas gambar),
+   sisanya baris ringkas (gambar 80 x 80, kategori + suka, judul 2 baris, tanggal). Halaman Berita tetap PostCard biasa.
+   Flutter: PostCard(variant: PostCardVariant.hero | compact). */
+.post-card--hero .post-card__cover { position: relative; }
+.post-card--hero .post-card__cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0, 0, 0, .72) 0%, rgba(0, 0, 0, .18) 42%, transparent 70%); }
+.category-chip--on-image { position: absolute; z-index: 1; top: var(--s3); left: var(--s3); background: rgba(26, 75, 23, .92); color: var(--color-text-on-dark); }
+.post-card__overlay { position: absolute; z-index: 1; left: var(--s3); right: var(--s3); bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: var(--s2); font-size: var(--fs-caption); color: rgba(255, 255, 255, .92); }
+.post-card__overlay .icon-line, .post-card__overlay .post-card__likes { color: inherit; }
+.post-card__overlay .ic { color: inherit; }
+.post-card__overlay .is-liked { color: #FFB4AB; } /* merah muda: 6,9:1 di scrim gelap */
+.post-card--hero .post-card__body { padding: var(--s3) 14px 14px; }
+.post-card--hero .post-card__title { font-size: calc(15px * var(--ts, 1)); font-weight: var(--fw-heading); letter-spacing: 0; }
+.post-card__likes { display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); white-space: nowrap; }
+.post-card__likes .ic { --ic-size: var(--ic-xs); }
+.post-card--row { display: flex; align-items: flex-start; gap: var(--s3); padding: 11px; }
+.post-card--row .post-card__cover { flex: none; width: 80px; height: 80px; aspect-ratio: auto; border-radius: var(--r-md); overflow: hidden; }
+.post-card--row .post-card__body { flex: 1 1 auto; min-width: 0; padding: 0; }
+.post-card__top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); } /* [v2 P2-3] Wrap: suka turun ke baris berikut pada teks besar */
+.post-card--row .post-card__title { margin-top: 6px; }
+.post-card__date { margin-top: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
 
 /* QuickAccessRow (home_widgets.dart): kartu 12 x 4, ubin flex: lingkaran 44 green50 ikon 22, label 12 w600, detail 11 */
-.quick-access { display: flex; align-items: flex-start; padding: 11px 3px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); }
+.quick-access { display: flex; align-items: flex-start; padding: 15px 3px 13px; background: var(--color-surface); border: 1px solid var(--color-card-border); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); } /* [v2 Beranda: padding 16 / 14] */
 .quick-access__item { flex: 1 1 0; min-width: 0; min-height: 48px; padding: var(--s1) 2px; display: flex; flex-direction: column; align-items: center; text-align: center; border-radius: var(--r-md); }
-.quick-access__icon { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--color-green-50); color: var(--color-primary); }
-.quick-access__icon .ic { --ic-size: 22px; }
-.quick-access__label { margin-top: 6px; font-size: var(--fs-caption); font-weight: 600; }
+/* [v2, usulan] Ikon akses cepat: lingkaran 56 bergradasi lembut (sorot kiri atas), garis tipis, bayangan halus; ikon
+   Phosphor fill 28 berisi gradasi hijau (terang -> green950). Jumlah belum dibaca menjadi lencana emas di pojok lingkaran
+   (dulu teks kecil di bawah label). Flutter: Container(shape circle, gradient --qa-circle-bg) + ShaderMask(--qa-icon). */
+.quick-access__icon {
+  position: relative; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--qa-circle-bg); border: 1px solid var(--qa-circle-border);
+  box-shadow: 0 3px 8px -2px rgba(14, 40, 12, .16), inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+.quick-access__icon .ic { --ic-size: 28px; background: var(--qa-icon); }
+:root[data-theme="dark"] .quick-access__icon { box-shadow: 0 3px 8px -2px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .06); }
+.quick-access__badge { left: auto; right: -5px; top: -3px; min-width: 20px; height: 20px; border-radius: 10px; font-weight: 700; box-shadow: 0 0 0 2px var(--color-surface); }
+.quick-access__label { margin-top: var(--s2); font-size: var(--fs-13); font-weight: var(--fw-bold); line-height: 1.3; letter-spacing: 0; }
+/* [v2 P2-3, usulan] skala teks > 1,3 (--text-scale-stack): 4 ubin menjadi 2 x 2 agar label tidak bertabrakan. */
+:root[data-ts="2"] .quick-access { display: grid; grid-template-columns: 1fr 1fr; row-gap: var(--s3); }
 .quick-access__detail { font-size: var(--fs-overline); color: var(--color-text-muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 
 /* BannerCarousel (home/widgets/banner_carousel.dart): halaman 92 % lebar, padding 4, ubin 2.2:1 radius 14,
@@ -736,16 +894,24 @@ a { color: inherit; text-decoration: none; }
 .banner-carousel { overflow: hidden; }
 .banner-carousel__track { display: flex; padding-left: 4%; }
 .banner-carousel__page { flex: 0 0 92%; padding: 0 var(--s1); }
-.banner-tile { display: block; position: relative; aspect-ratio: 2.2; border-radius: var(--r-lg); overflow: hidden; background: var(--color-green-50); }
+.banner-tile { display: block; position: relative; aspect-ratio: 2.2; border-radius: var(--r-lg); overflow: hidden; background: var(--color-tint); box-shadow: var(--shadow-sm); }
 .banner-tile > img, .banner-tile > .img-ph { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .banner-tile::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, 0) 45%, var(--color-banner-scrim-end) 100%); }
 .banner-tile__caption { position: absolute; z-index: 1; left: var(--s3); right: var(--s3); bottom: var(--s3); display: flex; align-items: flex-end; gap: var(--s2); }
-.banner-tile__title { flex: 1 1 auto; min-width: 0; color: var(--color-text-on-dark); font-size: var(--fs-body); font-weight: 600; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.banner-tile__title { flex: 1 1 auto; min-width: 0; color: var(--color-text-on-dark); font-size: calc(14px * min(var(--ts, 1), 1.3)); /* [v2 P2-3] judul di atas gambar berasio tetap: skala dibatasi 1,3 agar tidak menutupi gambar; judul lengkap ada di layar detail */ font-weight: 600; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .external-pill { flex: none; display: inline-flex; align-items: center; gap: 2px; padding: 2px var(--s2); border-radius: var(--r-pill); background: var(--color-surface); color: var(--color-primary); font-size: var(--fs-overline); font-weight: 600; }
 .external-pill .ic { --ic-size: 12px; }
 .dots { display: flex; justify-content: center; margin-top: var(--s2); }
-.dots__dot { width: 6px; height: 6px; margin: 0 3px; border-radius: var(--r-pill); background: var(--color-neutral-300); }
+.dots__dot { width: 6px; height: 6px; margin: 0 3px; border-radius: var(--r-pill); background: var(--color-neutral-500); transition: width var(--dur-base) var(--ease-out), background-color var(--dur-base) var(--ease-out); } /* [v2: dulu neutral300, 1,7:1] */
 .dots__dot.is-active { width: 18px; background: var(--color-primary); }
+/* [v2 Beranda] Titik pindah ke dalam banner (kanan bawah, di atas scrim): aktif emas 18, lainnya putih 60 %. Judul banner
+   14 w700 dan memberi ruang 52 di kanan untuk titik. Flutter: BannerCarousel -> Stack(PageView, Positioned(dots)). */
+div:has(> .banner-carousel + .dots) { position: relative; }
+.banner-carousel + .dots { position: absolute; z-index: 2; right: calc(4% + var(--s1) + var(--s3)); bottom: var(--s3); margin: 0; }
+.banner-carousel + .dots .dots__dot { background: rgba(255, 255, 255, .6); }
+.banner-carousel + .dots .dots__dot.is-active { background: var(--color-accent); }
+.banner-carousel .banner-tile__caption { right: 52px; }
+.banner-carousel .banner-tile__title { font-weight: var(--fw-heading); letter-spacing: 0; line-height: 1.35; }
 
 /* DirectoryMemberCard (network/widgets/directory_member_card.dart) */
 .member-card { display: flex; align-items: flex-start; gap: var(--s3); padding: 11px; }
@@ -760,7 +926,7 @@ a { color: inherit; text-decoration: none; }
   --av: 48px;
   flex: none; width: var(--av); height: var(--av); border-radius: 50%;
   display: grid; place-items: center; overflow: hidden;
-  background: var(--color-green-100); color: var(--color-primary);
+  background: var(--color-tint-strong); color: var(--color-primary);
   font-size: calc(var(--av) * .36); font-weight: 600; line-height: 1; letter-spacing: 0;
 }
 .avatar > img { width: 100%; height: 100%; object-fit: cover; }
@@ -770,46 +936,57 @@ a { color: inherit; text-decoration: none; }
 /* ProfileAvatar (account/widgets/profile_avatar.dart): garis putih 3 + bayangan, inisial 0.34 x ukuran */
 .avatar--profile { border: 3px solid var(--color-surface); box-shadow: var(--shadow-profile-avatar); font-size: calc(var(--av) * .34); }
 /* CircleAvatar M3 bawaan (ListTile): primaryContainer, teks onPrimaryContainer */
-.avatar--m3 { background: var(--m3-primary-container); color: var(--m3-on-primary-container); font-size: 18px; }
+.avatar--m3 { background: var(--m3-primary-container); color: var(--m3-on-primary-container); font-size: calc(18px * var(--ts, 1)); }
 
 /* KtaCard (lib/design/kta_card.dart): padding 18, radius 16, gradasi ktaCard */
-.kta-card { --kta-angle: 128deg; padding: 18px; border-radius: var(--r-16); background: linear-gradient(var(--kta-angle), var(--gradient-kta-stops)); color: var(--color-text-on-dark); }
-.kta-card__head { display: flex; align-items: center; gap: var(--s3); }
-.kta-card__avatar { --av: 52px; font-size: 18px; }
-.kta-card__name { font-size: 20px; font-weight: 600; color: var(--color-accent); }
-.kta-card__subtitle { margin-top: 2px; font-size: var(--fs-overline); color: var(--color-green-100); }
-.kta-card__body { display: flex; align-items: flex-start; gap: 14px; margin-top: 14px; }
-.kta-card__fields { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-.kta-field__label { font-size: var(--fs-overline); color: var(--color-muted-on-dark); }
-.kta-field__value { margin-top: 1px; color: var(--color-text-on-dark); }
-.kta-field__value--cohort { font-size: 18px; font-weight: 600; }
-.kta-field__value--number { font-size: 14px; font-weight: 600; }
-.kta-field__value--city { font-size: 13px; }
-.kta-card__validity { margin-top: 14px; font-size: 12px; color: var(--color-muted-on-dark); }
-.kta-qr { flex: none; width: var(--size-kta-qr); height: var(--size-kta-qr); padding: 10px; border-radius: var(--r-12); background: var(--color-surface); }
+/* [v2 KTA] Kepala logo + nama perkumpulan + "KTA DIGITAL", garis pemisah, pita gelombang (BrandWavePainter), avatar
+   persegi membulat 40, nama putih 20 w700 (turun sampai 16 agar muat dua baris), QR 33 % lebar isi (96..112).
+   Tata letak ringkas mendekati kartu identitas landscape (sekitar 1,5 : 1 pada lebar 320). */
+.kta-card { --kta-angle: 128deg; position: relative; padding: 12px; border-radius: var(--r-lg); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='a'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.05'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='.12'/%3E%3C/linearGradient%3E%3ClinearGradient id='b'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.02'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='.06'/%3E%3C/linearGradient%3E%3ClinearGradient id='c'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.04'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='.16'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23a)' d='M0 10C35 4 55 52 100 40L100 64C60 80 35 24 0 36Z'/%3E%3Cpath fill='url(%23b)' d='M0 48C30 40 62 86 100 72L100 90C60 102 30 60 0 68Z'/%3E%3Cpath fill='none' stroke='url(%23c)' stroke-width='1.5' vector-effect='non-scaling-stroke' d='M0 10C35 4 55 52 100 40'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat, linear-gradient(var(--kta-angle), var(--gradient-kta-stops)); color: var(--color-text-on-dark); box-shadow: var(--shadow-kta); overflow: hidden; }
+.kta-card__brand { position: relative; display: flex; align-items: center; gap: var(--s2); }
+.kta-card__logo { flex: none; width: 30px; height: 30px; object-fit: contain; }
+.kta-card__org { display: flex; flex-direction: column; font-size: calc(11px * var(--ts, 1)); font-weight: 700; letter-spacing: .5px; line-height: 1.2; color: var(--color-text-on-dark); }
+.kta-card__org-gold { color: var(--color-accent); }
+.kta-card__tag { position: absolute; top: 2px; right: 0; font-size: var(--fs-overline); font-weight: 600; letter-spacing: 1px; line-height: 1.2; color: var(--color-muted-on-dark); }
+.kta-card__rule { margin: 6px 0 var(--s2); height: 1px; border: 0; background: rgba(255, 255, 255, .25); }
+.kta-card__head { display: flex; align-items: center; gap: 10px; }
+.kta-card__avatar { --av: 40px; font-size: calc(16px * var(--ts, 1)); font-weight: 700; border-radius: var(--r-md); background: var(--color-tint); }
+.kta-card__name { font-size: calc(20px * var(--ts, 1)); font-weight: 700; line-height: 1.15; letter-spacing: 0; color: var(--color-text-on-dark); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.kta-card__name--md { font-size: calc(18px * var(--ts, 1)); } .kta-card__name--sm { font-size: calc(16px * var(--ts, 1)); } /* KtaCard.nameFontSize untuk nama panjang */
+.kta-card__subtitle { font-size: calc(11px * var(--ts, 1)); line-height: 1.3; color: var(--color-green-100); }
+.kta-card__body { display: flex; align-items: flex-start; gap: var(--s3); margin-top: var(--s2); }
+.kta-card__fields { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.kta-card__pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); } /* kode angkatan | nomor anggota */
+.kta-field__label { font-size: var(--fs-overline); letter-spacing: 0; line-height: 1.2; color: var(--color-muted-on-dark); }
+.kta-field__value { font-size: calc(14px * var(--ts, 1)); font-weight: 700; line-height: 1.25; color: var(--color-text-on-dark); }
+.kta-field__value--cohort { }
+.kta-field__value--number { letter-spacing: .3px; }
+.kta-field__value--city { font-size: calc(13px * var(--ts, 1)); font-weight: 600; }
+.kta-card__validity { font-size: calc(11px * var(--ts, 1)); line-height: 1.3; color: var(--color-muted-on-dark); } /* di kolom data, di bawah kota */
+.kta-qr { flex: none; width: clamp(96px, 33%, 112px); height: auto; aspect-ratio: 1; padding: 8px; border-radius: 12px; background: var(--color-surface); } /* [v2] 33 % lebar isi kartu, 96..112 */
 .kta-qr--locked {
-  height: auto; min-height: var(--size-kta-qr);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s2);
+  height: auto; /* persegi dari aspect-ratio .kta-qr, tumbuh bila teks panjang */
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: var(--color-qr-placeholder-fill); border: 1px solid var(--color-qr-placeholder-border);
-  padding: 9px;
+  padding: 7px; gap: 6px;
   font-size: var(--fs-overline); line-height: 1.35; text-align: center; color: var(--color-text-on-dark);
 }
-.kta-qr--locked .ic { --ic-size: 34px; color: var(--color-accent); }
+.kta-qr--locked .ic { --ic-size: var(--ic-xl); color: var(--color-accent); }
 /* Glyph QR tiruan (TIDAK dapat dipindai). Modul surfaceDark. */
 .qr-glyph {
   display: block; width: 100%; height: 100%;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 25 25' shape-rendering='crispEdges'%3E%3Cpath fill='%230E280C' d='M0 0h7v1h-7zM11 0h1v1h-1zM14 0h1v1h-1zM16 0h1v1h-1zM18 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h2v1h-2zM12 1h2v1h-2zM15 1h2v1h-2zM18 1h1v1h-1zM24 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM8 2h2v1h-2zM13 2h1v1h-1zM18 2h1v1h-1zM20 2h3v1h-3zM24 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM11 3h1v1h-1zM14 3h2v1h-2zM18 3h1v1h-1zM20 3h3v1h-3zM24 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM8 4h2v1h-2zM11 4h1v1h-1zM13 4h2v1h-2zM16 4h1v1h-1zM18 4h1v1h-1zM20 4h3v1h-3zM24 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM9 5h3v1h-3zM13 5h1v1h-1zM18 5h1v1h-1zM24 5h1v1h-1zM0 6h7v1h-7zM18 6h7v1h-7zM9 7h1v1h-1zM14 7h1v1h-1zM0 8h1v1h-1zM4 8h2v1h-2zM7 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM21 8h4v1h-4zM4 9h2v1h-2zM12 9h3v1h-3zM16 9h3v1h-3zM21 9h1v1h-1zM2 10h4v1h-4zM8 10h1v1h-1zM10 10h3v1h-3zM18 10h1v1h-1zM20 10h1v1h-1zM22 10h1v1h-1zM24 10h1v1h-1zM1 11h2v1h-2zM5 11h1v1h-1zM11 11h1v1h-1zM14 11h1v1h-1zM17 11h1v1h-1zM19 11h2v1h-2zM1 12h1v1h-1zM4 12h2v1h-2zM10 12h3v1h-3zM16 12h1v1h-1zM18 12h1v1h-1zM24 12h1v1h-1zM1 13h4v1h-4zM7 13h4v1h-4zM15 13h1v1h-1zM17 13h3v1h-3zM21 13h3v1h-3zM0 14h1v1h-1zM2 14h2v1h-2zM5 14h1v1h-1zM7 14h2v1h-2zM11 14h3v1h-3zM15 14h2v1h-2zM22 14h2v1h-2zM0 15h1v1h-1zM4 15h1v1h-1zM7 15h2v1h-2zM10 15h1v1h-1zM13 15h1v1h-1zM15 15h1v1h-1zM17 15h2v1h-2zM20 15h2v1h-2zM23 15h1v1h-1zM2 16h1v1h-1zM4 16h2v1h-2zM8 16h2v1h-2zM14 16h3v1h-3zM18 16h5v1h-5zM24 16h1v1h-1zM10 17h1v1h-1zM12 17h3v1h-3zM16 17h1v1h-1zM21 17h1v1h-1zM23 17h1v1h-1zM0 18h7v1h-7zM8 18h2v1h-2zM11 18h2v1h-2zM14 18h1v1h-1zM16 18h1v1h-1zM19 18h1v1h-1zM21 18h2v1h-2zM0 19h1v1h-1zM6 19h1v1h-1zM8 19h1v1h-1zM12 19h1v1h-1zM16 19h2v1h-2zM19 19h1v1h-1zM22 19h2v1h-2zM0 20h1v1h-1zM2 20h3v1h-3zM6 20h1v1h-1zM8 20h2v1h-2zM11 20h1v1h-1zM13 20h3v1h-3zM17 20h4v1h-4zM0 21h1v1h-1zM2 21h3v1h-3zM6 21h1v1h-1zM9 21h1v1h-1zM11 21h1v1h-1zM13 21h2v1h-2zM16 21h1v1h-1zM18 21h1v1h-1zM20 21h5v1h-5zM0 22h1v1h-1zM2 22h3v1h-3zM6 22h1v1h-1zM8 22h2v1h-2zM13 22h1v1h-1zM16 22h1v1h-1zM19 22h4v1h-4zM24 22h1v1h-1zM0 23h1v1h-1zM6 23h1v1h-1zM10 23h9v1h-9zM20 23h3v1h-3zM24 23h1v1h-1zM0 24h7v1h-7zM8 24h2v1h-2zM11 24h2v1h-2zM15 24h1v1h-1zM17 24h1v1h-1zM20 24h1v1h-1zM24 24h1v1h-1z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 /* KtaMiniCard (Biaya KTA): padding 16, radius 14 */
-.kta-mini { --kta-angle: 111deg; padding: var(--s4); border-radius: var(--r-lg); background: linear-gradient(var(--kta-angle), var(--gradient-kta-stops)); color: var(--color-text-on-dark); }
+.kta-mini { --kta-angle: 111deg; padding: var(--s4); border-radius: var(--r-lg); background: linear-gradient(var(--kta-angle), var(--gradient-kta-stops)); color: var(--color-text-on-dark); box-shadow: var(--shadow-kta); }
 .kta-mini__head { display: flex; align-items: flex-start; gap: var(--s3); }
-.kta-mini__name { font-size: 18px; font-weight: 600; color: var(--color-accent); }
+.kta-mini__name { font-size: calc(18px * var(--ts, 1)); font-weight: 600; color: var(--color-accent); }
 .kta-mini__subtitle { margin-top: 2px; font-size: var(--fs-overline); color: var(--color-green-100); }
 .kta-mini__label { margin-top: 10px; font-size: var(--fs-overline); color: var(--color-muted-on-dark); }
-.kta-mini__number { margin-top: 2px; font-size: 17px; font-weight: 600; letter-spacing: .5px; }
+.kta-mini__number { margin-top: 2px; font-size: calc(17px * var(--ts, 1)); font-weight: 600; letter-spacing: .5px; }
 
 /* StatusActionCard (kta_card.dart): kartu 14 x 16, badge + keterangan 12 muted, aksi solid/outlined lebar intrinsik */
-.status-action-card { display: flex; align-items: center; gap: var(--s3); padding: 13px 15px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); }
+.status-action-card { display: flex; align-items: center; gap: var(--s3); padding: 13px 15px; background: var(--color-surface); border: 1px solid var(--color-card-border); box-shadow: var(--shadow-sm); border-radius: var(--r-lg); }
 .status-action-card__info { flex: 1 1 auto; min-width: 0; }
 .status-action-card__message { margin-top: 6px; font-size: var(--fs-caption); line-height: var(--lh-normal); color: var(--color-text-muted); }
 .status-action-card--stacked { flex-direction: column; align-items: flex-start; }
@@ -819,8 +996,8 @@ a { color: inherit; text-decoration: none; }
 .status-hero__icon { width: var(--size-hero-icon); height: var(--size-hero-icon); border-radius: 50%; display: grid; place-items: center; color: var(--badge-fg, var(--color-neutral)); background: var(--badge-bg, var(--color-neutral-bg)); }
 .status-hero__icon .ic { --ic-size: 34px; }
 .status-hero .status-badge { margin-top: var(--s3); }
-.status-hero__title { margin-top: var(--s3); font-size: var(--fs-h2); font-weight: 600; line-height: 1.3; }
-.status-hero__message { margin-top: var(--s3); font-size: 13px; line-height: 1.55; color: var(--color-text-muted); }
+.status-hero__title { margin-top: var(--s3); font-size: var(--fs-h2); font-weight: var(--fw-heading); line-height: 1.3; }
+.status-hero__message { margin-top: var(--s3); font-size: calc(13px * var(--ts, 1)); line-height: 1.55; color: var(--color-text-muted); }
 .tone-success { --badge-fg: var(--color-success); --badge-bg: var(--color-success-bg); }
 .tone-warning { --badge-fg: var(--color-warning); --badge-bg: var(--color-warning-bg); }
 .tone-danger  { --badge-fg: var(--color-danger);  --badge-bg: var(--color-danger-bg); }
@@ -828,7 +1005,7 @@ a { color: inherit; text-decoration: none; }
 .tone-neutral { --badge-fg: var(--color-neutral); --badge-bg: var(--color-neutral-bg); }
 
 /* SummaryCard (lib/design/summary_card.dart) */
-.summary-card { padding: 13px 15px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); }
+.summary-card { padding: 13px 15px; background: var(--color-surface); border: 1px solid var(--color-card-border); box-shadow: var(--shadow-sm); border-radius: var(--r-lg); }
 .summary-card--danger { border-color: var(--color-rejection-border); }
 .summary-card__title { font-size: var(--fs-body); font-weight: 600; }
 .summary-card--danger .summary-card__title { color: var(--color-danger); }
@@ -837,7 +1014,7 @@ a { color: inherit; text-decoration: none; }
    separuh dan diletakkan tepat setelah jarak 12 (sisa ruang di ujung kanan). Nilai satu baris yang pendek karena itu
    TIDAK menempel tepi kanan; nilai yang membungkus memenuhi separuh kanan dan rata kanan. Diukur dengan uji widget
    Flutter 3.47.2 (label x 37 w 137, nilai x 186 untuk kartu selebar 320). */
-.summary-row { display: flex; align-items: flex-start; gap: var(--s3); margin-top: var(--s2); font-size: 13px; }
+.summary-row { display: flex; align-items: flex-start; gap: var(--s3); margin-top: var(--s2); font-size: calc(13px * var(--ts, 1)); }
 .summary-row__label { flex: 0 0 calc((100% - var(--s3)) / 2); min-width: 0; color: var(--color-text-muted); }
 .summary-row__value { flex: 0 1 auto; min-width: 0; max-width: calc((100% - var(--s3)) / 2); text-align: right; }
 .summary-row__value--em { font-weight: 600; }
@@ -850,10 +1027,11 @@ a { color: inherit; text-decoration: none; }
 .summary-card__footnote { margin-top: var(--s2); font-size: var(--fs-caption); line-height: 1.5; color: var(--color-text-muted); }
 
 /* InfoBox (lib/design/info_box.dart): 12 x 14, radius 12; info green50/primary, warning, danger; ikon 18 + 10 */
-.info-box { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: var(--s3) 14px; border-radius: var(--r-12); background: var(--color-green-50); --info-fg: var(--color-primary); }
-.info-box > .ic { --ic-size: 18px; margin-top: 1px; color: var(--info-fg); }
+/* [v2] + garis 1 px bernada 20 %: kotak green50 hampir tak terlihat di latar baru. Ukuran luar tetap (padding dikurangi garis). */
+.info-box { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 11px 13px; border-radius: var(--r-12); background: var(--color-tint); --info-fg: var(--color-primary); border: 1px solid color-mix(in srgb, var(--info-fg) 20%, transparent); }
+.info-box > .ic { --ic-size: var(--ic-btn); margin-top: 1px; color: var(--info-fg); }
 .info-box__body { flex: 1 1 auto; min-width: 0; }
-.info-box__title { font-size: 13px; font-weight: 600; color: var(--info-fg); }
+.info-box__title { font-size: calc(13px * var(--ts, 1)); font-weight: 600; color: var(--info-fg); }
 .info-box__message { font-size: var(--fs-caption); line-height: 1.5; color: var(--color-text); }
 .info-box__trailing { flex: none; margin-left: var(--s2); align-self: flex-start; } /* TextButton 48 rata atas: kotak min 72 */
 .info-box--warning { background: var(--color-warning-bg); --info-fg: var(--color-warning); }
@@ -863,10 +1041,10 @@ a { color: inherit; text-decoration: none; }
 .amount-box { display: flex; align-items: center; gap: var(--s3); padding: 14px var(--s4); border-radius: var(--r-lg); background: var(--color-surface-dark); }
 .amount-box__label { font-size: var(--fs-caption); color: var(--color-muted-on-dark); }
 .amount-box__value { margin-top: 2px; font-size: var(--fs-h1); font-weight: 700; color: var(--color-accent); }
-.amount-box__copy { flex: none; min-height: 48px; padding: 0 14px; border: 1px solid var(--color-accent); border-radius: var(--r-md); color: var(--color-accent); font-size: 13px; font-weight: 600; letter-spacing: 0; }
+.amount-box__copy { flex: none; min-height: 48px; padding: 0 14px; border: 1px solid var(--color-accent); border-radius: var(--r-md); color: var(--color-accent); font-size: calc(13px * var(--ts, 1)); font-weight: 600; letter-spacing: 0; }
 
 /* QrisImageCard (lib/design/qris_image_card.dart) */
-.qris-card { display: flex; flex-direction: column; align-items: center; padding: 15px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); }
+.qris-card { display: flex; flex-direction: column; align-items: center; padding: 15px; background: var(--color-surface); border: 1px solid var(--color-card-border); box-shadow: var(--shadow-sm); border-radius: var(--r-lg); }
 .qris-card__image { width: 100%; max-width: 280px; aspect-ratio: 1; background: var(--color-surface); }
 .qris-card__image .qr-glyph { image-rendering: pixelated; }
 .qris-card .btn-text { margin-top: var(--s2); font-weight: 600; }
@@ -876,26 +1054,26 @@ a { color: inherit; text-decoration: none; }
 .qris-error__text { margin-top: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
 
 /* SupportContactCard (lib/design/support_contact_card.dart) */
-.support-card { padding: 11px 15px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); }
+.support-card { padding: 11px 15px; background: var(--color-surface); border: 1px solid var(--color-card-border); box-shadow: var(--shadow-sm); border-radius: var(--r-lg); }
 .support-card__title { font-size: var(--fs-body); font-weight: 600; margin-bottom: var(--s1); }
 .contact-row { display: flex; align-items: center; gap: var(--s3); min-height: 48px; width: 100%; border-radius: var(--r-md); }
-.contact-row > .ic:first-child { --ic-size: 20px; color: var(--color-primary); }
-.contact-row > .ic:last-child { --ic-size: 18px; color: var(--color-text-muted); }
+.contact-row > .ic:first-child { --ic-size: var(--ic-md); color: var(--color-primary); }
+.contact-row > .ic:last-child { --ic-size: var(--ic-btn); color: var(--color-text-muted); }
 .contact-row__label { display: block; font-size: var(--fs-caption); color: var(--color-text-muted); }
-.contact-row__value { display: block; font-size: 13px; font-weight: 600; color: var(--color-primary); }
+.contact-row__value { display: block; font-size: calc(13px * var(--ts, 1)); font-weight: 600; color: var(--color-primary); }
 
 /* UploadTile (lib/design/upload_tile.dart): garis putus 5/4 radius 12, isi green50, ikon 44 radius 8 */
 .upload-tile {
   display: flex; align-items: center; gap: var(--s3); padding: var(--s3);
   border-radius: var(--r-12);
-  background: var(--color-green-50) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'%3E%3Crect width='100%25' height='100%25' rx='12' ry='12' fill='none' stroke='%231A4B17' stroke-width='2' stroke-dasharray='5 4'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  background: var(--color-tint) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'%3E%3Crect width='100%25' height='100%25' rx='12' ry='12' fill='none' stroke='%231A4B17' stroke-width='2' stroke-dasharray='5 4'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
   width: 100%;
 }
-.upload-tile__icon { flex: none; width: 44px; height: 44px; border-radius: var(--r-8); display: grid; place-items: center; background: var(--color-green-100); color: var(--color-primary); }
+.upload-tile__icon { flex: none; width: 44px; height: 44px; border-radius: var(--r-8); display: grid; place-items: center; background: var(--color-tint-strong); color: var(--color-primary); }
 .upload-tile__body { flex: 1 1 auto; min-width: 0; }
-.upload-tile__title { font-size: 13px; font-weight: 600; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.upload-tile__title { font-size: calc(13px * var(--ts, 1)); font-weight: 600; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .upload-tile__subtitle { display: block; font-size: var(--fs-caption); color: var(--color-text-muted); }
-.upload-tile__action { flex: none; margin-left: var(--s2); min-height: 48px; display: grid; place-items: center; font-size: 13px; font-weight: 600; color: var(--color-primary); }
+.upload-tile__action { flex: none; margin-left: var(--s2); min-height: 48px; display: grid; place-items: center; font-size: calc(13px * var(--ts, 1)); font-weight: 600; color: var(--color-primary); }
 .upload-tile .progress-linear { margin-top: var(--s1); }
 .upload-tile--error {
   background: var(--color-danger-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'%3E%3Crect width='100%25' height='100%25' rx='12' ry='12' fill='none' stroke='%23B3261E' stroke-width='2' stroke-dasharray='5 4'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
@@ -907,20 +1085,20 @@ a { color: inherit; text-decoration: none; }
 .timeline { display: flex; flex-direction: column; gap: var(--s3); }
 .timeline__item { display: flex; align-items: flex-start; gap: var(--s3); }
 .timeline__marker { flex: none; margin-top: 1px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: var(--color-on-primary); }
-.timeline__marker .ic { --ic-size: 14px; }
+.timeline__marker .ic { --ic-size: var(--ic-xs); }
 .timeline__item--done .timeline__marker { background: var(--color-primary); }
 .timeline__item--current .timeline__marker { background: var(--color-info); }
 .timeline__item--current .timeline__marker::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--color-surface); }
 .timeline__item--upcoming .timeline__marker { background: var(--color-surface); border: 1.5px solid var(--color-border); }
 .timeline__item--failed .timeline__marker { background: var(--color-danger); }
-.timeline__title { font-size: 13px; font-weight: 600; }
+.timeline__title { font-size: calc(13px * var(--ts, 1)); font-weight: 600; }
 .timeline__subtitle { font-size: var(--fs-caption); color: var(--color-text-muted); }
 
 /* KapdhStepper / RegisterStepper / RecoveryStepper (lib/design/kapdh_stepper.dart) */
 .stepper { display: flex; align-items: flex-start; }
 .stepper__step { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; }
 .stepper__dot { width: var(--size-stepper-dot); height: var(--size-stepper-dot); border-radius: 50%; display: grid; place-items: center; background: var(--color-surface); border: 1.5px solid var(--color-border); color: var(--color-text-muted); }
-.stepper__dot .ic { --ic-size: 18px; }
+.stepper__dot .ic { --ic-size: var(--ic-btn); }
 .stepper__label { margin-top: 6px; font-size: var(--fs-caption); font-weight: 400; color: var(--color-text-muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .stepper__step.is-done .stepper__dot, .stepper__step.is-current .stepper__dot { background: var(--color-primary); border: 0; color: var(--color-on-primary); }
 .stepper__step.is-current .stepper__dot { box-shadow: var(--ring-stepper-current); }
@@ -928,6 +1106,11 @@ a { color: inherit; text-decoration: none; }
 .stepper__step.is-current .stepper__label { font-weight: 600; color: var(--color-text); }
 .stepper--compact .stepper__dot { width: var(--size-stepper-dot-compact); height: var(--size-stepper-dot-compact); }
 .stepper--compact .stepper__label { font-size: var(--fs-overline); }
+/* [v2 P2-3, usulan] skala teks > 1,3: label langkah lain disembunyikan (tetap dibacakan lewat aria-label/Semantics
+   "Langkah n dari 4: ..."), label langkah aktif tampil satu baris selebar stepper di bawah titik. */
+:root[data-ts="2"] .stepper { position: relative; padding-bottom: calc(6px + 12px * var(--ts) * 1.45); }
+:root[data-ts="2"] .stepper__step:not(.is-current) .stepper__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+:root[data-ts="2"] .stepper__step.is-current .stepper__label { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; -webkit-line-clamp: 1; }
 
 /* ---------------------------------------------------------------------------------------------------------------------
    DAFTAR & MENU
@@ -944,11 +1127,11 @@ a { color: inherit; text-decoration: none; }
 .list-tile__trailing { flex: none; display: flex; align-items: center; color: var(--color-text-muted); }
 .list-tile--control-leading { padding-left: 4px; gap: 12px; } /* CheckboxListTile leading: kotak 40 */
 .list-tile--control-trailing { padding-right: 20px; }        /* SwitchListTile: Switch 60 */
-.list-tile.is-disabled .list-tile__title, .list-tile.is-disabled .list-tile__subtitle { color: rgba(28, 27, 31, .38); }
+.list-tile.is-disabled .list-tile__title, .list-tile.is-disabled .list-tile__subtitle { color: var(--color-on-surface-disabled); }
 
 /* AccountSection + AccountMenuTile (account/widgets/account_section.dart) */
 .account-section__title { padding: 0 0 var(--s2) var(--s1); font-size: var(--fs-caption); font-weight: 600; letter-spacing: .3px; color: var(--color-text-muted); }
-.account-section__card { background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); overflow: hidden; }
+.account-section__card { background: var(--color-surface); border: 1px solid var(--color-card-border); box-shadow: var(--shadow-sm); border-radius: var(--r-lg); overflow: hidden; }
 .account-section__card > * { position: relative; }
 .account-section__card > * + *::before { /* Divider(height 1, indent 16, endIndent 16) antarbaris */
   content: ""; position: absolute; top: 0; left: var(--s4); right: var(--s4); height: 1px; background: var(--color-divider);
@@ -959,15 +1142,15 @@ a { color: inherit; text-decoration: none; }
 .menu-tile__body { flex: 1 1 auto; min-width: 0; }
 .menu-tile__label { display: block; font-size: var(--fs-body); font-weight: 500; color: var(--color-text); }
 .menu-tile__subtitle { display: block; font-size: var(--fs-caption); color: var(--color-text-muted); }
-.menu-tile__trail { --ic-size: 20px; color: var(--color-text-muted); margin-left: var(--s2); }
+.menu-tile__trail { --ic-size: var(--ic-md); color: var(--color-text-muted); margin-left: var(--s2); }
 .menu-tile .count-pill { margin-left: var(--s2); }
 .menu-tile--danger > .ic:first-child, .menu-tile--danger .menu-tile__label { color: var(--color-danger); }
 .menu-tile.is-locked > .ic:first-child, .menu-tile.is-paused > .ic:first-child { color: var(--color-text-muted); }
 
 /* PopupMenuButton M3: surfaceContainer, radius 4, elevasi 2, item 48 labelLarge 14 w600 */
-.popup-menu { min-width: 112px; padding: var(--s2) 0; background: var(--m3-surface-container); border-radius: var(--r-4); box-shadow: var(--elevation-2); }
+.popup-menu { min-width: 112px; padding: var(--s2) 0; background: var(--color-surface-raised); border: 1px solid var(--color-card-border); border-radius: var(--r-md); box-shadow: var(--shadow-md); overflow: hidden; } /* [v2: dulu surfaceContainer, radius 4, elevation-2] */
 .popup-menu__item { display: flex; align-items: center; gap: var(--s3); min-height: 48px; padding: 0 var(--s3); width: 100%; font-size: var(--fs-label); font-weight: 600; letter-spacing: var(--ls-label); }
-.popup-menu__item .ic { --ic-size: 24px; color: var(--color-text-muted); }
+.popup-menu__item .ic { --ic-size: var(--ic-lg); color: var(--color-text-muted); }
 .popup-menu__item--danger, .popup-menu__item--danger .ic { color: var(--color-danger); }
 
 .divider { height: 1px; border: 0; margin: 0; background: var(--color-divider); flex: none; }
@@ -989,12 +1172,12 @@ a { color: inherit; text-decoration: none; }
 .tab__label { position: relative; display: inline-flex; height: 100%; align-items: center; }
 .tab.is-selected { color: var(--color-primary); }
 .tab.is-selected .tab__label::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: var(--color-primary); }
-.tabs--scrollable { justify-content: flex-start; overflow: hidden; }
+.tabs--scrollable { justify-content: flex-start; overflow-x: auto; scrollbar-width: none; } /* TabBar isScrollable: dapat digeser */
 .tabs--scrollable .tab { flex: none; padding: 0 var(--s4); }
 
 /* Tab kategori bergaris bawah (events_screen _CategoryTabs): 13, min 48, padding 0 12, garis 2 primary */
-.underline-tabs { display: flex; overflow: hidden; }
-.underline-tab { flex: none; min-height: 48px; padding: 0 var(--s3); display: flex; align-items: center; border-bottom: 2px solid transparent; font-size: 13px; font-weight: 500; color: var(--color-text-muted); white-space: nowrap; }
+.underline-tabs { display: flex; overflow-x: auto; scrollbar-width: none; } /* SingleChildScrollView horizontal */
+.underline-tab { flex: none; min-height: 48px; padding: 0 var(--s3); display: flex; align-items: center; border-bottom: 2px solid transparent; font-size: calc(13px * var(--ts, 1)); font-weight: 500; color: var(--color-text-muted); white-space: nowrap; }
 .underline-tab.is-selected { border-bottom-color: var(--color-primary); font-weight: 600; color: var(--color-primary); }
 
 /* SegmentedButton M3 (events_screen Mendatang | Lampau): tinggi 40 (target 48), pil, garis outline,
@@ -1039,7 +1222,7 @@ a { color: inherit; text-decoration: none; }
    pesan 14 1.5 muted, aksi outlined (galat + Icons.refresh), catatan kaki 11 "Kode bantuan: ..."
    --------------------------------------------------------------------------------------------------------------------- */
 .state { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: var(--s6); }
-.state__icon { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--color-green-50); color: var(--color-primary); }
+.state__icon { width: 64px; height: 64px; border-radius: var(--r-xl); /* [v2 Beranda: squircle, dulu lingkaran] */ display: grid; place-items: center; background: var(--color-tint-strong); color: var(--color-primary); } /* [v2: dulu green50] */
 .state__icon .ic { --ic-size: 30px; }
 .state--error .state__icon { background: var(--color-danger-bg); color: var(--color-danger); }
 .state__title { margin-top: var(--s4); font-size: var(--fs-h3); font-weight: 600; }
@@ -1048,17 +1231,27 @@ a { color: inherit; text-decoration: none; }
 .state__footnote { margin-top: var(--s4); font-size: var(--fs-overline); color: var(--color-text-muted); }
 
 /* LoadingSkeleton: padding 20, kartu 160 radius 14, baris 14 (ganjil 180 px) jarak 12, berdenyut 0.45..1 / 900 ms */
-.skeleton { padding: var(--s5); animation: kapdh-pulse .9s ease-in-out infinite alternate; }
-.skeleton__card { height: 160px; border-radius: var(--r-lg); background: var(--color-neutral-200); margin-bottom: var(--s5); }
-.skeleton__line { height: 14px; border-radius: var(--r-sm); background: var(--color-neutral-200); margin-bottom: var(--s3); }
+/* [v2] Denyut opasitas diganti kilau (shimmer) bernada hijau 1,4 s: arah gerak memberi tanda "sedang memuat" yang lebih
+   jelas; statis bila reduce motion. Flutter: LoadingSkeleton dengan ShaderMask + LinearGradient beranimasi. */
+.skeleton { padding: var(--s5); }
+.skeleton__card, .skeleton__line, .skeleton__block {
+  background: linear-gradient(100deg, var(--color-skeleton) 30%, var(--color-skeleton-shine) 50%, var(--color-skeleton) 70%) 0 0 / 300% 100%;
+  animation: kapdh-shimmer 1.4s var(--ease-standard) infinite;
+}
+.skeleton__card { height: 160px; border-radius: var(--r-lg); margin-bottom: var(--s5); }
+.skeleton__line { height: 14px; border-radius: var(--r-sm); margin-bottom: var(--s3); }
 .skeleton__line.is-short { width: 180px; } /* baris indeks ganjil (i.isEven ? penuh : 180) */
-.skeleton__block { border-radius: var(--r-sm); background: var(--color-neutral-200); }
+.skeleton__block { border-radius: var(--r-sm); }
+@keyframes kapdh-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
 @keyframes kapdh-pulse { from { opacity: 1; } to { opacity: .45; } }
-@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; opacity: .7; } .spinner { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .skeleton__card, .skeleton__line, .skeleton__block { animation: none; background: var(--color-skeleton); }
+  .spinner, .otp__box.is-current::after { animation: none; }
+}
 
 /* Pita status OfflineBanner / MaintenanceBanner (lib/design/offline_banner.dart): warningBg, 10 x 20, ikon 18, 13 */
-.status-strip { flex: none; display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px var(--s5); background: var(--color-warning-bg); color: var(--color-warning); font-size: 13px; }
-.status-strip > .ic { --ic-size: 18px; }
+.status-strip { flex: none; display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px var(--s5); background: var(--color-warning-bg); color: var(--color-warning); font-size: calc(13px * var(--ts, 1)); }
+.status-strip > .ic { --ic-size: var(--ic-btn); }
 .status-strip__text { flex: 1 1 auto; min-width: 0; }
 .status-strip__text strong { font-weight: 600; }
 .status-strip .btn-text { color: var(--color-warning); } /* TextButton 48: pita bertombol setinggi 68 seperti di Flutter */
@@ -1066,12 +1259,12 @@ a { color: inherit; text-decoration: none; }
 
 /* SnackBar mengambang (SnackBarTheme: green950, aksi emas): margin 15/10, radius 4, teks onInverseSurface 14 */
 .snackbar {
-  position: absolute; z-index: 40; left: 15px; right: 15px; bottom: calc(10px + var(--snackbar-offset, var(--inset-bottom)));
+  position: absolute; z-index: 40; left: var(--s4); right: var(--s4); bottom: calc(var(--s3) + var(--snackbar-offset, var(--inset-bottom)));
   display: flex; align-items: center; gap: var(--s2);
   min-height: 48px; padding: 6px var(--s4);
-  border-radius: var(--r-4);
+  border-radius: var(--r-md); /* [v2: dulu radius 4, margin 15/10, elevation-3] */
   background: var(--color-green-950); color: var(--m3-on-inverse-surface);
-  box-shadow: var(--elevation-3);
+  box-shadow: var(--shadow-lg);
   font-size: var(--fs-body); line-height: 1.43;
 }
 .snackbar__text { flex: 1 1 auto; padding: 8px 0; }
@@ -1089,10 +1282,12 @@ a { color: inherit; text-decoration: none; }
   position: absolute; z-index: 31; left: 40px; right: 40px; top: 50%; transform: translateY(-50%);
   max-height: calc(100% - 48px - var(--inset-top) - var(--inset-bottom));
   display: flex; flex-direction: column;
-  background: var(--color-surface); border-radius: var(--r-lg);
+  background: var(--color-surface-raised); border-radius: var(--r-xl); /* [v2: dulu 14, tanpa bayangan] */
+  box-shadow: var(--shadow-lg);
 }
 .dialog--static { position: relative; left: auto; right: auto; top: auto; transform: none; width: 280px; }
-.dialog__title { padding: var(--s6) var(--s6) 0; font-size: var(--fs-h1); font-weight: 600; line-height: var(--lh-heading); letter-spacing: 0; }
+/* [v2] Judul 20 w700 (dulu headlineSmall 24 w600): di dialog selebar 280 judul berbahasa Indonesia sering 3 baris. */
+.dialog__title { padding: var(--s6) var(--s6) 0; font-size: var(--fs-h2); font-weight: var(--fw-heading); line-height: 1.3; letter-spacing: 0; }
 .dialog__icon { padding-top: var(--s6); display: flex; justify-content: center; color: var(--color-text-muted); }
 .dialog__icon + .dialog__title { padding-top: var(--s4); text-align: center; }
 /* Isi AlertDialog M3: bodyMedium berwarna onSurfaceVariant (= KapdhColors.textMuted, DialogTheme tidak menimpanya). */
@@ -1106,13 +1301,14 @@ a { color: inherit; text-decoration: none; }
   max-height: calc(100% - var(--inset-top));
   display: flex; flex-direction: column;
   padding-top: 48px; padding-bottom: var(--inset-bottom);
-  background: var(--color-surface);
+  background: var(--color-surface-raised);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: var(--shadow-lg);
 }
 .sheet::before { content: ""; position: absolute; top: 22px; left: 50%; width: 32px; height: 4px; margin-left: -16px; border-radius: 2px; background: rgba(107, 107, 107, .4); }
 .sheet--static { position: relative; }
 .sheet__body { padding: 0 var(--s5) var(--s5); overflow: hidden; }
-.sheet__title { font-size: var(--fs-h3); font-weight: 600; line-height: var(--lh-heading); }
+.sheet__title { font-size: var(--fs-h3); font-weight: var(--fw-heading); line-height: var(--lh-heading); }
 
 /* Perbaikan elemen <button> yang memakai kelas blok di atas */
 button.input { width: 100%; text-align: left; }

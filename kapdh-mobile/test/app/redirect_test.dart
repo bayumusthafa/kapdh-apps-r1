@@ -3,6 +3,7 @@ import 'package:kapdh_api/kapdh_api.dart';
 import 'package:kapdh_mobile/app/redirect.dart';
 import 'package:kapdh_mobile/core/app_gate/app_gate.dart';
 import 'package:kapdh_mobile/core/session/session_state.dart';
+import 'package:kapdh_mobile/core/welcome/welcome_gate.dart';
 
 import '../support/fakes.dart';
 
@@ -501,5 +502,60 @@ void main() {
     expect(isLocationAllowed(state, '/network'), isFalse);
     expect(isLocationAllowed(state, '/kta'), isTrue);
     expect(isLocationAllowed(state, '/account'), isTrue);
+  });
+
+  group('Welcome: pemasangan baru atau pembaruan aplikasi', () {
+    String? goWelcome(
+      SessionState session,
+      String location,
+      WelcomeStatus welcome, {
+      GateStatus gate = GateStatus.ok,
+    }) => resolveRedirect(RedirectState(gate: gate, session: session, welcome: welcome), Uri.parse(location));
+    const anon = SessionState.anonymous();
+
+    test('routeGroupOf /welcome', () {
+      expect(routeGroupOf('/welcome'), RouteGroup.welcome);
+      expect(routeGroupOf('/welcome/x'), RouteGroup.unknown);
+    });
+
+    test('anonim di splash: penanda belum terbaca tetap di splash, pending ke /welcome, selesai ke /login', () {
+      expect(goWelcome(anon, '/splash', WelcomeStatus.unknown), isNull);
+      expect(goWelcome(anon, '/splash', WelcomeStatus.pending), '/welcome');
+      expect(goWelcome(anon, '/splash', WelcomeStatus.done), '/login');
+    });
+
+    test('tujuan tertunda (deep link) melewati Welcome langsung ke Masuk', () {
+      final location = Uri(path: '/splash', queryParameters: {'from': '/events/ev-1'}).toString();
+      expect(goWelcome(anon, location, WelcomeStatus.pending), '/login?from=%2Fevents%2Fev-1');
+    });
+
+    test('anonim boleh di /welcome, termasuk setelah ditandai selesai', () {
+      expect(goWelcome(anon, '/welcome', WelcomeStatus.pending), isNull);
+      expect(goWelcome(anon, '/welcome', WelcomeStatus.done), isNull);
+      expect(goWelcome(anon, '/register', WelcomeStatus.pending), isNull);
+      expect(goWelcome(anon, '/login', WelcomeStatus.pending), isNull);
+    });
+
+    test('sesi aktif tidak melihat Welcome', () {
+      expect(goWelcome(authed('verified'), '/splash', WelcomeStatus.pending), '/home');
+      expect(goWelcome(authed('verified'), '/welcome', WelcomeStatus.pending), '/home');
+      expect(goWelcome(authed('unverified'), '/welcome', WelcomeStatus.pending), '/onboarding/fees');
+    });
+
+    test('gerbang aplikasi tetap didahulukan', () {
+      expect(goWelcome(anon, '/welcome', WelcomeStatus.pending, gate: GateStatus.checking), '/splash');
+      expect(goWelcome(anon, '/welcome', WelcomeStatus.pending, gate: GateStatus.maintenance), '/maintenance');
+      expect(goWelcome(anon, '/welcome', WelcomeStatus.pending, gate: GateStatus.updateRequired), '/update-required');
+    });
+
+    test('setelah layar wajib update/maintenance selesai, anonim pending ke /welcome', () {
+      expect(goWelcome(anon, '/maintenance', WelcomeStatus.pending), '/welcome');
+      expect(goWelcome(anon, '/update-required', WelcomeStatus.done), '/login');
+    });
+
+    test('/welcome tidak pernah menjadi tujuan tertunda', () {
+      final location = Uri(path: '/splash', queryParameters: {'from': '/welcome'}).toString();
+      expect(goWelcome(anon, location, WelcomeStatus.done), '/login');
+    });
   });
 }

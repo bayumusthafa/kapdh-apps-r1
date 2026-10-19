@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/validation/password.dart';
 import '../../design/design.dart';
@@ -15,14 +16,20 @@ class AuthSheetTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        IconButton(tooltip: 'Kembali', icon: const Icon(Icons.chevron_left, size: 28), onPressed: onBack),
+        // [v2] .icon-btn--muted: chevron redup agar judul w700 tetap jadi titik fokus.
+        IconButton(
+          tooltip: 'Kembali',
+          color: context.kc.textMuted,
+          icon: const Icon(KapdhIcons.chevronLeft, size: 28),
+          onPressed: onBack,
+        ),
         const SizedBox(width: KapdhSpace.s1),
         Expanded(
           child: Semantics(
             header: true,
             child: Text(
               title,
-              style: const TextStyle(fontSize: KapdhFontSize.h2, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: KapdhFontSize.h2, fontWeight: FontWeight.w700), // [v2: dulu w600]
             ),
           ),
         ),
@@ -37,9 +44,9 @@ class RecoveryStepper extends StatelessWidget {
   const RecoveryStepper({super.key, required this.current});
 
   static const steps = [
-    KapdhStep('Email', Icons.mail_outline),
-    KapdhStep('Kode OTP', Icons.shield_outlined),
-    KapdhStep('Password Baru', Icons.lock_outline),
+    KapdhStep('Email', KapdhIcons.mailOutline),
+    KapdhStep('Kode OTP', KapdhIcons.shieldOutlined),
+    KapdhStep('Password Baru', KapdhIcons.lockOutline),
   ];
 
   /// 0 Email, 1 Kode OTP, 2 Password Baru.
@@ -58,28 +65,24 @@ class PasswordRules extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Ikon sebagai WidgetSpan agar label membungkus saat teks diperbesar 200 % (N-11).
+    // Row + Flexible: label tetap membungkus pada 200 % (Wrap memberi batas lebar), sedangkan ikon tetap 16 dp
+    // (.rules__item, --ic-sm) karena WidgetSpan akan ikut diskalakan textScaler (N-11).
     Widget rule(bool ok, String label) => Semantics(
       label: '$label, ${ok ? 'terpenuhi' : 'belum terpenuhi'}',
       excludeSemantics: true,
-      child: Text.rich(
-        TextSpan(
-          children: [
-            WidgetSpan(
-              alignment: PlaceholderAlignment.middle,
-              child: Padding(
-                padding: const EdgeInsets.only(right: KapdhSpace.s1),
-                child: Icon(
-                  ok ? Icons.check_circle : Icons.radio_button_unchecked,
-                  size: 16,
-                  color: ok ? KapdhColors.success : KapdhColors.textMuted,
-                ),
-              ),
-            ),
-            TextSpan(text: label),
-          ],
-        ),
-        style: const TextStyle(fontSize: KapdhFontSize.caption),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            ok ? KapdhIcons.checkCircle : KapdhIcons.radioButtonUnchecked,
+            size: 16,
+            color: ok ? context.kc.success : context.kc.textMuted,
+          ),
+          const SizedBox(width: KapdhSpace.s1),
+          Flexible(
+            child: Text(label, style: const TextStyle(fontSize: KapdhFontSize.caption)),
+          ),
+        ],
       ),
     );
     return Padding(
@@ -142,7 +145,7 @@ class AuthResultPanel extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhColors.textMuted),
+            style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: context.kc.textMuted),
           ),
           const SizedBox(height: KapdhSpace.s6),
           for (final (index, action) in actions.indexed) ...[

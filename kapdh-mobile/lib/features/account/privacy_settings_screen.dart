@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
@@ -124,9 +125,12 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
         title,
         style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
       ),
+      // Keterangan memakai textMuted (mockup .akun-tile__subtitle) agar berbeda tingkat dari judul; textColor
+      // ListTileTheme global menimpanya ke p.text. Saat menyimpan warna dibiarkan null supaya warna redup bawaan
+      // ListTile yang nonaktif tetap terpakai.
       subtitle: Text(
         [description, ?note].join('\n'),
-        style: const TextStyle(fontSize: KapdhFontSize.caption, height: 1.45),
+        style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.45, color: enabled ? context.kc.textMuted : null),
       ),
       value: value,
       onChanged: enabled ? (v) => unawaited(_set(change(v))) : null,
@@ -136,7 +140,7 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s8),
       children: [
         const InfoBox(
-          icon: Icons.shield_outlined,
+          icon: KapdhIcons.shieldOutlined,
           message:
               'Kontak dan media sosial Anda tersembunyi sampai Anda mengizinkannya. Data yang disembunyikan tidak '
               'dikirim ke perangkat anggota lain. Pengurus berizin tetap dapat melihat data Anda untuk keperluan '
@@ -197,10 +201,10 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
         ),
         if (_saving) ...[
           const SizedBox(height: KapdhSpace.s4),
-          const Center(
+          Center(
             child: Text(
               'Menyimpan...',
-              style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+              style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
             ),
           ),
         ],

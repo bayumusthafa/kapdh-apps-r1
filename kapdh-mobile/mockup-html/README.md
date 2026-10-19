@@ -1,6 +1,10 @@
 # Mockup HTML aplikasi KAPDH
 
 Tiruan statis (HTML + CSS) dari tampilan aplikasi Flutter `kapdh-mobile` **apa adanya saat ini**, satu halaman per layar.
+
+> **Redesain v2 (usulan) sudah diterapkan** pada token dan komponen bersama: latar, teks redup, radius, bayangan,
+> cincin fokus, state layer tekan, motion dan skeleton. Struktur layar dan teks tetap sama dengan aplikasi. Rincian,
+> alasan dan pemetaan ke Dart: [`REDESAIN.md`](REDESAIN.md). Tampilan apa adanya: commit `89db9f4`.
 Tujuannya memberi desainer bahan yang bisa diubah langsung di browser untuk merancang tampilan baru, lalu hasilnya
 diterjemahkan kembali ke token dan widget Flutter.
 
@@ -18,7 +22,10 @@ Flutter dan tidak masuk aset aplikasi.
 
   Firefox membatasi font dari folder induk pada `file://`, sehingga halaman di dalam subfolder grup bisa tampil
   dengan font sistem bila dibuka langsung. Lewat http semuanya normal, termasuk `<use>` ke sprite `assets/icons.svg`.
-- Tidak ada langkah build, framework, CDN, atau JavaScript. Semua font dan gambar lokal.
+- Tidak ada langkah build, framework, atau CDN. Semua font dan gambar lokal. Satu-satunya JavaScript adalah
+  `js/theme.js` (tombol pratinjau di strip kepala: Tema Terang / Gelap / Sistem, Teks 100 % / 200 %, Ponsel /
+  Tablet; juga lewat `?theme=dark`, `?ts=2`, `?device=tablet`). Tanpa skrip itu halaman tetap tampil terang,
+  teks 100 %, ponsel 360 dp. Keadaan layar tetap frame statis, bukan JavaScript.
 
 ## Struktur
 
@@ -26,12 +33,14 @@ Flutter dan tidak masuk aset aplikasi.
 mockup-html/
   index.html              DIBANGKITKAN: galeri semua halaman per grup + tabel cakupan layar Flutter
   components.html         etalase setiap komponen bersama + nama kelas + widget Dart sumbernya + galeri ikon
+  ikon.html               perbandingan set ikon premium (Phosphor, Solar, Hugeicons, Fluent) untuk akses cepat dan navigasi
   _template.html          kerangka halaman layar (salin ke <grup>/<slug>.html)
   css/
     tokens.css            token desain (warna, tipografi, spasi, radius, bayangan, ukuran) + @font-face Poppins
     components.css        komponen bersama; mengimpor icons.css
     icons.css             DIBANGKITKAN: kelas ikon .ic-<nama Flutter> (mask SVG)
     pages/<grup>.css      gaya khusus satu grup layar (satu berkas per grup)
+  js/theme.js             tombol pratinjau: tema gelap, teks 200 %, tablet (satu-satunya JavaScript)
   <grup>/<slug>.html      halaman layar, mis. auth/login.html, beranda/home.html
   fonts/                  Poppins woff2 (400, 500, 600, 700, 400 italic; latin + latin-ext) + OFL-Poppins.txt
   assets/
@@ -68,7 +77,10 @@ didaftarkan di `GROUPS` dalam skrip).
 
 1. **Satu berkas per layar**: `<grup>/<slug-layar>.html`, mulai dari `_template.html`. Setiap halaman menautkan
    kembali ke `../index.html` dan memuat tepat tiga stylesheet: `../css/tokens.css`, `../css/components.css`,
-   `../css/pages/<grup>.css`.
+   `../css/pages/<grup>.css`, didahului `<script src="../js/theme.js">` di `<head>` (tanpa `defer`, agar tema
+   terpasang sebelum halaman digambar). Warna layar selalu lewat token semantik (`--color-tint`,
+   `--color-surface-raised`, `--color-text-on-dark` dan seterusnya), bukan hex, agar mode gelap ikut; ukuran huruf
+   ditulis `calc(Npx * var(--ts, 1))` atau token `--fs-*` agar ikut pratinjau teks 200 %.
 2. **Strip kepala di luar ponsel** (`.page-header`): nama layar, path Dart, rute, daftar keadaan yang ditampilkan,
    catatan opsional.
 3. **Frame ponsel** `.device` berukuran 360 x 800 px CSS (= dp), status bar Android 24 dp (`.statusbar`, pakai
@@ -194,4 +206,5 @@ dari `<FLUTTER_ROOT>/bin/cache/artifacts/material_fonts/materialicons-regular.ot
 
 - Poppins: SIL Open Font License 1.1 (`fonts/OFL-Poppins.txt`).
 - Material Icons: Apache License 2.0 (`assets/LICENSE-material-icons.txt`).
+- Phosphor Icons (akses cepat dan navigasi bawah, redesain v2): MIT (`assets/LICENSE-phosphor.txt`).
 - Logo dan gambar contoh: milik KAPDH, hanya untuk keperluan desain internal.

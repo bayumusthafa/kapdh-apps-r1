@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/format/formatters.dart';
@@ -172,10 +173,10 @@ class _EmailCorrectionSheetState extends ConsumerState<EmailCorrectionSheet> {
                     ),
                   ),
                   const SizedBox(height: KapdhSpace.s2),
-                  const Text(
+                  Text(
                     'Akun Anda belum terverifikasi. Masukkan email yang benar dan password akun Anda. Kode '
                     'verifikasi baru dikirim ke email baru, dan email lama tidak dapat lagi dipakai untuk aktivasi.',
-                    style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhColors.textMuted),
+                    style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: context.kc.textMuted),
                   ),
                   const SizedBox(height: KapdhSpace.s5),
                   KapdhTextField(
@@ -183,7 +184,7 @@ class _EmailCorrectionSheetState extends ConsumerState<EmailCorrectionSheet> {
                     label: 'Email baru',
                     controller: _email,
                     hint: 'Masukkan email yang benar',
-                    prefixIcon: Icons.mail_outline,
+                    prefixIcon: KapdhIcons.mailOutline,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     autofillHints: const [AutofillHints.email],

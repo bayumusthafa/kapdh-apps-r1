@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
@@ -205,7 +206,7 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
             content: const Text('Laporan terkirim. Pengurus akan meninjaunya.'),
             action: router == null
                 ? null
-                : SnackBarAction(label: 'Lihat', onPressed: () => router.push(AppRoutes.accountReports)),
+                : KapdhSnackBarAction(label: 'Lihat', onPressed: () => router.push(AppRoutes.accountReports)),
           ),
         );
     } on ApiException catch (error) {
@@ -247,7 +248,7 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
                 widget.target.summary,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: KapdhColors.textMuted),
+                style: TextStyle(color: context.kc.textMuted),
               ),
               const SizedBox(height: KapdhSpace.s3),
               const Text('Kategori', style: TextStyle(fontWeight: FontWeight.w500)),
@@ -272,7 +273,7 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
               if (_categoryError != null)
                 Text(
                   _categoryError!,
-                  style: const TextStyle(color: KapdhColors.danger, fontSize: KapdhFontSize.caption),
+                  style: TextStyle(color: context.kc.danger, fontSize: KapdhFontSize.caption),
                 ),
               const SizedBox(height: KapdhSpace.s3),
               KapdhTextField(
@@ -286,7 +287,7 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
               ),
               const SizedBox(height: KapdhSpace.s3),
               const InfoBox(
-                icon: Icons.shield_outlined,
+                icon: KapdhIcons.shieldOutlined,
                 message:
                     'Laporan tidak dibuka kepada pihak yang dilaporkan. Pantau statusnya di Akun > Laporan Saya. '
                     'Dalam keadaan darurat, hubungi pihak berwenang.',
@@ -294,7 +295,7 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
               const SizedBox(height: KapdhSpace.s4),
               KapdhButton(
                 label: 'Kirim laporan',
-                icon: Icons.flag_outlined,
+                icon: KapdhIcons.flagOutlined,
                 busy: _busy,
                 busyLabel: 'Mengirim laporan',
                 onPressed: _busy ? null : _submit,

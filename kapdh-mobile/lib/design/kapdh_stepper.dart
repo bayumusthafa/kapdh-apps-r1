@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../app/theme/kapdh_palette.dart';
 import '../app/theme/kapdh_tokens.dart';
 import 'design_constants.dart';
+import 'kapdh_icons.dart';
 
 /// Satu langkah stepper.
 @immutable
@@ -28,52 +30,67 @@ class KapdhStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.kc;
     final dot = compact ? KapdhComponentSize.stepperDotCompact : KapdhComponentSize.stepperDot;
+    final labelSize = compact ? KapdhFontSize.overline : KapdhFontSize.caption;
+    // [v2 P2-3] Skala teks > 1,3: label langkah lain tidak muat di kolomnya; hanya label langkah aktif yang tampil,
+    // satu baris selebar stepper. Seluruh langkah tetap dibacakan lewat label semantik.
+    final large = MediaQuery.textScalerOf(context).scale(labelSize) > labelSize * 1.3;
+
+    Widget dotOf(int i) => Container(
+      width: dot,
+      height: dot,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: i <= current ? p.primary : p.surface,
+        border: i <= current ? null : Border.all(color: p.border, width: 1.5),
+        boxShadow: i == current ? [BoxShadow(color: p.tintStrong, spreadRadius: 4)] : null,
+      ),
+      child: Icon(
+        i < current ? KapdhIcons.check : steps[i].icon,
+        size: KapdhIconSize.button,
+        color: i <= current ? p.onPrimary : p.textMuted,
+      ),
+    );
+
+    Text labelOf(int i, {int maxLines = 2}) => Text(
+      steps[i].label,
+      textAlign: TextAlign.center,
+      maxLines: maxLines,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: labelSize,
+        fontWeight: i == current ? FontWeight.w600 : (i < current ? FontWeight.w500 : FontWeight.w400),
+        color: i < current ? p.primary : (i == current ? p.text : p.textMuted),
+      ),
+    );
+
     return Semantics(
       label: 'Langkah ${current + 1} dari ${steps.length}: ${steps[current].label}',
       excludeSemantics: true,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var i = 0; i < steps.length; i++)
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: dot,
-                    height: dot,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: i <= current ? KapdhColors.primary : KapdhColors.surface,
-                      border: i <= current ? null : Border.all(color: KapdhColors.border, width: 1.5),
-                      boxShadow: i == current ? const [BoxShadow(color: KapdhColors.green100, spreadRadius: 4)] : null,
-                    ),
-                    child: Icon(
-                      i < current ? Icons.check : steps[i].icon,
-                      size: 18,
-                      color: i <= current ? KapdhColors.onPrimary : KapdhColors.textMuted,
+      child: large
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [for (var i = 0; i < steps.length; i++) Expanded(child: Center(child: dotOf(i)))],
+                ),
+                const SizedBox(height: 6),
+                labelOf(current, maxLines: 1),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < steps.length; i++)
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [dotOf(i), const SizedBox(height: 6), labelOf(i)],
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    steps[i].label,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: compact ? KapdhFontSize.overline : KapdhFontSize.caption,
-                      fontWeight: i == current ? FontWeight.w600 : (i < current ? FontWeight.w500 : FontWeight.w400),
-                      color: i < current
-                          ? KapdhColors.primary
-                          : (i == current ? KapdhColors.text : KapdhColors.textMuted),
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
-        ],
-      ),
     );
   }
 }
@@ -83,10 +100,10 @@ class RegisterStepper extends StatelessWidget {
   const RegisterStepper({super.key, required this.current, this.compact = false});
 
   static const steps = [
-    KapdhStep('Data Diri', Icons.person_outline),
-    KapdhStep('OTP', Icons.shield_outlined),
-    KapdhStep('Biaya KTA', Icons.payments_outlined),
-    KapdhStep('Pembayaran', Icons.credit_card),
+    KapdhStep('Data Diri', KapdhIcons.personOutline),
+    KapdhStep('OTP', KapdhIcons.shieldOutlined),
+    KapdhStep('Biaya KTA', KapdhIcons.paymentsOutlined),
+    KapdhStep('Pembayaran', KapdhIcons.creditCard),
   ];
 
   /// 0 Data Diri, 1 OTP, 2 Biaya KTA, 3 Pembayaran.

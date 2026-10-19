@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Daftar Alumni: Verifikasi OTP - Mockup KAPDH</title>
   <meta name="description" content="Mockup statis layar verifikasi OTP pendaftaran (OtpScreen) aplikasi KAPDH untuk iterasi desain.">
+  <script src="../js/theme.js"></script>
   <link rel="stylesheet" href="../css/tokens.css">
   <link rel="stylesheet" href="../css/components.css">
   <link rel="stylesheet" href="../css/pages/auth.css">
@@ -12,7 +13,7 @@
 <body>
   <header class="page-header">
     <nav class="page-header__nav" aria-label="Navigasi mockup">
-      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../index.html"><span class="ic ph-arrow-left ic-s16" aria-hidden="true"></span> Semua layar</a>
       <a href="../components.html">Komponen</a>
     </nav>
     <h1 class="page-header__title">Daftar Alumni: Verifikasi OTP</h1>
@@ -58,20 +59,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body auth-body--otp">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
-                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <h3 class="auth-h22">Masukkan kode verifikasi</h3>
                     <p class="auth-lead mt-2">Kode 6 digit sudah dikirim ke <strong>ahmad.fauzi@contoh.id</strong>. Kode berlaku 10 menit.</p>
                     <p class="auth-label auth-otp-label" aria-hidden="true">Kode OTP</p>
-                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box is-current"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div>
+                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box is-current"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div><div class="otp-paste"><button class="btn-link" type="button"><span class="ic ph-clipboard-text" aria-hidden="true"></span>Tempel kode</button></div>
                     <p class="auth-attempts" role="status">Sisa percobaan: 5 dari 5</p>
                     <div class="auth-resend"><span class="auth-resend__text">Tidak menerima kode?</span><button class="btn-text" type="button" disabled>Kirim ulang dalam 0:58</button></div>
                   </div>
@@ -107,20 +108,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body auth-body--otp">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
-                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <h3 class="auth-h22">Masukkan kode verifikasi</h3>
                     <p class="auth-lead mt-2">Kode 6 digit sudah dikirim ke <strong>ahmad.fauzi@contoh.id</strong>. Kode berlaku 10 menit.</p>
                     <p class="auth-label auth-otp-label" aria-hidden="true">Kode OTP</p>
-                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box is-filled">4</span><span class="otp__box is-filled">8</span><span class="otp__box is-filled">2</span><span class="otp__box is-current"></span><span class="otp__box"></span><span class="otp__box"></span></div>
+                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box is-filled">4</span><span class="otp__box is-filled">8</span><span class="otp__box is-filled">2</span><span class="otp__box is-current"></span><span class="otp__box"></span><span class="otp__box"></span></div><div class="otp-paste"><button class="btn-link" type="button"><span class="ic ph-clipboard-text" aria-hidden="true"></span>Tempel kode</button></div>
                     <p class="auth-attempts" role="status">Sisa percobaan: 5 dari 5</p>
                     <div class="auth-resend"><span class="auth-resend__text">Tidak menerima kode?</span><button class="btn-text" type="button" disabled>Kirim ulang dalam 0:51</button></div>
                   </div>
@@ -155,20 +156,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body auth-body--otp">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
-                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <h3 class="auth-h22">Masukkan kode verifikasi</h3>
                     <p class="auth-lead mt-2">Kode 6 digit sudah dikirim ke <strong>ahmad.fauzi@contoh.id</strong>. Kode berlaku 10 menit.</p>
                     <p class="auth-label auth-otp-label" aria-hidden="true">Kode OTP</p>
-                    <div class="otp is-disabled" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box is-filled">4</span><span class="otp__box is-filled">8</span><span class="otp__box is-filled">2</span><span class="otp__box is-filled">9</span><span class="otp__box is-filled">1</span><span class="otp__box is-filled">3</span></div>
+                    <div class="otp is-disabled" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box is-filled">4</span><span class="otp__box is-filled">8</span><span class="otp__box is-filled">2</span><span class="otp__box is-filled">9</span><span class="otp__box is-filled">1</span><span class="otp__box is-filled">3</span></div><div class="otp-paste"><button class="btn-link" type="button" disabled><span class="ic ph-clipboard-text" aria-hidden="true"></span>Tempel kode</button></div>
                     <p class="auth-attempts" role="status">Sisa percobaan: 5 dari 5</p>
                     <div class="auth-resend"><span class="auth-resend__text">Tidak menerima kode?</span><button class="btn-text" type="button" disabled>Kirim ulang dalam 0:44</button></div>
                   </div>
@@ -198,20 +199,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body auth-body--otp">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
-                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <h3 class="auth-h22">Masukkan kode verifikasi</h3>
                     <p class="auth-lead mt-2">Kode 6 digit sudah dikirim ke <strong>ahmad.fauzi@contoh.id</strong>. Kode berlaku 10 menit.</p>
                     <p class="auth-label auth-otp-label" aria-hidden="true">Kode OTP</p>
-                    <div class="otp is-error" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div>
+                    <div class="otp is-error" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div><div class="otp-paste"><button class="btn-link" type="button"><span class="ic ph-clipboard-text" aria-hidden="true"></span>Tempel kode</button></div>
                     <p class="otp__error" role="status">Kode salah. Sisa percobaan 3.</p>
                     <p class="auth-attempts" role="status">Sisa percobaan: 3 dari 5</p>
                     <div class="auth-resend"><span class="auth-resend__text">Tidak menerima kode?</span><button class="btn-text" type="button" disabled>Kirim ulang dalam 0:27</button></div>
@@ -242,20 +243,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body auth-body--otp">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
-                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <h3 class="auth-h22">Masukkan kode verifikasi</h3>
                     <p class="auth-lead mt-2">Kode 6 digit sudah dikirim ke <strong>ahmad.fauzi@contoh.id</strong>. Kode berlaku 10 menit.</p>
                     <p class="auth-label auth-otp-label" aria-hidden="true">Kode OTP</p>
-                    <div class="otp is-error is-disabled" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box is-filled">4</span><span class="otp__box is-filled">8</span><span class="otp__box is-filled">2</span><span class="otp__box is-filled">9</span><span class="otp__box is-filled">1</span><span class="otp__box is-filled">3</span></div>
+                    <div class="otp is-error is-disabled" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box is-filled">4</span><span class="otp__box is-filled">8</span><span class="otp__box is-filled">2</span><span class="otp__box is-filled">9</span><span class="otp__box is-filled">1</span><span class="otp__box is-filled">3</span></div><div class="otp-paste"><button class="btn-link" type="button" disabled><span class="ic ph-clipboard-text" aria-hidden="true"></span>Tempel kode</button></div>
                     <p class="otp__error" role="status">Kode tidak berlaku lagi. Minta kode baru.</p>
                     <p class="auth-attempts is-danger" role="status">Kode tidak berlaku lagi. Minta kode baru.</p>
                     <div class="auth-resend"><span class="auth-resend__text">Tidak menerima kode?</span><button class="btn-text" type="button">Kirim ulang</button></div>
@@ -286,20 +287,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body auth-body--otp">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
-                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <h3 class="auth-h22">Masukkan kode verifikasi</h3>
                     <p class="auth-lead mt-2">Kode 6 digit sudah dikirim ke <strong>ahmad.fauzi@contoh.id</strong>. Kode berlaku 10 menit.</p>
                     <p class="auth-label auth-otp-label" aria-hidden="true">Kode OTP</p>
-                    <div class="otp is-error is-disabled" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div>
+                    <div class="otp is-error is-disabled" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div><div class="otp-paste"><button class="btn-link" type="button" disabled><span class="ic ph-clipboard-text" aria-hidden="true"></span>Tempel kode</button></div>
                     <p class="otp__error" role="status">Kode ini tidak berlaku lagi. Mulai ulang atau masuk kembali.</p>
                     <p class="auth-attempts is-danger" role="status">Kode tidak berlaku lagi. Minta kode baru.</p>
                     <div class="auth-resend"><span class="auth-resend__text">Tidak menerima kode?</span><button class="btn-text" type="button" disabled>Kirim ulang</button></div>
@@ -330,25 +331,25 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body auth-body--otp">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
-                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <h3 class="auth-h22">Masukkan kode verifikasi</h3>
                     <p class="auth-lead mt-2">Kode 6 digit sudah dikirim ke <strong>ahmad.fauzi@contoh.id</strong>. Kode berlaku 10 menit.</p>
                     <p class="auth-label auth-otp-label" aria-hidden="true">Kode OTP</p>
-                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box is-filled">4</span><span class="otp__box is-filled">8</span><span class="otp__box is-filled">2</span><span class="otp__box is-filled">9</span><span class="otp__box is-filled">1</span><span class="otp__box is-filled">3</span></div>
+                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box is-filled">4</span><span class="otp__box is-filled">8</span><span class="otp__box is-filled">2</span><span class="otp__box is-filled">9</span><span class="otp__box is-filled">1</span><span class="otp__box is-filled">3</span></div><div class="otp-paste"><button class="btn-link" type="button"><span class="ic ph-clipboard-text" aria-hidden="true"></span>Tempel kode</button></div>
                     <p class="auth-attempts" role="status">Sisa percobaan: 5 dari 5</p>
                     <div class="auth-resend"><span class="auth-resend__text">Tidak menerima kode?</span><button class="btn-text" type="button" disabled>Kirim ulang dalam 0:12</button></div>
                   </div>
                   <div class="mt-3">
-                    <div class="info-box info-box--danger" role="status"><span class="ic ic-error_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Koneksi terputus sebelum hasil verifikasi diterima. Periksa koneksi lalu ketuk Verifikasi lagi.</p></div></div>
+                    <div class="info-box info-box--danger" role="status"><span class="ic ph-warning-circle" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Koneksi terputus sebelum hasil verifikasi diterima. Periksa koneksi lalu ketuk Verifikasi lagi.</p></div></div>
                   </div>
                   <div class="mt-2">
                     <div><button class="btn-link" type="button">Salah email? Ubah alamat email</button></div>
@@ -376,20 +377,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body auth-body--otp">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
-                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <h3 class="auth-h22">Masukkan kode verifikasi</h3>
                     <p class="auth-lead mt-2">Kode 6 digit sudah dikirim ke email baru <strong>ahmad.fauzi@contoh.id</strong>. Kode berlaku 10 menit.</p>
                     <p class="auth-label auth-otp-label" aria-hidden="true">Kode OTP</p>
-                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div>
+                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div><div class="otp-paste"><button class="btn-link" type="button"><span class="ic ph-clipboard-text" aria-hidden="true"></span>Tempel kode</button></div>
                     <p class="auth-attempts" role="status">Sisa percobaan: 5 dari 5</p>
                     <div class="auth-resend"><span class="auth-resend__text">Tidak menerima kode?</span><button class="btn-text" type="button" disabled>Kirim ulang dalam 0:59</button></div>
                   </div>
@@ -420,25 +421,25 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body auth-body--otp">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
-                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <h3 class="auth-h22">Masukkan kode verifikasi</h3>
                     <p class="auth-lead mt-2">Kode 6 digit sudah dikirim ke <strong>ahmad.fauzi@contoh.id</strong>. Kode berlaku 10 menit.</p>
                     <p class="auth-label auth-otp-label" aria-hidden="true">Kode OTP</p>
-                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div>
+                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div><div class="otp-paste"><button class="btn-link" type="button"><span class="ic ph-clipboard-text" aria-hidden="true"></span>Tempel kode</button></div>
                     <p class="auth-attempts" role="status">Sisa percobaan: 5 dari 5</p>
                     <div class="auth-resend"><span class="auth-resend__text">Tidak menerima kode?</span><button class="btn-text" type="button" disabled>Kirim ulang dalam 0:35</button></div>
                   </div>
                   <div class="mt-3">
-                    <div class="info-box" role="status"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Akun belum aktif. Masukkan kode terbaru yang dikirim ke email Anda.</p></div></div>
+                    <div class="info-box" role="status"><span class="ic ph-info" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Akun belum aktif. Masukkan kode terbaru yang dikirim ke email Anda.</p></div></div>
                   </div>
                   <div class="mt-2">
                     <div><button class="btn-link" type="button">Salah email? Ubah alamat email</button></div>
@@ -468,20 +469,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body auth-body--otp">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
-                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <h3 class="auth-h22">Masukkan kode verifikasi</h3>
                     <p class="auth-lead mt-2">Kode 6 digit sudah dikirim ke <strong>ahmad.fauzi@contoh.id</strong>. Kode berlaku 10 menit.</p>
                     <p class="auth-label auth-otp-label" aria-hidden="true">Kode OTP</p>
-                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div>
+                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div><div class="otp-paste"><button class="btn-link" type="button"><span class="ic ph-clipboard-text" aria-hidden="true"></span>Tempel kode</button></div>
                     <p class="auth-attempts" role="status">Sisa percobaan: 5 dari 5</p>
                     <div class="auth-resend"><span class="auth-resend__text">Tidak menerima kode?</span><button class="btn-text" type="button" disabled>Kirim ulang dalam 0:40</button></div>
                   </div>
@@ -505,7 +506,7 @@
               <div class="field">
                 <label class="field__label" for="o10s-new">Email baru</label>
                 <div class="input">
-                  <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                  <span class="input__prefix" aria-hidden="true"><span class="ic ph-envelope-simple"></span></span>
                   <input class="input__control" id="o10s-new" type="email" placeholder="Masukkan email yang benar" autocomplete="email">
                 </div>
               </div>
@@ -515,7 +516,7 @@
                 <label class="field__label" for="o10s-cpw">Password</label>
                 <div class="input">
                   <input class="input__control" id="o10s-cpw" type="password" placeholder="Password akun Anda" autocomplete="current-password" aria-describedby="o10s-cpw-help">
-                  <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                  <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ph-eye-slash" aria-hidden="true"></span></button></span>
                 </div>
                 <p class="field__helper" id="o10s-cpw-help">Password yang Anda buat saat mendaftar</p>
               </div>
@@ -543,20 +544,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body auth-body--otp">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
-                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <h3 class="auth-h22">Masukkan kode verifikasi</h3>
                     <p class="auth-lead mt-2">Kode 6 digit sudah dikirim ke <strong>ahmad.fauzi@contoh.id</strong>. Kode berlaku 10 menit.</p>
                     <p class="auth-label auth-otp-label" aria-hidden="true">Kode OTP</p>
-                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div>
+                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div><div class="otp-paste"><button class="btn-link" type="button"><span class="ic ph-clipboard-text" aria-hidden="true"></span>Tempel kode</button></div>
                     <p class="auth-attempts" role="status">Sisa percobaan: 5 dari 5</p>
                     <div class="auth-resend"><span class="auth-resend__text">Tidak menerima kode?</span><button class="btn-text" type="button" disabled>Kirim ulang dalam 0:40</button></div>
                   </div>
@@ -580,7 +581,7 @@
               <div class="field">
                 <label class="field__label" for="o11s-new">Email baru</label>
                 <div class="input is-error">
-                  <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                  <span class="input__prefix" aria-hidden="true"><span class="ic ph-envelope-simple"></span></span>
                   <input class="input__control" id="o11s-new" type="email" placeholder="Masukkan email yang benar" value="siti.rahmah@contoh.id" autocomplete="email" aria-invalid="true" aria-describedby="o11s-new-err">
                 </div>
                 <p class="field__error" id="o11s-new-err">Email sudah terdaftar</p>
@@ -591,7 +592,7 @@
                 <label class="field__label" for="o11s-cpw">Password</label>
                 <div class="input">
                   <input class="input__control" id="o11s-cpw" type="password" placeholder="Password akun Anda" value="Rahasia#2026" autocomplete="current-password" aria-describedby="o11s-cpw-help">
-                  <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                  <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password"><span class="ic ph-eye-slash" aria-hidden="true"></span></button></span>
                 </div>
                 <p class="field__helper" id="o11s-cpw-help">Password yang Anda buat saat mendaftar</p>
               </div>
@@ -619,20 +620,20 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body auth-body--otp">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
-                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <h3 class="auth-h22">Masukkan kode verifikasi</h3>
                     <p class="auth-lead mt-2">Kode 6 digit sudah dikirim ke <strong>ahmad.fauzi@contoh.id</strong>. Kode berlaku 10 menit.</p>
                     <p class="auth-label auth-otp-label" aria-hidden="true">Kode OTP</p>
-                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div>
+                    <div class="otp" role="group" aria-label="Kode OTP 6 digit"><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span><span class="otp__box"></span></div><div class="otp-paste"><button class="btn-link" type="button"><span class="ic ph-clipboard-text" aria-hidden="true"></span>Tempel kode</button></div>
                     <p class="auth-attempts" role="status">Sisa percobaan: 5 dari 5</p>
                     <div class="auth-resend"><span class="auth-resend__text">Tidak menerima kode?</span><button class="btn-text" type="button" disabled>Kirim ulang dalam 0:40</button></div>
                   </div>
@@ -656,7 +657,7 @@
               <div class="field">
                 <label class="field__label" for="o12s-new">Email baru</label>
                 <div class="input is-disabled">
-                  <span class="input__prefix" aria-hidden="true"><span class="ic ic-mail_outline"></span></span>
+                  <span class="input__prefix" aria-hidden="true"><span class="ic ph-envelope-simple"></span></span>
                   <input class="input__control" id="o12s-new" type="email" placeholder="Masukkan email yang benar" value="ahmad.fauzi@contoh.id" autocomplete="email" disabled>
                 </div>
               </div>
@@ -666,7 +667,7 @@
                 <label class="field__label" for="o12s-cpw">Password</label>
                 <div class="input is-disabled">
                   <input class="input__control" id="o12s-cpw" type="password" placeholder="Password akun Anda" value="Rahasia#2026" autocomplete="current-password" disabled aria-describedby="o12s-cpw-help">
-                  <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password" disabled><span class="ic ic-visibility_off_outlined" aria-hidden="true"></span></button></span>
+                  <span class="input__suffix"><button class="icon-btn" type="button" aria-label="Tampilkan password" disabled><span class="ic ph-eye-slash" aria-hidden="true"></span></button></span>
                 </div>
                 <p class="field__helper" id="o12s-cpw-help">Password yang Anda buat saat mendaftar</p>
               </div>
@@ -696,13 +697,13 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body auth-body--otp">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
-                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
@@ -734,21 +735,21 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body auth-body--otp">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
-                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <div class="state state--error">
-                      <div class="state__icon" aria-hidden="true"><span class="ic ic-cloud_off"></span></div>
+                      <div class="state__icon" aria-hidden="true"><span class="ic ph-cloud-slash"></span></div>
                       <h3 class="state__title">Tidak ada koneksi</h3>
                       <p class="state__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.</p>
-                      <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Coba lagi</button>
+                      <button class="btn btn--outline btn--inline state__action" type="button"><span class="ic ph-arrow-clockwise" aria-hidden="true"></span>Coba lagi</button>
                     </div>
                   </div>
                 </div>
@@ -771,18 +772,18 @@
             <div class="scroll-viewport">
               <div class="scroll-offset">
                 <div class="auth-body auth-body--otp">
-                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
+                  <div class="sheet-title-row"><button class="icon-btn icon-btn--muted" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s28" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Daftar Alumni</h2></div>
                   <div class="mt-4">
                     <ol class="stepper" aria-label="Langkah 2 dari 4: OTP">
-                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-shield_outlined" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-payments_outlined" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                      <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                      <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-shield" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-money" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                      <li class="stepper__step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                     </ol>
                   </div>
                   <div class="mt-6">
                     <div class="state">
-                      <div class="state__icon" aria-hidden="true"><span class="ic ic-link_off"></span></div>
+                      <div class="state__icon" aria-hidden="true"><span class="ic ph-link-break"></span></div>
                       <h3 class="state__title">Kode verifikasi tidak berlaku</h3>
                       <p class="state__message">Kode ini sudah dipakai, diganti kode yang lebih baru, atau akun sudah aktif. Masuk dengan email dan password Anda untuk melanjutkan.</p>
                       <button class="btn btn--outline btn--inline state__action" type="button">Ke halaman masuk</button>
@@ -805,7 +806,7 @@
           <div class="brand-band brand-band--thin" aria-hidden="true"></div>
           <div class="brand-sheet auth-sheet">
             <div class="state">
-              <div class="state__icon" aria-hidden="true"><span class="ic ic-mark_email_unread_outlined"></span></div>
+              <div class="state__icon" aria-hidden="true"><span class="ic ph-envelope-simple-open"></span></div>
               <h2 class="state__title">Kode verifikasi belum tersedia</h2>
               <p class="state__message">Masuk kembali dengan email dan password Anda untuk menerima kode verifikasi baru.</p>
               <button class="btn btn--outline btn--inline state__action" type="button">Ke halaman masuk</button>

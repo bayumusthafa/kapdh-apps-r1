@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../../app/theme/kapdh_palette.dart';
 import '../../../app/theme/kapdh_tokens.dart';
 import '../../../core/format/formatters.dart';
 import '../../../design/design.dart';
 import '../payment_presentation.dart';
 
 /// Baris judul di dalam lembar (prototipe layar 2 "Daftar Alumni", layar 3 "Pembayaran"): tombol kembali chevron
-/// 44 px dan judul 20 px. Tanpa [onBack] hanya judul (layar pertama setelah OTP tidak punya tujuan kembali).
+/// 44 px dan judul 20 px w700. Tanpa [onBack] hanya judul (layar pertama setelah OTP tidak punya tujuan kembali).
 class SheetTitleRow extends StatelessWidget {
   const SheetTitleRow({super.key, required this.title, this.onBack});
 
@@ -24,7 +25,7 @@ class SheetTitleRow extends StatelessWidget {
             IconButton(
               tooltip: 'Kembali',
               onPressed: onBack,
-              icon: const Icon(Icons.chevron_left, size: 26, color: KapdhColors.text),
+              icon: Icon(KapdhIcons.chevronLeft, size: 26, color: context.kc.text),
             ),
             const SizedBox(width: KapdhSpace.s1),
           ],
@@ -33,7 +34,7 @@ class SheetTitleRow extends StatelessWidget {
               header: true,
               child: Text(
                 title,
-                style: const TextStyle(fontSize: KapdhFontSize.h2, fontWeight: FontWeight.w600),
+                style: const TextStyle(fontSize: KapdhFontSize.h2, fontWeight: FontWeight.w700), // [v2: dulu w600]
               ),
             ),
           ),
@@ -88,14 +89,10 @@ class GreetingBand extends StatelessWidget {
       child: Row(
         children: [
           if (onBack != null) ...[
-            IconButton(
-              tooltip: 'Kembali',
-              onPressed: onBack,
-              icon: const Icon(Icons.arrow_back, color: KapdhColors.textOnDark),
-            ),
+            BrandIconButton(icon: KapdhIcons.arrowBack, tooltip: 'Kembali', onPressed: onBack),
             const SizedBox(width: KapdhSpace.s1),
           ],
-          Image.asset('assets/logo-kapdh.png', width: 44, height: 44, semanticLabel: 'Logo KAPDH'),
+          const BrandLogoFrame(),
           const SizedBox(width: KapdhSpace.s3),
           Expanded(
             child: Column(
@@ -103,17 +100,18 @@ class GreetingBand extends StatelessWidget {
               children: [
                 const Text(
                   "Assalamu'alaikum,",
-                  style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.green100),
+                  style: TextStyle(
+                    fontSize: KapdhFontSize.caption,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.3,
+                    color: KapdhColors.green100,
+                  ),
                 ),
                 Text(
                   name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: KapdhFontSize.bodyLg,
-                    fontWeight: FontWeight.w600,
-                    color: KapdhColors.textOnDark,
-                  ),
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: KapdhColors.textOnDark),
                 ),
               ],
             ),
@@ -192,7 +190,7 @@ class RefreshFailedNotice extends StatelessWidget {
       liveRegion: true,
       child: InfoBox(
         tone: InfoBoxTone.warning,
-        icon: Icons.sync_problem,
+        icon: KapdhIcons.syncProblem,
         title: title,
         message: '${error.message} Data yang tampil berasal dari pemuatan terakhir.',
         trailing: TextButton(onPressed: onRetry, child: const Text('Coba lagi')),

@@ -67,32 +67,37 @@ StatusBadgeStyle _style(String label, IconData icon, Color fg, Color bg) =>
 StatusBadgeStyle registrationStateStyle(EventRegistrationState state) => switch (state) {
   EventRegistrationState.open => _style(
     'Pendaftaran Dibuka',
-    Icons.event_available,
+    KapdhIcons.eventAvailable,
     KapdhColors.success,
     KapdhColors.successBg,
   ),
   EventRegistrationState.notYetOpen => _style(
     'Pendaftaran Belum Dibuka',
-    Icons.schedule,
+    KapdhIcons.schedule,
     KapdhColors.info,
     KapdhColors.infoBg,
   ),
-  EventRegistrationState.soldOut => _style('Kuota Penuh', Icons.group_off, KapdhColors.warning, KapdhColors.warningBg),
+  EventRegistrationState.soldOut => _style(
+    'Kuota Penuh',
+    KapdhIcons.groupOff,
+    KapdhColors.warning,
+    KapdhColors.warningBg,
+  ),
   EventRegistrationState.closed => _style(
     'Pendaftaran Ditutup',
-    Icons.event_busy,
+    KapdhIcons.eventBusy,
     KapdhColors.danger,
     KapdhColors.dangerBg,
   ),
   EventRegistrationState.cancelled => _style(
     'Event Dibatalkan',
-    Icons.cancel,
+    KapdhIcons.cancel,
     KapdhColors.danger,
     KapdhColors.dangerBg,
   ),
   EventRegistrationState.unknown => _style(
     'Status Tidak Dikenal',
-    Icons.help_outline,
+    KapdhIcons.helpOutline,
     KapdhColors.neutral,
     KapdhColors.neutralBg,
   ),
@@ -110,17 +115,27 @@ StatusBadgeStyle ticketStatusStyle(TicketStatus status, {DateTime? checkedInAt})
 
 /// Status refund manual oleh bendahara (D6).
 StatusBadgeStyle refundStatusStyle(TicketRefundStatus status) => switch (status) {
-  TicketRefundStatus.pending => _style('Refund Diproses', Icons.hourglass_top, KapdhColors.info, KapdhColors.infoBg),
+  TicketRefundStatus.pending => _style(
+    'Refund Diproses',
+    KapdhIcons.hourglassTop,
+    KapdhColors.info,
+    KapdhColors.infoBg,
+  ),
   TicketRefundStatus.completed => _style(
     'Refund Selesai',
-    Icons.check_circle,
+    KapdhIcons.checkCircle,
     KapdhColors.success,
     KapdhColors.successBg,
   ),
-  TicketRefundStatus.cancelled => _style('Refund Dibatalkan', Icons.block, KapdhColors.neutral, KapdhColors.neutralBg),
+  TicketRefundStatus.cancelled => _style(
+    'Refund Dibatalkan',
+    KapdhIcons.block,
+    KapdhColors.neutral,
+    KapdhColors.neutralBg,
+  ),
   TicketRefundStatus.unknown => _style(
     'Status Tidak Dikenal',
-    Icons.help_outline,
+    KapdhIcons.helpOutline,
     KapdhColors.neutral,
     KapdhColors.neutralBg,
   ),

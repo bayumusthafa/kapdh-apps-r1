@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
@@ -316,7 +317,7 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
         title: 'Info Percakapan',
         fallbackLocation: AppRoutes.network,
         body: EmptyState(
-          icon: Icons.speaker_notes_off_outlined,
+          icon: KapdhIcons.speakerNotesOffOutlined,
           title: 'Percakapan tidak tersedia',
           message: 'Anda bukan lagi anggota percakapan ini.',
           actionLabel: 'Ke Jejaring',
@@ -344,7 +345,7 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
           name: room.title,
           url: room.avatarUrl,
           size: 88,
-          icon: group && room.avatarUrl == null ? Icons.groups : null,
+          icon: group && room.avatarUrl == null ? KapdhIcons.groups : null,
         ),
       ),
       const SizedBox(height: KapdhSpace.s3),
@@ -359,7 +360,7 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
       Text(
         group ? 'Grup · ${room.memberCount} anggota' : 'Percakapan langsung',
         textAlign: TextAlign.center,
-        style: const TextStyle(color: KapdhColors.textMuted),
+        style: TextStyle(color: context.kc.textMuted),
       ),
       if (group && room.canManage) ...[
         const SizedBox(height: KapdhSpace.s2),
@@ -369,18 +370,18 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
           children: [
             TextButton.icon(
               onPressed: _busy ? null : () => _rename(room),
-              icon: const Icon(Icons.edit_outlined),
+              icon: const Icon(KapdhIcons.editOutlined),
               label: const Text('Ubah nama'),
             ),
             TextButton.icon(
               onPressed: _busy ? null : _changePhoto,
-              icon: const Icon(Icons.photo_camera_outlined),
+              icon: const Icon(KapdhIcons.photoCameraOutlined),
               label: const Text('Ubah foto'),
             ),
             if (room.avatarFileId != null)
               TextButton.icon(
                 onPressed: _busy ? null : _removePhoto,
-                icon: const Icon(Icons.hide_image_outlined),
+                icon: const Icon(KapdhIcons.hideImageOutlined),
                 label: const Text('Hapus foto'),
               ),
           ],
@@ -390,7 +391,7 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
         const SizedBox(height: KapdhSpace.s3),
         const InfoBox(
           tone: InfoBoxTone.warning,
-          icon: Icons.lock_outline,
+          icon: KapdhIcons.lockOutline,
           message: 'Grup ini sudah ditutup. Riwayat tetap dapat dibaca.',
         ),
       ],
@@ -420,21 +421,21 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
         if (peer != null)
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.person_outline),
+            leading: const Icon(KapdhIcons.personOutline),
             title: const Text('Lihat profil'),
             onTap: () => context.push(AppRoutes.member(peer.userId)),
           ),
         if (peer != null)
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.block),
+            leading: const Icon(KapdhIcons.block),
             title: Text(blocked ? 'Buka blokir ${peer.fullName}' : 'Blokir ${peer.fullName}'),
             onTap: _busy ? null : () => _toggleBlock(room),
           ),
         if (peer != null)
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.flag_outlined),
+            leading: const Icon(KapdhIcons.flagOutlined),
             title: const Text('Laporkan pengguna'),
             onTap: () => showReportSheet(context, UserReportTarget(userId: peer.userId, name: peer.fullName)),
           ),
@@ -465,15 +466,15 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
         const Divider(),
         ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.flag_outlined),
+          leading: const Icon(KapdhIcons.flagOutlined),
           title: const Text('Laporkan grup'),
           onTap: () => showReportSheet(context, RoomReportTarget(roomId: room.id, name: room.title)),
         ),
         if (!closed)
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.logout, color: KapdhColors.danger),
-            title: const Text('Keluar grup', style: TextStyle(color: KapdhColors.danger)),
+            leading: Icon(KapdhIcons.logout, color: context.kc.danger),
+            title: Text('Keluar grup', style: TextStyle(color: context.kc.danger)),
             onTap: _busy ? null : () => _leave(state),
           ),
       ]);
@@ -514,6 +515,8 @@ class _ChatInfoScreenState extends ConsumerState<ChatInfoScreen> {
           ? null
           : PopupMenuButton<_MemberAction>(
               tooltip: 'Tindakan untuk ${member.fullName}',
+              // [v2] Ikon tiga titik Phosphor, bukan Icons.adaptive.more bawaan.
+              icon: const Icon(KapdhIcons.moreVert),
               enabled: !_busy,
               onSelected: (action) => _memberAction(member, action),
               itemBuilder: (_) => actions,

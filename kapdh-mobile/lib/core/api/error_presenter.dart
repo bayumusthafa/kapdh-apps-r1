@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../design/kapdh_snack_bar_action.dart';
 import '../format/formatters.dart';
 import '../session/session_controller.dart';
 import '../ui/app_keys.dart';
@@ -182,7 +183,7 @@ class ErrorPresenter {
                   ? (countdown > const Duration(seconds: 30) ? const Duration(seconds: 30) : countdown)
                   : const Duration(seconds: 4),
               action: actionLabel != null && action != null
-                  ? SnackBarAction(label: actionLabel, onPressed: action)
+                  ? KapdhSnackBarAction(label: actionLabel, onPressed: action)
                   : null,
             ),
           );

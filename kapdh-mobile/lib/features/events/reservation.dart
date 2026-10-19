@@ -9,6 +9,7 @@ import '../../app/routes.dart';
 import '../../core/api/error_presenter.dart';
 import '../../core/format/formatters.dart';
 import '../../core/ui/app_keys.dart';
+import '../../design/kapdh_snack_bar_action.dart';
 import '../home/shared/links.dart';
 import 'event_format.dart';
 import 'events_controllers.dart';
@@ -191,7 +192,7 @@ void showReservationRetry(ReservationScope scope, VoidCallback? onRetry) {
               'terdaftar dua kali.'
         : 'Pendaftaran belum terkirim karena koneksi terputus. Anda tidak terdaftar dua kali; coba lagi.',
     duration: const Duration(seconds: 10),
-    action: onRetry == null ? null : SnackBarAction(label: 'Coba lagi', onPressed: onRetry),
+    action: onRetry == null ? null : KapdhSnackBarAction(label: 'Coba lagi', onPressed: onRetry),
   );
 }
 
@@ -248,7 +249,7 @@ void announceReservationResult(ReservationScope scope, ReservationDone done) {
     scope.snack(
       _holdMessage(ticket!),
       duration: const Duration(seconds: 10),
-      action: SnackBarAction(
+      action: KapdhSnackBarAction(
         label: 'Bayar',
         onPressed: () => unawaited(scope.router.push(AppRoutes.payment(done.paymentId!))),
       ),
@@ -260,7 +261,7 @@ void announceReservationResult(ReservationScope scope, ReservationDone done) {
         ? 'Pendaftaran berhasil. Tiket Anda sudah terbit.'
         : 'Pendaftaran Anda sudah tercatat.',
     duration: const Duration(seconds: 10),
-    action: SnackBarAction(
+    action: KapdhSnackBarAction(
       label: 'Lihat tiket',
       onPressed: () => unawaited(scope.router.push(AppRoutes.ticket(done.ticketId))),
     ),

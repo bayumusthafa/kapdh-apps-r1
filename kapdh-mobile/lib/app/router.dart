@@ -7,6 +7,7 @@ import '../core/app_gate/app_gate.dart';
 import '../core/session/session_controller.dart';
 import '../core/ui/app_keys.dart';
 import '../core/ui/back_navigation.dart';
+import '../core/welcome/welcome_gate.dart';
 import '../features/account/account_screen.dart';
 import '../features/account/blocked_users_screen.dart';
 import '../features/account/change_password_screen.dart';
@@ -48,13 +49,14 @@ import '../features/system/maintenance_screen.dart';
 import '../features/system/not_found_screen.dart';
 import '../features/system/splash_screen.dart';
 import '../features/system/update_required_screen.dart';
+import '../features/system/welcome_screen.dart';
 import '../features/tickets/ticket_detail_screen.dart';
 import '../features/tickets/tickets_screen.dart';
 import 'app_shell.dart';
 import 'redirect.dart';
 import 'routes.dart';
 
-/// Memicu evaluasi ulang redirect saat gerbang aplikasi atau sesi berubah.
+/// Memicu evaluasi ulang redirect saat gerbang aplikasi, sesi atau penanda Welcome berubah.
 class _RouterRefresh extends ChangeNotifier {
   void notify() => notifyListeners();
 }
@@ -64,7 +66,8 @@ final routerProvider = Provider<GoRouter>((ref) {
   final refresh = _RouterRefresh();
   ref
     ..listen(sessionProvider, (_, _) => refresh.notify())
-    ..listen(appGateProvider.select((gate) => gate.status), (_, _) => refresh.notify());
+    ..listen(appGateProvider.select((gate) => gate.status), (_, _) => refresh.notify())
+    ..listen(welcomeProvider, (_, _) => refresh.notify());
   final rootKey = ref.watch(rootNavigatorKeyProvider);
 
   final router = GoRouter(
@@ -73,7 +76,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: refresh,
     debugLogDiagnostics: kDebugMode,
     redirect: (context, state) => resolveRedirect(
-      RedirectState(gate: ref.read(appGateProvider).status, session: ref.read(sessionProvider)),
+      RedirectState(
+        gate: ref.read(appGateProvider).status,
+        session: ref.read(sessionProvider),
+        welcome: ref.read(welcomeProvider),
+      ),
       state.uri,
     ),
     errorBuilder: (context, state) => const NotFoundScreen(),
@@ -100,6 +107,7 @@ List<RouteBase> buildAppRoutes(GlobalKey<NavigatorState> rootKey) => [
   GoRoute(path: AppRoutes.splash, builder: (_, _) => const SplashScreen()),
   GoRoute(path: AppRoutes.updateRequired, builder: (_, _) => const UpdateRequiredScreen()),
   GoRoute(path: AppRoutes.maintenance, builder: (_, _) => const MaintenanceScreen()),
+  GoRoute(path: AppRoutes.welcome, builder: (_, _) => const WelcomeScreen()),
 
   // Auth.
   GoRoute(path: AppRoutes.login, builder: (_, _) => const LoginScreen()),

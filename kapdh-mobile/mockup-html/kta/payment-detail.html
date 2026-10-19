@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Status Pembayaran - Mockup KAPDH</title>
   <meta name="description" content="Mockup statis layar instruksi dan status pembayaran KAPDH (Flutter): instruksi transfer bank/QRIS dengan unggah bukti, ganti bukti, menunggu verifikasi, perlu perbaikan, lunas, refund, dibatalkan, ditolak, D13, memuat dan galat.">
+  <script src="../js/theme.js"></script>
   <link rel="stylesheet" href="../css/tokens.css">
   <link rel="stylesheet" href="../css/components.css">
   <link rel="stylesheet" href="../css/pages/kta.css">
@@ -13,7 +14,7 @@
 <body>
   <header class="page-header">
     <nav class="page-header__nav" aria-label="Navigasi mockup">
-      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../index.html"><span class="ic ph-arrow-left ic-s16" aria-hidden="true"></span> Semua layar</a>
       <a href="../components.html">Komponen</a>
       <a href="kta.html">KTA</a>
       <a href="payments.html">Riwayat Pembayaran</a>
@@ -73,12 +74,12 @@
           <div class="brand-sheet pay-sheet">
             <div class="screen__body">
               <div class="pay-sheet-list">
-                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
+                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
                 <ol class="stepper stepper--compact mt-4" aria-label="Langkah 4 dari 4: Pembayaran">
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                  <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                  <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                 </ol>
                 <div class="amount-box mt-4"><div class="grow"><p class="amount-box__label">Transfer tepat sebesar</p><p class="amount-box__value">Rp60.000</p></div><button class="amount-box__copy" type="button" aria-label="Salin nominal Rp60.000">Salin</button></div>
                 <h3 class="pay-section-title mt-4">Rekening tujuan</h3>
@@ -89,7 +90,7 @@
                 </div>
                 <section class="mt-4">
                   <h3 class="pay-section-title">Bukti transfer</h3>
-                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ic-upload_file" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
+                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ph-file-arrow-up" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
                   <p class="pay-rules">Foto JPG/PNG maks 5 MB atau PDF maks 10 MB.</p>
                   <div class="field mt-4">
                     <label class="field__label" for="proof-note-1">Catatan untuk pengurus (opsional)</label>
@@ -117,12 +118,12 @@
           <div class="brand-sheet pay-sheet">
             <div class="screen__body">
               <div class="pay-sheet-list">
-                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
+                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
                 <ol class="stepper stepper--compact mt-4" aria-label="Langkah 4 dari 4: Pembayaran">
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                  <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                  <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                 </ol>
                 <div class="amount-box mt-4"><div class="grow"><p class="amount-box__label">Transfer tepat sebesar</p><p class="amount-box__value">Rp60.000</p></div><button class="amount-box__copy" type="button" aria-label="Salin nominal Rp60.000">Salin</button></div>
                 <h3 class="pay-section-title mt-4">Rekening tujuan</h3>
@@ -133,7 +134,7 @@
                 </div>
                 <section class="mt-4">
                   <h3 class="pay-section-title">Bukti transfer</h3>
-                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ic-upload_file" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
+                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ph-file-arrow-up" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
                   <p class="pay-rules">Foto JPG/PNG maks 5 MB atau PDF maks 10 MB.</p>
                   <div class="field mt-4">
                     <label class="field__label" for="proof-note-2">Catatan untuk pengurus (opsional)</label>
@@ -162,10 +163,10 @@
               <div class="pay-sheet-list">
                 <div class="sheet-title-row"><h2 class="sheet-title-row__title">Pembayaran</h2></div>
                 <ol class="stepper stepper--compact mt-4" aria-label="Langkah 4 dari 4: Pembayaran">
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                  <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                  <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                 </ol>
                 <div class="amount-box mt-4"><div class="grow"><p class="amount-box__label">Transfer tepat sebesar</p><p class="amount-box__value">Rp60.000</p></div><button class="amount-box__copy" type="button" aria-label="Salin nominal Rp60.000">Salin</button></div>
                 <h3 class="pay-section-title mt-4">Rekening tujuan</h3>
@@ -176,7 +177,7 @@
                 </div>
                 <section class="mt-4">
                   <h3 class="pay-section-title">Bukti transfer</h3>
-                  <div class="mt-2"><div class="upload-tile"><span class="upload-tile__icon"><span class="ic ic-image_outlined" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">bukti-transfer.jpg</span><span class="upload-tile__subtitle">Mengunggah 60%</span><span class="progress-linear" style="--value:60%"><span class="progress-linear__bar"></span></span></span></div></div>
+                  <div class="mt-2"><div class="upload-tile"><span class="upload-tile__icon"><span class="ic ph-image" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">bukti-transfer.jpg</span><span class="upload-tile__subtitle">Mengunggah 60%</span><span class="progress-linear" style="--value:60%"><span class="progress-linear__bar"></span></span></span></div></div>
                   <p class="pay-rules">Foto JPG/PNG maks 5 MB atau PDF maks 10 MB.</p>
                   <div class="field mt-4">
                     <label class="field__label" for="proof-note-3">Catatan untuk pengurus (opsional)</label>
@@ -204,20 +205,20 @@
           <div class="brand-sheet pay-sheet">
             <div class="screen__body">
               <div class="pay-sheet-list">
-                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
+                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
                 <p class="pay-kind">Iuran perpanjangan</p>
                 <div class="amount-box mt-4"><div class="grow"><p class="amount-box__label">Transfer tepat sebesar</p><p class="amount-box__value">Rp10.000</p></div><button class="amount-box__copy" type="button" aria-label="Salin nominal Rp10.000">Salin</button></div>
                 <h3 class="pay-section-title mt-4">Rekening tujuan</h3>
                 <div class="mt-2" role="radiogroup" aria-label="Rekening tujuan">
                   <div class="method-card is-selected"><div class="method-card__main" role="radio" aria-checked="true" tabindex="0"><span class="method-card__dot" aria-hidden="true"></span><div class="grow"><div class="method-card__title">QRIS</div><div class="method-card__number">NMID: ID0000000012345</div><div class="method-card__holder">Merchant: Perkumpulan Alumni Contoh</div></div></div></div>
-                  <div class="qris-card mt-3"><button class="qris-card__image" type="button" aria-label="Kode QRIS Perkumpulan Alumni Contoh, ketuk untuk memperbesar"><span class="qr-glyph"></span></button><button class="btn-text btn-text--icon" type="button"><span class="ic ic-zoom_in" aria-hidden="true"></span>Perbesar QRIS</button></div>
-                  <div class="info-box mt-2"><span class="ic ic-payments_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">QRIS ini tanpa nominal. Masukkan nominal Rp10.000 persis saat membayar agar pengurus dapat mencocokkannya.</p></div></div>
+                  <div class="qris-card mt-3"><button class="qris-card__image" type="button" aria-label="Kode QRIS Perkumpulan Alumni Contoh, ketuk untuk memperbesar"><span class="qr-glyph"></span></button><button class="btn-text btn-text--icon" type="button"><span class="ic ph-magnifying-glass-plus" aria-hidden="true"></span>Perbesar QRIS</button></div>
+                  <div class="info-box mt-2"><span class="ic ph-money" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">QRIS ini tanpa nominal. Masukkan nominal Rp10.000 persis saat membayar agar pengurus dapat mencocokkannya.</p></div></div>
                   <div class="method-card mt-2"><div class="method-card__main" role="radio" aria-checked="false" tabindex="-1"><span class="method-card__dot" aria-hidden="true"></span><div class="grow"><div class="method-card__title">Bank Contoh Syariah</div><div class="method-card__hint">Ketuk untuk melihat nomor tujuan</div></div></div></div>
                   <div class="method-card mt-2"><div class="method-card__main" role="radio" aria-checked="false" tabindex="-1"><span class="method-card__dot" aria-hidden="true"></span><div class="grow"><div class="method-card__title">E-Wallet Contoh</div><div class="method-card__hint">Ketuk untuk melihat nomor tujuan</div></div></div></div>
                 </div>
                 <section class="mt-4">
                   <h3 class="pay-section-title">Bukti transfer</h3>
-                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ic-upload_file" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
+                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ph-file-arrow-up" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
                   <p class="pay-rules">Foto JPG/PNG maks 5 MB atau PDF maks 10 MB.</p>
                   <div class="field mt-4">
                     <label class="field__label" for="proof-note-4">Catatan untuk pengurus (opsional)</label>
@@ -245,20 +246,20 @@
           <div class="brand-sheet pay-sheet">
             <div class="screen__body">
               <div class="pay-sheet-list scroll-offset" style="--scroll:150px">
-                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
+                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
                 <p class="pay-kind">Iuran perpanjangan</p>
                 <div class="amount-box mt-4"><div class="grow"><p class="amount-box__label">Transfer tepat sebesar</p><p class="amount-box__value">Rp10.000</p></div><button class="amount-box__copy" type="button" aria-label="Salin nominal Rp10.000">Salin</button></div>
                 <h3 class="pay-section-title mt-4">Rekening tujuan</h3>
                 <div class="mt-2" role="radiogroup" aria-label="Rekening tujuan">
                   <div class="method-card is-selected"><div class="method-card__main" role="radio" aria-checked="true" tabindex="0"><span class="method-card__dot" aria-hidden="true"></span><div class="grow"><div class="method-card__title">QRIS</div><div class="method-card__number">NMID: ID0000000012345</div><div class="method-card__holder">Merchant: Perkumpulan Alumni Contoh</div></div></div></div>
-                  <div class="qris-card mt-3"><div class="qris-error"><span class="ic ic-qr_code_2" aria-hidden="true"></span><p class="qris-error__title" role="status">Gambar QRIS belum dapat dimuat</p><p class="qris-error__text">Periksa koneksi lalu muat ulang.</p><button class="btn-text btn-text--icon mt-2" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Muat ulang</button></div></div>
-                  <div class="info-box mt-2"><span class="ic ic-payments_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">QRIS ini tanpa nominal. Masukkan nominal Rp10.000 persis saat membayar agar pengurus dapat mencocokkannya.</p></div></div>
+                  <div class="qris-card mt-3"><div class="qris-error"><span class="ic ph-qr-code" aria-hidden="true"></span><p class="qris-error__title" role="status">Gambar QRIS belum dapat dimuat</p><p class="qris-error__text">Periksa koneksi lalu muat ulang.</p><button class="btn-text btn-text--icon mt-2" type="button"><span class="ic ph-arrow-clockwise" aria-hidden="true"></span>Muat ulang</button></div></div>
+                  <div class="info-box mt-2"><span class="ic ph-money" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">QRIS ini tanpa nominal. Masukkan nominal Rp10.000 persis saat membayar agar pengurus dapat mencocokkannya.</p></div></div>
                   <div class="method-card mt-2"><div class="method-card__main" role="radio" aria-checked="false" tabindex="-1"><span class="method-card__dot" aria-hidden="true"></span><div class="grow"><div class="method-card__title">Bank Contoh Syariah</div><div class="method-card__hint">Ketuk untuk melihat nomor tujuan</div></div></div></div>
                   <div class="method-card mt-2"><div class="method-card__main" role="radio" aria-checked="false" tabindex="-1"><span class="method-card__dot" aria-hidden="true"></span><div class="grow"><div class="method-card__title">E-Wallet Contoh</div><div class="method-card__hint">Ketuk untuk melihat nomor tujuan</div></div></div></div>
                 </div>
                 <section class="mt-4">
                   <h3 class="pay-section-title">Bukti transfer</h3>
-                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ic-upload_file" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
+                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ph-file-arrow-up" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
                   <p class="pay-rules">Foto JPG/PNG maks 5 MB atau PDF maks 10 MB.</p>
                   <div class="field mt-4">
                     <label class="field__label" for="proof-note-5">Catatan untuk pengurus (opsional)</label>
@@ -282,7 +283,7 @@
       <div class="device" aria-label="Status Pembayaran, Penampil QRIS layar penuh">
         <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="dialog dialog--fullscreen qris-viewer" role="dialog" aria-modal="true" aria-labelledby="qris-viewer-title">
-          <div class="qris-viewer__head"><h3 class="qris-viewer__title" id="qris-viewer-title">QRIS Perkumpulan Alumni Contoh</h3><button class="btn-text btn-text--icon" type="button"><span class="ic ic-close" aria-hidden="true"></span>Tutup</button></div>
+          <div class="qris-viewer__head"><h3 class="qris-viewer__title" id="qris-viewer-title">QRIS Perkumpulan Alumni Contoh</h3><button class="btn-text btn-text--icon" type="button"><span class="ic ph-x" aria-hidden="true"></span>Tutup</button></div>
           <div class="qris-viewer__image"><span class="qr-glyph" role="img" aria-label="Kode QRIS Perkumpulan Alumni Contoh"></span></div>
           <p class="qris-viewer__hint">Pindai dari perangkat lain, atau simpan tangkapan layar lalu pilih unggah QR dari galeri di aplikasi bank/e-wallet.</p>
         </div>
@@ -300,12 +301,12 @@
           <div class="brand-sheet pay-sheet">
             <div class="screen__body">
               <div class="pay-sheet-list">
-                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
+                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
                 <ol class="stepper stepper--compact mt-4" aria-label="Langkah 4 dari 4: Pembayaran">
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                  <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                  <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                 </ol>
                 <div class="amount-box mt-4"><div class="grow"><p class="amount-box__label">Transfer tepat sebesar</p><p class="amount-box__value">Rp60.000</p></div><button class="amount-box__copy" type="button" aria-label="Salin nominal Rp60.000">Salin</button></div>
                 <h3 class="pay-section-title mt-4">Rekening tujuan</h3>
@@ -316,7 +317,7 @@
                 </div>
                 <section class="mt-4">
                   <h3 class="pay-section-title">Bukti transfer</h3>
-                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ic-upload_file" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
+                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ph-file-arrow-up" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
                   <p class="pay-rules">Foto JPG/PNG maks 5 MB atau PDF maks 10 MB.</p>
                   <div class="field mt-4">
                     <label class="field__label" for="proof-note-6">Catatan untuk pengurus (opsional)</label>
@@ -334,9 +335,9 @@
         <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="proof-source-title">
           <div class="pay-source">
             <h3 class="pay-section-title pay-source__title" id="proof-source-title">Pilih bukti transfer</h3>
-            <button class="list-tile list-tile--two-line" type="button"><span class="list-tile__leading"><span class="ic ic-photo_camera_outlined" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Ambil foto</span><span class="list-tile__subtitle">Foto bukti transfer dengan kamera</span></span></button>
-            <button class="list-tile list-tile--two-line" type="button"><span class="list-tile__leading"><span class="ic ic-photo_library_outlined" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Pilih dari galeri</span><span class="list-tile__subtitle">Tangkapan layar aplikasi bank</span></span></button>
-            <button class="list-tile list-tile--two-line" type="button"><span class="list-tile__leading"><span class="ic ic-picture_as_pdf_outlined" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Pilih PDF</span><span class="list-tile__subtitle">Bukti transfer PDF maks 10 MB</span></span></button>
+            <button class="list-tile list-tile--two-line" type="button"><span class="list-tile__leading"><span class="ic ph-camera" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Ambil foto</span><span class="list-tile__subtitle">Foto bukti transfer dengan kamera</span></span></button>
+            <button class="list-tile list-tile--two-line" type="button"><span class="list-tile__leading"><span class="ic ph-images" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Pilih dari galeri</span><span class="list-tile__subtitle">Tangkapan layar aplikasi bank</span></span></button>
+            <button class="list-tile list-tile--two-line" type="button"><span class="list-tile__leading"><span class="ic ph-file-pdf" aria-hidden="true"></span></span><span class="list-tile__body"><span class="list-tile__title">Pilih PDF</span><span class="list-tile__subtitle">Bukti transfer PDF maks 10 MB</span></span></button>
           </div>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
@@ -353,12 +354,12 @@
           <div class="brand-sheet pay-sheet">
             <div class="screen__body">
               <div class="pay-sheet-list">
-                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
+                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
                 <ol class="stepper stepper--compact mt-4" aria-label="Langkah 4 dari 4: Pembayaran">
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                  <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                  <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                 </ol>
                 <div class="amount-box mt-4"><div class="grow"><p class="amount-box__label">Transfer tepat sebesar</p><p class="amount-box__value">Rp60.000</p></div><button class="amount-box__copy" type="button" aria-label="Salin nominal Rp60.000">Salin</button></div>
                 <h3 class="pay-section-title mt-4">Rekening tujuan</h3>
@@ -369,7 +370,7 @@
                 </div>
                 <section class="mt-4">
                   <h3 class="pay-section-title">Bukti transfer</h3>
-                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ic-upload_file" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
+                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ph-file-arrow-up" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
                   <p class="pay-rules">Foto JPG/PNG maks 5 MB atau PDF maks 10 MB.</p>
                   <div class="field mt-4">
                     <label class="field__label" for="proof-note-7">Catatan untuk pengurus (opsional)</label>
@@ -403,16 +404,16 @@
           <div class="brand-sheet pay-sheet">
             <div class="screen__body">
               <div class="pay-sheet-list scroll-offset" style="--scroll:196px">
-                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
+                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
                 <ol class="stepper stepper--compact mt-4" aria-label="Langkah 4 dari 4: Pembayaran">
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                  <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                  <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                 </ol>
                 <div class="amount-box mt-4"><div class="grow"><p class="amount-box__label">Transfer tepat sebesar</p><p class="amount-box__value">Rp60.000</p></div><button class="amount-box__copy" type="button" aria-label="Salin nominal Rp60.000">Salin</button></div>
                 <h3 class="pay-section-title mt-4">Rekening tujuan</h3>
-                <div class="info-box info-box--warning mt-2"><span class="ic ic-warning_amber_rounded" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Rekening tujuan ini sudah dinonaktifkan pengurus. Pilih rekening lain sebelum transfer.</p></div></div>
+                <div class="info-box info-box--warning mt-2"><span class="ic ph-warning" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Rekening tujuan ini sudah dinonaktifkan pengurus. Pilih rekening lain sebelum transfer.</p></div></div>
                 <div class="mt-2 stack-2" role="radiogroup" aria-label="Rekening tujuan">
                   <div class="method-card is-selected"><div class="method-card__main" role="radio" aria-checked="true" tabindex="0"><span class="method-card__dot" aria-hidden="true"></span><div class="grow"><div class="method-card__title">Bank Contoh Syariah</div><div class="method-card__number">7001234567</div><div class="method-card__holder">a.n. Perkumpulan Alumni Contoh</div></div></div><button class="btn-text method-card__copy" type="button" aria-label="Salin nomor rekening Bank Contoh Syariah">Salin</button></div>
                   <div class="method-card"><div class="method-card__main" role="radio" aria-checked="false" tabindex="-1"><span class="method-card__dot" aria-hidden="true"></span><div class="grow"><div class="method-card__title">E-Wallet Contoh</div><div class="method-card__hint">Ketuk untuk melihat nomor tujuan</div></div></div></div>
@@ -420,7 +421,7 @@
                 </div>
                 <section class="mt-4">
                   <h3 class="pay-section-title">Bukti transfer</h3>
-                  <div class="mt-2"><button class="upload-tile upload-tile--error" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ic-error_outline" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button><p class="upload-tile__error">Foto maksimal 5 MB. Ambil ulang foto atau kirim tangkapan layar dari aplikasi bank.</p></div>
+                  <div class="mt-2"><button class="upload-tile upload-tile--error" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ph-warning-circle" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button><p class="upload-tile__error">Foto maksimal 5 MB. Ambil ulang foto atau kirim tangkapan layar dari aplikasi bank.</p></div>
                   <p class="pay-rules">Foto JPG/PNG maks 5 MB atau PDF maks 10 MB.</p>
                   <div class="field mt-4">
                     <label class="field__label" for="proof-note-8">Catatan untuk pengurus (opsional)</label>
@@ -448,12 +449,12 @@
           <div class="brand-sheet pay-sheet">
             <div class="screen__body scroll-end">
               <div class="pay-sheet-list">
-                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
+                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
                 <ol class="stepper stepper--compact mt-4" aria-label="Langkah 4 dari 4: Pembayaran">
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
-                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ic-check" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
-                  <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ic-credit_card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Data Diri</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">OTP</span></li>
+                  <li class="stepper__step is-done"><span class="stepper__dot"><span class="ic ph-check" aria-hidden="true"></span></span><span class="stepper__label">Biaya KTA</span></li>
+                  <li class="stepper__step is-current" aria-current="step"><span class="stepper__dot"><span class="ic ph-credit-card" aria-hidden="true"></span></span><span class="stepper__label">Pembayaran</span></li>
                 </ol>
                 <div class="amount-box mt-4"><div class="grow"><p class="amount-box__label">Transfer tepat sebesar</p><p class="amount-box__value">Rp60.000</p></div><button class="amount-box__copy" type="button" aria-label="Salin nominal Rp60.000">Salin</button></div>
                 <h3 class="pay-section-title mt-4">Rekening tujuan</h3>
@@ -464,14 +465,14 @@
                 </div>
                 <section class="mt-4">
                   <h3 class="pay-section-title">Bukti transfer</h3>
-                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Berkas terpilih bukti-transfer.jpg. Ganti berkas"><span class="upload-tile__icon"><span class="ic ic-image_outlined" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">bukti-transfer.jpg</span><span class="upload-tile__subtitle">1,2 MB</span></span><span class="upload-tile__action">Ganti</span></button></div>
+                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Berkas terpilih bukti-transfer.jpg. Ganti berkas"><span class="upload-tile__icon"><span class="ic ph-image" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">bukti-transfer.jpg</span><span class="upload-tile__subtitle">1,2 MB</span></span><span class="upload-tile__action">Ganti</span></button></div>
                   <p class="pay-rules">Foto JPG/PNG maks 5 MB atau PDF maks 10 MB.</p>
                   <div class="field mt-4">
                     <label class="field__label" for="proof-note-9">Catatan untuk pengurus (opsional)</label>
                     <div class="input input--lines-2"><textarea class="input__control" id="proof-note-9" rows="2" placeholder="Mis. transfer dari BSI a.n. Ahmad"></textarea></div>
                     <p class="field__helper">Membantu pengurus mencocokkan transfer. Tanggal transfer tidak menjadi dasar aktivasi.</p>
                   </div>
-                  <div class="info-box info-box--warning mt-4"><span class="ic ic-sync_problem" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Memeriksa status</p><p class="info-box__message">Koneksi terputus saat mengirim bukti. Anda tidak perlu transfer ulang. Status pengiriman diperiksa lebih dahulu sebelum bukti dikirim lagi.</p></div><button class="btn-text info-box__trailing" type="button">Periksa</button></div>
+                  <div class="info-box info-box--warning mt-4"><span class="ic ph-cloud-warning" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Memeriksa status</p><p class="info-box__message">Koneksi terputus saat mengirim bukti. Anda tidak perlu transfer ulang. Status pengiriman diperiksa lebih dahulu sebelum bukti dikirim lagi.</p></div><button class="btn-text info-box__trailing" type="button">Periksa</button></div>
                 </section>
                 <div class="center mt-3"><button class="btn-link" type="button">Batalkan instruksi</button></div>
               </div>
@@ -493,10 +494,10 @@
           <div class="brand-sheet pay-sheet">
             <div class="screen__body">
               <div class="pay-sheet-list">
-                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
+                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Pembayaran</h2></div>
                 <p class="pay-kind">Tiket Kajian Bulanan Oktober</p>
                 <div class="amount-box mt-4"><div class="grow"><p class="amount-box__label">Transfer tepat sebesar</p><p class="amount-box__value">Rp25.000</p></div><button class="amount-box__copy" type="button" aria-label="Salin nominal Rp25.000">Salin</button></div>
-                <div class="info-box info-box--warning mt-3"><span class="ic ic-timer_outlined" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kirim bukti sebelum 19 Okt 2026, 09.00 WIB. Setelah itu reservasi berakhir dan kursi dilepas.</p></div></div>
+                <div class="info-box info-box--warning mt-3"><span class="ic ph-timer" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Kirim bukti sebelum 19 Okt 2026, 09.00 WIB. Setelah itu reservasi berakhir dan kursi dilepas.</p></div></div>
                 <h3 class="pay-section-title mt-4">Rekening tujuan</h3>
                 <div class="mt-2 stack-2" role="radiogroup" aria-label="Rekening tujuan">
                   <div class="method-card is-selected"><div class="method-card__main" role="radio" aria-checked="true" tabindex="0"><span class="method-card__dot" aria-hidden="true"></span><div class="grow"><div class="method-card__title">Bank Contoh Syariah</div><div class="method-card__number">7001234567</div><div class="method-card__holder">a.n. Perkumpulan Alumni Contoh</div></div></div><button class="btn-text method-card__copy" type="button" aria-label="Salin nomor rekening Bank Contoh Syariah">Salin</button></div>
@@ -505,7 +506,7 @@
                 </div>
                 <section class="mt-4">
                   <h3 class="pay-section-title">Bukti transfer</h3>
-                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ic-upload_file" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
+                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ph-file-arrow-up" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
                   <p class="pay-rules">Foto JPG/PNG maks 5 MB atau PDF maks 10 MB.</p>
                   <div class="field mt-4">
                     <label class="field__label" for="proof-note-10">Catatan untuk pengurus (opsional)</label>
@@ -536,7 +537,7 @@
           <div class="brand-sheet pay-sheet">
             <div class="screen__body">
               <div class="pay-sheet-list">
-                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Ganti bukti</h2></div>
+                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Ganti bukti</h2></div>
                 <div class="amount-box mt-4"><div class="grow"><p class="amount-box__label">Transfer tepat sebesar</p><p class="amount-box__value">Rp60.000</p></div><button class="amount-box__copy" type="button" aria-label="Salin nominal Rp60.000">Salin</button></div>
                 <div class="summary-card mt-4">
               <h3 class="summary-card__title">Rekening tujuan</h3>
@@ -546,7 +547,7 @@
             </div>
                 <section class="mt-4">
                   <h3 class="pay-section-title">Bukti transfer pengganti</h3>
-                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Berkas terpilih bukti-transfer-baru.jpg. Ganti berkas"><span class="upload-tile__icon"><span class="ic ic-image_outlined" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">bukti-transfer-baru.jpg</span><span class="upload-tile__subtitle">1,2 MB</span></span><span class="upload-tile__action">Ganti</span></button></div>
+                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Berkas terpilih bukti-transfer-baru.jpg. Ganti berkas"><span class="upload-tile__icon"><span class="ic ph-image" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">bukti-transfer-baru.jpg</span><span class="upload-tile__subtitle">1,2 MB</span></span><span class="upload-tile__action">Ganti</span></button></div>
                   <p class="pay-rules">Foto JPG/PNG maks 5 MB atau PDF maks 10 MB.</p>
                   <div class="field mt-4">
                     <label class="field__label" for="proof-note-11">Catatan untuk pengurus (opsional)</label>
@@ -554,7 +555,7 @@
                     <p class="field__helper">Membantu pengurus mencocokkan transfer. Tanggal transfer tidak menjadi dasar aktivasi.</p>
                   </div>
                 </section>
-                <div class="info-box mt-3"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Bukti ke-1 akan diganti. Bukti lama tetap tersimpan di riwayat untuk pengurus; Anda tidak perlu transfer ulang.</p></div></div>
+                <div class="info-box mt-3"><span class="ic ph-info" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Bukti ke-1 akan diganti. Bukti lama tetap tersimpan di riwayat untuk pengurus; Anda tidak perlu transfer ulang.</p></div></div>
               </div>
             </div>
             <div class="brand-sheet__bottom pay-bottom"><button class="btn btn--primary" type="button">Kirim bukti pembayaran</button></div>
@@ -574,7 +575,7 @@
           <div class="brand-sheet pay-sheet">
             <div class="screen__body">
               <div class="pay-sheet-list">
-                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-chevron_left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Unggah ulang bukti</h2></div>
+                <div class="sheet-title-row"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-caret-left ic-s26" aria-hidden="true"></span></button><h2 class="sheet-title-row__title">Unggah ulang bukti</h2></div>
                 <div class="summary-card summary-card--danger mt-4">
               <h3 class="summary-card__title">Catatan dari pengurus</h3>
               <p class="summary-card__body">Nominal dan tanggal pada foto bukti tidak terbaca. Unggah ulang foto yang lebih jelas atau tangkapan layar dari aplikasi bank.</p>
@@ -588,11 +589,11 @@
               <div class="summary-row"><span class="summary-row__label">NMID</span><span class="summary-row__value">ID0000000012345</span></div>
               <div class="summary-row"><span class="summary-row__label">Merchant</span><span class="summary-row__value">Perkumpulan Alumni Contoh</span></div>
             </div>
-                  <div class="pay-link-row"><button class="btn-link" type="button"><span class="ic ic-qr_code_2" aria-hidden="true"></span>Lihat QRIS</button></div>
+                  <div class="pay-link-row"><button class="btn-link" type="button"><span class="ic ph-qr-code" aria-hidden="true"></span>Lihat QRIS</button></div>
                 </div>
                 <section class="mt-4">
                   <h3 class="pay-section-title">Bukti transfer pengganti</h3>
-                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ic-upload_file" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
+                  <div class="mt-2"><button class="upload-tile" type="button" aria-label="Pilih bukti transfer. Foto JPG/PNG atau PDF"><span class="upload-tile__icon"><span class="ic ph-file-arrow-up" aria-hidden="true"></span></span><span class="upload-tile__body"><span class="upload-tile__title">Pilih bukti transfer</span><span class="upload-tile__subtitle">Foto JPG/PNG atau PDF</span></span><span class="upload-tile__action">Pilih</span></button></div>
                   <p class="pay-rules">Foto JPG/PNG maks 5 MB atau PDF maks 10 MB.</p>
                   <div class="field mt-4">
                     <label class="field__label" for="proof-note-12">Catatan untuk pengurus (opsional)</label>
@@ -600,7 +601,7 @@
                     <p class="field__helper">Membantu pengurus mencocokkan transfer. Tanggal transfer tidak menjadi dasar aktivasi.</p>
                   </div>
                 </section>
-                <div class="info-box mt-3"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Bukti ke-1 akan diganti. Bukti lama tetap tersimpan di riwayat untuk pengurus; Anda tidak perlu transfer ulang.</p></div></div>
+                <div class="info-box mt-3"><span class="ic ph-info" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Bukti ke-1 akan diganti. Bukti lama tetap tersimpan di riwayat untuk pengurus; Anda tidak perlu transfer ulang.</p></div></div>
               </div>
             </div>
             <div class="brand-sheet__bottom pay-bottom"><button class="btn btn--primary" type="button" disabled>Kirim bukti pembayaran</button></div>
@@ -625,8 +626,8 @@
             <div class="screen__body">
               <div class="pay-sheet-list pay-sheet-list--hero">
                 <div class="status-hero tone-info">
-              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-hourglass_top" aria-hidden="true"></span></div>
-              <span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu Verifikasi</span>
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ph-hourglass-high" aria-hidden="true"></span></div>
+              <span class="status-badge status-badge--info"><span class="ic ph-hourglass-high" aria-hidden="true"></span>Menunggu Verifikasi</span>
               <h3 class="status-hero__title">Bukti pembayaran sedang diperiksa</h3>
               <p class="status-hero__message">Pengurus akan mencocokkan transfer Anda. Biasanya selesai dalam 1 hari kerja. Kami akan memberi tahu lewat notifikasi dan email.</p>
             </div>
@@ -636,14 +637,14 @@
               <div class="summary-row"><span class="summary-row__label">Rekening tujuan</span><span class="summary-row__value">Bank Contoh Syariah</span></div>
               <div class="summary-row"><span class="summary-row__label">Dikirim</span><span class="summary-row__value">18 Okt 2026, 09.12 WIB</span></div>
             </div>
-                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ic-image_search_outlined" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
+                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ph-image-square" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
                 <section class="pay-history">
               <h3 class="pay-section-title">Riwayat</h3>
               <ol class="timeline">
                 <li class="timeline__item timeline__item--current"><span class="timeline__marker" aria-hidden="true"></span><div><p class="timeline__title">Menunggu verifikasi pengurus</p><p class="timeline__subtitle">Sedang berlangsung</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">18 Okt 2026, 09.12 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Instruksi iuran dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.55 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Email terverifikasi, KTA dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.50 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">18 Okt 2026, 09.12 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Instruksi iuran dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.55 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Email terverifikasi, KTA dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.50 WIB</p></div></li>
               </ol>
             </section>
               </div>
@@ -668,8 +669,8 @@
             <div class="screen__body">
               <div class="pay-sheet-list pay-sheet-list--hero">
                 <div class="status-hero tone-info">
-              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-hourglass_top" aria-hidden="true"></span></div>
-              <span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu Verifikasi</span>
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ph-hourglass-high" aria-hidden="true"></span></div>
+              <span class="status-badge status-badge--info"><span class="ic ph-hourglass-high" aria-hidden="true"></span>Menunggu Verifikasi</span>
               <h3 class="status-hero__title">Bukti pembayaran sedang diperiksa</h3>
               <p class="status-hero__message">Pengurus akan mencocokkan transfer Anda. Biasanya selesai dalam 1 hari kerja. Kami akan memberi tahu lewat notifikasi dan email.</p>
             </div>
@@ -679,14 +680,14 @@
               <div class="summary-row"><span class="summary-row__label">Rekening tujuan</span><span class="summary-row__value">Bank Contoh Syariah</span></div>
               <div class="summary-row"><span class="summary-row__label">Dikirim</span><span class="summary-row__value">18 Okt 2026, 09.12 WIB</span></div>
             </div>
-                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ic-image_search_outlined" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
+                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ph-image-square" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
                 <section class="pay-history">
               <h3 class="pay-section-title">Riwayat</h3>
               <ol class="timeline">
                 <li class="timeline__item timeline__item--current"><span class="timeline__marker" aria-hidden="true"></span><div><p class="timeline__title">Menunggu verifikasi pengurus</p><p class="timeline__subtitle">Sedang berlangsung</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">18 Okt 2026, 09.12 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Instruksi iuran dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.55 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Email terverifikasi, KTA dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.50 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">18 Okt 2026, 09.12 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Instruksi iuran dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.55 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Email terverifikasi, KTA dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.50 WIB</p></div></li>
               </ol>
             </section>
               </div>
@@ -703,8 +704,8 @@
       <div class="device" aria-label="Status Pembayaran, Penampil bukti yang dikirim">
         <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="dialog dialog--fullscreen proof-viewer" role="dialog" aria-modal="true" aria-label="Bukti transfer ke-1">
-          <div class="proof-viewer__stage"><div class="proof-mock" role="img" aria-label="Bukti transfer ke-1 (gambar contoh)"><span class="proof-mock__logo"></span><span class="proof-mock__check"><span class="ic ic-check ic-s30" aria-hidden="true"></span></span><span class="proof-mock__line is-strong"></span><span class="proof-mock__line"></span><span class="proof-mock__line is-short"></span><span class="proof-mock__line"></span><span class="proof-mock__line is-short"></span><span class="proof-mock__line"></span><span class="proof-mock__line is-short"></span></div></div>
-          <div class="proof-viewer__bar"><button class="icon-btn" type="button" aria-label="Tutup"><span class="ic ic-close" aria-hidden="true"></span></button><p class="proof-viewer__label">Bukti transfer ke-1</p></div>
+          <div class="proof-viewer__stage"><div class="proof-mock" role="img" aria-label="Bukti transfer ke-1 (gambar contoh)"><span class="proof-mock__logo"></span><span class="proof-mock__check"><span class="ic ph-check ic-s30" aria-hidden="true"></span></span><span class="proof-mock__line is-strong"></span><span class="proof-mock__line"></span><span class="proof-mock__line is-short"></span><span class="proof-mock__line"></span><span class="proof-mock__line is-short"></span><span class="proof-mock__line"></span><span class="proof-mock__line is-short"></span></div></div>
+          <div class="proof-viewer__bar"><button class="icon-btn" type="button" aria-label="Tutup"><span class="ic ph-x" aria-hidden="true"></span></button><p class="proof-viewer__label">Bukti transfer ke-1</p></div>
         </div>
         <div class="sysnav sysnav--on-dark" aria-hidden="true"></div>
       </div>
@@ -716,8 +717,8 @@
       <div class="device" aria-label="Status Pembayaran, Penampil bukti: gagal dimuat">
         <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="dialog dialog--fullscreen proof-viewer" role="dialog" aria-modal="true" aria-label="Bukti transfer ke-1">
-          <div class="proof-viewer__stage"><div class="proof-viewer__message"><p role="status">Bukti tidak dapat dimuat. Tautan mungkin sudah kedaluwarsa atau koneksi terputus.</p><button class="btn-text btn-text--icon" type="button"><span class="ic ic-refresh" aria-hidden="true"></span>Muat ulang</button></div></div>
-          <div class="proof-viewer__bar"><button class="icon-btn" type="button" aria-label="Tutup"><span class="ic ic-close" aria-hidden="true"></span></button><p class="proof-viewer__label">Bukti transfer ke-1</p></div>
+          <div class="proof-viewer__stage"><div class="proof-viewer__message"><p role="status">Bukti tidak dapat dimuat. Tautan mungkin sudah kedaluwarsa atau koneksi terputus.</p><button class="btn-text btn-text--icon" type="button"><span class="ic ph-arrow-clockwise" aria-hidden="true"></span>Muat ulang</button></div></div>
+          <div class="proof-viewer__bar"><button class="icon-btn" type="button" aria-label="Tutup"><span class="ic ph-x" aria-hidden="true"></span></button><p class="proof-viewer__label">Bukti transfer ke-1</p></div>
         </div>
         <div class="sysnav sysnav--on-dark" aria-hidden="true"></div>
       </div>
@@ -730,15 +731,15 @@
         <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="brand-band pay-greeting">
-            <div class="greeting-band"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button><img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH"><div class="col grow"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div></div>
+            <div class="greeting-band"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button><img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH"><div class="col grow"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div></div>
           </header>
           <div class="brand-sheet brand-sheet--overlap-16 pay-sheet">
             <div class="screen__body">
               <div class="pay-sheet-list pay-sheet-list--hero">
-                <div class="info-box info-box--warning mb-4" role="status"><span class="ic ic-sync_problem" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Status terbaru belum dapat dimuat</p><p class="info-box__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi. Data yang tampil berasal dari pemuatan terakhir.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
+                <div class="info-box info-box--warning mb-4" role="status"><span class="ic ph-cloud-warning" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Status terbaru belum dapat dimuat</p><p class="info-box__message">Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi. Data yang tampil berasal dari pemuatan terakhir.</p></div><button class="btn-text info-box__trailing" type="button">Coba lagi</button></div>
                 <div class="status-hero tone-info">
-              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-hourglass_top" aria-hidden="true"></span></div>
-              <span class="status-badge status-badge--info"><span class="ic ic-hourglass_top" aria-hidden="true"></span>Menunggu Verifikasi</span>
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ph-hourglass-high" aria-hidden="true"></span></div>
+              <span class="status-badge status-badge--info"><span class="ic ph-hourglass-high" aria-hidden="true"></span>Menunggu Verifikasi</span>
               <h3 class="status-hero__title">Bukti pembayaran sedang diperiksa</h3>
               <p class="status-hero__message">Pengurus akan mencocokkan transfer Anda sebelum check-in dibuka. Kursi Anda tetap ditahan selama bukti diperiksa. Kami akan memberi tahu lewat notifikasi dan email.</p>
             </div>
@@ -767,14 +768,14 @@
         <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="brand-band pay-greeting">
-            <div class="greeting-band"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button><img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH"><div class="col grow"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div></div>
+            <div class="greeting-band"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button><img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH"><div class="col grow"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div></div>
           </header>
           <div class="brand-sheet brand-sheet--overlap-16 pay-sheet">
             <div class="screen__body">
               <div class="pay-sheet-list pay-sheet-list--hero">
                 <div class="status-hero tone-danger">
-              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-error_outline" aria-hidden="true"></span></div>
-              <span class="status-badge status-badge--danger"><span class="ic ic-error_outline" aria-hidden="true"></span>Perlu Perbaikan</span>
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ph-warning-circle" aria-hidden="true"></span></div>
+              <span class="status-badge status-badge--danger"><span class="ic ph-warning-circle" aria-hidden="true"></span>Perlu Perbaikan</span>
               <h3 class="status-hero__title">Bukti pembayaran belum dapat diterima</h3>
               <p class="status-hero__message">Anda tidak perlu transfer ulang bila dana sudah dikirim. Cukup perbaiki bukti sesuai catatan pengurus.</p>
             </div>
@@ -789,15 +790,15 @@
               <div class="summary-row"><span class="summary-row__label">Bukti ke-</span><span class="summary-row__value">1</span></div>
               <div class="summary-row"><span class="summary-row__label">Status</span><span class="summary-row__value summary-row__value--em c-danger">Ditolak, dapat diperbaiki</span></div>
             </div>
-                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ic-image_search_outlined" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
+                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ph-image-square" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
                 <section class="pay-history">
               <h3 class="pay-section-title">Riwayat</h3>
               <ol class="timeline">
                 <li class="timeline__item timeline__item--current"><span class="timeline__marker" aria-hidden="true"></span><div><p class="timeline__title">Menunggu perbaikan bukti</p><p class="timeline__subtitle">Sedang berlangsung</p></div></li>
-                <li class="timeline__item timeline__item--failed"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-close"></span></span><div><p class="timeline__title">Bukti belum dapat diterima</p><p class="timeline__subtitle">18 Okt 2026, 13.30 WIB<br>Alasan: Nominal dan tanggal pada foto bukti tidak terbaca. Unggah ulang foto yang lebih jelas atau tangkapan layar dari aplikasi bank.</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">18 Okt 2026, 09.12 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Instruksi iuran dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.55 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Email terverifikasi, KTA dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.50 WIB</p></div></li>
+                <li class="timeline__item timeline__item--failed"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-x"></span></span><div><p class="timeline__title">Bukti belum dapat diterima</p><p class="timeline__subtitle">18 Okt 2026, 13.30 WIB<br>Alasan: Nominal dan tanggal pada foto bukti tidak terbaca. Unggah ulang foto yang lebih jelas atau tangkapan layar dari aplikasi bank.</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">18 Okt 2026, 09.12 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Instruksi iuran dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.55 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Email terverifikasi, KTA dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.50 WIB</p></div></li>
               </ol>
             </section>
               </div>
@@ -817,14 +818,14 @@
         <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="brand-band pay-greeting">
-            <div class="greeting-band"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button><img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH"><div class="col grow"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div></div>
+            <div class="greeting-band"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button><img class="brand-logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH"><div class="col grow"><span class="greeting__hello">Assalamu'alaikum,</span><span class="greeting__name">Ahmad Fauzi</span></div></div>
           </header>
           <div class="brand-sheet brand-sheet--overlap-16 pay-sheet">
             <div class="screen__body">
               <div class="pay-sheet-list pay-sheet-list--hero">
                 <div class="status-hero tone-danger">
-              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-error_outline" aria-hidden="true"></span></div>
-              <span class="status-badge status-badge--danger"><span class="ic ic-error_outline" aria-hidden="true"></span>Perlu Perbaikan</span>
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ph-warning-circle" aria-hidden="true"></span></div>
+              <span class="status-badge status-badge--danger"><span class="ic ph-warning-circle" aria-hidden="true"></span>Perlu Perbaikan</span>
               <h3 class="status-hero__title">Bukti pembayaran belum dapat diterima</h3>
               <p class="status-hero__message">Anda tidak perlu transfer ulang bila dana sudah dikirim. Cukup perbaiki bukti sesuai catatan pengurus.</p>
             </div>
@@ -839,15 +840,15 @@
               <div class="summary-row"><span class="summary-row__label">Bukti ke-</span><span class="summary-row__value">1</span></div>
               <div class="summary-row"><span class="summary-row__label">Status</span><span class="summary-row__value summary-row__value--em c-danger">Ditolak, dapat diperbaiki</span></div>
             </div>
-                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ic-image_search_outlined" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
+                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ph-image-square" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
                 <section class="pay-history">
               <h3 class="pay-section-title">Riwayat</h3>
               <ol class="timeline">
                 <li class="timeline__item timeline__item--current"><span class="timeline__marker" aria-hidden="true"></span><div><p class="timeline__title">Menunggu perbaikan bukti</p><p class="timeline__subtitle">Sedang berlangsung</p></div></li>
-                <li class="timeline__item timeline__item--failed"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-close"></span></span><div><p class="timeline__title">Bukti belum dapat diterima</p><p class="timeline__subtitle">18 Okt 2026, 13.30 WIB<br>Alasan: Nominal dan tanggal pada foto bukti tidak terbaca. Unggah ulang foto yang lebih jelas atau tangkapan layar dari aplikasi bank.</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">18 Okt 2026, 09.12 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Instruksi iuran dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.55 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Email terverifikasi, KTA dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.50 WIB</p></div></li>
+                <li class="timeline__item timeline__item--failed"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-x"></span></span><div><p class="timeline__title">Bukti belum dapat diterima</p><p class="timeline__subtitle">18 Okt 2026, 13.30 WIB<br>Alasan: Nominal dan tanggal pada foto bukti tidak terbaca. Unggah ulang foto yang lebih jelas atau tangkapan layar dari aplikasi bank.</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">18 Okt 2026, 09.12 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Instruksi iuran dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.55 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Email terverifikasi, KTA dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.50 WIB</p></div></li>
               </ol>
             </section>
               </div>
@@ -868,14 +869,14 @@
         <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="appbar">
-            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button></div>
             <h2 class="appbar__title"><span>Status Pembayaran</span></h2>
           </header>
           <div class="screen__body">
             <div class="kta-list">
                 <div class="status-hero tone-success">
-              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-check_circle" aria-hidden="true"></span></div>
-              <span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span>
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ph-check-circle-fill" aria-hidden="true"></span></div>
+              <span class="status-badge status-badge--success"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Lunas</span>
               <h3 class="status-hero__title">Iuran pendaftaran diterima</h3>
               <p class="status-hero__message">Dana sudah diverifikasi pengurus dan KTA Anda aktif. Terima kasih telah menyelesaikan iuran keanggotaan.</p>
             </div>
@@ -886,15 +887,15 @@
               <div class="summary-row"><span class="summary-row__label">Diverifikasi</span><span class="summary-row__value">18 Okt 2026, 15.20 WIB</span></div>
               <div class="summary-row"><span class="summary-row__label">Masa aktif</span><span class="summary-row__value">18 Okt 2026 - 18 Okt 2027</span></div>
             </div>
-                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ic-image_search_outlined" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
-                <button class="btn btn--solid mt-5" type="button"><span class="ic ic-badge_outlined" aria-hidden="true"></span>Lihat KTA</button>
+                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ph-image-square" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
+                <button class="btn btn--solid mt-5" type="button"><span class="ic ph-identification-card" aria-hidden="true"></span>Lihat KTA</button>
                 <section class="pay-history">
               <h3 class="pay-section-title">Riwayat</h3>
               <ol class="timeline">
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Dana diverifikasi pengurus</p><p class="timeline__subtitle">18 Okt 2026, 15.20 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">18 Okt 2026, 09.12 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Instruksi iuran dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.55 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Email terverifikasi, KTA dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.50 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Dana diverifikasi pengurus</p><p class="timeline__subtitle">18 Okt 2026, 15.20 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">18 Okt 2026, 09.12 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Instruksi iuran dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.55 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Email terverifikasi, KTA dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.50 WIB</p></div></li>
               </ol>
             </section>
               </div>
@@ -911,14 +912,14 @@
         <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="appbar">
-            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button></div>
             <h2 class="appbar__title"><span>Status Pembayaran</span></h2>
           </header>
           <div class="screen__body">
             <div class="kta-list">
                 <div class="status-hero tone-success">
-              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-check_circle" aria-hidden="true"></span></div>
-              <span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span>
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ph-check-circle-fill" aria-hidden="true"></span></div>
+              <span class="status-badge status-badge--success"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Lunas</span>
               <h3 class="status-hero__title">Pembayaran tiket diterima</h3>
               <p class="status-hero__message">Dana sudah diverifikasi, tetapi tiket tidak aktif karena dibatalkan. Pengembalian dana diproses bendahara.</p>
             </div>
@@ -929,7 +930,7 @@
               <div class="summary-row"><span class="summary-row__label">Rekening tujuan</span><span class="summary-row__value">Bank Contoh Syariah</span></div>
               <div class="summary-row"><span class="summary-row__label">Diverifikasi</span><span class="summary-row__value">10 Okt 2026, 14.05 WIB</span></div>
             </div>
-                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ic-image_search_outlined" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
+                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ph-image-square" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
                 <div class="summary-card mt-4">
               <h3 class="summary-card__title">Pengembalian dana</h3>
               <div class="summary-row"><span class="summary-row__label">Nominal</span><span class="summary-row__value summary-row__value--em">Rp40.000</span></div>
@@ -937,7 +938,7 @@
               <div class="summary-row"><span class="summary-row__label">Tenggat proses</span><span class="summary-row__value">30 Okt 2026</span></div>
               <div class="summary-row"><span class="summary-row__label">Rekening tujuan</span><span class="summary-row__value">Belum ada</span></div>
             </div>
-                <div class="info-box mt-3"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Isi rekening tujuan pengembalian dana. Data ini hanya dipakai bendahara untuk refund dan dihapus setelah refund selesai.</p></div></div>
+                <div class="info-box mt-3"><span class="ic ph-info" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Isi rekening tujuan pengembalian dana. Data ini hanya dipakai bendahara untuk refund dan dihapus setelah refund selesai.</p></div></div>
                 <div class="field mt-3">
                   <label class="field__label" for="refund-provider">Bank atau e-wallet<span class="field__req"> *</span></label>
                   <div class="input"><input class="input__control" id="refund-provider" type="text"></div>
@@ -954,10 +955,10 @@
                 <section class="pay-history pay-history--38">
               <h3 class="pay-section-title">Riwayat</h3>
               <ol class="timeline">
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Penyesuaian dana dicatat</p><p class="timeline__subtitle">16 Okt 2026, 11.00 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Dana diverifikasi pengurus</p><p class="timeline__subtitle">10 Okt 2026, 14.05 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">9 Okt 2026, 20.40 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Instruksi pembayaran dibuat</p><p class="timeline__subtitle">9 Okt 2026, 20.31 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Penyesuaian dana dicatat</p><p class="timeline__subtitle">16 Okt 2026, 11.00 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Dana diverifikasi pengurus</p><p class="timeline__subtitle">10 Okt 2026, 14.05 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">9 Okt 2026, 20.40 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Instruksi pembayaran dibuat</p><p class="timeline__subtitle">9 Okt 2026, 20.31 WIB</p></div></li>
               </ol>
             </section>
               </div>
@@ -974,14 +975,14 @@
         <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="appbar">
-            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button></div>
             <h2 class="appbar__title"><span>Status Pembayaran</span></h2>
           </header>
           <div class="screen__body">
             <div class="kta-list scroll-offset" style="--scroll:330px">
                 <div class="status-hero tone-success">
-              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-check_circle" aria-hidden="true"></span></div>
-              <span class="status-badge status-badge--success"><span class="ic ic-check_circle" aria-hidden="true"></span>Lunas</span>
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ph-check-circle-fill" aria-hidden="true"></span></div>
+              <span class="status-badge status-badge--success"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>Lunas</span>
               <h3 class="status-hero__title">Pembayaran tiket diterima</h3>
               <p class="status-hero__message">Dana sudah diverifikasi, tetapi tiket tidak aktif karena dibatalkan. Pengembalian dana diproses bendahara.</p>
             </div>
@@ -992,7 +993,7 @@
               <div class="summary-row"><span class="summary-row__label">Rekening tujuan</span><span class="summary-row__value">Bank Contoh Syariah</span></div>
               <div class="summary-row"><span class="summary-row__label">Diverifikasi</span><span class="summary-row__value">10 Okt 2026, 14.05 WIB</span></div>
             </div>
-                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ic-image_search_outlined" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
+                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ph-image-square" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
                 <div class="summary-card mt-4">
               <h3 class="summary-card__title">Pengembalian dana</h3>
               <div class="summary-row"><span class="summary-row__label">Nominal</span><span class="summary-row__value summary-row__value--em">Rp40.000</span></div>
@@ -1005,10 +1006,10 @@
                 <section class="pay-history pay-history--38">
               <h3 class="pay-section-title">Riwayat</h3>
               <ol class="timeline">
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Penyesuaian dana dicatat</p><p class="timeline__subtitle">16 Okt 2026, 11.00 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Dana diverifikasi pengurus</p><p class="timeline__subtitle">10 Okt 2026, 14.05 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">9 Okt 2026, 20.40 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Instruksi pembayaran dibuat</p><p class="timeline__subtitle">9 Okt 2026, 20.31 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Penyesuaian dana dicatat</p><p class="timeline__subtitle">16 Okt 2026, 11.00 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Dana diverifikasi pengurus</p><p class="timeline__subtitle">10 Okt 2026, 14.05 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">9 Okt 2026, 20.40 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Instruksi pembayaran dibuat</p><p class="timeline__subtitle">9 Okt 2026, 20.31 WIB</p></div></li>
               </ol>
             </section>
               </div>
@@ -1026,14 +1027,14 @@
         <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="appbar">
-            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button></div>
             <h2 class="appbar__title"><span>Status Pembayaran</span></h2>
           </header>
           <div class="screen__body">
             <div class="kta-list">
                 <div class="status-hero tone-neutral">
-              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-block" aria-hidden="true"></span></div>
-              <span class="status-badge status-badge--neutral"><span class="ic ic-block" aria-hidden="true"></span>Dibatalkan</span>
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ph-prohibit" aria-hidden="true"></span></div>
+              <span class="status-badge status-badge--neutral"><span class="ic ph-prohibit" aria-hidden="true"></span>Dibatalkan</span>
               <h3 class="status-hero__title">Instruksi pembayaran dibatalkan</h3>
               <p class="status-hero__message">Instruksi ini tidak berlaku lagi. Jangan transfer ke rekening pada instruksi ini.</p>
             </div>
@@ -1047,8 +1048,8 @@
                 <section class="pay-history">
               <h3 class="pay-section-title">Riwayat</h3>
               <ol class="timeline">
-                <li class="timeline__item timeline__item--failed"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-close"></span></span><div><p class="timeline__title">Instruksi dibatalkan</p><p class="timeline__subtitle">18 Okt 2026, 10.02 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Instruksi iuran dibuat</p><p class="timeline__subtitle">18 Okt 2026, 09.40 WIB</p></div></li>
+                <li class="timeline__item timeline__item--failed"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-x"></span></span><div><p class="timeline__title">Instruksi dibatalkan</p><p class="timeline__subtitle">18 Okt 2026, 10.02 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Instruksi iuran dibuat</p><p class="timeline__subtitle">18 Okt 2026, 09.40 WIB</p></div></li>
               </ol>
             </section>
               </div>
@@ -1066,14 +1067,14 @@
         <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="appbar">
-            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button></div>
             <h2 class="appbar__title"><span>Status Pembayaran</span></h2>
           </header>
           <div class="screen__body">
             <div class="kta-list">
                 <div class="status-hero tone-danger">
-              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-cancel_outlined" aria-hidden="true"></span></div>
-              <span class="status-badge status-badge--danger"><span class="ic ic-cancel" aria-hidden="true"></span>Ditolak</span>
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ph-x-circle" aria-hidden="true"></span></div>
+              <span class="status-badge status-badge--danger"><span class="ic ph-x-circle-fill" aria-hidden="true"></span>Ditolak</span>
               <h3 class="status-hero__title">Bukti pembayaran ditolak</h3>
               <p class="status-hero__message">Reservasi tiket dibatalkan dan kursi dilepas. Anda dapat mendaftar ulang bila kuota masih tersedia.</p>
             </div>
@@ -1089,14 +1090,14 @@
               <div class="summary-row"><span class="summary-row__label">Bukti ke-</span><span class="summary-row__value">1</span></div>
               <div class="summary-row"><span class="summary-row__label">Status</span><span class="summary-row__value summary-row__value--em c-danger">Ditolak</span></div>
             </div>
-                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ic-image_search_outlined" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
+                <div class="pay-link-row mt-2"><button class="btn-link" type="button"><span class="ic ph-image-square" aria-hidden="true"></span>Lihat bukti yang dikirim</button></div>
                 <button class="btn btn--outline mt-5" type="button">Lihat event</button>
                 <section class="pay-history">
               <h3 class="pay-section-title">Riwayat</h3>
               <ol class="timeline">
-                <li class="timeline__item timeline__item--failed"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-close"></span></span><div><p class="timeline__title">Bukti belum dapat diterima</p><p class="timeline__subtitle">3 Mar 2026, 10.15 WIB<br>Alasan: Transfer dengan nominal ini tidak ditemukan pada mutasi rekening.</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">2 Mar 2026, 20.25 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Instruksi pembayaran dibuat</p><p class="timeline__subtitle">2 Mar 2026, 20.10 WIB</p></div></li>
+                <li class="timeline__item timeline__item--failed"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-x"></span></span><div><p class="timeline__title">Bukti belum dapat diterima</p><p class="timeline__subtitle">3 Mar 2026, 10.15 WIB<br>Alasan: Transfer dengan nominal ini tidak ditemukan pada mutasi rekening.</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Bukti transfer dikirim (bukti ke-1)</p><p class="timeline__subtitle">2 Mar 2026, 20.25 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Instruksi pembayaran dibuat</p><p class="timeline__subtitle">2 Mar 2026, 20.10 WIB</p></div></li>
               </ol>
             </section>
               </div>
@@ -1114,18 +1115,18 @@
         <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="appbar">
-            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button></div>
             <h2 class="appbar__title"><span>Status Pembayaran</span></h2>
           </header>
           <div class="screen__body">
             <div class="kta-list">
                 <div class="status-hero tone-warning">
-              <div class="status-hero__icon" aria-hidden="true"><span class="ic ic-schedule" aria-hidden="true"></span></div>
-              <span class="status-badge status-badge--warning"><span class="ic ic-schedule" aria-hidden="true"></span>Menunggu Pembayaran</span>
+              <div class="status-hero__icon" aria-hidden="true"><span class="ic ph-clock" aria-hidden="true"></span></div>
+              <span class="status-badge status-badge--warning"><span class="ic ph-clock" aria-hidden="true"></span>Menunggu Pembayaran</span>
               <h3 class="status-hero__title">Iuran pendaftaran</h3>
               <p class="status-hero__message">Menunggu bukti transfer</p>
             </div>
-                <div class="info-box mt-4"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Iuran keanggotaan untuk aplikasi di perangkat ini diselesaikan melalui pengurus. Hubungi pengurus untuk menyelesaikan iuran; status KTA diperbarui setelah pengurus memverifikasi pembayaran Anda.</p></div></div>
+                <div class="info-box mt-4"><span class="ic ph-info" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Iuran keanggotaan untuk aplikasi di perangkat ini diselesaikan melalui pengurus. Hubungi pengurus untuk menyelesaikan iuran; status KTA diperbarui setelah pengurus memverifikasi pembayaran Anda.</p></div></div>
                 <div class="summary-card mt-4">
               <h3 class="summary-card__title">Iuran pendaftaran</h3>
               <div class="summary-row"><span class="summary-row__label">Nominal</span><span class="summary-row__value summary-row__value--em">Rp60.000</span></div>
@@ -1133,15 +1134,15 @@
             </div>
                 <div class="support-card mt-4">
               <h3 class="support-card__title">Hubungi pengurus</h3>
-              <a class="contact-row" href="#"><span class="ic ic-mail_outline" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
-              <a class="contact-row" href="#"><span class="ic ic-chat_outlined" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ic-open_in_new" aria-hidden="true"></span></a>
+              <a class="contact-row" href="#"><span class="ic ph-envelope-simple" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">Email pengurus</span><span class="contact-row__value">bantuan@kapdh.or.id</span></span><span class="ic ph-arrow-square-out" aria-hidden="true"></span></a>
+              <a class="contact-row" href="#"><span class="ic ph-chat-text" aria-hidden="true"></span><span class="grow"><span class="contact-row__label">WhatsApp pengurus</span><span class="contact-row__value">0812-0000-0000</span></span><span class="ic ph-arrow-square-out" aria-hidden="true"></span></a>
             </div>
                 <section class="pay-history">
               <h3 class="pay-section-title">Riwayat</h3>
               <ol class="timeline">
                 <li class="timeline__item timeline__item--current"><span class="timeline__marker" aria-hidden="true"></span><div><p class="timeline__title">Menunggu bukti transfer</p><p class="timeline__subtitle">Sedang berlangsung</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Instruksi iuran dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.55 WIB</p></div></li>
-                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ic-check"></span></span><div><p class="timeline__title">Email terverifikasi, KTA dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.50 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Instruksi iuran dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.55 WIB</p></div></li>
+                <li class="timeline__item timeline__item--done"><span class="timeline__marker" aria-hidden="true"><span class="ic ph-check"></span></span><div><p class="timeline__title">Email terverifikasi, KTA dibuat</p><p class="timeline__subtitle">18 Okt 2026, 08.50 WIB</p></div></li>
               </ol>
             </section>
               </div>
@@ -1158,7 +1159,7 @@
         <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="appbar">
-            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button></div>
             <h2 class="appbar__title"><span>Status Pembayaran</span></h2>
           </header>
           <div class="screen__body">
@@ -1175,12 +1176,12 @@
         <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="appbar">
-            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button></div>
             <h2 class="appbar__title"><span>Status Pembayaran</span></h2>
           </header>
           <div class="screen__body">
             <div class="state state--error">
-              <div class="state__icon" aria-hidden="true"><span class="ic ic-search_off" aria-hidden="true"></span></div>
+              <div class="state__icon" aria-hidden="true"><span class="ic ph-magnifying-glass-minus" aria-hidden="true"></span></div>
               <h3 class="state__title">Data tidak ditemukan</h3>
               <p class="state__message">Data tidak ditemukan atau sudah tidak tersedia.</p>
               <p class="state__footnote">Kode bantuan: req_91b2e7d0</p>

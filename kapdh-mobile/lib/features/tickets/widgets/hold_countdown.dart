@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/theme/kapdh_palette.dart';
 import '../../../app/theme/kapdh_tokens.dart';
 import '../../../core/api/api_providers.dart';
 import '../../../core/format/formatters.dart';
 import '../../events/event_format.dart';
+import '../../../design/kapdh_icons.dart';
 
 /// Hitung mundur batas kirim bukti reservasi (D5: 24 jam atau sampai pendaftaran ditutup). `hold_expires_at` adalah
 /// stempel server, jadi dibandingkan dengan perkiraan jam server (`ServerClock.now()`), bukan jam perangkat yang bisa
@@ -86,7 +88,7 @@ class _HoldCountdownState extends ConsumerState<HoldCountdown> {
         width: double.infinity,
         padding: const EdgeInsets.all(KapdhSpace.s4),
         decoration: BoxDecoration(
-          color: expired ? KapdhColors.dangerBg : KapdhColors.warningBg,
+          color: expired ? context.kc.dangerBg : context.kc.warningBg,
           borderRadius: BorderRadius.circular(KapdhRadius.lg),
         ),
         child: Column(
@@ -95,9 +97,9 @@ class _HoldCountdownState extends ConsumerState<HoldCountdown> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  expired ? Icons.timer_off_outlined : Icons.timer_outlined,
+                  expired ? KapdhIcons.timerOffOutlined : KapdhIcons.timerOutlined,
                   size: 18,
-                  color: expired ? KapdhColors.danger : KapdhColors.warning,
+                  color: expired ? context.kc.danger : context.kc.warning,
                 ),
                 const SizedBox(width: KapdhSpace.s2),
                 Flexible(
@@ -106,7 +108,7 @@ class _HoldCountdownState extends ConsumerState<HoldCountdown> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: expired ? KapdhColors.danger : KapdhColors.warning,
+                      color: expired ? context.kc.danger : context.kc.warning,
                     ),
                   ),
                 ),
@@ -117,11 +119,11 @@ class _HoldCountdownState extends ConsumerState<HoldCountdown> {
               Text(
                 formatHoldRemaining(remaining),
                 key: const ValueKey('hold-countdown'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: KapdhFontSize.h1,
                   fontWeight: FontWeight.w700,
-                  color: KapdhColors.text,
-                  fontFeatures: [FontFeature.tabularFigures()],
+                  color: context.kc.text,
+                  fontFeatures: [const FontFeature.tabularFigures()],
                 ),
               ),
             ],
@@ -129,7 +131,7 @@ class _HoldCountdownState extends ConsumerState<HoldCountdown> {
             Text(
               'Batas kirim bukti: $deadline',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+              style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
             ),
           ],
         ),

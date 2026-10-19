@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../app/theme/kapdh_palette.dart';
 import '../app/theme/kapdh_tokens.dart';
 import '../core/format/formatters.dart';
+import 'kapdh_icons.dart';
 
 /// Pita "Offline" di bawah app bar (prototipe layar 7; AC F05-2, N-03): data yang tampil berasal dari sinkronisasi
 /// terakhir dan bukan bukti status saat ini. Diumumkan pembaca layar sebagai status (role=status).
@@ -25,11 +27,11 @@ class OfflineBanner extends StatelessWidget {
       container: true,
       child: Container(
         width: double.infinity,
-        color: KapdhColors.warningBg,
+        color: context.kc.warningBg,
         padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s5, vertical: 10),
         child: Row(
           children: [
-            const Icon(Icons.cloud_off, size: 18, color: KapdhColors.warning),
+            Icon(KapdhIcons.cloudOff, size: KapdhIconSize.button, color: context.kc.warning),
             const SizedBox(width: 10),
             Expanded(
               child: Text.rich(
@@ -42,13 +44,13 @@ class OfflineBanner extends StatelessWidget {
                     TextSpan(text: '. $detail'),
                   ],
                 ),
-                style: const TextStyle(fontSize: 13, color: KapdhColors.warning),
+                style: TextStyle(fontSize: 13, color: context.kc.warning),
               ),
             ),
             if (onRetry != null)
               TextButton(
                 onPressed: onRetry,
-                style: TextButton.styleFrom(foregroundColor: KapdhColors.warning),
+                style: TextButton.styleFrom(foregroundColor: context.kc.warning),
                 child: const Text('Coba lagi'),
               ),
           ],
@@ -80,11 +82,11 @@ class MaintenanceBanner extends StatelessWidget {
       container: true,
       child: Container(
         width: double.infinity,
-        color: KapdhColors.warningBg,
+        color: context.kc.warningBg,
         padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s5, vertical: 10),
         child: Row(
           children: [
-            const Icon(Icons.build_outlined, size: 18, color: KapdhColors.warning),
+            Icon(KapdhIcons.buildOutlined, size: KapdhIconSize.button, color: context.kc.warning),
             const SizedBox(width: 10),
             Expanded(
               child: Text.rich(
@@ -97,13 +99,13 @@ class MaintenanceBanner extends StatelessWidget {
                     TextSpan(text: '. $detail'),
                   ],
                 ),
-                style: const TextStyle(fontSize: 13, color: KapdhColors.warning),
+                style: TextStyle(fontSize: 13, color: context.kc.warning),
               ),
             ),
             if (onDetails != null)
               TextButton(
                 onPressed: onDetails,
-                style: TextButton.styleFrom(foregroundColor: KapdhColors.warning),
+                style: TextButton.styleFrom(foregroundColor: context.kc.warning),
                 child: const Text('Detail'),
               ),
           ],

@@ -408,7 +408,8 @@ void main() {
       expectLastBody(app.adapter, '/public/deletion/challenge', {'email': 'ahmad.islam@email.com'});
       expectLastBody(app.adapter, '/public/deletion/verify', {'challenge_id': 'challenge-1', 'code': '123456'});
       expect(find.bySemanticsLabel('Status: Sedang Diproses'), findsOneWidget);
-      expect(find.text('Sedang Diproses'), findsOneWidget);
+      // Label tampil di ringkasan status dan di lencana (StatusBadge kini Text biasa agar ikonnya tidak ikut skala teks).
+      expect(find.text('Sedang Diproses'), findsWidgets);
       // Tetap tanpa sesi: token penghapusan web tidak dipakai dan tidak disimpan.
       expect(app.container.read(sessionProvider).hasSession, isFalse);
       expect(await app.container.read(tokenStoreProvider).read(), isNull);

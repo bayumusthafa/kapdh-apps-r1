@@ -5,6 +5,11 @@ import 'package:kapdh_mobile/design/design.dart';
 
 import '../support/widget_harness.dart';
 
+/// Latar tombol (DecoratedBox selain lapisan cincin fokus `kapdh-button-focus`).
+final _buttonSurface = find.byWidgetPredicate(
+  (w) => w is DecoratedBox && w.key != const ValueKey('kapdh-button-focus'),
+);
+
 void main() {
   group('KapdhButton', () {
     testWidgets('utama: gradasi hijau, tinggi minimum 52 px, dapat diketuk', (tester) async {
@@ -13,7 +18,7 @@ void main() {
 
       expect(tester.getSize(find.byType(KapdhButton)).height, greaterThanOrEqualTo(52));
       final box = tester.widget<DecoratedBox>(
-        find.descendant(of: find.byType(KapdhButton), matching: find.byType(DecoratedBox)).first,
+        find.descendant(of: find.byType(KapdhButton), matching: _buttonSurface).first,
       );
       expect((box.decoration as BoxDecoration).gradient, KapdhGradients.buttonPrimary);
       await tester.tap(find.text('Verifikasi'));
@@ -23,7 +28,7 @@ void main() {
     testWidgets('nonaktif: abu-abu tanpa gradasi dan semantics enabled=false', (tester) async {
       await pumpDesign(tester, const KapdhButton(label: 'Masuk', onPressed: null));
       final box = tester.widget<DecoratedBox>(
-        find.descendant(of: find.byType(KapdhButton), matching: find.byType(DecoratedBox)).first,
+        find.descendant(of: find.byType(KapdhButton), matching: _buttonSurface).first,
       );
       expect((box.decoration as BoxDecoration).color, KapdhColors.disabledBg);
       expect(
@@ -66,6 +71,50 @@ void main() {
       }
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('permukaan gelap: emas 52 px dan garis putih 48 px, nonaktif abu-abu', (tester) async {
+      var taps = 0;
+      await pumpDesign(
+        tester,
+        Column(
+          children: [
+            KapdhButton.accent(label: 'Daftar KAPDH Apps', onPressed: () => taps++),
+            KapdhButton.outlinedOnDark(label: 'Sudah Punya Akun? Masuk', onPressed: () => taps++),
+            const KapdhButton.accent(label: 'Nonaktif', onPressed: null),
+          ],
+        ),
+      );
+      BoxDecoration decorationOf(String label) =>
+          tester
+                  .widget<DecoratedBox>(
+                    find
+                        .descendant(
+                          of: find.ancestor(of: find.text(label), matching: find.byType(KapdhButton)),
+                          matching: _buttonSurface,
+                        )
+                        .first,
+                  )
+                  .decoration
+              as BoxDecoration;
+
+      expect(decorationOf('Daftar KAPDH Apps').color, KapdhColors.accent);
+      expect(decorationOf('Nonaktif').color, KapdhColors.disabledBg);
+      expect(decorationOf('Sudah Punya Akun? Masuk').border, isNotNull);
+      expect(
+        tester.getSize(find.ancestor(of: find.text('Daftar KAPDH Apps'), matching: find.byType(KapdhButton))).height,
+        greaterThanOrEqualTo(52),
+      );
+      expect(
+        tester
+            .getSize(find.ancestor(of: find.text('Sudah Punya Akun? Masuk'), matching: find.byType(KapdhButton)))
+            .height,
+        greaterThanOrEqualTo(48),
+      );
+      await tester.tap(find.text('Daftar KAPDH Apps'));
+      await tester.tap(find.text('Sudah Punya Akun? Masuk'));
+      await tester.tap(find.text('Nonaktif'));
+      expect(taps, 2);
+    });
   });
 
   group('KapdhTextField', () {
@@ -78,7 +127,7 @@ void main() {
           label: 'Email',
           controller: controller,
           hint: 'Masukkan Email',
-          prefixIcon: Icons.mail_outline,
+          prefixIcon: KapdhIcons.mailOutline,
           errorText: 'Email sudah terdaftar',
           trailingText: '0/72',
         ),

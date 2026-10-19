@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
+import '../../app/theme/kapdh_theme.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/config/server_clock.dart';
 import '../../core/format/formatters.dart';
@@ -168,7 +170,7 @@ class OtpEntrySection extends StatelessWidget {
         const SizedBox(height: KapdhSpace.s2),
         Text.rich(
           description,
-          style: const TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhColors.textMuted),
+          style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: context.kc.textMuted),
         ),
         const SizedBox(height: KapdhSpace.s5),
         const ExcludeSemantics(
@@ -195,14 +197,14 @@ class OtpEntrySection extends StatelessWidget {
             expired ? 'Kode tidak berlaku lagi. Minta kode baru.' : 'Sisa percobaan: $attemptsLeft dari $maxAttempts',
             style: TextStyle(
               fontSize: KapdhFontSize.caption,
-              color: expired ? KapdhColors.danger : KapdhColors.textMuted,
+              color: expired ? context.kc.danger : context.kc.textMuted,
             ),
           ),
         ),
         const SizedBox(height: KapdhSpace.s5),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: KapdhSpace.s1),
-          decoration: BoxDecoration(color: KapdhColors.green50, borderRadius: BorderRadius.circular(KapdhRadius.md)),
+          decoration: BoxDecoration(color: context.kc.tint, borderRadius: BorderRadius.circular(KapdhRadius.md)),
           child: Wrap(
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
@@ -215,8 +217,8 @@ class OtpEntrySection extends StatelessWidget {
                 key: const ValueKey('otp-resend'),
                 onPressed: waiting || resending ? null : onResend,
                 style: TextButton.styleFrom(
-                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                  disabledForegroundColor: KapdhColors.textMuted,
+                  textStyle: KapdhTheme.font(fontSize: 13, fontWeight: FontWeight.w600),
+                  disabledForegroundColor: context.kc.textMuted,
                   minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
                 ),
                 child: Text(
@@ -282,7 +284,7 @@ class ChallengeLinkStatusView extends StatelessWidget {
             : ErrorState.fromException(failure, onRetry: onRetry);
       case ChallengeLinkPhase.gone:
         return EmptyState(
-          icon: Icons.link_off,
+          icon: KapdhIcons.linkOff,
           title: goneTitle,
           message: goneMessage,
           actionLabel: goneActionLabel,
