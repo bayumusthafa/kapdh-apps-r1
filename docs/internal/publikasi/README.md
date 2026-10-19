@@ -121,6 +121,11 @@ Snapshot tidak membawa satu pun dari hal di atas: satu commit, author dan commit
       (KAPDH) sesuai akta dan SK di atas, lisensi proprietary, semua hak dilindungi. Tinjau bersama
       `THIRD_PARTY_NOTICES.md`: setiap aset pihak ketiga tercantum dengan lisensi dan berkas lisensinya.
 - [ ] **Pemilik repo publik** diputuskan: akun pribadi `bayumusthafa` atau organisasi GitHub atas nama Perkumpulan.
+- [ ] **`SECURITY.md` dikonfirmasi pengurus** (berkas sudah ada; butir terbuka ditandai komentar HTML di dalamnya):
+      `bantuan@kapdh.or.id` tetap kanal laporan keamanan atau diganti alamat khusus, petugas yang memantaunya
+      meneruskan email berawalan `[KEAMANAN]` ke pengembang dan pengelola infra, angka target (konfirmasi terima 5
+      hari kerja, penilaian awal 10 hari kerja) beserta komitmen tanggapan lain, dan pernyataan itikad baik. Ubah
+      ringkasan Bahasa Inggris bersamaan.
 - [ ] **Pengecualian opsional** diputuskan bila izin merek atau foto belum ada:
 
   | Path                             | Isi                                                     | Opsi skrip                                         |
@@ -153,9 +158,12 @@ bagian 4; butir di bawah adalah tambahan khusus repo publik.
 1. **Keamanan kode** (Settings > Advanced Security): aktifkan **Secret scanning** beserta **Push protection**,
    **Dependabot alerts**, **Dependabot security updates**, dan **Private vulnerability reporting**.
    `.github/dependabot.yml` yang ikut snapshot sudah mengatur pembaruan versi.
-2. **`SECURITY.md`** di akar repo: lapor celah lewat **Report a vulnerability** (private vulnerability reporting),
-   jangan lewat issue publik; versi yang didukung (rilis terbaru); perkiraan waktu tanggapan. Lebih baik sudah
-   di-merge ke repo kerja sebelum snapshot agar ikut commit pertama.
+2. **`SECURITY.md`** sudah ada di akar repo dan ikut commit pertama snapshot setelah di-merge ke `main`: lapor
+   celah lewat **Report a vulnerability** (private vulnerability reporting) atau email `bantuan@kapdh.or.id`
+   berawalan `[KEAMANAN]`, jangan lewat issue publik; cakupan; versi yang didukung (rilis terbaru dan layanan
+   production); aturan pengujian beritikad baik; target tanggapan; tanpa bug bounty. Setelah butir 1, pastikan
+   tombol **Report a vulnerability** muncul di tab **Security**. Alamat kontak dan angka target masih usulan (lihat
+   bagian 3).
 3. **Proteksi branch dan tag** (Settings > Rules > Rulesets):
    - branch `main`: wajib PR, wajib status "CI lulus", blokir force push dan penghapusan;
    - tag `v*` dan `contracts-v*` (pemicu `release.yml`): hanya pengelola rilis yang boleh membuat, blokir pembaruan

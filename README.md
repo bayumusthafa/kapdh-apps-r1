@@ -21,6 +21,7 @@ KAPDHAPPS/                         satu repo selama build (ADR-001); kapdh-mobil
   README.md                        dokumen ini
   LICENSE                          lisensi proprietary KAPDH (seluruh hak dilindungi)
   THIRD_PARTY_NOTICES.md           font, ikon, dan kode pihak ketiga di repo beserta lisensinya
+  SECURITY.md                      kebijakan pelaporan celah keamanan
   .github/                         workflow GitHub Actions (ci, deploy-staging, release, mobile-android) + action lokal
   docs/
     PRD_KAPDH_Apps_v3.5.pdf        sumber kebenaran produk
@@ -249,6 +250,13 @@ Status terakhir per AC/N/U: `docs/qa/traceability.md`.
    dengan rujukan PRD; status tidak hanya warna; transisi penting atomik dengan audit + outbox di transaksi yang sama;
    `paid` tidak pernah diubah (koreksi lewat penyesuaian); MFA production tidak dimatikan; aksesibilitas N-11.
 8. Upgrade mayor framework/runtime memerlukan ADR (PRD 7.1).
+
+## Keamanan
+
+Laporkan celah keamanan secara privat sesuai [`SECURITY.md`](SECURITY.md): lewat GitHub Private Vulnerability
+Reporting (tab **Security** > **Report a vulnerability**) atau email `bantuan@kapdh.or.id` dengan subjek diawali
+`[KEAMANAN]`. Jangan melapor lewat issue atau pull request publik. Berkas itu juga memuat cakupan, versi yang
+didukung, aturan pengujian beritikad baik, dan target tanggapan.
 
 ## Lisensi dan merek
 
