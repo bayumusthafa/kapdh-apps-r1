@@ -307,7 +307,7 @@ describe("PRD 9.2/9.3: gerbang go-live pada PostgreSQL 17 (satu kondisi per uji)
 
   it("PRD 9.2 tanpa Super Admin ber-TOTP: satu aktif ber-TOTP + satu tanpa TOTP + satu undangan → ditolak (1 dari 2)", async () => {
     await withDatabase("super_admin", false, async ({ db }) => {
-      const owner = await insertGateAdmin(db, { displayName: "Bayu Musthafa" });
+      const owner = await insertGateAdmin(db, { displayName: "Fikri Ramadhan" });
       await insertGateAdmin(db, { displayName: "Tanpa TOTP", totpVerified: false });
       await insertGateAdmin(db, { displayName: "Undangan", status: "invited" });
       await insertAuditedPaymentMethod(db, owner);

@@ -164,10 +164,10 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
     await screen.findByText("Menampilkan 20 dari 29");
     await user.click(screen.getByRole("button", { name: "Halaman berikutnya" }));
     const table = await screen.findByRole("table", { name: "Antrean pembayaran" });
-    const row = (await within(table).findByRole("button", { name: /Hasan Basri/ })).closest("tr")!;
+    const row = (await within(table).findByRole("button", { name: /Hendra Gunawan/ })).closest("tr")!;
     expect(within(row).getByText("Menunggu transfer")).toBeInTheDocument();
-    await user.click(within(row).getByRole("button", { name: /Hasan Basri/ }));
-    const panel = await screen.findByRole("article", { name: "Hasan Basri" });
+    await user.click(within(row).getByRole("button", { name: /Hendra Gunawan/ }));
+    const panel = await screen.findByRole("article", { name: "Hendra Gunawan" });
     // Belum ada bukti: tidak ada formulir keputusan (actions.can_decide false).
     expect(within(panel).queryByRole("button", { name: "Setujui" })).toBeNull();
     expect(within(panel).getByText("Belum ada berkas")).toBeInTheDocument();
@@ -418,8 +418,8 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
 
   it("PRD 4.3: batalkan instruksi tanpa bukti wajib alasan, konfirmasi dua langkah dan If-Match", async () => {
     const user = userEvent.setup();
-    await openPayments(user, { search: `payment=${IDS.hasan}` });
-    const panel = await screen.findByRole("article", { name: "Hasan Basri" });
+    await openPayments(user, { search: `payment=${IDS.hendra}` });
+    const panel = await screen.findByRole("article", { name: "Hendra Gunawan" });
     await user.click(within(panel).getByRole("button", { name: "Batalkan instruksi" }));
     const dialog = await screen.findByRole("alertdialog", { name: /Batalkan instruksi pembayaran\?/ });
     const confirm = within(dialog).getByRole("button", { name: "Batalkan instruksi" });
@@ -438,7 +438,7 @@ describe("verifikasi pembayaran (F-04, prototipe screen_8; server tiruan)", () =
     expect(await within(panel).findByRole("status")).toHaveTextContent(
       "Instruksi pembayaran dibatalkan dan pemilik diberi notifikasi.",
     );
-    expect(mockPayments.get(IDS.hasan)).toMatchObject({
+    expect(mockPayments.get(IDS.hendra)).toMatchObject({
       status: "cancelled",
       cancel_reason: "Instruksi ditinggalkan lebih dari 30 hari",
     });

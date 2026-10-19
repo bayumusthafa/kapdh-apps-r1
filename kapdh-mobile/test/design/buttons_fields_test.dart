@@ -139,8 +139,8 @@ void main() {
       expect(find.text('0/72'), findsOneWidget);
       expect(find.bySemanticsLabel(RegExp('^Email')), findsWidgets);
 
-      await tester.enterText(find.byType(TextFormField), 'a@b.id');
-      expect(controller.text, 'a@b.id');
+      await tester.enterText(find.byType(TextFormField), 'a@kapdh.test');
+      expect(controller.text, 'a@kapdh.test');
     });
 
     testWidgets('password dapat ditampilkan/disembunyikan dengan tombol bertooltip', (tester) async {

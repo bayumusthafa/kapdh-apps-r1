@@ -169,13 +169,13 @@ void main() {
       mock.onPost(
         '/auth/login',
         (server) => server.reply(200, {'next': 'verify_otp', 'challenge': otpChallengeJson()}),
-        data: {'email': 'ahmad@email.com', 'password': 'Rahasia#123', 'device_name': 'Aplikasi KAPDH Android'},
+        data: {'email': 'ahmad@kapdh.test', 'password': 'Rahasia#123', 'device_name': 'Aplikasi KAPDH Android'},
       );
       final container = makeContainer(adapter: mock);
 
       final result = await container
           .read(sessionProvider.notifier)
-          .login(email: ' ahmad@email.com ', password: 'Rahasia#123');
+          .login(email: ' ahmad@kapdh.test ', password: 'Rahasia#123');
 
       expect(result.outcome, LoginOutcome.verifyOtp);
       expect(container.read(sessionProvider).challenge?.challengeId, 'challenge-1');
@@ -189,7 +189,9 @@ void main() {
       });
       final container = makeContainer(adapter: adapter);
 
-      final result = await container.read(sessionProvider.notifier).login(email: 'a@b.id', password: 'Rahasia#123');
+      final result = await container
+          .read(sessionProvider.notifier)
+          .login(email: 'a@kapdh.test', password: 'Rahasia#123');
 
       expect(result.outcome, LoginOutcome.signedIn);
       expect(container.read(sessionProvider).effectiveStatus, EffectiveStatus.expiring);
@@ -217,7 +219,9 @@ void main() {
         });
         final container = makeContainer(adapter: adapter);
 
-        final result = await container.read(sessionProvider.notifier).login(email: 'a@b.id', password: 'Rahasia#123');
+        final result = await container
+            .read(sessionProvider.notifier)
+            .login(email: 'a@kapdh.test', password: 'Rahasia#123');
 
         expect(result.outcome, LoginOutcome.deletionPending);
         expect(result.deletion?.requestNumber, 'DEL-2026-7K3Q9X');
@@ -231,7 +235,9 @@ void main() {
       final adapter = FakeHttpAdapter((_) => FakeResponse.json(200, {'next': 'account_disabled'}));
       final container = makeContainer(adapter: adapter);
 
-      final result = await container.read(sessionProvider.notifier).login(email: 'a@b.id', password: 'Rahasia#123');
+      final result = await container
+          .read(sessionProvider.notifier)
+          .login(email: 'a@kapdh.test', password: 'Rahasia#123');
 
       expect(result.outcome, LoginOutcome.accountDisabled);
       expect(result.deletion, isNull);
@@ -302,7 +308,7 @@ void main() {
         await MeSnapshotStore(store).save(meOf(userId: 'user-1'), testNow);
         await container.read(ktaCacheStoreProvider).save(userId: 'user-1', card: cardOf());
 
-        await container.read(sessionProvider.notifier).login(email: 'b@b.id', password: 'Rahasia#123');
+        await container.read(sessionProvider.notifier).login(email: 'b@kapdh.test', password: 'Rahasia#123');
 
         expect(container.read(sessionProvider).userId, 'user-2');
         expect(store.values.containsKey(KtaCacheStore.storageKey), isFalse);

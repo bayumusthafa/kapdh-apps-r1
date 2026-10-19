@@ -56,7 +56,7 @@ undangan tanpa TOTP: `baru@kapdh.test` (sandi sama, diarahkan ke `/login/enroll`
 
 ```bash
 pnpm --filter @kapdh/api build
-pnpm --filter @kapdh/api admin:bootstrap --email bayu@kapdh.or.id --name "Bayu Musthafa"
+pnpm --filter @kapdh/api admin:bootstrap --email admin@kapdh.or.id --name "Fikri Ramadhan"
 # image production: node dist/cli/bootstrap-admin.js --email ... --name ...
 ```
 

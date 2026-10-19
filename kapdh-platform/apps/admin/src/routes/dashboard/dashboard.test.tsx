@@ -113,9 +113,9 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
 
     const users = await section("Pengguna");
     const usersTable = within(users).getByRole("table", { name: "Pengguna terbaru" });
-    const bayu = within(usersTable).getByText("Bayu Musthafa Arief").closest("tr")!;
-    expect(within(bayu).getByText("Admin")).toBeInTheDocument();
-    expect(within(bayu).getByText("09.02.01.5")).toBeInTheDocument();
+    const fikri = within(usersTable).getByText("Fikri Ramadhan").closest("tr")!;
+    expect(within(fikri).getByText("Admin")).toBeInTheDocument();
+    expect(within(fikri).getByText("09.02.01.91")).toBeInTheDocument();
     // Penjualan Tiket memuat event selain draft (termasuk yang dibatalkan), tanpa event draft.
     const tickets = await section("Penjualan Tiket");
     expect(within(tickets).getByRole("link", { name: pramuka.title })).toBeInTheDocument();
@@ -241,12 +241,12 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
     expect(statValue("Total Transaksi")).toBe(formatRupiah(grossAfter));
 
     paymentRequests.length = 0;
-    await user.type(within(card).getByLabelText("Cari transaksi"), "ridwan");
+    await user.type(within(card).getByLabelText("Cari transaksi"), "ridho");
     expect(await within(card).findByText("Tidak ada transaksi yang cocok")).toBeInTheDocument();
     await waitFor(() =>
       expect(paymentRequests.at(-1)?.query).toMatchObject({
         status: "paid",
-        q: "ridwan",
+        q: "ridho",
         sort: "decided_at_desc",
         limit: "10",
       }),
@@ -254,7 +254,7 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
     await user.clear(within(card).getByLabelText("Cari transaksi"));
     await user.type(within(card).getByLabelText("Cari transaksi"), "27.02");
     expect(await within(card).findByText("Siti Rahmawati")).toBeInTheDocument();
-    expect(within(card).queryByText("ridwan")).toBeNull();
+    expect(within(card).queryByText("ridho")).toBeNull();
     await user.clear(within(card).getByLabelText("Cari transaksi"));
     expect(await within(card).findByText("Rp15.224")).toBeInTheDocument();
   });
@@ -287,7 +287,7 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
     await openPage(user, "/", "Dashboard");
     await screen.findByRole("region", { name: "Statistik" });
     const card = await section("Riwayat Transaksi");
-    await user.type(within(card).getByLabelText("Cari transaksi"), "ridwan");
+    await user.type(within(card).getByLabelText("Cari transaksi"), "ridho");
     expect(await within(card).findByText("Tidak ada transaksi yang cocok")).toBeInTheDocument();
 
     mockDashboard.setFailing(true);
@@ -302,7 +302,7 @@ describe("dasbor (F-15, AC F15-1; server tiruan)", () => {
     expect(screen.queryByText("Dasbor gagal dimuat")).toBeNull();
     expect(screen.getByRole("region", { name: "Statistik" })).toBeInTheDocument();
     expect(await section("Pembayaran")).toBeInTheDocument();
-    expect(within(await section("Riwayat Transaksi")).getByLabelText("Cari transaksi")).toHaveValue("ridwan");
+    expect(within(await section("Riwayat Transaksi")).getByLabelText("Cari transaksi")).toHaveValue("ridho");
 
     mockDashboard.setFailing(false);
     await user.click(screen.getByRole("button", { name: "Coba lagi" }));

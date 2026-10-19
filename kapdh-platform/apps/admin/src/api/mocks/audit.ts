@@ -50,18 +50,18 @@ let seq = 0;
 let nextFailure: S["AuditExportFailureReason"] | null = null;
 
 const ADMINS = {
-  bayu: {
+  fikri: {
     admin_id: "0199e000-0000-7000-8000-0000000000ad",
     user_id: "0199e000-0000-7000-8000-0000000001ad",
-    name: "Bayu Musthafa",
+    name: "Fikri",
   },
-  ahmad: {
+  hasan: {
     admin_id: "0199e000-0000-7000-8000-0000000000b2",
     user_id: "0199e000-0000-7000-8000-0000000001b2",
-    name: "Ahmad Zulhadi",
+    name: "Hasan Basri",
   },
 };
-const ALUMNI = { user_id: "0199e000-0000-7000-8000-0000000000c1", name: "ridwan" };
+const ALUMNI = { user_id: "0199e000-0000-7000-8000-0000000000c1", name: "ridho" };
 
 function hex(n: number, width = 12): string {
   return n.toString(16).padStart(width, "0");
@@ -74,7 +74,7 @@ function fixtures(): Entry[] {
     minutesAgo: number,
     action: string,
     entityType: string,
-    actor: "bayu" | "ahmad" | "alumni" | "system",
+    actor: "fikri" | "hasan" | "alumni" | "system",
     extra: Omit<Partial<Entry>, "before" | "after"> & {
       before?: Record<string, unknown> | null;
       after?: Record<string, unknown> | null;
@@ -102,7 +102,7 @@ function fixtures(): Entry[] {
           ? "system"
           : actor === "alumni"
             ? "alumni"
-            : actor === "bayu"
+            : actor === "fikri"
               ? "super_admin"
               : "admin",
       actor: a,
@@ -114,11 +114,11 @@ function fixtures(): Entry[] {
       after: (extra.after ?? null) as Entry["after"],
     });
   };
-  add(5, "payment.approved", "payment", "ahmad", {
+  add(5, "payment.approved", "payment", "hasan", {
     before: { status: "pending", proof_version: 1 },
     after: { status: "paid", decided_at: "2026-10-12T09:55:00Z" },
   });
-  add(12, "admin.invited", "admin", "bayu", {
+  add(12, "admin.invited", "admin", "fikri", {
     after: {
       display_name: "Rina Kartika",
       email: "rina@kapdh.test",
@@ -126,18 +126,18 @@ function fixtures(): Entry[] {
       permissions: ["members.read"],
     },
   });
-  add(30, "settings.updated", "app_setting", "bayu", {
+  add(30, "settings.updated", "app_setting", "fikri", {
     entity_id: "maintenance",
     reason: "Pemeliharaan server terjadwal",
     before: { active: false, message: null },
     after: { active: true, message: "Pemeliharaan 30 menit" },
   });
-  add(45, "payment.rejected", "payment", "ahmad", {
+  add(45, "payment.rejected", "payment", "hasan", {
     reason: "Nominal tidak sesuai",
     before: { status: "pending" },
     after: { status: "rejected" },
   });
-  add(60, "member.suspended", "alumni", "bayu", {
+  add(60, "member.suspended", "alumni", "fikri", {
     reason: "Spam berulang di grup",
     before: { suspended_at: null },
     after: { suspended_at: "2026-10-12T09:00:00Z", phone: "+6281234567890" },
@@ -149,7 +149,7 @@ function fixtures(): Entry[] {
       150 + i * 30,
       i % 2 === 0 ? "admin.login" : "moderation.report_viewed",
       i % 2 === 0 ? "admin" : "report",
-      i % 3 === 0 ? "bayu" : "ahmad",
+      i % 3 === 0 ? "fikri" : "hasan",
     );
   return out;
 }

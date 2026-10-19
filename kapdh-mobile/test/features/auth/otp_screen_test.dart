@@ -41,13 +41,13 @@ Future<AppHarness> openOtp(
       container.read(sessionProvider.notifier).setChallenge(challengeOf());
       if (withDraft) {
         container.read(registrationDraftProvider.notifier)
-          ..save(const RegistrationDraft(fullName: 'Ahmad Islam', email: 'ahmad.islam@email.com'))
+          ..save(const RegistrationDraft(fullName: 'Ahmad Islam', email: 'ahmad.islam@contoh.test'))
           ..markSubmitted();
       }
       if (withCredentials) {
         container
             .read(activationCredentialsProvider.notifier)
-            .remember(email: 'ahmad.islam@email.com', password: 'Rahasia#123');
+            .remember(email: 'ahmad.islam@contoh.test', password: 'Rahasia#123');
       }
     },
   );
@@ -80,7 +80,7 @@ void main() {
 
     expect(find.byType(OtpScreen), findsOneWidget);
     expect(find.text('Masukkan kode verifikasi'), findsOneWidget);
-    expect(find.textContaining('ahmad.islam@email.com'), findsOneWidget);
+    expect(find.textContaining('ahmad.islam@contoh.test'), findsOneWidget);
     expect(find.byType(OtpBoxes), findsOneWidget);
     expect(find.text('Sisa percobaan: 5 dari 5'), findsOneWidget);
     expect(find.text('Kirim ulang dalam 0:42'), findsOneWidget);
@@ -310,7 +310,7 @@ void main() {
       expect(find.byType(EmailCorrectionSheet), findsOneWidget);
     }
 
-    Future<void> submitCorrection(WidgetTester tester, {String email = 'ahmad.benar@email.com'}) async {
+    Future<void> submitCorrection(WidgetTester tester, {String email = 'ahmad.benar@kapdh.test'}) async {
       await tester.enterText(sheetField('correction-email'), email);
       await tester.enterText(sheetField('correction-password'), 'Rahasia#123');
       await scrollAndTap(tester, find.byKey(const ValueKey('correction-submit')));
@@ -325,7 +325,7 @@ void main() {
         apiRoutes({
           '/auth/email-correction': (_) => FakeResponse.json(
             200,
-            otpChallengeJson(id: 'challenge-2', purpose: 'email_change', emailMasked: 'ah***@email.com'),
+            otpChallengeJson(id: 'challenge-2', purpose: 'email_change', emailMasked: 'ah***@kapdh.test'),
           ),
         }),
         withCredentials: true,
@@ -337,18 +337,18 @@ void main() {
       expect(app.adapter.requestsTo('/auth/email-correction').single.data, {
         'challenge_id': 'challenge-1',
         'password': 'Rahasia#123',
-        'new_email': 'ahmad.benar@email.com',
+        'new_email': 'ahmad.benar@kapdh.test',
       });
       expect(find.byType(EmailCorrectionSheet), findsNothing);
       expect(app.location, '/register/otp', reason: 'challenge email_change tetap di layar OTP aktivasi');
       final challenge = app.container.read(sessionProvider).challenge!;
       expect(challenge.challengeId, 'challenge-2');
       expect(challenge.purpose, OtpPurpose.emailChange);
-      expect(find.textContaining('Kode 6 digit sudah dikirim ke email baru ahmad.benar@email.com'), findsOneWidget);
-      expect(find.text('Email diubah. Kode baru dikirim ke ah***@email.com.'), findsOneWidget);
+      expect(find.textContaining('Kode 6 digit sudah dikirim ke email baru ahmad.benar@kapdh.test'), findsOneWidget);
+      expect(find.text('Email diubah. Kode baru dikirim ke ah***@kapdh.test.'), findsOneWidget);
       expect(find.text('Sisa percobaan: 5 dari 5'), findsOneWidget);
-      expect(app.container.read(registrationDraftProvider)?.email, 'ahmad.benar@email.com');
-      expect(app.container.read(activationCredentialsProvider)?.email, 'ahmad.benar@email.com');
+      expect(app.container.read(registrationDraftProvider)?.email, 'ahmad.benar@kapdh.test');
+      expect(app.container.read(activationCredentialsProvider)?.email, 'ahmad.benar@kapdh.test');
     });
 
     testWidgets('F-01: kode dari email baru mengaktifkan akun (AC F01-2)', (tester) async {
@@ -417,7 +417,7 @@ void main() {
     testWidgets('PRD 2.2: email baru sama dengan email sebelumnya ditolak lokal', (tester) async {
       final app = await openOtp(tester, apiRoutes({}));
       await openSheet(tester);
-      await submitCorrection(tester, email: 'Ahmad.Islam@email.com');
+      await submitCorrection(tester, email: 'Ahmad.Islam@contoh.test');
       expect(find.text('Email baru sama dengan email sebelumnya'), findsOneWidget);
       expect(app.adapter.requestsTo('/auth/email-correction'), isEmpty);
     });
@@ -473,7 +473,7 @@ void main() {
 
     /// Mengisi lembar lalu mengirim tanpa menunggu jawaban (request masih berjalan).
     Future<void> submitPending(WidgetTester tester) async {
-      await tester.enterText(sheetField('correction-email'), 'ahmad.benar@email.com');
+      await tester.enterText(sheetField('correction-email'), 'ahmad.benar@kapdh.test');
       await tester.enterText(sheetField('correction-password'), 'Rahasia#123');
       await scrollTo(tester, find.byKey(const ValueKey('correction-submit')));
       await tester.tap(find.byKey(const ValueKey('correction-submit')));
@@ -508,7 +508,7 @@ void main() {
       await settle(tester);
       expect(find.byType(EmailCorrectionSheet), findsNothing);
       expect(app.container.read(sessionProvider).challenge?.challengeId, 'challenge-2');
-      expect(app.container.read(activationCredentialsProvider)?.email, 'ahmad.benar@email.com');
+      expect(app.container.read(activationCredentialsProvider)?.email, 'ahmad.benar@kapdh.test');
     });
 
     testWidgets('PRD 2.2, PRD 4.5: lembar yang diseret tertutup saat koreksi dikirim tidak membuang hasilnya', (
@@ -535,17 +535,17 @@ void main() {
       pending.complete(
         FakeResponse.json(
           200,
-          otpChallengeJson(id: 'challenge-2', purpose: 'email_change', emailMasked: 'ah***@email.com'),
+          otpChallengeJson(id: 'challenge-2', purpose: 'email_change', emailMasked: 'ah***@kapdh.test'),
         ),
       );
       await settle(tester);
       final session = app.container.read(sessionProvider);
       expect(session.challenge?.challengeId, 'challenge-2');
       expect(session.challenge?.purpose, OtpPurpose.emailChange);
-      expect(app.container.read(activationCredentialsProvider)?.email, 'ahmad.benar@email.com');
-      expect(app.container.read(registrationDraftProvider)?.email, 'ahmad.benar@email.com');
-      expect(find.textContaining('Kode 6 digit sudah dikirim ke email baru ahmad.benar@email.com'), findsOneWidget);
-      expect(find.text('Email diubah. Kode baru dikirim ke ah***@email.com.'), findsOneWidget);
+      expect(app.container.read(activationCredentialsProvider)?.email, 'ahmad.benar@kapdh.test');
+      expect(app.container.read(registrationDraftProvider)?.email, 'ahmad.benar@kapdh.test');
+      expect(find.textContaining('Kode 6 digit sudah dikirim ke email baru ahmad.benar@kapdh.test'), findsOneWidget);
+      expect(find.text('Email diubah. Kode baru dikirim ke ah***@kapdh.test.'), findsOneWidget);
     });
   });
 
@@ -556,7 +556,7 @@ void main() {
     Future<void> submitCorrection(WidgetTester tester) async {
       await scrollAndTap(tester, find.byKey(const ValueKey('otp-change-email')));
       await settle(tester);
-      await tester.enterText(sheetField('correction-email'), 'ahmad.benar@email.com');
+      await tester.enterText(sheetField('correction-email'), 'ahmad.benar@kapdh.test');
       await tester.enterText(sheetField('correction-password'), 'Rahasia#123');
       await scrollAndTap(tester, find.byKey(const ValueKey('correction-submit')));
       await settle(tester);
@@ -566,14 +566,14 @@ void main() {
     /// [corrected]; selain itu email lama yang masih berlaku.
     FakeHandler loginAfterCorrection({required bool corrected}) => (options) {
       final email = (options.data as Map)['email'];
-      final accountEmail = corrected ? 'ahmad.benar@email.com' : 'ahmad.islam@email.com';
+      final accountEmail = corrected ? 'ahmad.benar@kapdh.test' : 'ahmad.islam@contoh.test';
       if (email != accountEmail) {
         return FakeResponse.json(401, errorJson('UNAUTHENTICATED', 'Email atau password salah.'));
       }
       return FakeResponse.json(200, {
         'next': 'verify_otp',
         'challenge': corrected
-            ? otpChallengeJson(id: 'challenge-2', purpose: 'email_change', emailMasked: 'ah***@email.com')
+            ? otpChallengeJson(id: 'challenge-2', purpose: 'email_change', emailMasked: 'ah***@kapdh.test')
             : otpChallengeJson(id: 'challenge-3'),
       });
     };
@@ -595,14 +595,14 @@ void main() {
       await submitCorrection(tester);
       expect(find.byType(EmailCorrectionSheet), findsOneWidget);
       expect(find.textContaining('Koneksi terputus sebelum hasil diterima'), findsOneWidget);
-      expect(app.container.read(authEmailHintProvider), 'ahmad.benar@email.com');
+      expect(app.container.read(authEmailHintProvider), 'ahmad.benar@kapdh.test');
 
       await scrollAndTap(tester, find.byKey(const ValueKey('correction-submit')));
       await settle(tester);
 
       expect(app.adapter.requestsTo('/auth/email-correction'), hasLength(2));
       expect(app.adapter.requestsTo('/auth/login').single.data, {
-        'email': 'ahmad.benar@email.com',
+        'email': 'ahmad.benar@kapdh.test',
         'password': 'Rahasia#123',
         'device_name': 'Aplikasi KAPDH Android',
       });
@@ -611,11 +611,11 @@ void main() {
       final session = app.container.read(sessionProvider);
       expect(session.challenge?.challengeId, 'challenge-2');
       expect(session.challenge?.purpose, OtpPurpose.emailChange);
-      expect(app.container.read(activationCredentialsProvider)?.email, 'ahmad.benar@email.com');
-      expect(app.container.read(registrationDraftProvider)?.email, 'ahmad.benar@email.com');
-      expect(find.textContaining('Kode 6 digit sudah dikirim ke email baru ahmad.benar@email.com'), findsOneWidget);
+      expect(app.container.read(activationCredentialsProvider)?.email, 'ahmad.benar@kapdh.test');
+      expect(app.container.read(registrationDraftProvider)?.email, 'ahmad.benar@kapdh.test');
+      expect(find.textContaining('Kode 6 digit sudah dikirim ke email baru ahmad.benar@kapdh.test'), findsOneWidget);
       expect(
-        find.text('Email sudah diubah ke ahmad.benar@email.com. Masukkan kode yang dikirim ke email tersebut.'),
+        find.text('Email sudah diubah ke ahmad.benar@kapdh.test. Masukkan kode yang dikirim ke email tersebut.'),
         findsOneWidget,
       );
       expect(find.byKey(const ValueKey('otp-restart')), findsNothing, reason: 'layar tetap dapat dipakai');
@@ -642,10 +642,10 @@ void main() {
       await tester.enterText(otpInput, '482913');
       await settle(tester);
 
-      expect(app.adapter.requestsTo('/auth/login').single.data, containsPair('email', 'ahmad.benar@email.com'));
+      expect(app.adapter.requestsTo('/auth/login').single.data, containsPair('email', 'ahmad.benar@kapdh.test'));
       expect(app.container.read(sessionProvider).challenge?.challengeId, 'challenge-2');
       expect(app.location, '/register/otp');
-      expect(find.textContaining('Email sudah diubah ke ahmad.benar@email.com'), findsOneWidget);
+      expect(find.textContaining('Email sudah diubah ke ahmad.benar@kapdh.test'), findsOneWidget);
       expect(tester.widget<TextField>(otpInput).controller!.text, isEmpty);
       expect(tester.widget<KapdhButton>(verifyButton).onPressed, isNull);
     });
@@ -669,12 +669,12 @@ void main() {
       await settle(tester);
 
       final logins = app.adapter.requestsTo('/auth/login').map((r) => (r.data as Map)['email']).toList();
-      expect(logins, ['ahmad.benar@email.com', 'ahmad.islam@email.com']);
+      expect(logins, ['ahmad.benar@kapdh.test', 'ahmad.islam@contoh.test']);
       expect(find.byType(EmailCorrectionSheet), findsNothing);
       expect(app.container.read(sessionProvider).challenge?.challengeId, 'challenge-3');
-      expect(app.container.read(activationCredentialsProvider)?.email, 'ahmad.islam@email.com');
-      expect(app.container.read(authEmailHintProvider), 'ahmad.islam@email.com');
-      expect(app.container.read(registrationDraftProvider)?.email, 'ahmad.islam@email.com');
+      expect(app.container.read(activationCredentialsProvider)?.email, 'ahmad.islam@contoh.test');
+      expect(app.container.read(authEmailHintProvider), 'ahmad.islam@contoh.test');
+      expect(app.container.read(registrationDraftProvider)?.email, 'ahmad.islam@contoh.test');
       expect(find.text('Akun belum aktif. Masukkan kode terbaru yang dikirim ke email Anda.'), findsOneWidget);
     });
 
@@ -702,7 +702,7 @@ void main() {
       await scrollAndTap(tester, find.text('Masuk untuk memeriksa status'));
       await settle(tester);
       expect(app.location, '/login');
-      expect(find.text('ahmad.benar@email.com'), findsOneWidget, reason: 'email dari koreksi yang belum terbantah');
+      expect(find.text('ahmad.benar@kapdh.test'), findsOneWidget, reason: 'email dari koreksi yang belum terbantah');
     });
 
     testWidgets('AC F01-4: pemeriksaan lewat login juga terputus: lembar tetap terbuka untuk dicoba lagi', (
@@ -764,7 +764,7 @@ void main() {
 
       expect(app.adapter.requestsTo('/auth/otp/resend'), isEmpty, reason: 'tidak langsung meminta kode baru');
       expect(app.adapter.requestsTo('/auth/login').single.data, {
-        'email': 'ahmad.islam@email.com',
+        'email': 'ahmad.islam@contoh.test',
         'password': 'Rahasia#123',
         'device_name': 'Aplikasi KAPDH Android',
       });
@@ -858,7 +858,7 @@ void main() {
       await scrollAndTap(tester, find.text('Masuk untuk memeriksa status'));
       await settle(tester);
       expect(app.location, '/login');
-      expect(find.text('ahmad.islam@email.com'), findsNothing, reason: 'tanpa kredensial, email tidak diketahui');
+      expect(find.text('ahmad.islam@contoh.test'), findsNothing, reason: 'tanpa kredensial, email tidak diketahui');
     });
 
     testWidgets('AC F01-4: kirim ulang 410 setelah hasil tidak diketahui juga memeriksa lewat login', (tester) async {

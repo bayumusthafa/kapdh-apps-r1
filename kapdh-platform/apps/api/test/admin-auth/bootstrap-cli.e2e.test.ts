@@ -63,7 +63,12 @@ describe("PRD 8.2 langkah 3: perintah bootstrap (database)", () => {
   });
 
   it("PRD 8.2: argumen kurang → kode keluar 2 dengan petunjuk pemakaian; tidak ada data dibuat", async () => {
-    for (const args of [[], ["--email", "a@kapdh.test"], ["--email", "--name", "Bayu"], ["--name", "Bayu"]]) {
+    for (const args of [
+      [],
+      ["--email", "a@kapdh.test"],
+      ["--email", "--name", "Fikri"],
+      ["--name", "Fikri"],
+    ]) {
       const result = await run(db, clock, args);
       expect(result.code).toBe(2);
       expect(result.err).toContain("Pakai:");
@@ -96,7 +101,7 @@ describe("PRD 8.2 langkah 3: perintah bootstrap (database)", () => {
     });
     await createAdmin({ db, clock }, { role: "super_admin", status: "disabled" });
 
-    const result = await run(db, clock, ["--email", "Pemilik@KAPDH.test", "--name", "Bayu Musthafa"]);
+    const result = await run(db, clock, ["--email", "Pemilik@KAPDH.test", "--name", "Fikri Ramadhan"]);
     expect(result.code, result.err).toBe(0);
     expect(result.err).toBe("");
     // Tepat satu tautan berbentuk fragmen #t= (kontrak C1); token tidak muncul di tempat lain.
@@ -114,7 +119,7 @@ describe("PRD 8.2 langkah 3: perintah bootstrap (database)", () => {
       role: "super_admin",
       status: "invited",
       activatedAt: null,
-      displayName: "Bayu Musthafa",
+      displayName: "Fikri Ramadhan",
       inviteExpiresAt: new Date(clock.now().getTime() + ADMIN_INVITE_TTL_MS),
     });
     const [user] = await db.select().from(users).where(eq(users.id, admin!.userId));
@@ -209,23 +214,29 @@ describe("PRD 8.2 langkah 3: aktivasi Super Admin bootstrap lewat alur undangan 
     t.app.inject({ method: "POST", url: `/api/v1${url}`, payload });
 
   it("PRD 8.2: tautan CLI → preview → ganti sandi awal → TOTP → Super Admin aktif; bootstrap berikutnya ditolak", async () => {
-    const result = await run(t.db, t.clock, ["--email", "bayu@kapdh.test", "--name", "Bayu Musthafa"]);
+    const result = await run(t.db, t.clock, [
+      "--email",
+      "fikri.ramadhan@kapdh.test",
+      "--name",
+      "Fikri Ramadhan",
+    ]);
     expect(result.code).toBe(0);
     const token = result.links[0]!;
 
     // Sebelum aktivasi: tidak ada akses (sandi awal tidak diketahui; status invited).
     expect(
-      (await post("/admin/auth/login", { email: "bayu@kapdh.test", password: "Kapdh#2026" })).statusCode,
+      (await post("/admin/auth/login", { email: "fikri.ramadhan@kapdh.test", password: "Kapdh#2026" }))
+        .statusCode,
     ).toBe(401);
     const preview = await post("/admin/auth/invitations/preview", { invite_token: token });
     expect(preview.statusCode).toBe(200);
     expectOperation("post", "/admin/auth/invitations/preview", preview);
     expect(preview.json()).toMatchObject({
-      display_name: "Bayu Musthafa",
+      display_name: "Fikri Ramadhan",
       role: "super_admin",
       permissions: [...PERMISSION_VALUES],
       invited_by_display_name: null,
-      email_masked: "ba***@kapdh.test",
+      email_masked: "fi***@kapdh.test",
     });
 
     const activated = await activateInvitation(t, token);
@@ -235,7 +246,7 @@ describe("PRD 8.2 langkah 3: aktivasi Super Admin bootstrap lewat alur undangan 
       headers: { authorization: `Bearer ${activated.accessToken}` },
     });
     expect(me.statusCode).toBe(200);
-    expect(me.json()).toMatchObject({ role: "super_admin", email: "bayu@kapdh.test" });
+    expect(me.json()).toMatchObject({ role: "super_admin", email: "fikri.ramadhan@kapdh.test" });
 
     const again = await run(t.db, t.clock, ["--email", "cadangan@kapdh.test", "--name", "Super Cadangan"]);
     expect(again.code).toBe(1);

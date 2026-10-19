@@ -1556,7 +1556,7 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
   });
 
   // Rencana cadangan D13 (adminRecordPayment): setiap cabang respons kontrak (201, 200, 400, 403, 409, 422).
-  const HASAN_RENEWAL = "0199e000-0000-7000-8000-0000000000a7";
+  const HENDRA_RENEWAL = "0199e000-0000-7000-8000-0000000000a7";
   const FIKRI_RENEWAL = "0199e000-0000-7000-8000-0000000000a3";
   /** Pemilik payment iuran ditolak yang hanya dikenal tiruan pembayaran (Andi Saputra). */
   const ANDI = "0199e000-0000-7000-8000-0000000002a5";
@@ -1585,12 +1585,12 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
 
   route("POST /admin/payments", async () => {
     expect((await record({})).status).toBe(400);
-    const unchecked = { ...(await recordBody(MOCK_MEMBER.hasan, "renewal")), funds_verified: false };
+    const unchecked = { ...(await recordBody(MOCK_MEMBER.hendra, "renewal")), funds_verified: false };
     expect((await record(unchecked)).status).toBe(400);
     // Instruksi tanpa bukti diselesaikan di tempat: 200, rekening diganti, bukti v1, paid.
-    const settled = await record(await recordBody(MOCK_MEMBER.hasan, "renewal"));
+    const settled = await record(await recordBody(MOCK_MEMBER.hendra, "renewal"));
     expect(settled.status).toBe(200);
-    expect(settled.body).toMatchObject({ id: HASAN_RENEWAL, status: "paid", proof_version: 1 });
+    expect(settled.body).toMatchObject({ id: HENDRA_RENEWAL, status: "paid", proof_version: 1 });
     expect(settled.body.events.map((e) => e.kind)).toEqual(
       expect.arrayContaining(["method_changed", "proof_submitted", "approved"]),
     );
@@ -1603,11 +1603,11 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
     expect(fixed.status).toBe(200);
     expect(fixed.body.events.at(-2)?.kind).toBe("proof_replaced");
     // Kelayakan, akun dan konflik kepentingan.
-    expect((await record(await recordBody(MOCK_MEMBER.ahmad, "registration"))).status).toBe(409);
-    expect((await record(await recordBody(MOCK_MEMBER.ahmad, "renewal"))).status).toBe(400);
+    expect((await record(await recordBody(MOCK_MEMBER.hasan, "registration"))).status).toBe(409);
+    expect((await record(await recordBody(MOCK_MEMBER.hasan, "renewal"))).status).toBe(400);
     expect((await record(await recordBody(MOCK_MEMBER.rizky, "renewal"))).status).toBe(400);
     expect((await record(await recordBody(MOCK_MEMBER.fatimah, "registration"))).status).toBe(400);
-    expect((await record(await recordBody(MOCK_MEMBER.bayu, "renewal"))).status).toBe(403);
+    expect((await record(await recordBody(MOCK_MEMBER.fikriRamadhan, "renewal"))).status).toBe(403);
     // Bukti bukan unggahan pemanggil (bukti anggota) → 422 FILE_INVALID.
     const foreign = { ...(await recordBody(ANDI, "registration")), proof_file_id: MOCK_PROOF_FILE_ID };
     expect((await record(foreign)).status).toBe(422);
@@ -1615,9 +1615,9 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
   });
 
   it("POST /admin/payments: tanpa payment terbuka → payment baru 201 dari biaya aktif; Idempotency-Key diputar ulang", async () => {
-    mockPayments.cancelAsOtherAdmin(HASAN_RENEWAL);
+    mockPayments.cancelAsOtherAdmin(HENDRA_RENEWAL);
     const key = idem();
-    const body = await recordBody(MOCK_MEMBER.hasan, "renewal");
+    const body = await recordBody(MOCK_MEMBER.hendra, "renewal");
     const created = await record(body, key);
     expect(created.status).toBe(201);
     expect(created.body).toMatchObject({
@@ -1630,7 +1630,7 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
       proof_version: 1,
       transfer_note: "Mutasi 13 Okt",
     });
-    expect(created.body.id).not.toBe(HASAN_RENEWAL);
+    expect(created.body.id).not.toBe(HENDRA_RENEWAL);
     expect(created.body.events.map((e) => [e.kind, e.actor])).toEqual([
       ["created", "admin"],
       ["proof_submitted", "admin"],
@@ -1647,18 +1647,18 @@ describe("tiruan pembayaran (admin-payments, admin-settings biaya)", () => {
 
   it("POST /admin/payments: nominal iuran belum ditetapkan → payment baru 403 FORBIDDEN (gagal tertutup); tagihan terbuka tetap diselesaikan", async () => {
     const renewals = async () =>
-      (await payments({ user_id: MOCK_MEMBER.hasan, type: "renewal" })).map((p) => p.id).sort();
+      (await payments({ user_id: MOCK_MEMBER.hendra, type: "renewal" })).map((p) => p.id).sort();
     mockPayments.unsetFees();
-    mockPayments.cancelAsOtherAdmin(HASAN_RENEWAL);
+    mockPayments.cancelAsOtherAdmin(HENDRA_RENEWAL);
     const before = await renewals();
-    const refused = await record(await recordBody(MOCK_MEMBER.hasan, "renewal"));
+    const refused = await record(await recordBody(MOCK_MEMBER.hendra, "renewal"));
     expect(refused.status).toBe(403);
     expect(refused.body).toMatchObject({ code: "FORBIDDEN", message: /Nominal iuran belum ditetapkan/ });
     expect(await renewals()).toEqual(before);
     // Total 0.00 juga ditolak walaupun versi sudah tersimpan.
     mockPayments.updateFeesAsOtherAdmin("50000.00", "10000.00", "0.00");
     expect(mockPayments.fees().version).not.toBe("0");
-    expect((await record(await recordBody(MOCK_MEMBER.hasan, "renewal"))).status).toBe(403);
+    expect((await record(await recordBody(MOCK_MEMBER.hendra, "renewal"))).status).toBe(403);
     // Tagihan terbuka memakai snapshot-nya sendiri: tetap diselesaikan di tempat (200).
     mockPayments.unsetFees();
     expect((await record(await recordBody(ANDI, "registration"))).status).toBe(200);

@@ -38,7 +38,7 @@ describe("klien API admin", () => {
     setAccessToken("token-basi");
     const me = await api.GET("/admin/me");
     expect(me.response.status).toBe(200);
-    expect(me.data?.display_name).toBe("Bayu Musthafa");
+    expect(me.data?.display_name).toBe("Fikri");
   });
 
   it("permintaan refresh serentak digabung menjadi satu (mencegah deteksi reuse)", async () => {

@@ -98,7 +98,7 @@ describe("notifikasi (F-13, AC F13-4, F13-5; server tiruan)", () => {
     await openPage(user, "/notifications", "Notifikasi");
     await screen.findByRole("table", { name: "Hasil pengiriman notifikasi" });
     await user.click(
-      screen.getByRole("checkbox", { name: /Pilih pengiriman Pembayaran Push \(Android\) ke Bayu/ }),
+      screen.getByRole("checkbox", { name: /Pilih pengiriman Pembayaran Push \(Android\) ke Fikri/ }),
     );
     await user.click(
       screen.getByRole("checkbox", { name: /Pilih pengiriman Pembayaran Email ke Sari Dewi/ }),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kapdh_mobile/app/app_licenses.dart';
 import 'package:kapdh_mobile/app/app_services.dart';
 import 'package:kapdh_mobile/core/api/api_providers.dart';
 import 'package:kapdh_mobile/core/push/push_service.dart';
@@ -61,7 +62,7 @@ void main() {
     final app = await openAccount(tester);
     expect(app.location, '/account');
     expect(find.text('Ahmad Islam'), findsOneWidget);
-    expect(find.text('ahmad.islam@email.com'), findsOneWidget);
+    expect(find.text('ahmad.islam@contoh.test'), findsOneWidget);
     expect(find.text('No. anggota 29.01.01.7'), findsOneWidget);
     expect(find.text('KAPDH 29 · Pekanbaru'), findsOneWidget);
     expect(find.bySemanticsLabel('Status: KTA Aktif'), findsOneWidget);
@@ -94,6 +95,49 @@ void main() {
       expect(app.location, location, reason: label);
       app.router.go('/account');
       await settle(tester);
+    }
+  });
+
+  testWidgets('Lisensi sumber terbuka membuka halaman lisensi Material berisi font pihak ketiga, terang dan gelap', (
+    tester,
+  ) async {
+    registerAppLicenses();
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    final app = await openAccount(tester);
+    for (final brightness in [Brightness.light, Brightness.dark]) {
+      tester.platformDispatcher.platformBrightnessTestValue = brightness;
+      await settle(tester);
+      await scrollAndTap(tester, find.bySemanticsLabel('Lisensi sumber terbuka'));
+      await settle(tester);
+
+      final page = find.byType(LicensePage);
+      expect(page, findsOneWidget, reason: '$brightness');
+      expect(Theme.of(tester.element(page)).brightness, brightness);
+      expect(find.text('KAPDH'), findsOneWidget);
+      expect(find.text('1.2.0 (7)'), findsOneWidget);
+      expect(find.text('Hak Cipta (c) 2026 Perkumpulan Keluarga Alumni Pesantren Darel Hikmah'), findsOneWidget);
+      expect(find.text('Phosphor Icons'), findsOneWidget);
+      expect(find.text('Poppins (google_fonts)'), findsOneWidget);
+
+      // Rincian tiap entri menampilkan teks dari aset bundel (bukan hanya judul paket).
+      for (final (package, copyright, license) in [
+        ('Phosphor Icons', 'Copyright (c) 2020-2021 Phosphor Icons', 'Permission is hereby granted'),
+        ('Poppins (google_fonts)', 'Copyright 2020 The Poppins Project Authors', 'SIL Open Font License, Version 1.1'),
+      ]) {
+        await tester.tap(find.text(package));
+        await settle(tester);
+        expect(find.textContaining(copyright), findsOneWidget, reason: '$package $brightness');
+        expect(find.textContaining(license), findsOneWidget, reason: '$package $brightness');
+        await tester.tap(find.byTooltip('Kembali'));
+        await settle(tester);
+      }
+      expect(tester.takeException(), isNull);
+
+      // Halaman di-push imperatif di atas rute Akun; kembali ke menu yang sama.
+      await tester.tap(find.byTooltip('Kembali'));
+      await settle(tester);
+      expect(page, findsNothing);
+      expect(app.location, '/account');
     }
   });
 

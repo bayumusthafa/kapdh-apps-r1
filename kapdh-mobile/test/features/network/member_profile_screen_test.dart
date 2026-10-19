@@ -64,29 +64,34 @@ void main() {
           '/directory/user-2': (_) => FakeResponse.json(
             200,
             profileJson(
-              email: 'ahmadislam@gmail.com',
-              phone: '+62 87 873 465 3623',
-              social: {'instagram': '@ahmadislam', 'x': 'AhIslam', 'facebook': null, 'linkedin': 'javascript:alert(1)'},
+              email: 'ahmad.islam@contoh.test',
+              phone: '+62 812 0000 0001',
+              social: {
+                'instagram': '@ahmad.uji',
+                'x': 'ahmad.uji',
+                'facebook': null,
+                'linkedin': 'javascript:alert(1)',
+              },
             ),
           ),
         },
       );
-      expect(find.text('ahmadislam@gmail.com'), findsOneWidget);
+      expect(find.text('ahmad.islam@contoh.test'), findsOneWidget);
       expect(find.text('Nomor Telpon'), findsOneWidget);
-      expect(find.text('+62 87 873 465 3623'), findsOneWidget);
+      expect(find.text('+62 812 0000 0001'), findsOneWidget);
       await tester.scrollUntilVisible(find.text('Media Sosial'), 200, scrollable: find.byType(Scrollable).first);
       expect(find.text('Media Sosial'), findsOneWidget);
-      expect(find.bySemanticsLabel('Instagram: @ahmadislam'), findsOneWidget);
+      expect(find.bySemanticsLabel('Instagram: @ahmad.uji'), findsOneWidget);
       expect(find.bySemanticsLabel('Facebook: null'), findsNothing);
 
-      await scrollAndTap(tester, find.bySemanticsLabel('Instagram: @ahmadislam'));
+      await scrollAndTap(tester, find.bySemanticsLabel('Instagram: @ahmad.uji'));
       await settle(tester);
-      expect(app.launched.last, Uri.parse('https://instagram.com/ahmadislam'));
+      expect(app.launched.last, Uri.parse('https://instagram.com/ahmad.uji'));
       // Nilai yang bukan nama pengguna/https tidak pernah dibuka.
       expect(SocialNetwork.linkedin.linkFor('javascript:alert(1)'), isNull);
       expect(
-        SocialNetwork.linkedin.linkFor('https://www.linkedin.com/in/ahmad'),
-        Uri.parse('https://www.linkedin.com/in/ahmad'),
+        SocialNetwork.linkedin.linkFor('https://www.linkedin.com/in/ahmad.uji'),
+        Uri.parse('https://www.linkedin.com/in/ahmad.uji'),
       );
     });
 
@@ -94,18 +99,18 @@ void main() {
       final semantics = tester.ensureSemantics();
       final app = await _openProfile(
         tester,
-        routes: {'/directory/user-2': (_) => FakeResponse.json(200, profileJson(phone: '+62 87 873 465 3623'))},
+        routes: {'/directory/user-2': (_) => FakeResponse.json(200, profileJson(phone: '+62 812 0000 0001'))},
       );
-      await scrollTo(tester, find.text('+62 87 873 465 3623'));
+      await scrollTo(tester, find.text('+62 812 0000 0001'));
       expect(
-        tester.getSemantics(find.bySemanticsLabel('Telepon +62 87 873 465 3623')),
+        tester.getSemantics(find.bySemanticsLabel('Telepon +62 812 0000 0001')),
         isSemantics(isLink: true, hasTapAction: true, hasLongPressAction: true),
       );
-      expect(tester.getSize(find.bySemanticsLabel('Telepon +62 87 873 465 3623')).height, greaterThanOrEqualTo(48));
+      expect(tester.getSize(find.bySemanticsLabel('Telepon +62 812 0000 0001')).height, greaterThanOrEqualTo(48));
 
-      await tester.tap(find.text('+62 87 873 465 3623'));
+      await tester.tap(find.text('+62 812 0000 0001'));
       await settle(tester);
-      expect(app.launched, [Uri.parse('tel:+62878734653623')]);
+      expect(app.launched, [Uri.parse('tel:+6281200000001')]);
 
       final copied = <String>[];
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -113,9 +118,9 @@ void main() {
         return null;
       });
       addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
-      await tester.longPress(find.text('+62 87 873 465 3623'));
+      await tester.longPress(find.text('+62 812 0000 0001'));
       await settle(tester);
-      expect(copied, ['+62 87 873 465 3623']);
+      expect(copied, ['+62 812 0000 0001']);
       expect(find.text('Nomor telpon disalin.'), findsOneWidget);
       expect(app.launched, hasLength(1));
       semantics.dispose();
@@ -258,9 +263,9 @@ void main() {
           '/directory/user-2': (_) => FakeResponse.json(
             200,
             profileJson(
-              email: 'ahmadislam@gmail.com',
+              email: 'ahmad.islam@contoh.test',
               phone: '0812',
-              social: {'instagram': 'ahmad', 'x': null, 'facebook': null, 'linkedin': null},
+              social: {'instagram': 'ahmad.uji', 'x': null, 'facebook': null, 'linkedin': null},
             ),
           ),
         },

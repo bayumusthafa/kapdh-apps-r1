@@ -47,7 +47,7 @@ describe("audit (F-17, AC F17-2..F17-4; server tiruan)", () => {
       sort: "created_at_desc",
     });
     const table = screen.getByRole("table", { name: "Entri audit" });
-    expect(within(table).getByText("Ahmad Zulhadi")).toBeInTheDocument();
+    expect(within(table).getByText("Hasan Basri")).toBeInTheDocument();
     expect(within(table).getByText("Admin")).toBeInTheDocument();
   });
 
