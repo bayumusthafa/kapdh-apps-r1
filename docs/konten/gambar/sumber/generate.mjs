@@ -1,17 +1,31 @@
 // Generator 9 gambar konten peluncuran KAPDH Apps.
 // Setiap gambar disusun sebagai SVG lalu dirender dengan sharp (librsvg), tanpa teks selain logo KAPDH.
-// Jalankan: node generate.mjs  (opsional: node generate.mjs berita-1 event-2 ... untuk sebagian)
+// Butuh `pnpm install` di kapdh-platform: sharp diambil dari dependensi @kapdh/api (apps/api/package.json).
+// Path dihitung dari lokasi skrip, jadi cwd bebas; contoh dari akar repo:
+//   node docs/konten/gambar/sumber/generate.mjs                       semua gambar
+//   node docs/konten/gambar/sumber/generate.mjs berita-1 event-2 ...  sebagian (awalan nama berkas)
+// Variabel lingkungan opsional:
+//   GAMBAR_KELUARAN  folder JPG keluaran; bawaan docs/konten/gambar (menimpa gambar ter-commit)
+//   GAMBAR_KERJA     folder svg/, pratinjau/ dan laporan.json; bawaan <tmpdir OS>/kapdh-gambar-konten
 import { createRequire } from 'node:module';
 import { readFileSync, writeFileSync, mkdirSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { isAbsolute, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const require = createRequire('C:/Users/Admin/KAPDHAPPS/kapdh-platform/node_modules/.pnpm/sharp@0.35.5_@types+node@24.19.2/node_modules/sharp/package.json');
-const sharp = require('./');
+const REPO = fileURLToPath(new URL('../../../../', import.meta.url));
+const require = createRequire(join(REPO, 'kapdh-platform/apps/api/package.json'));
+const sharp = require('sharp');
 
-const REPO = 'C:/Users/Admin/KAPDHAPPS';
-const OUT = `${REPO}/docs/konten/gambar`;
-const SCRATCH = 'C:/Users/Admin/AppData/Local/Temp/claude/C--Users-Admin-KAPDHAPPS/d7886f54-83eb-408c-b3f9-fedd04e4990b/scratchpad/gambar-konten';
-const PREV = `${SCRATCH}/pratinjau`;
-const LOGO = `${REPO}/kapdh-platform/apps/web/public/logo-kapdh.png`;
+const OUT = resolve(process.env.GAMBAR_KELUARAN || join(REPO, 'docs/konten/gambar'));
+const SCRATCH = resolve(process.env.GAMBAR_KERJA || join(tmpdir(), 'kapdh-gambar-konten'));
+const PREV = join(SCRATCH, 'pratinjau');
+const LOGO = join(REPO, 'kapdh-platform/apps/web/public/logo-kapdh.png');
+// path laporan: relatif repo dengan garis miring maju bila di dalam repo, selain itu absolut
+const repoPath = (p) => {
+  const r = relative(REPO, p);
+  return r.startsWith('..') || isAbsolute(r) ? p : r.replaceAll('\\', '/');
+};
 mkdirSync(OUT, { recursive: true });
 mkdirSync(PREV, { recursive: true });
 
@@ -698,7 +712,7 @@ async function build(spec) {
   const body = bg + (upper ? `<g clip-path="url(#upper)">${decor}${subject}</g>` : decor + subject);
   const svg = svgDoc(W, H, defs, body);
   writeFileSync(`${SCRATCH}/svg/${name}.svg`, svg);
-  const file = `${OUT}/${name}.jpg`;
+  const file = join(OUT, `${name}.jpg`);
   await sharp(Buffer.from(svg), { density: 72 })
     .resize(W, H)
     .flatten({ background: '#000000' })
@@ -711,7 +725,7 @@ async function build(spec) {
   const buf = readFileSync(file);
   const meta = await sharp(file).metadata();
   const rep = {
-    file: `docs/konten/gambar/${name}.jpg`, width: meta.width, height: meta.height, bytes: buf.length, kb: n(buf.length / 1024),
+    file: repoPath(file), width: meta.width, height: meta.height, bytes: buf.length, kb: n(buf.length / 1024),
     magic: buf.subarray(0, 3).toString('hex'), space: meta.space, exif: !!meta.exif, icc: !!meta.icc, xmp: !!meta.xmp,
     progressive: meta.isProgressive, chroma: meta.chromaSubsampling,
   };
@@ -755,7 +769,7 @@ async function build(spec) {
 async function previews(specs) {
   const cells = [];
   for (const s of specs) {
-    const file = `${OUT}/${s.name}.jpg`;
+    const file = join(OUT, `${s.name}.jpg`);
     if (s.kind === 'event') {
       await sharp(file).extract({ left: 255, top: 0, width: 1090, height: 900 }).jpeg({ quality: 85 }).toFile(`${PREV}/${s.name}-potong-1090x900.jpg`);
       const thumb = await sharp(file).extract({ left: 255, top: 0, width: 1090, height: 900 }).resize(92, 76, { fit: 'cover' }).png().toBuffer();
