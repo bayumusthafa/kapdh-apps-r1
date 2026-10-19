@@ -17,3 +17,8 @@ onlyBuiltDependencies:
 # Nest (adapter yang membuat instans fastify). Hapus bila adapter Nest sudah memakai fastify >= 5.12.5.
 overrides:
   fastify: 5.12.5
+  # Keamanan (N-16; Dependabot GHSA-67mh-4wv8-2f99): drizzle-kit 0.31.11 (terbaru) menarik @esbuild-kit/esm-loader ->
+  # @esbuild-kit/core-utils yang mengunci esbuild ~0.18.20 (server dev dapat dibaca situs lain; diperbaiki >= 0.25.0).
+  # Hanya jalur itu yang dinaikkan, ke rentang yang sama dengan esbuild milik drizzle-kit. Hapus bila drizzle-kit
+  # tidak lagi memakai @esbuild-kit.
+  "@esbuild-kit/core-utils>esbuild": ^0.25.12
