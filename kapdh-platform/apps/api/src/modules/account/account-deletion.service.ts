@@ -41,8 +41,10 @@ export class AccountDeletionService {
   }
 
   /**
-   * Satu transaksi dengan baris users terkunci (AC F14-1). Permintaan bersamaan dari sesi yang sama: transaksi kedua
-   * menunggu kunci lalu melihat akun sudah deletion_pending dan mengembalikan permintaan terbuka yang sama.
+   * Satu transaksi dengan baris users terkunci (AC F14-1). Permintaan bersamaan dari sesi mana pun milik akun ini (dua
+   * perangkat, atau ulangan dari sesi yang sama) yang sudah lolos AuthGuard: transaksi kedua menunggu kunci lalu
+   * melihat akun sudah deletion_pending dan mengembalikan permintaan terbuka yang sama. AuthGuard menilai
+   * @MemberAccess dari snapshot pemeriksaan sesi, sehingga commit pertama tidak membuat yang kedua ditolak 403.
    */
   async request(auth: AuthContext, acknowledgedVersion: string): Promise<AccountDeletion> {
     return this.db.transaction(async (tx) => {

@@ -31,7 +31,7 @@ import {
 import { httpClient } from "../support/http.js";
 import { routeAccessList } from "../support/routes.js";
 import { createTestApp, type TestApp } from "../support/test-app.js";
-import { insertEvent, reauthHeader } from "./support.js";
+import { holdAfterSessionCheck, insertEvent, reauthHeader } from "./support.js";
 
 /**
  * Penghapusan akun dari aplikasi (F-14, AC F14-1; kontrak account.yaml getAccountDeletionDisclosure,
@@ -434,6 +434,36 @@ describe("POST /me/deletion (AC F14-1)", () => {
     for (const res of [a, b]) expect([202, 401]).toContain(res.statusCode);
     const numbers = new Set(accepted.map((r) => r.json().request_number));
     expect(numbers.size).toBe(1);
+    const rows = await t.db.select().from(accountDeletions).where(eq(accountDeletions.userId, member.userId));
+    expect(rows).toHaveLength(1);
+  });
+
+  it("AC F14-1: perangkat kedua lolos pemeriksaan sesi, lalu perangkat pertama commit sebelum @MemberAccess dinilai → 202 dengan nomor yang sama, bukan 403 MEMBERSHIP_REQUIRED", async () => {
+    const { member, session } = await signedIn();
+    const other = await signInAlumni(t, member);
+    const { version } = await disclosureOf(session.accessToken);
+    const api = httpClient(t.app);
+    const body = { confirm: true, acknowledged_disclosure_version: version };
+    const firstHeaders = await reauthHeader(t, session.accessToken);
+    const lateHeaders = await reauthHeader(t, other.accessToken);
+    const hold = holdAfterSessionCheck(t.app);
+    try {
+      const late = api.post("/me/deletion", body, { token: other.accessToken, headers: lateHeaders });
+      await hold.authenticated(late);
+      const first = await api.post("/me/deletion", body, {
+        token: session.accessToken,
+        headers: firstHeaders,
+      });
+      expect(first.statusCode, first.body).toBe(202);
+      hold.release();
+      const second = await late;
+      expect(second.statusCode, second.body).toBe(202);
+      expect(expectOperation("post", "/me/deletion", second)).toMatchObject({
+        request_number: first.json().request_number,
+      });
+    } finally {
+      hold.restore();
+    }
     const rows = await t.db.select().from(accountDeletions).where(eq(accountDeletions.userId, member.userId));
     expect(rows).toHaveLength(1);
   });
