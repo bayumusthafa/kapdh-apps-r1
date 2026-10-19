@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart' show ObjectKey;
+import 'package:flutter/widgets.dart' show ObjectKey, Size;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -38,8 +38,10 @@ StoredTokens savedTokens() => StoredTokens(
   refreshToken: 'refresh-1',
 );
 
-/// Menjalankan [KapdhApp] mulai dari splash sampai tenang. [tokens] diisi bila sesi tersimpan. [phoneSize] false
-/// memakai layar perangkat apa adanya (integration_test di perangkat nyata, N-12).
+/// Menjalankan [KapdhApp] mulai dari splash sampai tenang. [tokens] diisi bila sesi tersimpan. [size] layar uji (dp),
+/// dipasang sebelum frame pertama: overflow RenderFlex hanya dilaporkan sekali per objek render, jadi mengubah ukuran
+/// sesudah pump dapat menyembunyikannya. [phoneSize] false memakai layar perangkat apa adanya (integration_test di
+/// perangkat nyata, N-12).
 Future<AppHarness> pumpApp(
   WidgetTester tester, {
   required FakeHandler handler,
@@ -52,8 +54,9 @@ Future<AppHarness> pumpApp(
   Future<void> Function(ProviderContainer container)? beforeStart,
   bool settle = true,
   bool phoneSize = true,
+  Size size = prototypeSize,
 }) async {
-  if (phoneSize) usePhoneSize(tester);
+  if (phoneSize) usePhoneSize(tester, size: size);
   if (textScale != 1) {
     tester.platformDispatcher.textScaleFactorTestValue = textScale;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);

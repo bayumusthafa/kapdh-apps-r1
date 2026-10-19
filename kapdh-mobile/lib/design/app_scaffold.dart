@@ -123,7 +123,8 @@ class AppScaffold extends StatelessWidget {
   }
 }
 
-/// Judul bagian dengan aksi opsional di kanan (mis. "Riwayat", "Lihat semua").
+/// Judul bagian dengan aksi opsional di kanan (mis. "Riwayat", "Lihat semua"). Judul dan aksi sebaris bila muat; bila
+/// tidak (teks besar di layar sempit, N-11), aksi turun ke bawah judul alih-alih meluap.
 class SectionHeader extends StatelessWidget {
   const SectionHeader({super.key, required this.title, this.actionLabel, this.onAction});
 
@@ -133,15 +134,17 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    // OverflowBar (sejalan dengan HomeSectionTitle): bila muat, judul kiri dan aksi kanan sebaris, tengah vertikal;
+    // bila tidak, aksi turun ke bawah judul, rata kiri. Tanpa celah tambahan, seperti Row v2 (padding tombol sudah
+    // memberi jarak), agar ambang sebaris tidak bergeser di teks normal. Target sentuh 48 dari textButtonTheme.
+    return OverflowBar(
+      alignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(
-          child: Semantics(
-            header: true,
-            child: Text(
-              title,
-              style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w700), // [v2: dulu w600]
-            ),
+        Semantics(
+          header: true,
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w700), // [v2: dulu w600]
           ),
         ),
         if (actionLabel != null && onAction != null) TextButton(onPressed: onAction, child: Text(actionLabel!)),
