@@ -149,7 +149,7 @@ export const mockSettings = {
         ...patch,
         version: String(Number(state[key].version) + 1),
         updated_at: new Date().toISOString(),
-        updated_by: { admin_id: "0199e000-0000-7000-8000-0000000000b2", display_name: "Ahmad Zulhadi" },
+        updated_by: { admin_id: "0199e000-0000-7000-8000-0000000000b2", display_name: "Hasan Basri" },
       },
     } as Mutable;
   },

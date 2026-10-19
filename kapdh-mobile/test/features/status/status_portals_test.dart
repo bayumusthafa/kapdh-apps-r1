@@ -364,7 +364,7 @@ void main() {
         }, config: config),
       );
       if (login != null) {
-        app.container.read(deletionPortalProvider.notifier).showLoginResult(login, email: 'ahmad.islam@email.com');
+        app.container.read(deletionPortalProvider.notifier).showLoginResult(login, email: 'ahmad.islam@contoh.test');
       }
       app.router.go('/deletion-status');
       await settle(tester);
@@ -405,7 +405,7 @@ void main() {
     ) async {
       final app = await openPortal(tester, login: pending());
       await requestAndEnterCode(tester);
-      expectLastBody(app.adapter, '/public/deletion/challenge', {'email': 'ahmad.islam@email.com'});
+      expectLastBody(app.adapter, '/public/deletion/challenge', {'email': 'ahmad.islam@contoh.test'});
       expectLastBody(app.adapter, '/public/deletion/verify', {'challenge_id': 'challenge-1', 'code': '123456'});
       expect(find.bySemanticsLabel('Status: Sedang Diproses'), findsOneWidget);
       // Label tampil di ringkasan status dan di lencana (StatusBadge kini Text biasa agar ikonnya tidak ikut skala teks).
@@ -420,12 +420,12 @@ void main() {
       expect(find.text('Periksa status penghapusan akun'), findsOneWidget);
       await tester.enterText(
         find.descendant(of: find.byKey(const ValueKey('deletion-check-email')), matching: find.byType(EditableText)),
-        'siapa@email.com',
+        'siapa@kapdh.test',
       );
       await scrollAndTap(tester, find.byKey(const ValueKey('deletion-check-send')));
       await settle(tester);
       expect(
-        find.textContaining('Bila email ahmad.islam@email.com terdaftar, kode 6 digit sudah dikirim.'),
+        find.textContaining('Bila email ahmad.islam@contoh.test terdaftar, kode 6 digit sudah dikirim.'),
         findsOneWidget,
       );
       expect(find.text('Sisa percobaan 5 dari 5'), findsOneWidget);
@@ -545,7 +545,7 @@ void main() {
       );
       await tester.enterText(
         find.descendant(of: find.byKey(const ValueKey('deletion-check-email')), matching: find.byType(EditableText)),
-        'ahmad.islam@email.com',
+        'ahmad.islam@contoh.test',
       );
       await requestAndEnterCode(tester);
       expect(find.text('Tidak ada permintaan penghapusan'), findsOneWidget);
@@ -571,9 +571,9 @@ void main() {
           '/notifications/unread-count': (_) => FakeResponse.json(200, {'unread_count': 0}),
         }),
       );
-      app.container.read(deletionPortalProvider.notifier).showLoginResult(pending(), email: 'lama@email.com');
+      app.container.read(deletionPortalProvider.notifier).showLoginResult(pending(), email: 'lama@kapdh.test');
       // Request palsu memakai timer dio: dijalankan bersama pompa frame, bukan di-await langsung.
-      final login = app.container.read(sessionProvider.notifier).login(email: 'ahmad.islam@email.com', password: 'x');
+      final login = app.container.read(sessionProvider.notifier).login(email: 'ahmad.islam@contoh.test', password: 'x');
       await settle(tester);
       expect((await login).outcome, LoginOutcome.signedIn);
       expect(app.container.read(deletionPortalProvider).hasStatus, isFalse);

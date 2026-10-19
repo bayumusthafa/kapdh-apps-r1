@@ -45,8 +45,8 @@ import {
  * - Pencatatan iuran D13 (adminRecordPayment): kelayakan seperti GET /me/fees, payment terbuka awaiting_transfer/
  *   needs_fix diselesaikan di tempat (200), awaiting_review → 409 dengan `current`, selain itu payment baru dari biaya
  *   aktif (201); bukti wajib payment_proof unggahan admin pemanggil yang belum terpakai (422).
- * - Anggota Siti, Hasan, Fikri dan Nur adalah anggota tiruan members.ts yang sama (user_id sama): payment mereka
- *   tampil di "Pembayaran terbaru" detail anggota, dan iuran yang paid memperbarui masa aktif anggota itu.
+ * - Siti, Hendra, Muhammad Fikri dan Nur adalah anggota tiruan members.ts yang sama (user_id sama): payment
+ *   mereka tampil di "Pembayaran terbaru" detail anggota, dan iuran yang paid memperbarui masa aktif anggota itu.
  */
 type Detail = S["AdminPaymentDetail"];
 type PaymentEvent = S["AdminPaymentEvent"];
@@ -629,7 +629,7 @@ function fixtures(): Fixtures {
     withMethodChange(
       build({
         id: "0199e000-0000-7000-8000-0000000000a7",
-        member: directoryMember(MOCK_MEMBER.hasan),
+        member: directoryMember(MOCK_MEMBER.hendra),
         type: "renewal",
         amount: "10000.00",
         createdAt: "2026-10-12T03:00:00Z",

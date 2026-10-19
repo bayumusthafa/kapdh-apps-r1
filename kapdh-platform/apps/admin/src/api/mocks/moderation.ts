@@ -32,22 +32,22 @@ export const MOCK_REPORT_IDS = {
 } as const;
 
 const PEOPLE = {
-  ridwan: {
+  ridho: {
     user_id: "0199e000-0000-7000-8000-0000000000c1",
-    full_name: "ridwan",
-    member_number: "06.02.01.4",
+    full_name: "ridho",
+    member_number: "06.02.01.92",
     cohort: 6,
   },
-  arya: {
+  galih: {
     user_id: "0199e000-0000-7000-8000-0000000000c2",
-    full_name: "Arya Kamandanu",
-    member_number: "10.02.01.3",
+    full_name: "Galih Saputra",
+    member_number: "10.02.01.94",
     cohort: 10,
   },
-  bayu: {
+  fikri: {
     user_id: "0199e000-0000-7000-8000-0000000000c3",
-    full_name: "Bayu Musthafa Arief",
-    member_number: "09.02.01.5",
+    full_name: "Fikri Ramadhan",
+    member_number: "09.02.01.91",
     cohort: 9,
   },
   sari: {
@@ -71,14 +71,14 @@ const PEOPLE = {
 } satisfies Record<string, Party>;
 
 /** Akun alumni tertaut admin tiruan yang sedang masuk (admins.linked_alumni_user_id). */
-const CALLER_LINKED_USER = PEOPLE.bayu.user_id;
+const CALLER_LINKED_USER = PEOPLE.fikri.user_id;
 
 /** Grup "Info Bisnis Alumni" yang dilaporkan (laporan grup tanpa subjek). */
 const GROUP_ROOM_ID = "0199e000-0000-7000-8000-00000000a010";
 
 const NEVER_JOINED: Party = {
   user_id: "0199e000-0000-7000-8000-0000000000c9",
-  full_name: "Hasan Basri",
+  full_name: "Hendra Gunawan",
   member_number: "13.02.01.1",
   cohort: 13,
 };
@@ -97,13 +97,13 @@ function roomFixtures(): Map<string, RoomMembership[]> {
     [
       GROUP_ROOM_ID,
       [
-        { person: PEOPLE.ridwan, status: "joined", role: "member", everJoined: true },
+        { person: PEOPLE.ridho, status: "joined", role: "member", everJoined: true },
         { person: PEOPLE.dimas, status: "joined", role: "admin", everJoined: true },
-        { person: PEOPLE.arya, status: "joined", role: "member", everJoined: true },
+        { person: PEOPLE.galih, status: "joined", role: "member", everJoined: true },
         { person: PEOPLE.sari, status: "left", role: "member", everJoined: true },
         { person: PEOPLE.lina, status: "removed", role: "admin", everJoined: true },
         // Akun tertaut admin pemanggil pernah bergabung lalu keluar: laporan tetap terlihat, tetapi ia bukan calon.
-        { person: PEOPLE.bayu, status: "left", role: "member", everJoined: true },
+        { person: PEOPLE.fikri, status: "left", role: "member", everJoined: true },
         // Undangan dibatalkan sebelum diterima (joined_at kosong): tidak pernah bergabung, bukan calon subjek.
         { person: NEVER_JOINED, status: "removed", role: "member", everJoined: false },
       ],
@@ -183,7 +183,7 @@ function base(
     action: null,
     resolved_at: null,
     description: null,
-    reporter: PEOPLE.ridwan,
+    reporter: PEOPLE.ridho,
     target_member: null,
     room_id: null,
     evidence: {
@@ -211,11 +211,11 @@ function fixtures(): Map<string, Detail> {
       target_type: "message",
       created_at: iso(-30 * HOUR),
       due_at: iso(-6 * HOUR),
-      subject: PEOPLE.arya,
+      subject: PEOPLE.galih,
       room_name: "Alumni 2009",
       room_id: roomId,
       description: "Mengancam akan mendatangi rumah anggota lain.",
-      target_member: target(PEOPLE.arya),
+      target_member: target(PEOPLE.galih),
       open_reports_against_target: 1,
       evidence: {
         captured_at: iso(-30 * HOUR),
@@ -234,8 +234,8 @@ function fixtures(): Map<string, Detail> {
           {
             message_id: "0199e000-0000-7000-8000-00000000b002",
             reported: true,
-            sender_user_id: PEOPLE.arya.user_id,
-            sender_name: PEOPLE.arya.full_name,
+            sender_user_id: PEOPLE.galih.user_id,
+            sender_name: PEOPLE.galih.full_name,
             kind: "text",
             body: "Awas kamu, saya datangi rumahmu besok.",
             image: null,
@@ -256,7 +256,7 @@ function fixtures(): Map<string, Detail> {
       created_at: iso(-10 * HOUR),
       due_at: iso(30 * HOUR),
       subject: PEOPLE.dimas,
-      claimed_by: { admin_id: "0199e000-0000-7000-8000-0000000000b2", display_name: "Ahmad Zulhadi" },
+      claimed_by: { admin_id: "0199e000-0000-7000-8000-0000000000b2", display_name: "Hasan Basri" },
       claimed_at: iso(-2 * HOUR),
       reporter: PEOPLE.lina,
       description: "Mengirim pesan menghina berulang kali.",
@@ -265,7 +265,7 @@ function fixtures(): Map<string, Detail> {
         {
           kind: "warn",
           reason: "Komentar kasar di grup",
-          actor_name: "Ahmad Zulhadi",
+          actor_name: "Hasan Basri",
           created_at: iso(-40 * 24 * HOUR),
         },
       ],
@@ -324,7 +324,7 @@ function fixtures(): Map<string, Detail> {
         {
           kind: "suspend",
           reason: "Spam berulang di 3 grup",
-          actor_name: "Bayu Musthafa",
+          actor_name: "Fikri",
           created_at: iso(-3 * 24 * HOUR),
         },
       ],
@@ -339,7 +339,7 @@ function fixtures(): Map<string, Detail> {
           suspended_at: iso(-3 * 24 * HOUR),
           suspension_reason: "Spam berulang di 3 grup",
           suspension_message: "Akun dibatasi karena spam berulang.",
-          suspended_by: { admin_id: "0199e000-0000-7000-8000-0000000000ad", display_name: "Bayu Musthafa" },
+          suspended_by: { admin_id: "0199e000-0000-7000-8000-0000000000ad", display_name: "Fikri" },
         },
       },
     }),
@@ -385,7 +385,7 @@ function fixtures(): Map<string, Detail> {
         member_message: "Jangan menawarkan skema investasi di aplikasi.",
         message_removed: false,
         resolved_at: iso(-4 * 24 * HOUR),
-        resolved_by: { admin_id: "0199e000-0000-7000-8000-0000000000b2", display_name: "Ahmad Zulhadi" },
+        resolved_by: { admin_id: "0199e000-0000-7000-8000-0000000000b2", display_name: "Hasan Basri" },
       },
       version: "3",
     }),
@@ -395,10 +395,10 @@ function fixtures(): Map<string, Detail> {
       target_type: "user",
       created_at: iso(-3 * HOUR),
       due_at: iso(45 * HOUR),
-      subject: PEOPLE.ridwan,
-      reporter: PEOPLE.bayu,
+      subject: PEOPLE.ridho,
+      reporter: PEOPLE.fikri,
       description: "Akun ini memakai foto saya.",
-      target_member: target(PEOPLE.ridwan),
+      target_member: target(PEOPLE.ridho),
       conflict_of_interest: true,
     }),
     base(MOCK_REPORT_IDS.againstSelf, {
@@ -407,8 +407,8 @@ function fixtures(): Map<string, Detail> {
       target_type: "user",
       created_at: iso(-1 * HOUR),
       due_at: iso(23 * HOUR),
-      subject: PEOPLE.bayu,
-      target_member: target(PEOPLE.bayu),
+      subject: PEOPLE.fikri,
+      target_member: target(PEOPLE.fikri),
     }),
   ];
   return new Map(list.map((r) => [r.id, r]));
@@ -584,7 +584,7 @@ export const mockModeration = {
     const r = reports.get(id);
     if (!r) return;
     const at = new Date().toISOString();
-    const by = { admin_id: "0199e000-0000-7000-8000-0000000000b2", display_name: "Ahmad Zulhadi" };
+    const by = { admin_id: "0199e000-0000-7000-8000-0000000000b2", display_name: "Hasan Basri" };
     reports.set(
       id,
       bump({

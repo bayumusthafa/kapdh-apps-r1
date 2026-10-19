@@ -104,7 +104,7 @@ async function liveSessions(userId: string) {
 /** Menjalankan perintah bootstrap CLI (PRD 8.2) terhadap database lain; kode keluar dan seluruh keluaran. */
 function runBootstrapCli(db: Db, email = "pemilik@kapdh.test"): Promise<{ code: number; out: string }> {
   const out: string[] = [];
-  return runBootstrapAdminCommand(["--email", email, "--name", "Bayu Musthafa"], {
+  return runBootstrapAdminCommand(["--email", email, "--name", "Fikri Ramadhan"], {
     db,
     env: { ADMIN_ORIGIN: testEnv.ADMIN_ORIGIN, BCRYPT_COST: 4 },
     now: clock.now(),

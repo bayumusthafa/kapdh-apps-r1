@@ -28,7 +28,7 @@ Future<void> choose(WidgetTester tester, String key, String item) async {
   await settle(tester);
 }
 
-Future<void> fillForm(WidgetTester tester, {String email = 'ahmad.islam@email.com'}) async {
+Future<void> fillForm(WidgetTester tester, {String email = 'ahmad.islam@contoh.test'}) async {
   await tester.enterText(fieldOf('register-name'), 'Ahmad Islam');
   await choose(tester, 'register-gender', 'Laki-laki');
   await scrollTo(tester, fieldOf('register-email'));
@@ -75,7 +75,7 @@ void main() {
     expect(request.data, {
       'full_name': 'Ahmad Islam',
       'gender': 'male',
-      'email': 'ahmad.islam@email.com',
+      'email': 'ahmad.islam@contoh.test',
       'password': 'Rahasia#123',
       'cohort': 29,
       'class_in': 1,
@@ -238,7 +238,7 @@ void main() {
       await settle(tester);
 
       await scrollTo(tester, fieldOf('register-email'));
-      await tester.enterText(fieldOf('register-email'), 'ahmad.lain@email.com');
+      await tester.enterText(fieldOf('register-email'), 'ahmad.lain@kapdh.test');
       // Field yang fokus menggulir dirinya kembali ke layar; lepaskan fokus sebelum mengetuk tombol.
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pump();
@@ -288,7 +288,7 @@ void main() {
       expect(second.location, '/register/otp');
       // Hasil pasti: key dilepas, dan sandi tidak pernah ditulis ke penyimpanan perangkat.
       expect(store.values.values.any((v) => v.contains('Rahasia#123')), isFalse);
-      expect(second.container.read(activationCredentialsProvider)?.email, 'ahmad.islam@email.com');
+      expect(second.container.read(activationCredentialsProvider)?.email, 'ahmad.islam@contoh.test');
     });
   });
 

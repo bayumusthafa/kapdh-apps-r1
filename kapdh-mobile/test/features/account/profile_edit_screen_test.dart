@@ -86,16 +86,12 @@ void main() {
     final app = await openProfile(tester);
     await enter(tester, 'city', ' Dumai ');
     await enter(tester, 'bio', 'Pengajar bahasa Arab.');
-    await enter(tester, 'social_instagram', 'ahmad.islam');
+    await enter(tester, 'social_instagram', 'ahmad.uji');
     await save(tester);
     final requests = patches(app);
     expect(requests, hasLength(1));
     expect(headerOf(requests.single, 'If-Match'), '3');
-    expect(bodyOf(requests.single), {
-      'city': 'Dumai',
-      'bio': 'Pengajar bahasa Arab.',
-      'social_instagram': 'ahmad.islam',
-    });
+    expect(bodyOf(requests.single), {'city': 'Dumai', 'bio': 'Pengajar bahasa Arab.', 'social_instagram': 'ahmad.uji'});
     expect(find.text('Profil tersimpan.'), findsOneWidget);
     expect(app.location, '/account');
   });
@@ -136,7 +132,7 @@ void main() {
         ),
       ),
     );
-    await enter(tester, 'social_linkedin', 'https://www.linkedin.com/in/ahmad');
+    await enter(tester, 'social_linkedin', 'https://www.linkedin.com/in/ahmad.uji');
     await save(tester);
     expect(find.text('Tautan harus https.'), findsOneWidget);
   });
@@ -259,7 +255,7 @@ void main() {
               current: meFullJson(
                 version: '4',
                 city: 'Bangkinang',
-                instagram: 'ahmad.baru',
+                instagram: 'ahmad.uji.baru',
                 skills: [masterJson('s-9', 'Public speaking')],
               ),
             ),
@@ -282,7 +278,7 @@ void main() {
     // Formulir kini berbasis versi terbaru: kota, Instagram dan keahlian dari perangkat lain; bio dan profesi tetap
     // isian sendiri.
     expect(find.text('Bangkinang'), findsOneWidget);
-    expect(find.text('ahmad.baru'), findsOneWidget);
+    expect(find.text('ahmad.uji.baru'), findsOneWidget);
     expect(find.text('Public speaking'), findsOneWidget);
     expect(find.text('Bio baru saya'), findsOneWidget);
     expect(find.text('Guru'), findsOneWidget);

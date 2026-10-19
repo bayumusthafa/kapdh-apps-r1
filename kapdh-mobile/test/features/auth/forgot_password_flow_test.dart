@@ -23,7 +23,7 @@ Finder get resendButton => find.byKey(const ValueKey('otp-resend'));
 
 Map<String, Object?> resetChallengeJson({
   String id = 'reset-challenge-1',
-  String emailMasked = 'ah***@email.com',
+  String emailMasked = 'ah***@contoh.test',
   DateTime? resendAvailableAt,
   int attemptsLeft = 5,
 }) => otpChallengeJson(
@@ -54,7 +54,7 @@ Future<AppHarness> openForgot(WidgetTester tester, FakeHandler handler, {double 
   return app;
 }
 
-Future<void> requestCode(WidgetTester tester, {String email = 'ahmad.islam@email.com'}) async {
+Future<void> requestCode(WidgetTester tester, {String email = 'ahmad.islam@contoh.test'}) async {
   await tester.enterText(fieldOf('forgot-email'), email);
   await scrollAndTap(tester, find.byKey(const ValueKey('forgot-submit')));
   await settle(tester);
@@ -90,15 +90,15 @@ void main() {
       expect(find.bySemanticsLabel('Langkah 1 dari 3: Email'), findsOneWidget);
       expect(find.text(forgotPasswordNeutralCopy), findsOneWidget);
 
-      await requestCode(tester, email: '  ahmad.islam@email.com ');
+      await requestCode(tester, email: '  ahmad.islam@contoh.test ');
 
-      expect(app.adapter.requestsTo('/auth/password/forgot').single.data, {'email': 'ahmad.islam@email.com'});
+      expect(app.adapter.requestsTo('/auth/password/forgot').single.data, {'email': 'ahmad.islam@contoh.test'});
       expect(app.location, '/forgot/otp');
       expect(find.byType(ForgotOtpScreen), findsOneWidget);
       expect(find.bySemanticsLabel('Langkah 2 dari 3: Kode OTP'), findsOneWidget);
       expect(find.text('Masukkan kode pemulihan'), findsOneWidget);
       // PRD 2.5: tidak menyatakan email terdaftar; hanya "bila terdaftar dan aktif".
-      expect(find.textContaining('Bila akun dengan email ahmad.islam@email.com terdaftar dan aktif'), findsOneWidget);
+      expect(find.textContaining('Bila akun dengan email ahmad.islam@contoh.test terdaftar dan aktif'), findsOneWidget);
       expect(find.textContaining('Kode berlaku 10 menit'), findsOneWidget);
       expect(find.textContaining('tidak terdaftar'), findsNothing);
       expect(app.container.read(sessionProvider).challenge?.purpose, OtpPurpose.passwordReset);
@@ -112,7 +112,7 @@ void main() {
         tester,
         recoveryRoutes({
           '/auth/password/forgot': (_) =>
-              FakeResponse.json(202, resetChallengeJson(id: 'pengganti-1', emailMasked: 'ti***@email.com')),
+              FakeResponse.json(202, resetChallengeJson(id: 'pengganti-1', emailMasked: 'ti***@kapdh.test')),
           '/auth/password/forgot/verify': (_) => FakeResponse.json(
             400,
             errorJson(
@@ -125,9 +125,9 @@ void main() {
           ),
         }),
       );
-      await requestCode(tester, email: 'tidak.ada@email.com');
+      await requestCode(tester, email: 'tidak.ada@kapdh.test');
       expect(app.location, '/forgot/otp');
-      expect(find.textContaining('Bila akun dengan email tidak.ada@email.com terdaftar dan aktif'), findsOneWidget);
+      expect(find.textContaining('Bila akun dengan email tidak.ada@kapdh.test terdaftar dan aktif'), findsOneWidget);
       await tester.enterText(otpInput, '111111');
       await settle(tester);
       expect(find.text('Sisa percobaan: 4 dari 5'), findsOneWidget);
@@ -165,7 +165,7 @@ void main() {
       await openForgot(tester, recoveryRoutes({'/auth/password/forgot': (_) => FakeResponse.network()}));
       await requestCode(tester);
       expect(find.textContaining('Tidak dapat terhubung'), findsOneWidget);
-      expect(find.text('ahmad.islam@email.com'), findsOneWidget);
+      expect(find.text('ahmad.islam@contoh.test'), findsOneWidget);
     });
 
     testWidgets('PRD 2.5: cooldown login tidak menutup Lupa Password; email dari login diisi otomatis', (tester) async {
@@ -176,7 +176,7 @@ void main() {
               FakeResponse.json(429, errorJson('RATE_LIMITED', 'Terlalu banyak percobaan.', retryAfterSeconds: 900)),
         }),
       );
-      await tester.enterText(fieldOf('login-email'), 'ahmad.islam@email.com');
+      await tester.enterText(fieldOf('login-email'), 'ahmad.islam@contoh.test');
       await tester.enterText(fieldOf('login-password'), 'Salah#123');
       await tester.pump();
       await scrollAndTap(tester, find.byKey(const ValueKey('login-submit')));
@@ -187,7 +187,7 @@ void main() {
       await scrollAndTap(tester, find.byKey(const ValueKey('login-forgot')));
       await settle(tester);
       expect(app.location, '/forgot');
-      expect(find.text('ahmad.islam@email.com'), findsOneWidget);
+      expect(find.text('ahmad.islam@contoh.test'), findsOneWidget);
       await scrollAndTap(tester, find.byKey(const ValueKey('forgot-submit')));
       await settle(tester);
       expect(app.location, '/forgot/otp');
@@ -295,7 +295,7 @@ void main() {
       await scrollAndTap(tester, find.byKey(const ValueKey('otp-restart')));
       await settle(tester);
       expect(app.location, '/forgot');
-      expect(find.text('ahmad.islam@email.com'), findsOneWidget, reason: 'email terakhir diisi otomatis');
+      expect(find.text('ahmad.islam@contoh.test'), findsOneWidget, reason: 'email terakhir diisi otomatis');
       expect(app.container.read(sessionProvider).challenge, isNull);
     });
 
@@ -369,7 +369,7 @@ void main() {
       expect(app.location, '/login');
       expect(find.byType(LoginScreen), findsOneWidget);
       expect(find.byKey(const ValueKey('login-notice')), findsOneWidget);
-      expect(find.text('ahmad.islam@email.com'), findsOneWidget);
+      expect(find.text('ahmad.islam@contoh.test'), findsOneWidget);
       final session = app.container.read(sessionProvider);
       expect(session.resetToken, isNull, reason: 'token sekali pakai dilepas dari memori');
       expect(app.container.read(loginNoticeProvider), isNull, reason: 'pemberitahuan hanya tampil sekali');

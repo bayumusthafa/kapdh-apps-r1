@@ -19,7 +19,7 @@ afterAll(async () => {
   await pg.close();
 });
 
-const run = (email: string, displayName = "Bayu Musthafa") =>
+const run = (email: string, displayName = "Fikri Ramadhan") =>
   bootstrapSuperAdmin(db, { email, displayName, now: clock.now(), bcryptCost: 4, requestId: "cli-uji" });
 
 describe("PRD 8.2 langkah 3: bootstrap Super Admin pertama", () => {

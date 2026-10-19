@@ -53,7 +53,7 @@ describe("panggilan API alur web (account.yaml)", () => {
       "POST /public/deletion/verify": () => json(200, VERIFIED_DELETABLE),
       "POST /public/deletion/confirm": () => json(202, DELETION),
     });
-    expect((await startChallenge(API, "ahmad@email.com", f.fetcher)).ok).toBe(true);
+    expect((await startChallenge(API, "ahmad@kapdh.test", f.fetcher)).ok).toBe(true);
     expect((await resendChallenge(API, CHALLENGE.challenge_id, f.fetcher)).ok).toBe(true);
     expect((await verifyChallenge(API, CHALLENGE.challenge_id, "123456", f.fetcher)).ok).toBe(true);
     const confirmed = await confirmDeletion(
@@ -67,7 +67,7 @@ describe("panggilan API alur web (account.yaml)", () => {
     );
     expect(confirmed).toMatchObject({ ok: true, data: { request_number: "DEL-2026-7K3Q9X" } });
     expect(f.calls.map((c) => c.body)).toEqual([
-      { email: "ahmad@email.com" },
+      { email: "ahmad@kapdh.test" },
       { challenge_id: CHALLENGE.challenge_id },
       { challenge_id: CHALLENGE.challenge_id, code: "123456" },
       { deletion_token: "tok", confirm: true, acknowledged_disclosure_version: "v1-abc" },
@@ -96,7 +96,7 @@ describe("guard respons", () => {
 
 describe("validasi input", () => {
   it("email dan kode 6 digit", () => {
-    expect(validateEmail("  ahmad@email.com ")).toEqual({ email: "ahmad@email.com" });
+    expect(validateEmail("  ahmad@kapdh.test ")).toEqual({ email: "ahmad@kapdh.test" });
     expect(validateEmail("")).toEqual({ error: "Masukkan email akun Anda." });
     expect(validateEmail("ahmad@")).toHaveProperty("error");
     expect(validateEmail(`${"a".repeat(250)}@x.id`)).toHaveProperty("error");
@@ -241,7 +241,7 @@ describe("hasil verifikasi (PRD 2.2: challenge terbatas)", () => {
       kind: "in_progress",
       deletion: { status: "processing" },
     });
-    expect(toVerifyOutcome(VERIFIED_DISABLED)).toEqual({ kind: "disabled", emailMasked: "ah***@email.com" });
+    expect(toVerifyOutcome(VERIFIED_DISABLED)).toEqual({ kind: "disabled", emailMasked: "ah***@kapdh.test" });
   });
 
   it("AC F14-1: status permintaan dengan nomor dan perkiraan selesai", () => {
