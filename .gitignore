@@ -20,3 +20,6 @@ build/
 
 # folder lokal agen (worktree, skill, launch.json, catatan audit); tidak pernah di-commit
 .claude/
+
+# catatan internal pengurus/pengembang disimpan di luar repo (repo publik); jangan di-commit lagi
+/docs/internal/
