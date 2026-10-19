@@ -84,15 +84,22 @@ async function sweepStaleDirs(): Promise<void> {
 }
 
 export default async function setup(project: TestProject) {
-  // embedded-postgres memasang async-exit-hook yang memanggil process.exit(0) pada "beforeExit" dan menimpa exitCode
-  // vitest (uji gagal tampak sukses). Listener tersebut dicatat dan dilepas di teardown setelah cluster dihentikan.
-  const listenersBefore = new Set(process.listeners("beforeExit"));
+  // embedded-postgres memasang async-exit-hook saat dimuat, dengan dua efek samping yang dilepas di teardown setelah
+  // cluster dihentikan sendiri (penanganan SIGINT/SIGTERM modul itu tetap aktif selama run):
+  // - hook "beforeExit" memanggil process.exit(0) dan menimpa exitCode 1 dari vitest, sehingga uji yang gagal tetap
+  //   berakhir sukses;
+  // - hook "exit" menjalankan gracefulShutdown TANPA callback (event exit tidak mendukung hook async), sehingga
+  //   `done()` di dalamnya melempar "TypeError: done is not a function" pada SETIAP akhir run, gagal maupun
+  //   sukses. Kini tidak berbahaya hanya karena vitest keluar lewat process.exit(); pada keluar alami galat itu
+  //   mengubah exit code run yang lulus menjadi 1.
+  const before = new Set([...process.listeners("beforeExit"), ...process.listeners("exit")]);
   const { default: EmbeddedPostgres } = (await import("embedded-postgres")) as {
     default: typeof EmbeddedPostgresType;
   };
-  const exitHookListeners = process
-    .listeners("beforeExit")
-    .filter((listener) => !listenersBefore.has(listener));
+  const exitHooks = {
+    beforeExit: process.listeners("beforeExit").filter((listener) => !before.has(listener)),
+    exit: process.listeners("exit").filter((listener) => !before.has(listener)),
+  };
   await sweepStaleDirs();
   const databaseDir = join(tmpdir(), `${DIR_PREFIX}${process.pid}-${Date.now()}`);
   const port = await freePort();
@@ -156,7 +163,8 @@ export default async function setup(project: TestProject) {
 
   return async () => {
     await pg.stop();
-    for (const listener of exitHookListeners) process.off("beforeExit", listener);
+    for (const listener of exitHooks.beforeExit) process.off("beforeExit", listener);
+    for (const listener of exitHooks.exit) process.off("exit", listener);
     if (!(await removeDir(databaseDir))) {
       process.stderr.write(
         `[worker-pg-lane] direktori ${databaseDir} masih terkunci; disapu pada run berikutnya.\n`,
