@@ -166,7 +166,12 @@ fi
 if in_edge 'curl -s --connect-timeout 3 telnet://kapdh-production-redis-1:6379 </dev/null' >/dev/null 2>&1; then
   die "Redis terjangkau dari jaringan edge"
 fi
-if compose port postgres 5432 >/dev/null 2>&1 || compose port redis 6379 >/dev/null 2>&1; then
+# Compose v2 gagal untuk port yang tidak dipublikasikan; Compose v5 keluar 0 dengan ":0". Keduanya = tidak terpublikasi.
+published() {
+  addr="$(compose port "$1" "$2" 2>/dev/null)" || return 1
+  [ -n "$addr" ] && [ "${addr##*:}" != "0" ]
+}
+if published postgres 5432 || published redis 6379; then
   die "PostgreSQL/Redis mempublikasikan port ke host"
 fi
 echo "lulus  DB/Redis privat"
