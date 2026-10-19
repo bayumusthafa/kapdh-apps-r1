@@ -127,8 +127,8 @@ void main() {
       final session = container.read(sessionProvider.notifier)..setChallenge(challengeOf());
       container
           .read(activationCredentialsProvider.notifier)
-          .remember(email: ' ahmad@email.com ', password: 'Rahasia#1');
-      expect(container.read(activationCredentialsProvider)?.email, 'ahmad@email.com');
+          .remember(email: ' ahmad@kapdh.test ', password: 'Rahasia#1');
+      expect(container.read(activationCredentialsProvider)?.email, 'ahmad@kapdh.test');
       expect(container.read(activationCredentialsProvider).toString(), isNot(contains('Rahasia')));
 
       session.setChallenge(challengeOf(id: 'challenge-2', purpose: OtpPurpose.emailChange));
@@ -138,7 +138,7 @@ void main() {
       expect(container.read(activationCredentialsProvider), isNull);
 
       session.setChallenge(challengeOf(id: 'challenge-4'));
-      container.read(activationCredentialsProvider.notifier).remember(email: 'a@b.co', password: 'x');
+      container.read(activationCredentialsProvider.notifier).remember(email: 'a@kapdh.test', password: 'x');
       session.clearFlow();
       expect(container.read(activationCredentialsProvider), isNull);
     });

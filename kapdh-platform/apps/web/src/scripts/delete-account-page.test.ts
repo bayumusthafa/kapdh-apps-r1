@@ -81,7 +81,7 @@ const resendButton = () => q<HTMLButtonElement>("[data-resend]")!;
 const buttonByText = (text: string) =>
   Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.includes(text))!;
 
-async function submitEmail(email = "ahmad@email.com") {
+async function submitEmail(email = "ahmad@kapdh.test") {
   q<HTMLInputElement>("#del-email")!.value = email;
   primary().click();
   await settle();
@@ -113,11 +113,11 @@ describe("/delete-account: alur web penghapusan akun (F-14)", () => {
     await settle();
     expect(step()).toBe("email");
 
-    await submitEmail("  ahmad@email.com ");
-    expect(f.callsTo("POST /public/deletion/challenge")[0]!.body).toEqual({ email: "ahmad@email.com" });
+    await submitEmail("  ahmad@kapdh.test ");
+    expect(f.callsTo("POST /public/deletion/challenge")[0]!.body).toEqual({ email: "ahmad@kapdh.test" });
     expect(step()).toBe("code");
     // Non-enumerasi (PRD 2.5): teks tidak menyatakan email terdaftar.
-    expect(q("[data-step='code']")!.textContent).toContain("Bila ahmad@email.com terdaftar");
+    expect(q("[data-step='code']")!.textContent).toContain("Bila ahmad@kapdh.test terdaftar");
     expect(q("[data-attempts]")!.textContent).toBe("Sisa percobaan: 5 dari 5");
     expect(q("[data-expiry]")!.textContent).toBe("Kode berlaku 10:00 lagi.");
 
@@ -310,12 +310,12 @@ describe("kode OTP: percobaan, kedaluwarsa, kirim ulang", () => {
   it("410 saat kirim ulang: kembali ke langkah email dengan email terisi", async () => {
     setup({ ...HAPPY, "POST /auth/otp/resend": () => apiError(410, "OTP_EXPIRED", "x") });
     await settle();
-    await submitEmail("ahmad@email.com");
+    await submitEmail("ahmad@kapdh.test");
     await vi.advanceTimersByTimeAsync(61_000);
     q<HTMLButtonElement>("[data-resend]")!.click();
     await settle();
     expect(step()).toBe("email");
-    expect(q<HTMLInputElement>("#del-email")!.value).toBe("ahmad@email.com");
+    expect(q<HTMLInputElement>("#del-email")!.value).toBe("ahmad@kapdh.test");
     expect(alertText()).toContain("Masukkan email Anda lagi");
   });
 
@@ -349,13 +349,13 @@ describe("kode OTP: percobaan, kedaluwarsa, kirim ulang", () => {
   it("Ubah email kembali ke langkah email", async () => {
     setup(HAPPY);
     await settle();
-    await submitEmail("ahmad@email.com");
+    await submitEmail("ahmad@kapdh.test");
     Array.from(root.querySelectorAll("button"))
       .find((b) => b.textContent?.includes("Ubah alamat email"))!
       .click();
     await settle();
     expect(step()).toBe("email");
-    expect(q<HTMLInputElement>("#del-email")!.value).toBe("ahmad@email.com");
+    expect(q<HTMLInputElement>("#del-email")!.value).toBe("ahmad@kapdh.test");
   });
 });
 
@@ -411,12 +411,12 @@ describe("galat jaringan, 429 dan respons non-JSON", () => {
       "POST /public/deletion/challenge": [() => text(502, "<html>Bad Gateway</html>"), networkError],
     });
     await settle();
-    await submitEmail("ahmad@email.com");
+    await submitEmail("ahmad@kapdh.test");
     expect(alertText()).toContain("Server KAPDH sedang bermasalah");
     expect(alertText()).not.toContain("<html>");
-    await submitEmail("ahmad@email.com");
+    await submitEmail("ahmad@kapdh.test");
     expect(alertText()).toContain("Tidak dapat menghubungi server KAPDH");
-    expect(q<HTMLInputElement>("#del-email")!.value).toBe("ahmad@email.com");
+    expect(q<HTMLInputElement>("#del-email")!.value).toBe("ahmad@kapdh.test");
     expect(primary().disabled).toBe(false);
   });
 
@@ -524,12 +524,12 @@ describe("konfirmasi: idempotensi, konflik versi, token kedaluwarsa", () => {
   it("410 saat konfirmasi (token kedaluwarsa/dipakai): kembali verifikasi email", async () => {
     setup({ ...HAPPY, "POST /public/deletion/confirm": () => apiError(410, "OTP_EXPIRED", "x") });
     await settle();
-    await submitEmail("ahmad@email.com");
+    await submitEmail("ahmad@kapdh.test");
     await submitCode();
     await confirmChecked();
     expect(step()).toBe("email");
     expect(alertText()).toContain("Verifikasi email Anda lagi");
-    expect(q<HTMLInputElement>("#del-email")!.value).toBe("ahmad@email.com");
+    expect(q<HTMLInputElement>("#del-email")!.value).toBe("ahmad@kapdh.test");
   });
 
   it("hitung mundur 10 menit token konfirmasi", async () => {
@@ -678,7 +678,7 @@ describe("jeda 429 per tindakan (PRD 2.5: batas kirim OTP dan batas verifikasi t
     expect(q("[data-del-alert]")!.hidden).toBe(true);
     expect(q("[data-del-alert]")!.textContent).toBe("");
     expect(waitText()).toBe("");
-    await submitEmail("lain@email.com");
+    await submitEmail("lain@kapdh.test");
     expect(f.callsTo("POST /public/deletion/challenge")).toHaveLength(2);
     expect(step()).toBe("code");
   });
@@ -693,7 +693,7 @@ describe("jeda 429 per tindakan (PRD 2.5: batas kirim OTP dan batas verifikasi t
     expect(step()).toBe("email");
     expect(primary().disabled).toBe(false);
     await vi.advanceTimersByTimeAsync(120_000);
-    await submitEmail("lain@email.com");
+    await submitEmail("lain@kapdh.test");
     expect(step()).toBe("code");
     expect(primary().disabled).toBe(true);
     expect(alertText()).toBe(

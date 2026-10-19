@@ -41,7 +41,7 @@ describe("tautan toko dan kontak (PRD 4.6, 8.3)", () => {
 
   it("mailto hanya untuk alamat sederhana (tanpa sisipan header)", () => {
     expect(mailtoHref(" bantuan@kapdh.or.id ")).toBe("mailto:bantuan@kapdh.or.id");
-    expect(mailtoHref("a@b.co?bcc=x@y.z")).toBeNull();
+    expect(mailtoHref("a@contoh.test?bcc=x@y.z")).toBeNull();
     expect(mailtoHref("bukan-email")).toBeNull();
   });
 

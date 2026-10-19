@@ -92,7 +92,7 @@ describe("master profesi dan keahlian (F-10, AC F10-4; server tiruan)", () => {
     await screen.findByRole("table", { name: "Daftar keahlian" });
     await screen.findByRole("rowheader", { name: "Analisis Data" });
     // Alumni memilih keahlian ini setelah daftar dimuat.
-    mockMembers.useMaster(MOCK_MEMBER.ridwan, skillId("Analisis Data"));
+    mockMembers.useMaster(MOCK_MEMBER.ridho, skillId("Analisis Data"));
     await user.click(within(row("Analisis Data")).getByRole("button", { name: "Hapus Analisis Data" }));
     const confirm = await screen.findByRole("alertdialog", { name: "Hapus Analisis Data?" });
     await user.click(within(confirm).getByRole("checkbox"));

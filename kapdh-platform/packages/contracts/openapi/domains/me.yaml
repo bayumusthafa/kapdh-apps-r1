@@ -198,7 +198,7 @@ components:
         mailto:, dll.), spasi dan karakter <>"'` ditolak 400 VALIDATION_ERROR. Server memeriksa ulang pola yang sama
         (tidak bergantung pada klien) dan menyimpan nilai yang sudah dinormalkan; klien merender nama pengguna
         sebagai tautan ke domain platform dan URL hanya sebagai tautan https.
-      examples: ["ahmad.islam", "https://www.linkedin.com/in/ahmad-islam"]
+      examples: ["ahmad.uji", "https://www.linkedin.com/in/ahmad.uji"]
 
     Me:
       type: object

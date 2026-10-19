@@ -274,6 +274,21 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                                 legal(AppRoutes.communitySlug, 'Ketentuan komunitas', KapdhIcons.gavelOutlined),
                                 legal(AppRoutes.helpSlug, 'Bantuan', KapdhIcons.helpOutline),
                                 legal(AppRoutes.aboutSlug, 'Tentang KAPDH', KapdhIcons.infoOutline),
+                                // Halaman lisensi Material: paket pub dari NOTICES dan font pihak ketiga dari
+                                // registerAppLicenses (bootstrap); layar penuh seperti subhalaman Akun lain.
+                                AccountMenuTile(
+                                  key: const ValueKey('account-licenses'),
+                                  icon: KapdhIcons.chromeReaderModeOutlined,
+                                  label: 'Lisensi sumber terbuka',
+                                  onTap: () => showLicensePage(
+                                    context: context,
+                                    applicationName: 'KAPDH',
+                                    applicationVersion: '${info.version} (${info.buildNumber})',
+                                    applicationLegalese:
+                                        'Hak Cipta (c) 2026 Perkumpulan Keluarga Alumni Pesantren Darel Hikmah',
+                                    useRootNavigator: true,
+                                  ),
+                                ),
                               ],
                             ),
                             const SizedBox(height: KapdhSpace.s5),

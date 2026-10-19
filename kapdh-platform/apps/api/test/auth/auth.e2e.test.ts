@@ -434,7 +434,7 @@ describe("F-02 admin dengan TOTP", () => {
   let admin: EnrolledAdminFixture;
 
   beforeAll(async () => {
-    admin = await createAdmin({ db, clock }, { role: "super_admin", displayName: "Bayu Musthafa" });
+    admin = await createAdmin({ db, clock }, { role: "super_admin", displayName: "Fikri Ramadhan" });
   });
 
   /** Login dua tahap memakai langkah TOTP baru setiap kali (server menolak replay langkah yang sama). */

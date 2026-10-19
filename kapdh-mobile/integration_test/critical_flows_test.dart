@@ -121,7 +121,7 @@ void main() {
       // kosong miliknya dan mengubah tata letak saat tombol diketuk (integration_test tidak mendaftarkannya).
       tester.testTextInput.register();
       addTearDown(tester.testTextInput.unregister);
-      await tester.enterText(_field('login-email'), 'ahmad@email.com');
+      await tester.enterText(_field('login-email'), 'ahmad@kapdh.test');
       await tester.enterText(_field('login-password'), 'Rahasia#123');
       FocusManager.instance.primaryFocus?.unfocus();
       await settle(tester);

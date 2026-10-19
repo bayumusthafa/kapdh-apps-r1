@@ -86,7 +86,7 @@ describe("check-in tiket (AC F09-5, F09-6; server tiruan)", () => {
     const card = resultCard();
     expect(within(card).getByRole("heading", { name: "Check-in berhasil" })).toBeInTheDocument();
     expect(within(card).getByText("Siti Rahmawati")).toBeInTheDocument();
-    expect(within(card).getByText(/oleh Bayu Musthafa/)).toBeInTheDocument();
+    expect(within(card).getByText(/oleh Fikri/)).toBeInTheDocument();
     expect(screen.getByText("Hadir 2 dari 6 tiket lunas")).toBeInTheDocument();
     // Kartu hasil adalah region live sehingga pembaca layar membacakan setiap hasil (N-11).
     expect(card).toHaveAttribute("aria-live", "assertive");
@@ -97,7 +97,7 @@ describe("check-in tiket (AC F09-5, F09-6; server tiruan)", () => {
     await scan(user, input, MOCK_TICKET_QR.paid);
     await waitFor(() => expect(resultCard()).toHaveAttribute("data-result", "already_checked_in"));
     expect(within(resultCard()).getByRole("heading", { name: "Sudah check-in" })).toBeInTheDocument();
-    expect(within(resultCard()).getByText(/Sebelumnya check-in .* oleh Bayu Musthafa\./)).toBeInTheDocument();
+    expect(within(resultCard()).getByText(/Sebelumnya check-in .* oleh Fikri\./)).toBeInTheDocument();
     // Tidak menambah hitungan hadir.
     expect(screen.getByText("Hadir 2 dari 6 tiket lunas")).toBeInTheDocument();
     const posts = checkinPosts();
