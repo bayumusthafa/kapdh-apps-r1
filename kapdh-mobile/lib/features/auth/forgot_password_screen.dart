@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
@@ -134,9 +135,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 ),
               ),
               const SizedBox(height: KapdhSpace.s2),
-              const Text(
+              Text(
                 forgotPasswordNeutralCopy,
-                style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: KapdhColors.textMuted),
+                style: TextStyle(fontSize: KapdhFontSize.body, height: 1.5, color: context.kc.textMuted),
               ),
               const SizedBox(height: KapdhSpace.s5),
               AutofillGroup(
@@ -145,7 +146,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   label: 'Email',
                   controller: _email,
                   hint: 'Masukkan Email',
-                  prefixIcon: Icons.mail_outline,
+                  prefixIcon: KapdhIcons.mailOutline,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.done,
                   autofillHints: const [AutofillHints.email],
@@ -181,7 +182,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               ],
               const SizedBox(height: KapdhSpace.s4),
               const InfoBox(
-                icon: Icons.shield_outlined,
+                icon: KapdhIcons.shieldOutlined,
                 message:
                     'Demi keamanan, kami tidak memberi tahu apakah sebuah email terdaftar. Periksa juga folder spam '
                     'bila kode belum masuk.',
@@ -191,7 +192,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 alignment: WrapAlignment.center,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  const Text('Ingat password?', style: TextStyle(fontSize: 13, color: KapdhColors.primary)),
+                  Text('Ingat password?', style: TextStyle(fontSize: 13, color: context.kc.primary)),
                   KapdhLinkButton(label: 'Masuk', onPressed: _back),
                 ],
               ),

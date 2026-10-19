@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
@@ -85,6 +86,9 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
     );
     if (picked != null && mounted) setState(() => _invitees = picked);
   }
+
+  void _remove(DirectoryMember member) =>
+      setState(() => _invitees = _invitees.where((m) => m.userId != member.userId).toList());
 
   void _snack(String message) {
     ref.read(scaffoldMessengerKeyProvider).currentState
@@ -171,7 +175,7 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
                   customBorder: const CircleBorder(),
                   onTap: _busy ? null : _pickAvatar,
                   child: avatar == null
-                      ? const AlumniAvatar(name: 'Grup', size: 88, icon: Icons.add_a_photo_outlined)
+                      ? const AlumniAvatar(name: 'Grup', size: 88, icon: KapdhIcons.addAPhotoOutlined)
                       : ClipOval(
                           child: Image.memory(
                             avatar.bytes,
@@ -179,17 +183,17 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
                             height: 88,
                             fit: BoxFit.cover,
                             errorBuilder: (_, _, _) =>
-                                const AlumniAvatar(name: 'Grup', size: 88, icon: Icons.broken_image_outlined),
+                                const AlumniAvatar(name: 'Grup', size: 88, icon: KapdhIcons.brokenImageOutlined),
                           ),
                         ),
                 ),
               ),
             ),
             const SizedBox(height: KapdhSpace.s1),
-            const Center(
+            Center(
               child: Text(
                 'Foto grup (opsional)',
-                style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
               ),
             ),
             const SizedBox(height: KapdhSpace.s5),
@@ -210,9 +214,9 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
               onAction: _busy ? null : _pickInvitees,
             ),
             if (_invitees.isEmpty)
-              const Text(
+              Text(
                 'Belum ada alumni yang dipilih. Anda juga dapat mengundang setelah grup dibuat.',
-                style: TextStyle(color: KapdhColors.textMuted),
+                style: TextStyle(color: context.kc.textMuted),
               )
             else
               Wrap(
@@ -223,10 +227,11 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
                     InputChip(
                       label: Text(member.fullName),
                       deleteButtonTooltipMessage: 'Hapus ${member.fullName}',
-                      onDeleted: _busy
-                          ? null
-                          : () =>
-                                setState(() => _invitees = _invitees.where((m) => m.userId != member.userId).toList()),
+                      // [v2] Ikon silang Phosphor, bukan ikon Material bawaan InputChip.
+                      deleteIcon: const Icon(KapdhIcons.close, size: KapdhIconSize.button),
+                      onDeleted: _busy ? null : () => _remove(member),
+                      // Seluruh chip menghapus undangan (area ketuk 48 dp), bukan hanya ikon silang.
+                      onPressed: _busy ? null : () => _remove(member),
                     ),
                 ],
               ),
@@ -239,7 +244,7 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
             const SizedBox(height: KapdhSpace.s6),
             KapdhButton(
               label: 'Buat grup',
-              icon: Icons.group_add,
+              icon: KapdhIcons.groupAdd,
               busy: _busy,
               busyLabel: 'Membuat grup',
               onPressed: _busy || _created ? null : _create,

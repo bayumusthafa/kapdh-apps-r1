@@ -40,12 +40,12 @@ void main() {
       expect(find.byType(QrImageView), findsNothing);
       expect(find.text('QR muncul setelah KTA aktif'), findsOneWidget);
       expect(find.text('Berlaku sampai: belum aktif'), findsOneWidget);
-      // Gembok emas 34 px (prototipe layar 6), bukan ikon QR.
+      // Gembok emas 28 px (prototipe layar 6, kartu ringkas), bukan ikon QR.
       final lock = tester.widget<Icon>(
         find.descendant(of: find.byKey(const ValueKey('kta-qr-placeholder')), matching: find.byType(Icon)),
       );
-      expect(lock.icon, Icons.lock_outline);
-      expect(lock.size, 34);
+      expect(lock.icon, KapdhIcons.lockOutline);
+      expect(lock.size, 28);
       expect(lock.color, KapdhColors.accent);
     });
 
@@ -66,6 +66,44 @@ void main() {
     testWidgets('teks 200 % tanpa meluap', (tester) async {
       await pumpDesign(tester, KtaCard(data: KtaCardData.fromMemberCard(cardOf())), textScale: 2);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('kepala kartu: nama perkumpulan dan label KTA DIGITAL', (tester) async {
+      await pumpDesign(tester, KtaCard(data: KtaCardData.fromMemberCard(cardOf())));
+      expect(find.text('KELUARGA ALUMNI'), findsOneWidget);
+      expect(find.text('PESANTREN DAREL HIKMAH'), findsOneWidget);
+      expect(find.text('KTA DIGITAL'), findsOneWidget);
+    });
+
+    testWidgets('nama panjang: di atas QR (tidak terhalang), huruf mengecil, tanpa meluap', (tester) async {
+      const longName = 'Muhammad Abdurrahman Hafizhuddin Al-Faruqi Nasution';
+      final data = KtaCardData.fromMemberCard(cardOf());
+      await pumpDesign(
+        tester,
+        KtaCard(
+          data: KtaCardData(
+            fullName: longName,
+            subtitle: data.subtitle,
+            cohortCode: data.cohortCode,
+            memberNumber: data.memberNumber,
+            city: data.city,
+            validityText: data.validityText,
+            qrData: data.qrData,
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      final name = tester.getRect(find.text(longName));
+      final qr = tester.getRect(find.byKey(const ValueKey('kta-qr')));
+      expect(name.bottom, lessThanOrEqualTo(qr.top), reason: 'nama selalu di atas baris QR');
+      expect(tester.widget<Text>(find.text(longName)).style!.fontSize, lessThan(20));
+    });
+
+    test('ukuran huruf nama dan sisi QR', () {
+      expect(KtaCard.nameFontSize('Ahmad Fauzi', 230, TextScaler.noScaling), 20);
+      expect(KtaCard.qrSize(292), closeTo(96.4, 0.1));
+      expect(KtaCard.qrSize(500), 112);
+      expect(KtaCard.qrSize(200), 96);
     });
   });
 
@@ -116,7 +154,7 @@ void main() {
       expect(find.text('bukti-transfer.jpg'), findsOneWidget);
       expect(find.text('1,2 MB'), findsOneWidget);
       expect(find.text('Ganti'), findsOneWidget);
-      expect(find.byIcon(Icons.image_outlined), findsOneWidget);
+      expect(find.byIcon(KapdhIcons.imageOutlined), findsOneWidget);
     });
 
     testWidgets('garis putus-putus hijau terlihat di atas isian tile (prototipe layar 3)', (tester) async {
@@ -175,7 +213,7 @@ void main() {
       expect(find.text('Mengunggah 40%'), findsOneWidget);
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
       expect(find.text('Berkas lebih dari 5 MB.'), findsOneWidget);
-      expect(find.byIcon(Icons.error_outline), findsOneWidget);
+      expect(find.byIcon(KapdhIcons.errorOutline), findsOneWidget);
     });
   });
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../design/design.dart';
@@ -32,7 +33,7 @@ class DirectoryTab extends ConsumerWidget {
       body = ErrorState.fromException(state.error!, onRetry: controller.refresh);
     } else if (state.isEmpty) {
       body = EmptyState(
-        icon: Icons.person_search_outlined,
+        icon: KapdhIcons.personSearchOutlined,
         title: 'Alumni tidak ditemukan',
         message: filter.isEmpty
             ? 'Belum ada alumni aktif yang menampilkan profilnya di direktori.'
@@ -138,7 +139,7 @@ class _ActiveFilters extends ConsumerWidget {
               liveRegion: true,
               child: Text(
                 '$count alumni ditemukan',
-                style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
               ),
             ),
         ],

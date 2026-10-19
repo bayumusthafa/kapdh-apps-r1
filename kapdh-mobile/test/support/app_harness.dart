@@ -9,6 +9,7 @@ import 'package:kapdh_mobile/core/api/api_providers.dart';
 import 'package:kapdh_mobile/core/storage/secure_store.dart';
 import 'package:kapdh_mobile/core/storage/token_store.dart';
 import 'package:kapdh_mobile/core/ui/external_links.dart';
+import 'package:kapdh_mobile/core/welcome/welcome_gate.dart';
 
 import 'fakes.dart';
 import 'widget_harness.dart';
@@ -45,6 +46,7 @@ Future<AppHarness> pumpApp(
   StoredTokens? tokens,
   SecureStore? store,
   TestClock? clock,
+  WelcomeStore? welcome,
   double textScale = 1,
   List<Override> overrides = const [],
   Future<void> Function(ProviderContainer container)? beforeStart,
@@ -63,6 +65,7 @@ Future<AppHarness> pumpApp(
     adapter: adapter,
     store: store ?? MemorySecureStore(),
     clock: testClock,
+    welcome: welcome,
     overrides: [
       externalLinkLauncherProvider.overrideWithValue((uri) async {
         launched.add(uri);

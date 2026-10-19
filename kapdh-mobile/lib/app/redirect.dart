@@ -4,6 +4,7 @@ import 'package:kapdh_api/kapdh_api.dart';
 import '../core/app_gate/app_gate.dart';
 import '../core/deep_link/deep_links.dart';
 import '../core/session/session_state.dart';
+import '../core/welcome/welcome_gate.dart';
 import 'routes.dart';
 
 /// Kelompok rute untuk matriks akses (ARCHITECTURE §8.4, PRD 2.2).
@@ -11,6 +12,9 @@ enum RouteGroup {
   splash,
   updateRequired,
   maintenance,
+
+  /// Pilihan Daftar/Masuk untuk pemasangan baru atau pembaruan aplikasi (anonim saja).
+  welcome,
   login,
   register,
   registerOtp,
@@ -67,7 +71,12 @@ const Set<RouteGroup> _authGroups = {
   RouteGroup.forgotReset,
 };
 
-const Set<RouteGroup> _systemGroups = {RouteGroup.splash, RouteGroup.updateRequired, RouteGroup.maintenance};
+const Set<RouteGroup> _systemGroups = {
+  RouteGroup.splash,
+  RouteGroup.updateRequired,
+  RouteGroup.maintenance,
+  RouteGroup.welcome,
+};
 
 /// Kelompok rute dari path.
 RouteGroup routeGroupOf(String path) {
@@ -80,6 +89,7 @@ RouteGroup routeGroupOf(String path) {
     'splash' when single => RouteGroup.splash,
     'update-required' when single => RouteGroup.updateRequired,
     'maintenance' when single => RouteGroup.maintenance,
+    'welcome' when single => RouteGroup.welcome,
     'login' when single => RouteGroup.login,
     'register' when single => RouteGroup.register,
     'register' when second == 'otp' && segments.length == 2 => RouteGroup.registerOtp,
@@ -203,13 +213,16 @@ bool isRouteAllowed(EffectiveStatus status, RouteGroup group) =>
 /// aplikasi ini diarahkan ke layar wajib update; aplikasi tidak menebak akses.
 String homeFor(EffectiveStatus status) => routeForStatus(status)?.path ?? AppRoutes.updateRequired;
 
-/// Masukan redirect: keputusan gerbang aplikasi dan keadaan sesi.
+/// Masukan redirect: keputusan gerbang aplikasi, keadaan sesi dan penanda Welcome.
 @immutable
 class RedirectState {
-  const RedirectState({required this.gate, required this.session});
+  const RedirectState({required this.gate, required this.session, this.welcome = WelcomeStatus.done});
 
   final GateStatus gate;
   final SessionState session;
+
+  /// Pemasangan baru/pembaruan: anonim di splash diarahkan ke Welcome, bukan langsung ke layar Masuk.
+  final WelcomeStatus welcome;
 }
 
 /// Redirect go_router (ARCHITECTURE §8.4; PRD 2.2, 4.5, AC F13-3). Fungsi murni; null berarti tetap di [location].
@@ -263,7 +276,7 @@ String? resolveRedirect(RedirectState state, Uri location) {
     case SessionPhase.unknown:
       return group == RouteGroup.splash ? null : _withFrom(AppRoutes.splash, _pending(location, group));
     case SessionPhase.anonymous:
-      return _anonymous(session, location, group);
+      return _anonymous(state, location, group);
     case SessionPhase.authenticated:
     case SessionPhase.offlineLastKnown:
       final current = status ?? EffectiveStatus.unknown;
@@ -271,7 +284,9 @@ String? resolveRedirect(RedirectState state, Uri location) {
       // Tautan reset dari pengurus dibuka saat masih masuk (AC F16-4): reset itu mencabut seluruh sesi, jadi tautan
       // tidak dibuang. Layar pemulihan menjelaskannya dan menawarkan keluar lalu melanjutkan tautan yang sama.
       if (group == RouteGroup.forgotOtp && _isChallengeLink(location)) return null;
-      if (group == RouteGroup.splash || _authGroups.contains(group)) return _landing(state, _fromParam(location));
+      if (group == RouteGroup.splash || group == RouteGroup.welcome || _authGroups.contains(group)) {
+        return _landing(state, _fromParam(location));
+      }
       return homeFor(current);
   }
 }
@@ -299,7 +314,8 @@ String? readOnlyLanding(RedirectState state, Uri location) {
 /// Apakah [location] boleh dibuka sekarang tanpa dialihkan (mis. untuk mengunci tab shell).
 bool isLocationAllowed(RedirectState state, String location) => resolveRedirect(state, Uri.parse(location)) == null;
 
-String? _anonymous(SessionState session, Uri location, RouteGroup group) {
+String? _anonymous(RedirectState state, Uri location, RouteGroup group) {
+  final session = state.session;
   // Tautan challenge OTP yang ditunda selama splash (tautan email dibuka saat aplikasi belum berjalan, AC F16-4)
   // langsung dilanjutkan ke layar OTP-nya, bukan ke login.
   if (group == RouteGroup.splash) {
@@ -325,8 +341,17 @@ String? _anonymous(SessionState session, Uri location, RouteGroup group) {
       // next=deletion_pending/account_disabled). Portal status bekerja tanpa sesi dengan challenge terbatas
       // (PRD 2.2, F-14): status dari login atau permintaan hapus, dan pemeriksaan ulang lewat OTP email.
       return null;
+    case RouteGroup.welcome:
+      // Selalu boleh dilihat tanpa sesi; tombolnya menuju Daftar atau Masuk.
+      return null;
     case RouteGroup.splash:
-      return _withFrom(AppRoutes.login, _fromParam(location));
+      final from = _fromParam(location);
+      if (from == null) {
+        // Penanda Welcome belum terbaca: tetap di splash sebentar agar tidak sempat berkedip ke layar Masuk.
+        if (state.welcome == WelcomeStatus.unknown) return null;
+        if (state.welcome == WelcomeStatus.pending) return AppRoutes.welcome;
+      }
+      return _withFrom(AppRoutes.login, from);
     default:
       // Rute terlindungi: masuk dulu, lalu kembali ke tujuan (AC F13-3).
       return _withFrom(AppRoutes.login, _pending(location, group));
@@ -341,6 +366,7 @@ String _landing(RedirectState state, Uri? from) {
       return _withFrom(AppRoutes.splash, from);
     case SessionPhase.anonymous:
       if (from != null && _isChallengeLink(from)) return _locationString(from);
+      if (from == null && state.welcome == WelcomeStatus.pending) return AppRoutes.welcome;
       return _withFrom(AppRoutes.login, from);
     case SessionPhase.authenticated:
     case SessionPhase.offlineLastKnown:

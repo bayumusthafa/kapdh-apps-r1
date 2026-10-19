@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
+import '../../app/theme/kapdh_theme.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/format/formatters.dart';
@@ -135,6 +137,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // yang tersisa (N-11).
       scrollable: true,
       header: BrandHeader(
+        motif: BrandMotif.waves,
         padding: const EdgeInsets.fromLTRB(KapdhSpace.s6, KapdhSpace.s4, KapdhSpace.s4, KapdhSpace.s8 + KapdhSpace.s4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -181,7 +184,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 label: 'Email',
                 controller: _email,
                 hint: 'Masukkan Email',
-                prefixIcon: Icons.mail_outline,
+                prefixIcon: KapdhIcons.mailOutline,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.email],
@@ -217,7 +220,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: InfoBox(
                     key: const ValueKey('login-notice'),
                     tone: notice.success ? InfoBoxTone.info : InfoBoxTone.warning,
-                    icon: notice.success ? Icons.check_circle_outline : null,
+                    icon: notice.success ? KapdhIcons.checkCircleOutline : null,
                     title: notice.title,
                     message: notice.message,
                   ),
@@ -233,9 +236,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               if (blocked > Duration.zero) ...[
                 const SizedBox(height: KapdhSpace.s2),
                 // PRD 2.5: cooldown kegagalan login tidak menutup jalur pemulihan.
-                const Text(
+                Text(
                   'Sambil menunggu, Anda tetap dapat memulihkan akun lewat Lupa Password.',
-                  style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                  style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
                 ),
               ],
               const SizedBox(height: KapdhSpace.s5),
@@ -251,7 +254,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 alignment: WrapAlignment.center,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  const Text('Belum ada akun?', style: TextStyle(fontSize: 13, color: KapdhColors.primary)),
+                  Text('Belum ada akun?', style: TextStyle(fontSize: 13, color: context.kc.primary)),
                   KapdhLinkButton(label: 'Daftar', onPressed: () => context.go(AppRoutes.register)),
                 ],
               ),
@@ -286,14 +289,14 @@ class _ForgotPasswordLink extends StatelessWidget {
       key: const ValueKey('login-forgot'),
       onPressed: onPressed,
       style: TextButton.styleFrom(
-        foregroundColor: KapdhColors.primary,
+        foregroundColor: context.kc.primary,
         padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s1),
         minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
-        textStyle: const TextStyle(
+        textStyle: KapdhTheme.font(
           fontSize: KapdhFontSize.caption,
           fontWeight: FontWeight.w600,
           decoration: TextDecoration.underline,
-          decorationColor: KapdhColors.primary,
+          decorationColor: context.kc.primary,
         ),
       ),
       child: const Text('Lupa Password'),

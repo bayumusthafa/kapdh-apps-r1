@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Welcome - Mockup KAPDH</title>
+  <meta name="description" content="Mockup statis layar Welcome (WelcomeScreen) aplikasi KAPDH untuk iterasi desain.">
+  <script src="../js/theme.js"></script>
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages/auth.css">
+</head>
+<body>
+  <header class="page-header">
+    <nav class="page-header__nav" aria-label="Navigasi mockup">
+      <a href="../index.html"><span class="ic ph-arrow-left ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../components.html">Komponen</a>
+    </nav>
+    <h1 class="page-header__title">Welcome</h1>
+    <dl class="page-header__meta">
+      <dt>Dart</dt><dd><code>lib/features/system/welcome_screen.dart</code> (WelcomeScreen); penanda <code>lib/core/welcome/welcome_gate.dart</code> (WelcomeController, WelcomeStore)</dd>
+      <dt>Rute</dt><dd><code>/welcome</code></dd>
+    </dl>
+    <div class="page-header__states">
+      <h2>Keadaan yang ditampilkan</h2>
+      <ol>
+        <li>Utama</li>
+      </ol>
+    </div>
+    <p class="page-header__note">Tampil setelah splash bila aplikasi baru dipasang atau baru diperbarui (penanda <code>versi+build</code> di shared_preferences berbeda) dan belum ada sesi. Tujuan tertunda (deep link) melewati layar ini langsung ke Masuk. Menekan salah satu tombol, atau masuk dengan sesi tersimpan, menandai build ini sehingga peluncuran berikutnya langsung ke layar Masuk. Teks disalin dari desain referensi pemilik ("Welcome to" dalam bahasa Inggris).</p>
+  </header>
+
+  <main class="frames">
+
+    <figure class="frame">
+      <figcaption class="frame__label"><span class="frame__num">1</span> Utama</figcaption>
+      <div class="device" role="group" aria-label="Welcome, pilihan daftar atau masuk">
+        <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
+        <div class="screen auth-welcome">
+          <div class="auth-welcome__inner">
+            <div class="auth-welcome__intro">
+              <img class="auth-welcome__logo" src="../assets/logo-kapdh.png" alt="Logo KAPDH" width="180" height="180">
+              <h2 class="auth-welcome__hello">Welcome to<span class="auth-welcome__name">KAPDH Apps</span></h2>
+              <p class="auth-welcome__tagline">Sarana silaturahmi untuk mempererat kebersamaan dan kekeluargaan alumni.</p>
+            </div>
+            <div class="auth-welcome__actions">
+              <button class="btn btn--accent" type="button">Daftar KAPDH Apps</button>
+              <button class="btn btn--outline-on-dark" type="button">Sudah Punya Akun? Masuk</button>
+            </div>
+          </div>
+        </div>
+        <div class="sysnav sysnav--on-dark" aria-hidden="true"></div>
+      </div>
+    </figure>
+
+  </main>
+</body>
+</html>

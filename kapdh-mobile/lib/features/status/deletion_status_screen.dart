@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/format/formatters.dart';
@@ -54,13 +55,13 @@ class DeletionStatusScreen extends ConsumerWidget {
               Text(
                 'Status per ${formatDateTime(checked)}',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
               ),
             ],
             const SizedBox(height: KapdhSpace.s5),
             if (account == DeletionPortalAccount.deletionPending || account == DeletionPortalAccount.unknown) ...[
               const InfoBox(
-                icon: Icons.shield_outlined,
+                icon: KapdhIcons.shieldOutlined,
                 title: 'Data apa yang dihapus?',
                 message:
                     'Data pribadi, kontak, foto, unggahan, file bukti transfer dan isi chat Anda dihapus. Catatan '
@@ -77,7 +78,7 @@ class DeletionStatusScreen extends ConsumerWidget {
               alignment: Alignment.centerLeft,
               child: KapdhLinkButton(
                 label: 'Kebijakan privasi',
-                icon: Icons.privacy_tip_outlined,
+                icon: KapdhIcons.privacyTipOutlined,
                 onPressed: () => context.push(AppRoutes.legal(AppRoutes.privacySlug)),
               ),
             ),
@@ -91,7 +92,7 @@ class DeletionStatusScreen extends ConsumerWidget {
                   DeletionPortalAccount.active || DeletionPortalAccount.registrationPending => 'Masuk',
                   _ => 'Kembali ke halaman masuk',
                 },
-                icon: Icons.login,
+                icon: KapdhIcons.login,
                 onPressed: () {
                   ref.read(deletionPortalProvider.notifier).clear();
                   context.go(AppRoutes.login);
@@ -114,7 +115,7 @@ class _PortalHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5 + KapdhSpace.s4),
       child: Row(
         children: [
-          Image.asset('assets/logo-kapdh.png', width: 44, height: 44, semanticLabel: 'Logo KAPDH'),
+          const BrandLogoFrame(),
           const SizedBox(width: KapdhSpace.s3),
           Expanded(
             child: Semantics(
@@ -173,7 +174,7 @@ class _StatusSummary extends StatelessWidget {
                 liveRegion: true,
                 child: const InfoBox(
                   key: ValueKey('deletion-just-requested'),
-                  icon: Icons.check_circle_outline,
+                  icon: KapdhIcons.checkCircleOutline,
                   title: 'Permintaan diterima',
                   message:
                       'Anda sudah keluar dari semua perangkat, dan data akun di perangkat ini sudah dihapus. Simpan '
@@ -198,7 +199,7 @@ class _StatusSummary extends StatelessWidget {
                 alignment: Alignment.centerRight,
                 child: KapdhLinkButton(
                   label: 'Salin nomor permintaan',
-                  icon: Icons.copy,
+                  icon: KapdhIcons.copy,
                   onPressed: () async {
                     final messenger = ScaffoldMessenger.maybeOf(context);
                     await Clipboard.setData(ClipboardData(text: deletion.requestNumber));
@@ -220,7 +221,7 @@ class _StatusSummary extends StatelessWidget {
       case DeletionPortalAccount.active:
         return StatusHero(
           status: StatusStyles.membership(EffectiveStatus.verified),
-          icon: Icons.verified_user_outlined,
+          icon: KapdhIcons.verifiedUserOutlined,
           showBadge: false,
           title: 'Tidak ada permintaan penghapusan',
           message: 'Akun dengan email ini aktif dan tidak sedang dihapus. Silakan masuk untuk memakai aplikasi.',
@@ -234,7 +235,7 @@ class _StatusSummary extends StatelessWidget {
       case DeletionPortalAccount.unknown:
         return StatusHero(
           status: StatusStyles.membership(EffectiveStatus.deletionPending),
-          icon: Icons.manage_search,
+          icon: KapdhIcons.manageSearch,
           showBadge: false,
           title: 'Periksa status penghapusan akun',
           message:

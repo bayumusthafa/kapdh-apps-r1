@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
 import '../../app/routes.dart';
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
 import '../../core/session/session_controller.dart';
@@ -250,13 +251,13 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
+              leading: const Icon(KapdhIcons.photoCameraOutlined),
               title: const Text('Ambil foto'),
               onTap: () => Navigator.of(sheetContext).pop(AvatarSource.camera),
             ),
             ListTile(
               key: const ValueKey('avatar-source-gallery'),
-              leading: const Icon(Icons.photo_library_outlined),
+              leading: const Icon(KapdhIcons.photoLibraryOutlined),
               title: const Text('Pilih dari galeri'),
               onTap: () => Navigator.of(sheetContext).pop(AvatarSource.gallery),
             ),
@@ -478,10 +479,12 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       IconData? icon,
       TextInputType? keyboard,
       int maxLines = 1,
+      int? minLines,
       String? helper,
       Iterable<String>? autofill,
+      double bottom = KapdhSpace.s4,
     }) => Padding(
-      padding: const EdgeInsets.only(bottom: KapdhSpace.s4),
+      padding: EdgeInsets.only(bottom: bottom),
       child: KapdhTextField(
         key: ValueKey('profile-$key'),
         label: label,
@@ -490,6 +493,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         prefixIcon: icon,
         keyboardType: keyboard,
         maxLines: maxLines,
+        minLines: minLines,
         helperText: helper,
         autofillHints: autofill,
         errorText: fieldError(key),
@@ -511,14 +515,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                   KapdhLinkButton(
                     key: const ValueKey('avatar-change'),
                     label: 'Ganti foto',
-                    icon: Icons.photo_camera_outlined,
+                    icon: KapdhIcons.photoCameraOutlined,
                     onPressed: _saving ? null : _pickAvatar,
                   ),
                   if (_newAvatar != null || (profile.avatarFileId != null && !_removeAvatar))
                     KapdhLinkButton(
                       key: const ValueKey('avatar-delete'),
                       label: 'Hapus foto',
-                      icon: Icons.delete_outline,
+                      icon: KapdhIcons.deleteOutline,
                       onPressed: _saving ? null : _removePhoto,
                     ),
                 ],
@@ -526,12 +530,12 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
               if (fieldError('avatar_file_id') case final message?)
                 Text(
                   message,
-                  style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.danger),
+                  style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.danger),
                 ),
-              const Text(
+              Text(
                 'JPG, PNG atau WebP maksimal 5 MB. Data lokasi foto dihapus otomatis.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
               ),
             ],
           ),
@@ -556,7 +560,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           'Kota domisili',
           _city,
           hint: 'Mis. Pekanbaru',
-          icon: Icons.location_on_outlined,
+          icon: KapdhIcons.locationOnOutlined,
           helper: 'Hanya kota, bukan alamat lengkap. Tampil di KTA.',
         ),
         field(
@@ -564,7 +568,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           'Nomor telepon',
           _phone,
           hint: '+62 812 3456 7890',
-          icon: Icons.phone_outlined,
+          icon: KapdhIcons.phoneOutlined,
           keyboard: TextInputType.phone,
           autofill: const [AutofillHints.telephoneNumber],
           helper: 'Disembunyikan dari anggota lain kecuali Anda mengizinkannya di Privasi.',
@@ -575,75 +579,103 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           _bio,
           hint: 'Ceritakan singkat tentang Anda',
           maxLines: 4,
+          minLines: 1,
           helper: '${_bio.text.trim().length}/500 karakter',
         ),
         const SizedBox(height: KapdhSpace.s2),
-        _PickerField(
-          key: const ValueKey('profile-profession'),
-          label: 'Profesi',
-          value: _profession == null
-              ? null
-              : _profession!.active == false
-              ? '${_profession!.label} (tidak aktif)'
-              : _profession!.label,
-          placeholder: 'Pilih profesi',
-          errorText: fieldError('profession_id'),
-          onTap: _saving ? null : _chooseProfession,
-        ),
-        const SizedBox(height: KapdhSpace.s4),
-        _PickerField(
-          key: const ValueKey('profile-skills'),
-          label: 'Keahlian (maksimal $maxSkills)',
-          value: _skills.isEmpty ? null : '${_skills.length} keahlian dipilih',
-          placeholder: 'Pilih keahlian',
-          errorText: fieldError('skill_ids'),
-          onTap: _saving ? null : _chooseSkills,
-          chips: [for (final skill in _skills) skill.active == false ? '${skill.label} (tidak aktif)' : skill.label],
+        // [v2] Tiga kartu berkepala ikon. Isiannya data profil yang ada sekarang (satu profesi, satu pendidikan, empat
+        // media sosial tetap); isian berulang menunggu perubahan kontrak profil (REDESAIN.md).
+        AccountFormCard(
+          icon: KapdhIcons.workOutline,
+          title: 'Profesi & Keahlian',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _TagPickerField(
+                key: const ValueKey('profile-profession'),
+                label: 'Profesi',
+                kind: 'profesi',
+                tags: [
+                  if (_profession case final profession?)
+                    profession.active == false ? '${profession.label} (tidak aktif)' : profession.label,
+                ],
+                placeholder: 'Pilih profesi',
+                helper: 'Pekerjaan utama saat ini. Pilih dari daftar.',
+                errorText: fieldError('profession_id'),
+                onTap: _saving ? null : _chooseProfession,
+                onRemove: _saving ? null : (_) => setState(() => _profession = null),
+              ),
+              const SizedBox(height: KapdhSpace.s5),
+              _TagPickerField(
+                key: const ValueKey('profile-skills'),
+                label: 'Keahlian',
+                kind: 'keahlian',
+                tags: [
+                  for (final skill in _skills) skill.active == false ? '${skill.label} (tidak aktif)' : skill.label,
+                ],
+                placeholder: _skills.isEmpty ? 'Pilih keahlian' : '${_skills.length} dari $maxSkills dipilih',
+                helper: 'Bidang yang Anda kuasai (maksimal $maxSkills), agar alumni lain mudah menemukan Anda.',
+                errorText: fieldError('skill_ids'),
+                onTap: _saving ? null : _chooseSkills,
+                onRemove: _saving ? null : (index) => setState(() => _skills = [..._skills]..removeAt(index)),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: KapdhSpace.s5),
-        AccountSection(
-          title: 'LULUSAN TERAKHIR',
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(KapdhSpace.s4, KapdhSpace.s4, KapdhSpace.s4, 0),
-              child: Column(
-                children: [
-                  field('last_education_institution', 'Institusi', _eduInstitution, hint: 'Mis. Universitas Indonesia'),
-                  field('last_education_city', 'Kota', _eduCity, hint: 'Mis. Jakarta'),
-                ],
+        AccountFormCard(
+          icon: KapdhIcons.schoolOutlined,
+          title: 'Riwayat Pendidikan',
+          description: 'Pendidikan terakhir setelah pondok: universitas/instansi dan kotanya.',
+          child: Column(
+            children: [
+              field(
+                'last_education_institution',
+                'Universitas/Instansi',
+                _eduInstitution,
+                hint: 'Mis. Universitas Indonesia',
               ),
-            ),
-          ],
+              field('last_education_city', 'Kota', _eduCity, hint: 'Mis. Jakarta', bottom: 0),
+            ],
+          ),
         ),
         const SizedBox(height: KapdhSpace.s5),
-        AccountSection(
-          title: 'MEDIA SOSIAL',
-          footnote: 'Isi nama pengguna (mis. ahmad.islam) atau tautan https://. Disembunyikan kecuali diizinkan.',
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(KapdhSpace.s4, KapdhSpace.s4, KapdhSpace.s4, 0),
-              child: Column(
-                children: [
-                  field(
-                    'social_instagram',
-                    'Instagram',
-                    _instagram,
-                    hint: 'nama pengguna',
-                    icon: Icons.camera_alt_outlined,
-                  ),
-                  field('social_x', 'X', _x, hint: 'nama pengguna', icon: Icons.alternate_email),
-                  field('social_facebook', 'Facebook', _facebook, hint: 'nama pengguna', icon: Icons.facebook),
-                  field(
-                    'social_linkedin',
-                    'LinkedIn',
-                    _linkedin,
-                    hint: 'https://www.linkedin.com/in/...',
-                    icon: Icons.work_outline,
-                  ),
-                ],
+        AccountFormCard(
+          icon: KapdhIcons.share,
+          title: 'Media Sosial',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              field(
+                'social_instagram',
+                'Instagram',
+                _instagram,
+                hint: '@namapengguna atau tautan',
+                icon: KapdhIcons.instagramLogo,
               ),
-            ),
-          ],
+              field('social_x', 'X (Twitter)', _x, hint: '@namapengguna atau tautan', icon: KapdhIcons.xLogo),
+              field(
+                'social_facebook',
+                'Facebook',
+                _facebook,
+                hint: 'nama pengguna atau tautan',
+                icon: KapdhIcons.facebook,
+              ),
+              field(
+                'social_linkedin',
+                'LinkedIn',
+                _linkedin,
+                hint: 'https://www.linkedin.com/in/...',
+                icon: KapdhIcons.linkedinLogo,
+                bottom: KapdhSpace.s3,
+              ),
+              Text(
+                'Tempel tautan atau ketik nama pengguna, mis. @kapdh. Disembunyikan dari anggota lain kecuali diizinkan '
+                'di Privasi.',
+                style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.45, color: context.kc.textMuted),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: KapdhSpace.s6),
         KapdhButton(
@@ -673,7 +705,7 @@ class _ReadOnlyRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Text(label, style: const TextStyle(fontSize: 13, color: KapdhColors.textMuted)),
+              child: Text(label, style: TextStyle(fontSize: 13, color: context.kc.textMuted)),
             ),
             const SizedBox(width: KapdhSpace.s3),
             Flexible(
@@ -690,100 +722,147 @@ class _ReadOnlyRow extends StatelessWidget {
   }
 }
 
-/// Field pilihan master dengan label di atas (gaya KapdhTextField) dan cip pilihan (guideline hal. 7: profesi hijau,
-/// keahlian biru).
-class _PickerField extends StatelessWidget {
-  const _PickerField({
+/// Field pilihan master (Ubah Profil v2): label, cip terpilih bernada tint yang seluruhnya menghapus (pil 36 dalam
+/// target 48), pemilih bergaya field ("Pilih profesi") yang membuka lembar master, helper dan galat.
+class _TagPickerField extends StatelessWidget {
+  const _TagPickerField({
     super.key,
     required this.label,
-    required this.value,
+    required this.kind,
+    required this.tags,
     required this.placeholder,
     required this.onTap,
+    required this.onRemove,
+    this.helper,
     this.errorText,
-    this.chips = const [],
   });
 
   final String label;
-  final String? value;
+
+  /// "profesi" / "keahlian" untuk label pembaca layar ("Hapus keahlian Bahasa Arab").
+  final String kind;
+  final List<String> tags;
   final String placeholder;
+  final String? helper;
   final VoidCallback? onTap;
+  final ValueChanged<int>? onRemove;
   final String? errorText;
-  final List<String> chips;
 
   @override
   Widget build(BuildContext context) {
+    final p = context.kc;
     final error = errorText;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ExcludeSemantics(
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: KapdhFontSize.label, fontWeight: FontWeight.w500),
+    // Material bening lokal: dekorasi Ink dan riak InkWell dilukis di sini, di atas latar
+    // AccountFormCard (Container berwarna), bukan di Material Scaffold di bawahnya.
+    // textStyle meneruskan gaya teks induk agar tampilan teks tidak berubah.
+    return Material(
+      type: MaterialType.transparency,
+      textStyle: DefaultTextStyle.of(context).style,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ExcludeSemantics(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: KapdhFontSize.label, fontWeight: FontWeight.w500),
+            ),
           ),
-        ),
-        const SizedBox(height: KapdhSpace.s2),
-        Semantics(
-          button: true,
-          label: '$label, ${value ?? placeholder}',
-          excludeSemantics: true,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(KapdhRadius.md),
-            child: Container(
-              constraints: const BoxConstraints(minHeight: KapdhSize.inputHeight),
-              padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: KapdhSpace.s3),
-              decoration: BoxDecoration(
-                color: KapdhColors.surface,
-                border: Border.all(color: error != null ? KapdhColors.danger : KapdhColors.border),
-                borderRadius: BorderRadius.circular(KapdhRadius.md),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      value ?? placeholder,
-                      style: TextStyle(
-                        fontSize: KapdhFontSize.body,
-                        color: value == null ? KapdhColors.textMuted : KapdhColors.text,
+          if (tags.isNotEmpty) ...[
+            const SizedBox(height: KapdhSpace.s1),
+            Wrap(
+              spacing: KapdhSpace.s2,
+              children: [
+                for (final (index, tag) in tags.indexed)
+                  Semantics(
+                    button: true,
+                    label: 'Hapus $kind $tag',
+                    excludeSemantics: true,
+                    onTap: onRemove == null ? null : () => onRemove!(index),
+                    child: InkWell(
+                      onTap: onRemove == null ? null : () => onRemove!(index),
+                      borderRadius: BorderRadius.circular(KapdhRadius.pill),
+                      child: Padding(
+                        // Pil 36 dalam area ketuk 48.
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        // Ink (bukan Container) agar riak tekan & sorotan fokus tidak tertutup warna pil.
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 36),
+                          child: Ink(
+                            padding: const EdgeInsets.fromLTRB(KapdhSpace.s4, 6, KapdhSpace.s3, 6),
+                            decoration: BoxDecoration(
+                              color: p.tint,
+                              borderRadius: BorderRadius.circular(KapdhRadius.pill),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    tag,
+                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: p.primary),
+                                  ),
+                                ),
+                                const SizedBox(width: KapdhSpace.s2),
+                                Icon(KapdhIcons.close, size: KapdhIconSize.sm, color: p.primary),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                  const Icon(Icons.keyboard_arrow_down),
-                ],
+              ],
+            ),
+          ],
+          const SizedBox(height: KapdhSpace.s1),
+          Semantics(
+            button: true,
+            label: '$label, $placeholder',
+            excludeSemantics: true,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(KapdhRadius.md),
+              // Ink (bukan Container) agar riak tekan & sorotan fokus tidak tertutup warna kotak pemilih.
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: KapdhSize.inputHeight),
+                child: Ink(
+                  padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: KapdhSpace.s3),
+                  decoration: BoxDecoration(
+                    color: p.surface,
+                    border: Border.all(color: error != null ? p.danger : p.border),
+                    borderRadius: BorderRadius.circular(KapdhRadius.md),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          placeholder,
+                          style: TextStyle(fontSize: KapdhFontSize.body, color: p.textMuted),
+                        ),
+                      ),
+                      Icon(KapdhIcons.keyboardArrowDown, color: onTap == null ? p.textMuted : p.text),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-        if (chips.isNotEmpty) ...[
-          const SizedBox(height: KapdhSpace.s2),
-          Wrap(
-            spacing: KapdhSpace.s2,
-            runSpacing: KapdhSpace.s2,
-            children: [
-              for (final chip in chips)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s2, vertical: KapdhSpace.s1),
-                  decoration: BoxDecoration(
-                    color: KapdhColors.infoBg,
-                    borderRadius: BorderRadius.circular(KapdhRadius.sm),
-                  ),
-                  child: Text(
-                    chip,
-                    style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.info),
-                  ),
-                ),
-            ],
-          ),
+          if (helper != null && error == null) ...[
+            const SizedBox(height: KapdhSpace.s2),
+            Text(
+              helper!,
+              style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.45, color: p.textMuted),
+            ),
+          ],
+          if (error != null) ...[
+            const SizedBox(height: KapdhSpace.s1),
+            Text(
+              error,
+              style: TextStyle(fontSize: KapdhFontSize.caption, color: p.danger),
+            ),
+          ],
         ],
-        if (error != null) ...[
-          const SizedBox(height: KapdhSpace.s1),
-          Text(
-            error,
-            style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.danger),
-          ),
-        ],
-      ],
+      ),
     );
   }
 }

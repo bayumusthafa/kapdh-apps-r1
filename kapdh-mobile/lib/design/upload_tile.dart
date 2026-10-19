@@ -2,8 +2,11 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../app/theme/kapdh_focus.dart';
+import '../app/theme/kapdh_palette.dart';
 import '../app/theme/kapdh_tokens.dart';
 import '../core/format/formatters.dart';
+import 'kapdh_icons.dart';
 
 /// Garis tepi putus-putus 1 px bersudut membulat (prototipe layar 3: `border: 1px dashed`). Dipasang sebagai
 /// `foregroundPainter` agar tidak tertutup isian latar tile.
@@ -71,7 +74,7 @@ class UploadTile extends StatelessWidget {
     final hasFile = fileName != null;
     final uploading = progress != null;
     final hasError = errorText != null;
-    final borderColor = hasError ? KapdhColors.danger : KapdhColors.primary;
+    final borderColor = hasError ? context.kc.danger : context.kc.primary;
     final title = hasFile ? fileName! : emptyTitle;
     final subtitle = uploading
         ? 'Mengunggah ${(progress!.clamp(0, 1) * 100).round()}%'
@@ -88,78 +91,84 @@ class UploadTile extends StatelessWidget {
           label: hasFile ? 'Berkas terpilih $title. $actionLabel berkas' : '$emptyTitle. $emptySubtitle',
           excludeSemantics: true,
           onTap: uploading ? null : onPick,
-          // Garis dilukis DI ATAS isian Material (foregroundPainter); bila sebagai painter biasa, isian hijau muda
-          // menutupinya sepenuhnya.
-          child: CustomPaint(
-            foregroundPainter: DashedBorderPainter(color: borderColor, radius: 12),
-            child: Material(
-              color: hasError ? KapdhColors.dangerBg : KapdhColors.green50,
-              borderRadius: BorderRadius.circular(12),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: uploading ? null : onPick,
-                child: Padding(
-                  padding: const EdgeInsets.all(KapdhSpace.s3),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: hasError ? KapdhColors.surface : KapdhColors.green100,
-                          borderRadius: BorderRadius.circular(KapdhSpace.s2),
+          // [v2] Cincin fokus 3 px saat ubin terfokus keyboard/akses saklar (WCAG 2.4.7, 1.4.11); dipasang di luar
+          // CustomPaint agar menimpa garis putus-putus, bukan tertimpa olehnya.
+          child: KapdhFocusRing(
+            radius: BorderRadius.circular(KapdhRadius.md),
+            // Garis dilukis DI ATAS isian Material (foregroundPainter); bila sebagai painter biasa, isian hijau muda
+            // menutupinya sepenuhnya.
+            builder: (onFocusChange) => CustomPaint(
+              foregroundPainter: DashedBorderPainter(color: borderColor, radius: KapdhRadius.md),
+              child: Material(
+                color: hasError ? context.kc.dangerBg : context.kc.tint,
+                borderRadius: BorderRadius.circular(KapdhRadius.md),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(KapdhRadius.md),
+                  onTap: uploading ? null : onPick,
+                  onFocusChange: onFocusChange,
+                  child: Padding(
+                    padding: const EdgeInsets.all(KapdhSpace.s3),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: hasError ? context.kc.surface : context.kc.tintStrong,
+                            borderRadius: BorderRadius.circular(KapdhSpace.s2),
+                          ),
+                          child: Icon(
+                            hasError
+                                ? KapdhIcons.errorOutline
+                                : (hasFile
+                                      ? (isPdf ? KapdhIcons.pictureAsPdfOutlined : KapdhIcons.imageOutlined)
+                                      : KapdhIcons.uploadFile),
+                            color: hasError ? context.kc.danger : context.kc.primary,
+                          ),
                         ),
-                        child: Icon(
-                          hasError
-                              ? Icons.error_outline
-                              : (hasFile
-                                    ? (isPdf ? Icons.picture_as_pdf_outlined : Icons.image_outlined)
-                                    : Icons.upload_file),
-                          color: hasError ? KapdhColors.danger : KapdhColors.primary,
-                        ),
-                      ),
-                      const SizedBox(width: KapdhSpace.s3),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                            ),
-                            if (subtitle != null)
+                        const SizedBox(width: KapdhSpace.s3),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
-                                subtitle,
-                                style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+                                title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                               ),
-                            if (uploading) ...[
-                              const SizedBox(height: KapdhSpace.s1),
-                              LinearProgressIndicator(value: progress, minHeight: 4),
+                              if (subtitle != null)
+                                Text(
+                                  subtitle,
+                                  style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
+                                ),
+                              if (uploading) ...[
+                                const SizedBox(height: KapdhSpace.s1),
+                                LinearProgressIndicator(value: progress, minHeight: 4),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
-                      ),
-                      if (!uploading && onPick != null)
-                        Padding(
-                          padding: const EdgeInsets.only(left: KapdhSpace.s2),
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(minHeight: KapdhSize.touchTargetMin),
-                            child: Center(
-                              widthFactor: 1,
-                              child: Text(
-                                actionLabel,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: KapdhColors.primary,
+                        if (!uploading && onPick != null)
+                          Padding(
+                            padding: const EdgeInsets.only(left: KapdhSpace.s2),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: KapdhSize.touchTargetMin),
+                              child: Center(
+                                widthFactor: 1,
+                                child: Text(
+                                  actionLabel,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: context.kc.primary,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -170,7 +179,7 @@ class UploadTile extends StatelessWidget {
           const SizedBox(height: KapdhSpace.s2),
           Text(
             errorText!,
-            style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.danger),
+            style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.danger),
           ),
         ],
       ],

@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import '../../../app/theme/kapdh_tokens.dart';
+import '../../../app/theme/kapdh_palette.dart';
 import '../../../core/format/formatters.dart';
 
 /// Foto profil bulat (guideline hal. 7). Urutan sumber: [bytes] pratinjau lokal (foto baru yang belum disimpan),
@@ -22,10 +22,14 @@ class ProfileAvatar extends StatelessWidget {
       width: size,
       height: size,
       alignment: Alignment.center,
-      color: KapdhColors.green100,
+      color: context.kc.tintStrong,
       child: Text(
         initialsOf(name),
-        style: TextStyle(fontSize: size * 0.34, fontWeight: FontWeight.w600, color: KapdhColors.primary),
+        maxLines: 1,
+        softWrap: false,
+        // Lingkaran berukuran tetap: inisial tidak ikut skala teks (mockup .avatar--profile tanpa var(--ts)).
+        textScaler: TextScaler.noScaling,
+        style: TextStyle(fontSize: size * 0.34, fontWeight: FontWeight.w600, height: 1, color: context.kc.primary),
       ),
     );
     final Widget image;
@@ -61,7 +65,7 @@ class ProfileAvatar extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: KapdhColors.surface, width: 3),
+          border: Border.all(color: context.kc.surface, width: 3),
           boxShadow: const [BoxShadow(color: Color(0x1F000000), blurRadius: 8, offset: Offset(0, 2))],
         ),
         child: ClipOval(child: image),

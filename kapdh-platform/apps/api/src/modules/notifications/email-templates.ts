@@ -100,7 +100,7 @@ export function renderNotificationEmail(input: NotificationEmailInput): MailMess
   const html = [
     '<!doctype html><html lang="id"><body style="margin:0;padding:24px;background:#f7f3ea;font-family:Arial,Helvetica,sans-serif;color:#1f2a1d">',
     '<div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;padding:24px">',
-    paragraph("KAPDH - Keluarga Alumni Ponpes Darel Hikmah", "font-weight:bold;color:#0e280c"),
+    paragraph("KAPDH - Keluarga Alumni Pesantren Darel Hikmah", "font-weight:bold;color:#0e280c"),
     paragraph(greeting),
     paragraph(copy.intro),
     paragraph(title, "font-size:18px;font-weight:bold"),

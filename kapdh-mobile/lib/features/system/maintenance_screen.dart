@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/redirect.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
@@ -43,54 +44,56 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
     final canShowKta = readOnlyTarget != AppRoutes.kta && isLocationAllowed(redirectState, AppRoutes.kta);
 
     return Scaffold(
-      backgroundColor: KapdhColors.background,
+      backgroundColor: context.kc.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(KapdhSpace.s5),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: KapdhSpace.s8),
-              StatusHero(
-                status: const StatusBadgeStyle(
-                  label: 'Pemeliharaan',
-                  icon: Icons.build_outlined,
-                  foreground: KapdhColors.warning,
-                  background: KapdhColors.warningBg,
+        child: ContentWidth(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(KapdhSpace.s5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: KapdhSpace.s8),
+                StatusHero(
+                  status: StatusBadgeStyle(
+                    label: 'Pemeliharaan',
+                    icon: KapdhIcons.buildOutlined,
+                    foreground: context.kc.warning,
+                    background: context.kc.warningBg,
+                  ),
+                  title: 'Layanan sedang dalam pemeliharaan',
+                  message:
+                      gate.maintenanceMessage ??
+                      'Kami sedang meningkatkan layanan. Data Anda aman; pengiriman data baru ditunda sementara.',
                 ),
-                title: 'Layanan sedang dalam pemeliharaan',
-                message:
-                    gate.maintenanceMessage ??
-                    'Kami sedang meningkatkan layanan. Data Anda aman; pengiriman data baru ditunda sementara.',
-              ),
-              const SizedBox(height: KapdhSpace.s5),
-              InfoBox(
-                icon: Icons.schedule,
-                message: until != null
-                    ? 'Perkiraan selesai: ${formatDateTime(until)}. Waktu dapat berubah.'
-                    : 'Perkiraan waktu selesai belum tersedia. Silakan coba lagi beberapa saat lagi.',
-              ),
-              const SizedBox(height: KapdhSpace.s6),
-              KapdhButton(label: 'Coba lagi', busyLabel: 'Memeriksa...', busy: _checking, onPressed: _retry),
-              if (readOnlyTarget != null) ...[
-                const SizedBox(height: KapdhSpace.s3),
-                KapdhButton.outlined(
-                  label: 'Lanjut dalam mode baca',
-                  icon: Icons.chrome_reader_mode_outlined,
-                  onPressed: () => context.go(readOnlyTarget),
+                const SizedBox(height: KapdhSpace.s5),
+                InfoBox(
+                  icon: KapdhIcons.schedule,
+                  message: until != null
+                      ? 'Perkiraan selesai: ${formatDateTime(until)}. Waktu dapat berubah.'
+                      : 'Perkiraan waktu selesai belum tersedia. Silakan coba lagi beberapa saat lagi.',
                 ),
+                const SizedBox(height: KapdhSpace.s6),
+                KapdhButton(label: 'Coba lagi', busyLabel: 'Memeriksa...', busy: _checking, onPressed: _retry),
+                if (readOnlyTarget != null) ...[
+                  const SizedBox(height: KapdhSpace.s3),
+                  KapdhButton.outlined(
+                    label: 'Lanjut dalam mode baca',
+                    icon: KapdhIcons.chromeReaderModeOutlined,
+                    onPressed: () => context.go(readOnlyTarget),
+                  ),
+                ],
+                if (canShowKta) ...[
+                  const SizedBox(height: KapdhSpace.s3),
+                  KapdhButton.outlined(
+                    label: 'Tampilkan KTA',
+                    icon: KapdhIcons.badgeOutlined,
+                    onPressed: () => context.go(AppRoutes.kta),
+                  ),
+                ],
+                const SizedBox(height: KapdhSpace.s6),
+                const SupportSection(subject: 'Pemeliharaan Layanan KAPDH'),
               ],
-              if (canShowKta) ...[
-                const SizedBox(height: KapdhSpace.s3),
-                KapdhButton.outlined(
-                  label: 'Tampilkan KTA',
-                  icon: Icons.badge_outlined,
-                  onPressed: () => context.go(AppRoutes.kta),
-                ),
-              ],
-              const SizedBox(height: KapdhSpace.s6),
-              const SupportSection(subject: 'Pemeliharaan Layanan KAPDH'),
-            ],
+            ),
           ),
         ),
       ),

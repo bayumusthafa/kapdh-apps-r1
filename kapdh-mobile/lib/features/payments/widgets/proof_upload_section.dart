@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../app/theme/kapdh_palette.dart';
 import '../../../app/theme/kapdh_tokens.dart';
 import '../../../design/design.dart';
 import '../proof_file.dart';
@@ -28,13 +29,18 @@ Future<ProofSource?> showProofSourceSheet(BuildContext context) {
               child: PaymentSectionTitle('Pilih bukti transfer'),
             ),
             for (final (source, icon, title, subtitle) in const [
-              (ProofSource.camera, Icons.photo_camera_outlined, 'Ambil foto', 'Foto bukti transfer dengan kamera'),
-              (ProofSource.gallery, Icons.photo_library_outlined, 'Pilih dari galeri', 'Tangkapan layar aplikasi bank'),
-              (ProofSource.pdf, Icons.picture_as_pdf_outlined, 'Pilih PDF', 'Bukti transfer PDF maks 10 MB'),
+              (ProofSource.camera, KapdhIcons.photoCameraOutlined, 'Ambil foto', 'Foto bukti transfer dengan kamera'),
+              (
+                ProofSource.gallery,
+                KapdhIcons.photoLibraryOutlined,
+                'Pilih dari galeri',
+                'Tangkapan layar aplikasi bank',
+              ),
+              (ProofSource.pdf, KapdhIcons.pictureAsPdfOutlined, 'Pilih PDF', 'Bukti transfer PDF maks 10 MB'),
             ])
               ListTile(
                 minTileHeight: KapdhSize.touchTargetMin + KapdhSpace.s2,
-                leading: Icon(icon, color: KapdhColors.primary),
+                leading: Icon(icon, color: context.kc.primary),
                 title: Text(title),
                 subtitle: Text(subtitle),
                 onTap: () => Navigator.of(sheetContext).pop(source),
@@ -95,9 +101,9 @@ class ProofUploadSection extends StatelessWidget {
           emptySubtitle: 'Foto JPG/PNG atau PDF',
         ),
         const SizedBox(height: KapdhSpace.s2),
-        const Text(
+        Text(
           proofRulesCaption,
-          style: TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
+          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
         ),
         const SizedBox(height: KapdhSpace.s4),
         KapdhTextField(
@@ -115,7 +121,7 @@ class ProofUploadSection extends StatelessWidget {
           InfoBox(
             key: const ValueKey('proof-checking-status'),
             tone: InfoBoxTone.warning,
-            icon: Icons.sync_problem,
+            icon: KapdhIcons.syncProblem,
             title: 'Memeriksa status',
             message:
                 'Koneksi terputus saat mengirim bukti. Anda tidak perlu transfer ulang. Status pengiriman diperiksa '

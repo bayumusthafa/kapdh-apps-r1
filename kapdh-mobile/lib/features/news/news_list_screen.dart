@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/session/session_controller.dart';
@@ -42,33 +43,34 @@ class _NewsListScreenState extends ConsumerState<NewsListScreen> {
     return AppScaffold(
       title: 'Berita',
       fallbackLocation: AppRoutes.home,
-      body: Column(
+      // [v2] Filter kategori di luar isi (mockup `.news-filter` di luar `.screen__body`): di tablet tetap selebar layar
+      // menyatu dengan app bar; hanya daftar kartu yang dibatasi ContentWidth. `banner` menggantikan pita global, jadi
+      // pita Offline/Pemeliharaan disertakan lagi di atas filter.
+      banner: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          ?AppBannerScope.of(context),
           _CategoryFilter(selected: _category, onSelected: (slug) => setState(() => _category = slug)),
-          Expanded(
-            child: PagedListView(
-              key: ValueKey('posts-${_category ?? 'semua'}'),
-              state: state,
-              loadingSemantics: 'Memuat berita',
-              onRefresh: controller.refresh,
-              onLoadMore: () => unawaited(controller.loadMore()),
-              itemBuilder: (context, post) =>
-                  PostCard(post: post, onTap: () => unawaited(context.push(AppRoutes.newsDetail(post.slug)))),
-              empty: EmptyState(
-                icon: Icons.article_outlined,
-                title: _category == null ? 'Belum ada berita' : 'Belum ada berita di kategori ini',
-                message: _category == null
-                    ? 'Berita resmi pengurus akan tampil di sini setelah terbit.'
-                    : 'Coba kategori lain atau lihat semua berita.',
-                actionLabel: _category == null ? 'Muat ulang' : 'Lihat semua berita',
-                onAction: _category == null
-                    ? () => unawaited(controller.refresh())
-                    : () => setState(() => _category = null),
-              ),
-            ),
-          ),
         ],
+      ),
+      body: PagedListView(
+        key: ValueKey('posts-${_category ?? 'semua'}'),
+        state: state,
+        loadingSemantics: 'Memuat berita',
+        onRefresh: controller.refresh,
+        onLoadMore: () => unawaited(controller.loadMore()),
+        itemBuilder: (context, post) =>
+            PostCard(post: post, onTap: () => unawaited(context.push(AppRoutes.newsDetail(post.slug)))),
+        empty: EmptyState(
+          icon: KapdhIcons.articleOutlined,
+          title: _category == null ? 'Belum ada berita' : 'Belum ada berita di kategori ini',
+          message: _category == null
+              ? 'Berita resmi pengurus akan tampil di sini setelah terbit.'
+              : 'Coba kategori lain atau lihat semua berita.',
+          actionLabel: _category == null ? 'Muat ulang' : 'Lihat semua berita',
+          onAction: _category == null ? () => unawaited(controller.refresh()) : () => setState(() => _category = null),
+        ),
       ),
     );
   }
@@ -91,9 +93,13 @@ class _CategoryFilter extends ConsumerWidget {
         label: Text(label),
         selected: selected == slug,
         onSelected: (_) => onSelected(slug),
-        selectedColor: KapdhColors.primary,
+        selectedColor: context.kc.primary,
+        // [v2] .choice-chip--primary.is-selected: --shadow-xs (0 1px 2px); chip tidak terpilih tetap datar.
+        elevation: 1,
+        shadowColor: Colors.transparent,
+        selectedShadowColor: context.kc.isDark ? Colors.black : const Color(0x3D0E280C),
         labelStyle: TextStyle(
-          color: selected == slug ? KapdhColors.onPrimary : KapdhColors.text,
+          color: selected == slug ? context.kc.onPrimary : context.kc.text,
           fontWeight: FontWeight.w600,
           fontSize: KapdhFontSize.caption,
         ),
@@ -101,7 +107,7 @@ class _CategoryFilter extends ConsumerWidget {
       ),
     );
     return Container(
-      color: KapdhColors.surface,
+      color: context.kc.surface,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s2, KapdhSpace.s3, KapdhSpace.s2),

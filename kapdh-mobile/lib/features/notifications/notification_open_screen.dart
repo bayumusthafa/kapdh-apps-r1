@@ -79,7 +79,7 @@ class _NotificationOpenScreenState extends ConsumerState<NotificationOpenScreen>
       fallbackLocation: AppRoutes.notifications,
       body: _notFound
           ? EmptyState(
-              icon: Icons.notifications_off_outlined,
+              icon: KapdhIcons.notificationsOffOutlined,
               title: 'Notifikasi tidak tersedia',
               message:
                   'Notifikasi ini bukan milik akun yang sedang masuk atau sudah tidak tersedia. Isinya tidak dibuka '

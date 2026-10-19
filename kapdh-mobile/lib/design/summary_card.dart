@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../app/theme/kapdh_palette.dart';
 import '../app/theme/kapdh_tokens.dart';
-import 'design_constants.dart';
 
 /// Satu baris label/nilai pada [SummaryCard].
 @immutable
@@ -69,7 +69,7 @@ class SummaryCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: size,
                   fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400,
-                  color: labelMuted && !isTotal ? KapdhColors.textMuted : KapdhColors.text,
+                  color: labelMuted && !isTotal ? context.kc.textMuted : context.kc.text,
                 ),
               ),
             ),
@@ -81,7 +81,9 @@ class SummaryCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: size,
                   fontWeight: isTotal ? FontWeight.w700 : (r.emphasis ? FontWeight.w600 : FontWeight.w400),
-                  color: r.valueColor ?? (isTotal ? KapdhColors.primary : KapdhColors.text),
+                  color: r.valueColor == null
+                      ? (isTotal ? context.kc.primary : context.kc.text)
+                      : context.kc.resolve(r.valueColor!),
                 ),
               ),
             ),
@@ -94,9 +96,11 @@ class SummaryCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: 14),
       decoration: BoxDecoration(
-        color: KapdhColors.surface,
-        border: Border.all(color: danger ? KapdhExtraColors.rejectionBorder : KapdhColors.divider),
+        color: context.kc.surface,
+        // [v2] Garis rambut cardBorder + --shadow-sm (dulu garis divider saja).
+        border: Border.all(color: danger ? context.kc.rejectionBorder : context.kc.cardBorder),
         borderRadius: BorderRadius.circular(KapdhRadius.lg),
+        boxShadow: context.kc.shadowSm,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,7 +112,7 @@ class SummaryCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: KapdhFontSize.body,
                 fontWeight: FontWeight.w600,
-                color: danger ? KapdhColors.danger : KapdhColors.text,
+                color: danger ? context.kc.danger : context.kc.text,
               ),
             ),
           ),
@@ -127,7 +131,7 @@ class SummaryCard extends StatelessWidget {
             const SizedBox(height: KapdhSpace.s2),
             Text(
               footnote!,
-              style: const TextStyle(fontSize: KapdhFontSize.caption, height: 1.5, color: KapdhColors.textMuted),
+              style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.5, color: context.kc.textMuted),
             ),
           ],
         ],

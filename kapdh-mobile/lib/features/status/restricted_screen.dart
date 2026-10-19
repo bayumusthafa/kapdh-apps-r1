@@ -60,7 +60,7 @@ class RestrictedScreen extends ConsumerWidget {
               const SizedBox(height: KapdhSpace.s3),
               const InfoBox(
                 tone: InfoBoxTone.warning,
-                icon: Icons.cloud_off,
+                icon: KapdhIcons.cloudOff,
                 message: 'Anda sedang offline. Status di atas berasal dari sinkronisasi terakhir.',
               ),
             ],
@@ -72,7 +72,7 @@ class RestrictedScreen extends ConsumerWidget {
               children: [
                 AccountMenuTile(
                   key: const ValueKey('restricted-notifications'),
-                  icon: Icons.notifications_outlined,
+                  icon: KapdhIcons.notificationsOutlined,
                   label: 'Notifikasi',
                   subtitle: 'Pemberitahuan pengurus dan keamanan akun',
                   badge: unread != null && unread > 0 ? (unread > 99 ? '99+' : '$unread') : null,
@@ -89,14 +89,14 @@ class RestrictedScreen extends ConsumerWidget {
               children: [
                 AccountMenuTile(
                   key: const ValueKey('restricted-sessions'),
-                  icon: Icons.devices_outlined,
+                  icon: KapdhIcons.devicesOutlined,
                   label: 'Sesi perangkat',
                   subtitle: 'Tinjau dan keluarkan perangkat yang tidak Anda kenali',
                   onTap: () => context.push(AppRoutes.accountSessions),
                 ),
                 AccountMenuTile(
                   key: const ValueKey('restricted-password'),
-                  icon: Icons.lock_reset,
+                  icon: KapdhIcons.lockReset,
                   label: 'Ganti password',
                   paused: pausedByMaintenance(gate, session, AppRoutes.accountPassword),
                   onTap: () => context.push(AppRoutes.accountPassword),
@@ -115,19 +115,19 @@ class RestrictedScreen extends ConsumerWidget {
               children: [
                 KapdhLinkButton(
                   label: 'Ketentuan komunitas',
-                  icon: Icons.gavel_outlined,
+                  icon: KapdhIcons.gavelOutlined,
                   onPressed: () => context.push(AppRoutes.legal(AppRoutes.communitySlug)),
                 ),
                 KapdhLinkButton(
                   label: 'Kebijakan privasi',
-                  icon: Icons.privacy_tip_outlined,
+                  icon: KapdhIcons.privacyTipOutlined,
                   onPressed: () => context.push(AppRoutes.legal(AppRoutes.privacySlug)),
                 ),
               ],
             ),
             const SizedBox(height: KapdhSpace.s3),
             InfoBox(
-              icon: Icons.delete_outline,
+              icon: KapdhIcons.deleteOutline,
               title: 'Ingin menghapus akun?',
               message:
                   'Anda tetap dapat menghapus akun dan data pribadi setelah mengonfirmasi password, tanpa membuka '

@@ -8,6 +8,7 @@ import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
 import '../chat/chat_fixtures.dart';
 import 'network_fixtures.dart';
+import 'package:kapdh_mobile/design/kapdh_icons.dart';
 
 Future<AppHarness> _openProfile(
   WidgetTester tester, {
@@ -44,13 +45,15 @@ void main() {
       expect(find.text('Ahmad Islam'), findsOneWidget);
       expect(find.text('Angkatan'), findsOneWidget);
       expect(find.text('#KAPDH01 · Lulus 1997'), findsOneWidget);
-      expect(find.text('Universitas Indonesia • Jakarta'), findsOneWidget);
+      // v2: Riwayat Pendidikan menampilkan institusi lalu kota di baris keterangan.
+      expect(find.text('Universitas Indonesia'), findsOneWidget);
+      expect(find.text('Jakarta'), findsOneWidget);
       expect(find.text('Guru'), findsOneWidget);
       // AC F10-4: master nonaktif tetap tampil sebagai label historis.
       expect(find.text('Berhitung Cepat'), findsOneWidget);
       expect(find.text('Nomor Telpon'), findsNothing);
-      expect(find.text('Social Media'), findsNothing);
-      expect(find.byIcon(Icons.mail_outline), findsNothing);
+      expect(find.text('Media Sosial'), findsNothing);
+      expect(find.byIcon(KapdhIcons.mailOutline), findsNothing);
       expect(find.text('Kirim Pesan'), findsOneWidget);
     });
 
@@ -71,7 +74,8 @@ void main() {
       expect(find.text('ahmadislam@gmail.com'), findsOneWidget);
       expect(find.text('Nomor Telpon'), findsOneWidget);
       expect(find.text('+62 87 873 465 3623'), findsOneWidget);
-      expect(find.text('Social Media'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Media Sosial'), 200, scrollable: find.byType(Scrollable).first);
+      expect(find.text('Media Sosial'), findsOneWidget);
       expect(find.bySemanticsLabel('Instagram: @ahmadislam'), findsOneWidget);
       expect(find.bySemanticsLabel('Facebook: null'), findsNothing);
 

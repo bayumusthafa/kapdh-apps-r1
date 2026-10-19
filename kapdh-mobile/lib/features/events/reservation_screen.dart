@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/app_gate/app_gate.dart';
 import '../../core/format/formatters.dart';
@@ -104,7 +105,7 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
           const SizedBox(height: KapdhSpace.s4),
           const _Label('Peserta'),
           const InfoBox(
-            icon: Icons.person_outline,
+            icon: KapdhIcons.personOutline,
             message:
                 'Satu tiket untuk Anda sendiri. Satu anggota hanya dapat memiliki satu tiket aktif per event; tidak '
                 'ada pemesanan untuk rombongan atau tamu.',
@@ -147,7 +148,7 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
                           liveRegion: true,
                           child: Text(
                             _methodError!,
-                            style: const TextStyle(color: KapdhColors.danger, fontSize: KapdhFontSize.caption),
+                            style: TextStyle(color: context.kc.danger, fontSize: KapdhFontSize.caption),
                           ),
                         ),
                     ],
@@ -162,7 +163,7 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
           ),
           const SizedBox(height: KapdhSpace.s3),
           InfoBox(
-            icon: Icons.timer_outlined,
+            icon: KapdhIcons.timerOutlined,
             message:
                 'Kursi ditahan maksimal ${event.holdHours} jam atau sampai pendaftaran ditutup '
                 '(${formatDateTime(event.registrationClosesAt, zone: event.timezone)}), mana yang lebih dahulu. '
@@ -170,7 +171,7 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
           ),
           const SizedBox(height: KapdhSpace.s3),
           InfoBox(
-            icon: Icons.policy_outlined,
+            icon: KapdhIcons.policyOutlined,
             title: 'Pembatalan dan refund',
             message: event.cancellationPolicy.summary,
           ),
@@ -198,9 +199,11 @@ class _ReservationScreenState extends ConsumerState<ReservationScreen> {
         ],
       ),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: KapdhColors.surface,
-          border: Border(top: BorderSide(color: KapdhColors.divider)),
+        decoration: BoxDecoration(
+          color: context.kc.surface,
+          border: Border(top: BorderSide(color: context.kc.divider)),
+          // [v2] --shadow-bar-top: bilah aksi terpisah dari isi yang digulir.
+          boxShadow: context.kc.shadowBarTop,
         ),
         child: SafeArea(
           top: false,
@@ -297,8 +300,8 @@ class _ValueBox extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: 14),
       decoration: BoxDecoration(
-        color: KapdhColors.surface,
-        border: Border.all(color: KapdhColors.divider),
+        color: context.kc.surface,
+        border: Border.all(color: context.kc.divider),
         borderRadius: BorderRadius.circular(KapdhRadius.md),
       ),
       child: Text(
@@ -319,8 +322,8 @@ class _EventSummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(KapdhSpace.s3),
       decoration: BoxDecoration(
-        color: KapdhColors.surface,
-        border: Border.all(color: KapdhColors.divider),
+        color: context.kc.surface,
+        border: Border.all(color: context.kc.divider),
         borderRadius: BorderRadius.circular(KapdhRadius.lg),
       ),
       child: Row(
@@ -330,7 +333,7 @@ class _EventSummaryCard extends StatelessWidget {
             width: 88,
             height: 64,
             borderRadius: BorderRadius.circular(KapdhRadius.md),
-            placeholderIcon: Icons.event,
+            placeholderIcon: KapdhIcons.event,
           ),
           const SizedBox(width: KapdhSpace.s3),
           Expanded(
@@ -343,7 +346,7 @@ class _EventSummaryCard extends StatelessWidget {
                 ),
                 const SizedBox(height: KapdhSpace.s1),
                 IconLine(
-                  icon: Icons.calendar_today_outlined,
+                  icon: KapdhIcons.calendarTodayOutlined,
                   text: formatEventSchedule(event.startsAt, event.endsAt, event.timezone),
                 ),
               ],

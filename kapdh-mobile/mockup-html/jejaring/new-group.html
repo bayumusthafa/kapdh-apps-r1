@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Grup Baru - Mockup KAPDH</title>
   <meta name="description" content="Mockup statis layar Grup Baru (buat grup chat) aplikasi KAPDH (Flutter) untuk iterasi desain.">
+  <script src="../js/theme.js"></script>
   <link rel="stylesheet" href="../css/tokens.css">
   <link rel="stylesheet" href="../css/components.css">
   <link rel="stylesheet" href="../css/pages/jejaring.css">
@@ -12,7 +13,7 @@
 <body>
   <header class="page-header">
     <nav class="page-header__nav" aria-label="Navigasi mockup">
-      <a href="../index.html"><span class="ic ic-arrow_back ic-s16" aria-hidden="true"></span> Semua layar</a>
+      <a href="../index.html"><span class="ic ph-arrow-left ic-s16" aria-hidden="true"></span> Semua layar</a>
       <a href="../components.html">Komponen</a>
       <a href="chat-list.html">Tab Pesan Grup</a>
       <a href="member-picker.html">Pemilih alumni</a>
@@ -46,13 +47,13 @@
         <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="appbar">
-            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button></div>
             <h2 class="appbar__title"><span>Grup Baru</span></h2>
             
           </header>
           <div class="screen__body">
             <form class="jj-form" aria-label="Grup Baru">
-              <div class="jj-avatar-pick"><button type="button" aria-label="Pilih foto grup"><span class="avatar jj-avatar-88" aria-hidden="true"><span class="ic ic-add_a_photo_outlined"></span></span></button></div>
+              <div class="jj-avatar-pick"><button type="button" aria-label="Pilih foto grup"><span class="avatar jj-avatar-88" aria-hidden="true"><span class="ic ph-camera-plus"></span></span></button></div>
               <p class="jj-caption-center">Foto grup (opsional)</p>
               <div class="field mt-5">
                 <label class="field__label" for="ng1-name">Nama grup <span class="field__req">*</span></label>
@@ -60,8 +61,8 @@
               </div>
               <div class="section-header mt-5"><h3 class="section-header__title">Undang alumni (0)</h3><button class="btn-text" type="button">Pilih alumni</button></div>
               <p class="c-muted">Belum ada alumni yang dipilih. Anda juga dapat mengundang setelah grup dibuat.</p>
-              <div class="mt-4"><div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
-              <div class="mt-6"><button class="btn btn--primary" type="submit"><span class="ic ic-group_add" aria-hidden="true"></span>Buat grup</button></div>
+              <div class="mt-4"><div class="info-box"><span class="ic ph-info" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
+              <div class="mt-6"><button class="btn btn--primary" type="submit"><span class="ic ph-user-plus-fill" aria-hidden="true"></span>Buat grup</button></div>
             </form>
           </div>
         </div>
@@ -77,7 +78,7 @@
         <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="appbar">
-            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button></div>
             <h2 class="appbar__title"><span>Grup Baru</span></h2>
             
           </header>
@@ -90,9 +91,9 @@
                 <div class="input"><input class="input__control" id="ng2-name" maxlength="80" placeholder="Contoh: Angkatan 29" value="Panitia Reuni Akbar"></div>
               </div>
               <div class="section-header mt-5"><h3 class="section-header__title">Undang alumni (3)</h3><button class="btn-text" type="button">Pilih alumni</button></div>
-              <div class="jj-chips"><span class="jj-input-chip">Siti Rahmah<button class="icon-btn" type="button" aria-label="Hapus Siti Rahmah"><span class="ic ic-close" aria-hidden="true"></span></button></span><span class="jj-input-chip">Muhammad Rizki<button class="icon-btn" type="button" aria-label="Hapus Muhammad Rizki"><span class="ic ic-close" aria-hidden="true"></span></button></span><span class="jj-input-chip">Dewi Lestari<button class="icon-btn" type="button" aria-label="Hapus Dewi Lestari"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
-              <div class="mt-4"><div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
-              <div class="mt-6"><button class="btn btn--primary" type="submit"><span class="ic ic-group_add" aria-hidden="true"></span>Buat grup</button></div>
+              <div class="jj-chips"><button class="jj-input-chip" type="button" aria-label="Hapus Siti Rahmah">Siti Rahmah<span class="ic ph-x" aria-hidden="true"></span></button><button class="jj-input-chip" type="button" aria-label="Hapus Muhammad Rizki">Muhammad Rizki<span class="ic ph-x" aria-hidden="true"></span></button><button class="jj-input-chip" type="button" aria-label="Hapus Dewi Lestari">Dewi Lestari<span class="ic ph-x" aria-hidden="true"></span></button></div>
+              <div class="mt-4"><div class="info-box"><span class="ic ph-info" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
+              <div class="mt-6"><button class="btn btn--primary" type="submit"><span class="ic ph-user-plus-fill" aria-hidden="true"></span>Buat grup</button></div>
             </form>
           </div>
         </div>
@@ -108,13 +109,13 @@
         <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="appbar">
-            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button></div>
             <h2 class="appbar__title"><span>Grup Baru</span></h2>
             
           </header>
           <div class="screen__body">
             <form class="jj-form" aria-label="Grup Baru">
-              <div class="jj-avatar-pick"><button type="button" aria-label="Pilih foto grup"><span class="avatar jj-avatar-88" aria-hidden="true"><span class="ic ic-add_a_photo_outlined"></span></span></button></div>
+              <div class="jj-avatar-pick"><button type="button" aria-label="Pilih foto grup"><span class="avatar jj-avatar-88" aria-hidden="true"><span class="ic ph-camera-plus"></span></span></button></div>
               <p class="jj-caption-center">Foto grup (opsional)</p>
               <div class="field mt-5">
                 <label class="field__label" for="ng3-name">Nama grup <span class="field__req">*</span></label>
@@ -122,9 +123,9 @@
                 <p class="field__error" id="ng3-name-err">Nama grup wajib diisi.</p>
               </div>
               <div class="section-header mt-5"><h3 class="section-header__title">Undang alumni (1)</h3><button class="btn-text" type="button">Pilih alumni</button></div>
-              <div class="jj-chips"><span class="jj-input-chip">Siti Rahmah<button class="icon-btn" type="button" aria-label="Hapus Siti Rahmah"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
-              <div class="mt-4"><div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
-              <div class="mt-6"><button class="btn btn--primary" type="submit"><span class="ic ic-group_add" aria-hidden="true"></span>Buat grup</button></div>
+              <div class="jj-chips"><button class="jj-input-chip" type="button" aria-label="Hapus Siti Rahmah">Siti Rahmah<span class="ic ph-x" aria-hidden="true"></span></button></div>
+              <div class="mt-4"><div class="info-box"><span class="ic ph-info" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
+              <div class="mt-6"><button class="btn btn--primary" type="submit"><span class="ic ph-user-plus-fill" aria-hidden="true"></span>Buat grup</button></div>
             </form>
           </div>
         </div>
@@ -140,13 +141,13 @@
         <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen jj-screen--kb">
           <header class="appbar">
-            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button></div>
             <h2 class="appbar__title"><span>Grup Baru</span></h2>
             
           </header>
           <div class="screen__body">
             <form class="jj-form" aria-label="Grup Baru">
-              <div class="jj-avatar-pick"><button type="button" aria-label="Pilih foto grup"><span class="avatar jj-avatar-88" aria-hidden="true"><span class="ic ic-add_a_photo_outlined"></span></span></button></div>
+              <div class="jj-avatar-pick"><button type="button" aria-label="Pilih foto grup"><span class="avatar jj-avatar-88" aria-hidden="true"><span class="ic ph-camera-plus"></span></span></button></div>
               <p class="jj-caption-center">Foto grup (opsional)</p>
               <div class="field mt-5">
                 <label class="field__label" for="ng4-name">Nama grup <span class="field__req">*</span></label>
@@ -154,8 +155,8 @@
               </div>
               <div class="section-header mt-5"><h3 class="section-header__title">Undang alumni (0)</h3><button class="btn-text" type="button">Pilih alumni</button></div>
               <p class="c-muted">Belum ada alumni yang dipilih. Anda juga dapat mengundang setelah grup dibuat.</p>
-              <div class="mt-4"><div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
-              <div class="mt-6"><button class="btn btn--primary" type="submit"><span class="ic ic-group_add" aria-hidden="true"></span>Buat grup</button></div>
+              <div class="mt-4"><div class="info-box"><span class="ic ph-info" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
+              <div class="mt-6"><button class="btn btn--primary" type="submit"><span class="ic ph-user-plus-fill" aria-hidden="true"></span>Buat grup</button></div>
             </form>
           </div>
         </div>
@@ -176,7 +177,7 @@
         <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="appbar">
-            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button></div>
             <h2 class="appbar__title"><span>Grup Baru</span></h2>
             
           </header>
@@ -189,8 +190,8 @@
                 <div class="input"><input class="input__control" id="ng5-name" maxlength="80" placeholder="Contoh: Angkatan 29" value="Panitia Reuni Akbar"></div>
               </div>
               <div class="section-header mt-5"><h3 class="section-header__title">Undang alumni (3)</h3><button class="btn-text" type="button" disabled>Pilih alumni</button></div>
-              <div class="jj-chips"><span class="jj-input-chip is-disabled">Siti Rahmah<button class="icon-btn" type="button" aria-label="Hapus Siti Rahmah" disabled><span class="ic ic-close" aria-hidden="true"></span></button></span><span class="jj-input-chip is-disabled">Muhammad Rizki<button class="icon-btn" type="button" aria-label="Hapus Muhammad Rizki" disabled><span class="ic ic-close" aria-hidden="true"></span></button></span><span class="jj-input-chip is-disabled">Dewi Lestari<button class="icon-btn" type="button" aria-label="Hapus Dewi Lestari" disabled><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
-              <div class="mt-4"><div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
+              <div class="jj-chips"><button class="jj-input-chip" type="button" aria-label="Hapus Siti Rahmah" disabled>Siti Rahmah<span class="ic ph-x" aria-hidden="true"></span></button><button class="jj-input-chip" type="button" aria-label="Hapus Muhammad Rizki" disabled>Muhammad Rizki<span class="ic ph-x" aria-hidden="true"></span></button><button class="jj-input-chip" type="button" aria-label="Hapus Dewi Lestari" disabled>Dewi Lestari<span class="ic ph-x" aria-hidden="true"></span></button></div>
+              <div class="mt-4"><div class="info-box"><span class="ic ph-info" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
               <div class="mt-6"><button class="btn btn--primary is-busy" type="button" disabled><span class="spinner spinner--18" aria-hidden="true"></span>Membuat grup</button></div>
             </form>
           </div>
@@ -207,7 +208,7 @@
         <div class="statusbar" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <header class="appbar">
-            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ic-arrow_back" aria-hidden="true"></span></button></div>
+            <div class="appbar__leading"><button class="icon-btn" type="button" aria-label="Kembali"><span class="ic ph-arrow-left" aria-hidden="true"></span></button></div>
             <h2 class="appbar__title"><span>Grup Baru</span></h2>
             
           </header>
@@ -220,9 +221,9 @@
                 <div class="input"><input class="input__control" id="ng6-name" maxlength="80" placeholder="Contoh: Angkatan 29" value="Panitia Reuni Akbar"></div>
               </div>
               <div class="section-header mt-5"><h3 class="section-header__title">Undang alumni (3)</h3><button class="btn-text" type="button">Pilih alumni</button></div>
-              <div class="jj-chips"><span class="jj-input-chip">Siti Rahmah<button class="icon-btn" type="button" aria-label="Hapus Siti Rahmah"><span class="ic ic-close" aria-hidden="true"></span></button></span><span class="jj-input-chip">Muhammad Rizki<button class="icon-btn" type="button" aria-label="Hapus Muhammad Rizki"><span class="ic ic-close" aria-hidden="true"></span></button></span><span class="jj-input-chip">Dewi Lestari<button class="icon-btn" type="button" aria-label="Hapus Dewi Lestari"><span class="ic ic-close" aria-hidden="true"></span></button></span></div>
-              <div class="mt-4"><div class="info-box"><span class="ic ic-info_outline" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
-              <div class="mt-6"><button class="btn btn--primary" type="submit"><span class="ic ic-group_add" aria-hidden="true"></span>Buat grup</button></div>
+              <div class="jj-chips"><button class="jj-input-chip" type="button" aria-label="Hapus Siti Rahmah">Siti Rahmah<span class="ic ph-x" aria-hidden="true"></span></button><button class="jj-input-chip" type="button" aria-label="Hapus Muhammad Rizki">Muhammad Rizki<span class="ic ph-x" aria-hidden="true"></span></button><button class="jj-input-chip" type="button" aria-label="Hapus Dewi Lestari">Dewi Lestari<span class="ic ph-x" aria-hidden="true"></span></button></div>
+              <div class="mt-4"><div class="info-box"><span class="ic ph-info" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Alumni yang diundang bergabung setelah menerima undangan. Anggota baru hanya melihat pesan sejak bergabung. Grup maksimal 100 anggota termasuk Anda.</p></div></div></div>
+              <div class="mt-6"><button class="btn btn--primary" type="submit"><span class="ic ph-user-plus-fill" aria-hidden="true"></span>Buat grup</button></div>
             </form>
           </div>
         </div>

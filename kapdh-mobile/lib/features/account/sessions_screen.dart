@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
@@ -94,7 +95,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Batal')),
           TextButton(
-            style: TextButton.styleFrom(foregroundColor: KapdhColors.danger),
+            style: TextButton.styleFrom(foregroundColor: context.kc.danger),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(action),
           ),
@@ -195,7 +196,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
         padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s4, KapdhSpace.s5, KapdhSpace.s8),
         children: [
           const InfoBox(
-            icon: Icons.shield_outlined,
+            icon: KapdhIcons.shieldOutlined,
             message:
                 'Keluarkan perangkat yang tidak Anda kenali, lalu ganti password Anda. Mengganti password juga '
                 'mengeluarkan semua perangkat lain.',
@@ -208,12 +209,12 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
           AccountSection(
             title: 'PERANGKAT LAIN',
             children: others.isEmpty
-                ? const [
+                ? [
                     Padding(
-                      padding: EdgeInsets.all(KapdhSpace.s4),
+                      padding: const EdgeInsets.all(KapdhSpace.s4),
                       child: Text(
                         'Tidak ada perangkat lain yang masuk ke akun Anda.',
-                        style: TextStyle(fontSize: KapdhFontSize.body, color: KapdhColors.textMuted),
+                        style: TextStyle(fontSize: KapdhFontSize.body, color: context.kc.textMuted),
                       ),
                     ),
                   ]
@@ -231,7 +232,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
             label: 'Keluar dari semua perangkat',
             busyLabel: 'Mengeluarkan...',
             busy: _signingOutAll,
-            icon: Icons.logout,
+            icon: KapdhIcons.logout,
             onPressed: _signOutAll,
           ),
         ],
@@ -251,55 +252,75 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
     final lastSeen = session.current
         ? 'Aktif sekarang'
         : 'Terakhir aktif ${formatRelative(session.lastSeenAt, now: now)}';
+    final large = MediaQuery.textScalerOf(context).scale(KapdhFontSize.body) > KapdhFontSize.body * 1.3;
+    final icon = Icon(
+      session.platform == SessionPlatform.web ? KapdhIcons.computer : KapdhIcons.smartphone,
+      color: context.kc.primary,
+    );
+    final texts = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _deviceLabel(session),
+          style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
+        ),
+        if (details.isNotEmpty)
+          Text(
+            details,
+            style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
+          ),
+        Text(
+          lastSeen,
+          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
+        ),
+        Text(
+          'Masuk ${formatDateTime(session.createdAt)}',
+          style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.textMuted),
+        ),
+      ],
+    );
+    final Widget action = busy
+        ? const Padding(
+            padding: EdgeInsets.all(KapdhSpace.s3),
+            child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+          )
+        : TextButton(
+            key: ValueKey('session-revoke-${session.id}'),
+            style: TextButton.styleFrom(
+              foregroundColor: context.kc.danger,
+              minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
+            ),
+            onPressed: () => unawaited(_revoke(session)),
+            child: Text(session.current ? 'Keluar' : 'Keluarkan'),
+          );
     return Padding(
       key: ValueKey('session-${session.id}'),
       padding: const EdgeInsets.fromLTRB(KapdhSpace.s4, KapdhSpace.s3, KapdhSpace.s2, KapdhSpace.s3),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(session.platform == SessionPlatform.web ? Icons.computer : Icons.smartphone, color: KapdhColors.primary),
-          const SizedBox(width: KapdhSpace.s3),
-          Expanded(
-            child: Column(
+      child: large
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    icon,
+                    const SizedBox(width: KapdhSpace.s3),
+                    Expanded(child: texts),
+                  ],
+                ),
+                // Tombol di baris sendiri agar nama perangkat tidak dipecah di tengah kata saat teks diperbesar 200 % (N-11).
+                Align(alignment: Alignment.centerRight, child: action),
+              ],
+            )
+          : Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  _deviceLabel(session),
-                  style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
-                ),
-                if (details.isNotEmpty)
-                  Text(
-                    details,
-                    style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
-                  ),
-                Text(
-                  lastSeen,
-                  style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
-                ),
-                Text(
-                  'Masuk ${formatDateTime(session.createdAt)}',
-                  style: const TextStyle(fontSize: KapdhFontSize.caption, color: KapdhColors.textMuted),
-                ),
+                icon,
+                const SizedBox(width: KapdhSpace.s3),
+                Expanded(child: texts),
+                action,
               ],
             ),
-          ),
-          if (busy)
-            const Padding(
-              padding: EdgeInsets.all(KapdhSpace.s3),
-              child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-            )
-          else
-            TextButton(
-              key: ValueKey('session-revoke-${session.id}'),
-              style: TextButton.styleFrom(
-                foregroundColor: KapdhColors.danger,
-                minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
-              ),
-              onPressed: () => unawaited(_revoke(session)),
-              child: Text(session.current ? 'Keluar' : 'Keluarkan'),
-            ),
-        ],
-      ),
     );
   }
 

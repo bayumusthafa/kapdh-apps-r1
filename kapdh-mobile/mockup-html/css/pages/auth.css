@@ -33,12 +33,12 @@
 .auth-keypad .keyboard__row { padding: 0 var(--s2); gap: var(--s2); }
 .auth-keypad .keyboard__key {
   max-width: none; display: grid; place-items: center;
-  font-family: Roboto, 'Segoe UI', system-ui, sans-serif; font-size: 20px; line-height: 1; letter-spacing: 0; color: #1C1B1F;
+  font-family: Roboto, 'Segoe UI', system-ui, sans-serif; font-size: 20px; line-height: 1; letter-spacing: 0; color: var(--color-keyboard-text); /* keyboard sistem: tidak ikut skala teks aplikasi */
 }
-.auth-keypad .keyboard__key--fn { background: #D3D6DB; }
+.auth-keypad .keyboard__key--fn { background: var(--color-keyboard-key-fn); }
 
 /* Area status bar tetap hijau saat pita login tergulir (Positioned top, warna pertama bandGradient #215E1E). */
-.auth-statusfill { position: absolute; z-index: 3; top: 0; left: 0; right: 0; height: var(--inset-top); background: var(--color-green-700); }
+.auth-statusfill { position: absolute; z-index: 3; top: 0; left: 0; right: 0; height: var(--inset-top); background: linear-gradient(90deg, var(--color-green-950), var(--color-green-800) 60%, var(--color-green-700)); } /* [v2] mengikuti tepi atas mesh */
 
 /* ---------------------------------------------------------------------------------------------------------------------
    LOGIN (login_screen.dart): BrandSheetScaffold(scrollable: true, overlap: s4), BrandHeader bermotif
@@ -46,7 +46,7 @@
    --------------------------------------------------------------------------------------------------------------------- */
 .auth-band-login { padding: calc(var(--s4) + var(--inset-top)) var(--s4) calc(var(--s8) + var(--s4)) var(--s6); }
 .auth-login-logo { width: 84px; height: 84px; object-fit: contain; margin-left: auto; }
-.auth-login-greeting { margin-top: var(--s4); font-size: 22px; font-weight: 600; line-height: 1.3; color: var(--color-text-on-dark); }
+.auth-login-greeting { margin-top: var(--s4); font-size: calc(22px * var(--ts, 1)); font-weight: 600; line-height: 1.3; color: var(--color-text-on-dark); }
 .auth-login-greeting__accent { color: var(--color-accent); }
 .auth-login-tagline { margin-top: var(--s3); font-size: var(--fs-caption); color: var(--color-text-on-dark); }
 .auth-login-body { display: flex; flex-direction: column; padding: var(--s8) var(--s5) var(--s6); } /* fromLTRB(20, 32, 20, 24) */
@@ -63,17 +63,17 @@
 
 /* Wrap rata tengah: "Belum ada akun?" + KapdhLinkButton */
 .auth-wrap { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; }
-.auth-wrap__text { font-size: 13px; color: var(--color-primary); }
+.auth-wrap__text { font-size: calc(13px * var(--ts, 1)); color: var(--color-primary); }
 .auth-links { display: flex; flex-wrap: wrap; gap: 0 var(--s2); }             /* Wrap(spacing: s2) */
 .auth-links--between { justify-content: space-between; gap: 0; }               /* WrapAlignment.spaceBetween */
 
 /* USULAN BERSAMA: KapdhLinkButton nonaktif (onPressed null) memakai warna nonaktif TextButton M3. */
-.btn-link:disabled { color: rgba(28, 27, 31, .38); cursor: default; }
+.btn-link:disabled { color: var(--color-on-surface-disabled); cursor: default; }
 
 /* ---------------------------------------------------------------------------------------------------------------------
    JUDUL DAN TEKS DI DALAM LEMBAR
    --------------------------------------------------------------------------------------------------------------------- */
-.auth-h22 { font-size: 22px; font-weight: 600; line-height: 1.25; }                    /* TextStyle(22, w600, h1.25) */
+.auth-h22 { font-size: calc(22px * var(--ts, 1)); font-weight: 600; line-height: 1.25; }                    /* TextStyle(22, w600, h1.25) */
 .auth-lead { font-size: var(--fs-body); line-height: 1.5; color: var(--color-text-muted); } /* 14 h1.5 muted */
 .auth-lead strong { font-weight: 600; color: var(--color-text); }
 .auth-label { font-size: var(--fs-label); font-weight: 500; }                          /* 'Kode OTP', judul kecil 14 w500 */
@@ -91,9 +91,9 @@
   margin-top: var(--s5);
   display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
   padding: var(--s1) 14px;
-  background: var(--color-green-50); border-radius: var(--r-md);
+  background: var(--color-tint); border-radius: var(--r-md);
 }
-.auth-resend__text { padding: var(--s2) 0; font-size: 13px; }
+.auth-resend__text { padding: var(--s2) 0; font-size: calc(13px * var(--ts, 1)); }
 .auth-resend .btn-text { font-weight: 600; }
 .auth-resend .btn-text:disabled { color: var(--color-text-muted); }                    /* disabledForegroundColor textMuted */
 
@@ -110,7 +110,7 @@
 .auth-years__label { display: block; font-size: var(--fs-overline); }
 /* _ConsentField: CheckboxListTile(contentPadding: zero, leading): kotak 40 di x 0, judul di x 56, 13 ls .5 */
 .auth-consent .list-tile { padding-left: 0; padding-right: 0; gap: var(--s4); }
-.auth-consent__title { font-size: 13px; letter-spacing: var(--ls-body-lg); }
+.auth-consent__title { font-size: calc(13px * var(--ts, 1)); letter-spacing: var(--ls-body-lg); }
 .auth-consent__version { padding-bottom: var(--s1); }
 .auth-consent__error { padding-top: var(--s1); font-size: var(--fs-caption); color: var(--color-danger); }
 .auth-consent .info-box { margin-top: 0; }
@@ -143,7 +143,15 @@
   justify-content: center; align-items: center; text-align: center;
   padding: var(--inset-top) 0 var(--inset-bottom);
 }
-.auth-dark__inner { display: flex; flex-direction: column; align-items: center; padding: var(--s6); }
+/* [v2, usulan] Splash: latar gradasi abu terang di mode terang (mode gelap tetap hijau tua). Teks, ikon dan tombol
+   memakai warna permukaan terang: judul primary, pesan text-muted, spinner/ikon/tombol primary (emas di abu hanya 1,4:1). */
+.auth-dark.auth-splash { background: var(--gradient-splash); color: var(--color-text); }
+.auth-splash .auth-splash-title { color: var(--color-primary); }
+.auth-splash .auth-splash-spinner, .auth-splash .auth-problem > .ic { color: var(--color-primary); }
+.auth-splash .auth-dark__message, .auth-splash .auth-dark__detail { color: var(--color-text-muted); }
+.auth-splash .auth-btn-accent { border-color: var(--color-primary); color: var(--color-primary); }
+.auth-dark__inner { display: flex; flex-direction: column; align-items: center; max-width: 100%; padding: var(--s6); }
+.auth-dark__inner > * { max-width: 100%; } /* [v2 P2-3] detail teknis panjang (KAPDH_ENV=...) pindah baris */
 .auth-splash-logo { width: 120px; height: 120px; object-fit: contain; }
 .auth-splash-title { margin-top: var(--s4); font-size: var(--fs-body-lg); font-weight: 600; }
 .auth-splash-spinner { margin-top: var(--s8); --spinner-size: 32px; color: var(--color-accent); }
@@ -174,7 +182,7 @@
 .auth-panel { padding: 15px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); }
 .auth-panel__title { font-size: var(--fs-body); font-weight: 600; }
 .auth-panel__text { margin-top: var(--s1); font-size: var(--fs-caption); line-height: 1.5; color: var(--color-text-muted); }
-.auth-check-text { font-size: 13px; line-height: 1.5; }
+.auth-check-text { font-size: calc(13px * var(--ts, 1)); line-height: 1.5; }
 .auth-textarea-5 { min-height: calc(5 * 20.3px + 26px); }      /* maxLines: 5 */
 .auth-right { display: flex; justify-content: flex-end; }       /* Align(centerRight) */
 
@@ -182,6 +190,32 @@
    BIAYA KTA (onboarding_fees_screen.dart): ListView padding fromLTRB(20, 16, 20, 16), jarak 18 dan 6
    --------------------------------------------------------------------------------------------------------------------- */
 .auth-fees-title { font-size: var(--fs-h2); font-weight: 600; }
-.auth-fees-sub { margin-top: 6px; font-size: 13px; line-height: 1.5; color: var(--color-text-muted); }
+.auth-fees-sub { margin-top: 6px; font-size: calc(13px * var(--ts, 1)); line-height: 1.5; color: var(--color-text-muted); }
 .auth-mt-18 { margin-top: 18px; }
 .auth-sheet-banner { padding: var(--s3) var(--s5) 0; }          /* SheetStatusBanner: fromLTRB(20, 12, 20, 0) */
+
+/* ---------------------------------------------------------------------------------------------------------------------
+   WELCOME  (lib/features/system/welcome_screen.dart): setelah splash untuk pemasangan baru/pembaruan aplikasi.
+   BrandMeshBackground: gradasi green950 -> green800 -> green700 (135deg), cahaya emas kanan atas, cahaya hijau kiri bawah,
+   dua cincin dekoratif, motif bintang putih 4 % (kisi 72). Padding samping 24, logo 50 % lebar (140..220), "Welcome to"
+   20 green100, "KAPDH Apps" 32 w700 emas, tagline 14 mutedOnDark 1.5, KapdhButton.accent + .outlinedOnDark jarak 12.
+   --------------------------------------------------------------------------------------------------------------------- */
+.auth-welcome {
+  overflow: hidden; isolation: isolate; /* .screen sudah position: absolute */
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' fill='none' stroke='%23FFFFFF' stroke-opacity='.04' stroke-width='1.2'%3E%3Cpath transform='translate(36 36)' d='M-18.33 -18.33H18.33V18.33H-18.33Z M0 -25.92L25.92 0L0 25.92L-25.92 0Z'/%3E%3Cpath transform='translate(0 0)' d='M-8.15 -8.15H8.15V8.15H-8.15Z M0 -11.52L11.52 0L0 11.52L-11.52 0Z'/%3E%3Cpath transform='translate(72 0)' d='M-8.15 -8.15H8.15V8.15H-8.15Z M0 -11.52L11.52 0L0 11.52L-11.52 0Z'/%3E%3Cpath transform='translate(0 72)' d='M-8.15 -8.15H8.15V8.15H-8.15Z M0 -11.52L11.52 0L0 11.52L-11.52 0Z'/%3E%3Cpath transform='translate(72 72)' d='M-8.15 -8.15H8.15V8.15H-8.15Z M0 -11.52L11.52 0L0 11.52L-11.52 0Z'/%3E%3C/svg%3E") 0 0 / 72px 72px repeat,
+    radial-gradient(circle at 95% 0%, rgba(230, 211, 18, .20) 0, transparent 45%),
+    radial-gradient(circle at 0% 100%, rgba(63, 154, 56, .34) 0, transparent 60%),
+    linear-gradient(135deg, var(--color-green-950) 0%, var(--color-green-800) 55%, var(--color-green-700) 100%);
+  color: var(--color-text-on-dark);
+}
+.auth-welcome::before, .auth-welcome::after { content: ""; position: absolute; z-index: -1; border-radius: 50%; pointer-events: none; }
+.auth-welcome::before { top: -110px; right: -90px; width: 300px; height: 300px; border: 34px solid rgba(255, 255, 255, .04); }
+.auth-welcome::after { bottom: -130px; left: -80px; width: 260px; height: 260px; border: 22px solid rgba(230, 211, 18, .06); }
+.auth-welcome__inner { flex: 1 1 auto; display: flex; flex-direction: column; padding: var(--inset-top) var(--s6) calc(var(--s5) + var(--inset-bottom)); }
+.auth-welcome__intro { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: var(--s6) 0; }
+.auth-welcome__logo { width: 180px; height: 180px; object-fit: contain; border-radius: 50%; box-shadow: 0 0 48px 6px rgba(255, 255, 255, .18); } /* cahaya lembut di belakang logo */
+.auth-welcome__hello { margin-top: var(--s8); font-size: var(--fs-h2); font-weight: var(--fw-regular); line-height: 1.3; color: var(--color-green-100); letter-spacing: 0; }
+.auth-welcome__name { display: block; font-size: var(--fs-display); font-weight: var(--fw-bold); line-height: 1.25; color: var(--color-accent); letter-spacing: 0; }
+.auth-welcome__tagline { margin-top: var(--s3); font-size: var(--fs-body); line-height: 1.5; color: var(--color-muted-on-dark); }
+.auth-welcome__actions { margin-top: var(--s4); display: flex; flex-direction: column; gap: var(--s3); }

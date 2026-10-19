@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../app/theme/kapdh_focus.dart';
+import '../app/theme/kapdh_palette.dart';
+import '../app/theme/kapdh_theme.dart';
 import '../app/theme/kapdh_tokens.dart';
 import 'design_constants.dart';
 
@@ -12,6 +15,12 @@ enum KapdhButtonVariant {
 
   /// Garis hijau 48 px (prototipe layar 4 "Ganti bukti", layar 7 "Sinkronkan").
   outlined,
+
+  /// Emas 52 px untuk aksi utama di atas permukaan hijau gelap (layar Welcome "Daftar KAPDH Apps").
+  accent,
+
+  /// Garis putih 48 px di atas permukaan hijau gelap (layar Welcome "Sudah Punya Akun? Masuk").
+  outlinedOnDark,
 }
 
 /// Tombol KAPDH. Tinggi minimum mengikuti prototipe dan bertambah saat teks diperbesar sampai 200 % (N-11);
@@ -51,6 +60,28 @@ class KapdhButton extends StatelessWidget {
     this.semanticsHint,
   }) : variant = KapdhButtonVariant.outlined;
 
+  const KapdhButton.accent({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.busy = false,
+    this.busyLabel,
+    this.expand = true,
+    this.semanticsHint,
+  }) : variant = KapdhButtonVariant.accent;
+
+  const KapdhButton.outlinedOnDark({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.busy = false,
+    this.busyLabel,
+    this.expand = true,
+    this.semanticsHint,
+  }) : variant = KapdhButtonVariant.outlinedOnDark;
+
   final String label;
 
   /// Null = nonaktif.
@@ -68,30 +99,48 @@ class KapdhButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final minHeight = variant == KapdhButtonVariant.primary
-        ? KapdhComponentSize.primaryButtonHeight
-        : KapdhSize.buttonHeight;
+    final tall = variant == KapdhButtonVariant.primary || variant == KapdhButtonVariant.accent;
+    final minHeight = tall ? KapdhComponentSize.primaryButtonHeight : KapdhSize.buttonHeight;
     final radius = BorderRadius.circular(KapdhRadius.md);
     final enabled = _enabled;
+    final p = context.kc;
 
     final Color foreground;
     final BoxDecoration decoration;
     switch (variant) {
       case KapdhButtonVariant.primary:
-        foreground = enabled ? KapdhColors.onPrimary : KapdhColors.disabledText;
+        foreground = enabled ? p.onPrimary : p.disabledText;
+        // [v2] Bayangan hijau --shadow-primary-btn; hilang saat nonaktif/sibuk.
         decoration = BoxDecoration(
-          gradient: enabled ? KapdhGradients.buttonPrimary : null,
-          color: enabled ? null : KapdhColors.disabledBg,
+          gradient: enabled ? (p.isDark ? kapdhDarkPrimaryGradient : KapdhGradients.buttonPrimary) : null,
+          color: enabled ? null : p.disabledBg,
           borderRadius: radius,
+          boxShadow: enabled ? p.shadowPrimaryButton : null,
         );
       case KapdhButtonVariant.solid:
-        foreground = enabled ? KapdhColors.onPrimary : KapdhColors.disabledText;
-        decoration = BoxDecoration(color: enabled ? KapdhColors.primary : KapdhColors.disabledBg, borderRadius: radius);
+        foreground = enabled ? p.onPrimary : p.disabledText;
+        decoration = BoxDecoration(color: enabled ? p.primary : p.disabledBg, borderRadius: radius);
       case KapdhButtonVariant.outlined:
-        foreground = enabled ? KapdhColors.primary : KapdhColors.disabledText;
+        foreground = enabled ? p.primary : p.disabledText;
         decoration = BoxDecoration(
-          color: KapdhColors.surface,
-          border: Border.all(color: enabled ? KapdhColors.primary : KapdhColors.divider),
+          color: p.surface,
+          border: Border.all(color: enabled ? p.primary : p.divider),
+          borderRadius: radius,
+        );
+      case KapdhButtonVariant.accent:
+        foreground = enabled ? KapdhColors.onAccent : context.kc.disabledText;
+        decoration = BoxDecoration(
+          color: enabled ? KapdhColors.accent : context.kc.disabledBg,
+          borderRadius: radius,
+          boxShadow: enabled ? const [BoxShadow(offset: Offset(0, 4), blurRadius: 12, color: Color(0x38000000))] : null,
+        );
+      case KapdhButtonVariant.outlinedOnDark:
+        foreground = enabled ? KapdhColors.textOnDark : KapdhExtraColors.mutedOnDark;
+        decoration = BoxDecoration(
+          color: KapdhColors.textOnDark.withValues(alpha: 0.06),
+          border: Border.all(
+            color: enabled ? KapdhColors.textOnDark.withValues(alpha: 0.7) : KapdhExtraColors.mutedOnDark,
+          ),
           borderRadius: radius,
         );
     }
@@ -100,11 +149,7 @@ class KapdhButton extends StatelessWidget {
     final labelText = Text(
       text,
       textAlign: TextAlign.center,
-      style: TextStyle(
-        color: foreground,
-        fontWeight: FontWeight.w600,
-        fontSize: variant == KapdhButtonVariant.primary ? 15 : KapdhFontSize.label,
-      ),
+      style: TextStyle(color: foreground, fontWeight: FontWeight.w600, fontSize: tall ? 15 : KapdhFontSize.label),
     );
     final content = Row(
       mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
@@ -114,7 +159,7 @@ class KapdhButton extends StatelessWidget {
           SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: foreground)),
           const SizedBox(width: KapdhSpace.s2),
         ] else if (icon != null) ...[
-          Icon(icon, size: 20, color: foreground),
+          Icon(icon, size: KapdhIconSize.md, color: foreground),
           const SizedBox(width: KapdhSpace.s2),
         ],
         // Lebar penuh: label boleh membungkus saat teks diperbesar. Lebar intrinsik: tanpa Flexible karena
@@ -133,16 +178,24 @@ class KapdhButton extends StatelessWidget {
           minHeight: minHeight,
           minWidth: expand ? double.infinity : KapdhSize.touchTargetMin,
         ),
-        child: DecoratedBox(
-          decoration: decoration,
-          child: Material(
-            type: MaterialType.transparency,
-            child: InkWell(
-              onTap: enabled ? onPressed : null,
-              borderRadius: radius,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: KapdhSpace.s3),
-                child: Center(widthFactor: expand ? null : 1, child: content),
+        child: KapdhFocusRing(
+          // Varian permukaan gelap selalu bercincin emas; lainnya mengikuti tema (hijau, atau emas di DarkSurfaceFocus).
+          ring: variant == KapdhButtonVariant.accent || variant == KapdhButtonVariant.outlinedOnDark
+              ? KapdhColors.focusRingOnDark
+              : KapdhFocusTheme.ringOf(context),
+          radius: radius,
+          builder: (onFocusChange) => DecoratedBox(
+            decoration: decoration,
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                onTap: enabled ? onPressed : null,
+                onFocusChange: onFocusChange,
+                borderRadius: radius,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s4, vertical: KapdhSpace.s3),
+                  child: Center(widthFactor: expand ? null : 1, child: content),
+                ),
               ),
             ),
           ),
@@ -151,6 +204,13 @@ class KapdhButton extends StatelessWidget {
     );
   }
 }
+
+/// Gradasi tombol utama di mode gelap: primary terang (#9EDD92 -> #8BD47E) dengan teks hijau gelap.
+const kapdhDarkPrimaryGradient = LinearGradient(
+  begin: Alignment.topCenter,
+  end: Alignment.bottomCenter,
+  colors: [Color(0xFF9EDD92), Color(0xFF8BD47E)],
+);
 
 /// Tautan teks hijau dengan target sentuh 48 px (prototipe "Salah email? Ubah alamat email", "Hubungi pengurus").
 class KapdhLinkButton extends StatelessWidget {
@@ -163,13 +223,18 @@ class KapdhLinkButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = TextButton.styleFrom(
-      foregroundColor: KapdhColors.primary,
+      foregroundColor: context.kc.primary,
       padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s1),
       minimumSize: const Size(KapdhSize.touchTargetMin, KapdhSize.touchTargetMin),
-      textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      textStyle: KapdhTheme.font(fontSize: 13, fontWeight: FontWeight.w600),
     );
     if (icon != null) {
-      return TextButton.icon(style: style, onPressed: onPressed, icon: Icon(icon, size: 18), label: Text(label));
+      return TextButton.icon(
+        style: style,
+        onPressed: onPressed,
+        icon: Icon(icon, size: KapdhIconSize.button),
+        label: Text(label),
+      );
     }
     return TextButton(style: style, onPressed: onPressed, child: Text(label));
   }

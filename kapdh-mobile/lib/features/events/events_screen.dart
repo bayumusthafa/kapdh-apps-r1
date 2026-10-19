@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/session/session_controller.dart';
@@ -57,7 +58,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     final ticketsAction = IconButton(
       key: const ValueKey('events-my-tickets'),
       tooltip: 'Tiket Saya',
-      icon: const Icon(Icons.confirmation_number_outlined),
+      icon: const Icon(KapdhIcons.confirmationNumberOutlined),
       onPressed: () => unawaited(context.push(AppRoutes.tickets)),
     );
     if (!isActiveMember(status)) {
@@ -81,23 +82,26 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            color: KapdhColors.surface,
-            padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s3, KapdhSpace.s5, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _SearchField(
-                  controller: _search,
-                  onChanged: _onSearchChanged,
-                  onSubmitted: _applyQuery,
-                  onClear: () {
-                    _search.clear();
-                    _applyQuery('');
-                  },
-                ),
-                _CategoryTabs(selected: _categoryId, onSelected: (id) => setState(() => _categoryId = id)),
-              ],
+          // Material (bukan Container) agar tinta InkWell tab kategori dilukis di atas warna permukaan.
+          Material(
+            color: context.kc.surface,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s3, KapdhSpace.s5, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _SearchField(
+                    controller: _search,
+                    onChanged: _onSearchChanged,
+                    onSubmitted: _applyQuery,
+                    onClear: () {
+                      _search.clear();
+                      _applyQuery('');
+                    },
+                  ),
+                  _CategoryTabs(selected: _categoryId, onSelected: (id) => setState(() => _categoryId = id)),
+                ],
+              ),
             ),
           ),
           Padding(
@@ -122,7 +126,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
               itemBuilder: (context, event) =>
                   EventCard.summary(event, onTap: () => unawaited(context.push(AppRoutes.event(event.id)))),
               empty: EmptyState(
-                icon: Icons.event_busy_outlined,
+                icon: KapdhIcons.eventBusyOutlined,
                 title: filtered
                     ? 'Event tidak ditemukan'
                     : (_period == EventListPeriod.upcoming ? 'Belum ada event mendatang' : 'Belum ada event lampau'),
@@ -175,12 +179,12 @@ class _SearchField extends StatelessWidget {
         decoration: InputDecoration(
           hintText: 'Cari event…',
           counterText: '',
-          prefixIcon: const Icon(Icons.search),
+          prefixIcon: const Icon(KapdhIcons.search, size: KapdhIconSize.lg),
           isDense: true,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(KapdhRadius.md)),
           suffixIcon: value.text.isEmpty
               ? null
-              : IconButton(tooltip: 'Hapus pencarian', icon: const Icon(Icons.close), onPressed: onClear),
+              : IconButton(tooltip: 'Hapus pencarian', icon: const Icon(KapdhIcons.close), onPressed: onClear),
         ),
       ),
     );
@@ -210,14 +214,14 @@ class _CategoryTabs extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s3),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: active ? KapdhColors.primary : Colors.transparent, width: 2)),
+              border: Border(bottom: BorderSide(color: active ? context.kc.primary : Colors.transparent, width: 2)),
             ),
             child: Text(
               label,
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                color: active ? KapdhColors.primary : KapdhColors.textMuted,
+                color: active ? context.kc.primary : context.kc.textMuted,
               ),
             ),
           ),

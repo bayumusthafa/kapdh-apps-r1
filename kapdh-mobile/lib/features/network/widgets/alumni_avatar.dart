@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/theme/kapdh_tokens.dart';
+import '../../../app/theme/kapdh_palette.dart';
 import '../../../core/format/formatters.dart';
 
 /// Avatar alumni bulat (guideline hal. 7): foto dari URL bertanda tangan (maksimal 10 menit, PRD 5.4) atau inisial
@@ -21,13 +21,14 @@ class AlumniAvatar extends StatelessWidget {
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(shape: BoxShape.circle, color: KapdhColors.green100),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: context.kc.tintStrong),
       child: icon != null
-          ? Icon(icon, size: size * 0.5, color: KapdhColors.primary)
+          ? Icon(icon, size: size * 0.5, color: context.kc.primary)
           : Text(
               initialsOf(name),
               maxLines: 1,
-              style: TextStyle(fontSize: size * 0.36, fontWeight: FontWeight.w600, color: KapdhColors.primary),
+              textScaler: TextScaler.noScaling,
+              style: TextStyle(fontSize: size * 0.36, fontWeight: FontWeight.w600, color: context.kc.primary),
             ),
     );
     final source = url;

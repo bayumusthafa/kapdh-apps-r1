@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
+import '../../app/theme/kapdh_palette.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/api_providers.dart';
@@ -12,6 +13,7 @@ import '../../core/api/error_presenter.dart';
 import '../../core/format/formatters.dart';
 import '../../core/validation/password.dart';
 import '../../design/design.dart';
+import '../auth/auth_widgets.dart' show PasswordRules;
 import 'widgets/scroll_column.dart';
 import 'account_repository.dart';
 
@@ -133,7 +135,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
           padding: const EdgeInsets.fromLTRB(KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s5, KapdhSpace.s8),
           children: [
             const InfoBox(
-              icon: Icons.lock_outline,
+              icon: KapdhIcons.lockOutline,
               message:
                   'Masukkan password saat ini untuk mengonfirmasi bahwa ini Anda. Setelah diganti, perangkat lain '
                   'yang masuk ke akun Anda akan dikeluarkan.',
@@ -164,12 +166,12 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               autofillHints: const [AutofillHints.newPassword],
               textInputAction: TextInputAction.next,
               trailingText: counter.text,
-              trailingTextColor: counter.problem ? KapdhColors.danger : KapdhColors.textMuted,
+              trailingTextColor: counter.problem ? context.kc.danger : context.kc.textMuted,
               errorText:
                   _fieldError('new_password') ?? (_submitted && !check.valid ? 'Belum memenuhi aturan password' : null),
               onChanged: (_) => setState(() {}),
             ),
-            _PasswordRules(check: check),
+            PasswordRules(check: check),
             const SizedBox(height: KapdhSpace.s4),
             KapdhTextField(
               key: const ValueKey('password-confirm'),
@@ -213,54 +215,6 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Daftar aturan password PRD 2.5 dengan status terpenuhi (teks, bukan warna saja; N-11).
-class _PasswordRules extends StatelessWidget {
-  const _PasswordRules({required this.check});
-
-  final PasswordCheck check;
-
-  @override
-  Widget build(BuildContext context) {
-    Widget rule(bool ok, String label) => Semantics(
-      label: '$label, ${ok ? 'terpenuhi' : 'belum terpenuhi'}',
-      excludeSemantics: true,
-      child: Text.rich(
-        TextSpan(
-          children: [
-            WidgetSpan(
-              alignment: PlaceholderAlignment.middle,
-              child: Padding(
-                padding: const EdgeInsets.only(right: KapdhSpace.s1),
-                child: Icon(
-                  ok ? Icons.check_circle : Icons.radio_button_unchecked,
-                  size: 16,
-                  color: ok ? KapdhColors.success : KapdhColors.textMuted,
-                ),
-              ),
-            ),
-            TextSpan(text: label),
-          ],
-        ),
-        style: const TextStyle(fontSize: KapdhFontSize.caption),
-      ),
-    );
-    return Padding(
-      padding: const EdgeInsets.only(top: KapdhSpace.s2),
-      child: Wrap(
-        spacing: KapdhSpace.s4,
-        runSpacing: KapdhSpace.s1,
-        children: [
-          rule(check.lengthOk, '8 sampai 72 byte'),
-          rule(check.hasUpper, 'Huruf besar'),
-          rule(check.hasLower, 'Huruf kecil'),
-          rule(check.hasDigit, 'Angka'),
-          rule(check.hasSymbol, 'Simbol'),
-        ],
       ),
     );
   }
