@@ -16,7 +16,7 @@ Rujukan: PRD 5.3, 5.4, 5.5, 8.2, 9.3; D7, D9, D10, D12; ADR-024. Detail dan alas
 - Tempat menjalankan perintah:
   - **[VPS]** shell admin (sudo) di VPS staging, lewat konsol penyedia atau SSH admin lewat Tailscale (tahap 2);
     perintah `docker` juga lewat `sudo`. Jangan menambahkan admin ke grup `docker` (setara root, D9);
-  - **[PC]** Git Bash di PC pengelola, dari akar repo `C:\Users\Admin\KAPDHAPPS` (checkout `main`);
+  - **[PC]** Git Bash di PC pengelola, dari akar clone repo (checkout `main`);
   - **[panel]** panel Coolify, admin console Tailscale, atau halaman GitHub.
 - Secret (sandi, token, kunci privat, URL bersandi) hanya diketik/ditempel di prompt tersembunyi, di editor, atau
   dibaca dari berkas; tidak pernah sebagai argumen perintah, di URL yang tercetak ke log, di riwayat shell, chat, atau
