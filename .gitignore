@@ -18,5 +18,5 @@ build/
 /kapdh-platform/data/
 .astro/
 
-# agent worktrees
-.claude/worktrees/
+# folder lokal agen (worktree, skill, launch.json, catatan audit); tidak pernah di-commit
+.claude/
