@@ -52,86 +52,35 @@ dan tidak ada yang memuat penanda kerangka DRAF yang ditolak gerbang go-live.
 Butir berikut harus benar pada saat naskah diterbitkan. Bila belum, sebagian kalimat naskah menjadi tidak benar.
 
 1. **Domain kapdh.or.id sudah mengarah ke situs baru.** Saat diperiksa 15 Oktober 2026, `https://kapdh.or.id/...`
-   masih dialihkan (308) ke situs lama di Vercel, termasuk `/delete-account` yang membuka formulir hapus akun
-   aplikasi lama. Semua tautan di naskah memakai `https://kapdh.or.id/...` (sanitizer tidak menerima tautan relatif).
-   Pindahkan `kapdh.or.id` dan `www.kapdh.or.id` ke situs baru di VPS, hapus pengalihan di Vercel, lalu pastikan
-   `/delete-account`, `/kontak`, `/unduh`, `/kebijakan-privasi`, `/ketentuan`, `/ketentuan-komunitas`, `/bantuan`,
-   dan `/tentang` membuka halaman baru. Baru setelah itu isi URL hapus akun di Play Console. Bila naskah terpaksa
-   terbit lebih dulu, pilih alamat sementara `baru.kapdh.or.id` di `pratinjau.html`, lalu terbitkan ulang dengan
-   alamat kapdh.or.id setelah domain dipindah.
-2. **Nasib data aplikasi lama "KAPDH Alumni" sudah diputuskan** sebelum domain dipindah. Aplikasi lama menyimpan
-   data alumni (termasuk NIK bila pernah diisi), dan halaman kebijakan privasi serta hapus akunnya akan hilang saat
-   domain dipindah. Pilihannya: dihentikan dan datanya dihapus dengan pemberitahuan kepada penggunanya, atau tetap
-   berjalan di subdomain terpisah lengkap dengan kebijakan privasi dan halaman hapus akun yang berfungsi. Naskah baru
-   sengaja belum menyebut aplikasi lama; tambahkan paragraf di Kebijakan Privasi bagian 5 hanya setelah prosesnya
-   benar-benar ada.
-3. **Bucket deletion ledger di luar VPS sudah dikonfigurasi** (`DELETION_LEDGER_S3_*`). Tanpa bucket ini worker
+   masih dialihkan (308) ke situs lama di Vercel. Semua tautan di naskah memakai `https://kapdh.or.id/...` (sanitizer
+   tidak menerima tautan relatif). Pindahkan `kapdh.or.id` dan `www.kapdh.or.id` ke situs baru di VPS, hapus
+   pengalihan di Vercel, lalu pastikan `/delete-account`, `/kontak`, `/unduh`, `/kebijakan-privasi`, `/ketentuan`,
+   `/ketentuan-komunitas`, `/bantuan`, dan `/tentang` membuka halaman baru. Baru setelah itu isi URL hapus akun di
+   Play Console. Bila naskah terpaksa terbit lebih dulu, pilih alamat sementara `baru.kapdh.or.id` di
+   `pratinjau.html`, lalu terbitkan ulang dengan alamat kapdh.or.id setelah domain dipindah.
+2. **Bucket deletion ledger di luar VPS sudah dikonfigurasi** (`DELETION_LEDGER_S3_*`). Tanpa bucket ini worker
    production menolak berjalan dan penghapusan akun tertunda, sehingga janji "penghapusan selesai paling lambat 7 hari
    kalender" tidak terpenuhi.
-4. **Backup harian sudah berjalan** ke object storage di luar VPS (IDCloudHost IS3 di Indonesia, bucket kapdh-prod-backup; berjalan sejak 15 Oktober 2026),
-   dengan rotasi 30 hari, dan **satu uji restore sudah berhasil** (ADR-018 masih mencatat belum ada restore drill).
-   Kebijakan Privasi bagian 8, 10, dan 11.5 serta Bantuan menyebut cadangan harian terenkripsi yang dihapus paling lama
-   30 hari.
-5. **Ketentuan pemrosesan data (DPA) dengan setiap pemroses sudah ada dan diperiksa:** PT Cloud Hosting Indonesia
-   (IDCloudHost, pemilik IP VPS menurut data APNIC), Resend, Google Firebase (setujui Data Processing and Security
-   Terms di konsol Firebase), Cloudflare, Amazon Web Services (penerima email masuk kapdh.or.id menurut catatan MX),
-   dan penyedia object storage (IS3 IDCloudHost, ketentuan layanan yang sama dengan VPS). Kebijakan Privasi bagian 8 menyatakan para pemroses terikat ketentuan
-   pemrosesan data dengan pelindungan yang sama atau setara (syarat Apple 5.1.1).
-6. **Identitas organisasi dikonfirmasi:** nama badan hukum "Perkumpulan Keluarga Alumni Pesantren Darel Hikmah"
+3. **Backup harian sudah berjalan** ke object storage di luar VPS (IDCloudHost IS3 di Indonesia, bucket
+   kapdh-prod-backup; berjalan sejak 15 Oktober 2026), dengan rotasi 30 hari, dan **satu uji restore sudah berhasil**
+   (ADR-018 masih mencatat belum ada restore drill). Kebijakan Privasi bagian 8, 10, dan 11.5 serta Bantuan menyebut
+   cadangan harian terenkripsi yang dihapus paling lama 30 hari.
+4. **Identitas organisasi dikonfirmasi:** nama badan hukum "Perkumpulan Keluarga Alumni Pesantren Darel Hikmah"
    sesuai SK AHU-0002732.AH.01.07.TAHUN 2023 (11 April 2023) dan akta Nomor 01 (27 Maret 2023), lokasi pesantren
    (Pekanbaru, Riau), serta nama akun developer Google Play dan Apple yang persis sama dengan nama badan hukum. Di
    halaman Tentang (revisi 18 Oktober 2026): misi dijabarkan dari Anggaran Dasar Pasal 3 dan 4; visi adalah rumusan
    baru yang wajib disahkan pengurus; semboyan berasal dari situs lama (tidak ada di AD). Dikonfirmasi pemilik
    18 Oktober 2026: KAPDH tidak menyelenggarakan pendidikan formal (sekolah atau madrasah), semboyan adalah semboyan
    resmi, butir misi lama di luar AD dihapus, rumusan visi disetujui, dan seluruh pendiri adalah alumni.
-7. **Batas usia 18 tahun disetujui pemilik.** Aplikasi tidak menanyakan usia dan tidak dapat mencatat persetujuan
+5. **Batas usia 18 tahun disetujui pemilik.** Aplikasi tidak menanyakan usia dan tidak dapat mencatat persetujuan
    orang tua atau wali, sehingga naskah menetapkan layanan hanya untuk usia 18 tahun ke atas (pernyataan usia melalui
    persetujuan Ketentuan Layanan). Disarankan menambahkan kalimat usia pada centang pendaftaran di aplikasi dan
    memilih rating usia toko yang konsisten. Bila pemilik ingin menerima alumni di bawah 18 tahun, alur persetujuan wali
    yang tercatat harus dibangun lebih dahulu dan naskah diubah.
-8. **Akun yang menyetujui naskah DRAF diperiksa.** Production sudah membuka pendaftaran dengan versi legal 1 (teks
-   DRAF). Bila hanya ada akun uji, hapus akun tersebut. Buat akun demo untuk reviewer toko **setelah** naskah final
-   terbit.
-9. **Ada petugas yang memantau bantuan@kapdh.or.id** untuk permintaan terkait data pribadi, termasuk akhir pekan dan
+6. **Ada petugas yang memantau bantuan@kapdh.or.id** untuk permintaan terkait data pribadi, termasuk akhir pekan dan
    hari libur, karena tenggat UU PDP 3 x 24 jam dihitung dalam jam. Halaman lain menyatakan pertanyaan umum dijawab
    pada hari kerja, sedangkan permintaan data pribadi mengikuti jangka waktu Kebijakan Privasi.
-10. **Dokumen internal tersedia** (tidak dipublikasikan): penilaian dampak pelindungan data (DPIA) untuk bukti
-    pembayaran, analisis kepentingan yang sah untuk keamanan, audit, dan moderasi, serta catatan aktivitas
-    pemrosesan. Kebijakan Privasi menawarkan penjelasan pertimbangan kepentingan yang sah atas permintaan.
-11. **Nomor WhatsApp dukungan diisi** di pengaturan aplikasi. Naskah merujuk ke "nomor WhatsApp dukungan yang
-    tercantum di aplikasi dan di halaman Kontak".
+7. **Nomor WhatsApp dukungan diisi** di pengaturan aplikasi. Naskah merujuk ke "nomor WhatsApp dukungan yang
+   tercantum di aplikasi dan di halaman Kontak".
 
-## Butir terbuka lain
-
-Butir berikut tidak membuat naskah keliru, tetapi perlu keputusan pemilik atau perubahan aplikasi. Bila salah satunya
-diselesaikan, naskah terkait perlu diterbitkan ulang.
-
-- **Font Poppins diunduh dari Google Fonts saat aplikasi berjalan.** Naskah mengungkapkannya dengan jujur (Kebijakan
-  Privasi bagian 8, 9, 10, dan 17), tetapi pengiriman alamat IP ke Google ini tidak punya perjanjian pemrosesan. Sangat
-  disarankan membundel Poppins sebagai aset sebelum rilis. Setelah dibundel, hapus butir Google Fonts di bagian 8,
-  butir unduhan huruf di bagian 9 (daftar dan pelindungan), serta kata "huruf" pada bagian 10 dan 17, lalu terbitkan
-  ulang. Selaraskan formulir Data safety dan App Privacy.
-- **Email akun aktif belum dapat diganti** (tidak ada alur di aplikasi, web admin, maupun CLI). Naskah menyatakannya
-  apa adanya. Disarankan membuat alur ganti email terverifikasi. Teks aplikasi di
-  `kapdh-mobile/lib/features/account/profile_edit_screen.dart` ("email diubah lewat alur verifikasi email")
-  bertentangan dengan naskah dan perlu diperbaiki.
-- **Pendaftaran yang tidak pernah diverifikasi disimpan tanpa batas** (tidak ada job pembersih akun `pending_otp`).
-  Disarankan job yang menghapusnya setelah 30 hari, lalu tambahkan masa itu di Kebijakan Privasi bagian 10.
-- **Pihak yang dilaporkan tidak diberi tahu** saat kontennya dihapus atau dilaporkan. Permenkominfo 5/2020 Pasal 10
-  ayat (4) mewajibkan pemberitahuan aduan kepada pengunggah. Putuskan bersama penasihat hukum; bila diterapkan, ubah
-  Ketentuan Komunitas bagian 8.
-- **Apple 1.2:** filter otomatis saat ini hanya menolak karakter tersembunyi dan tautan berbahaya, dan target laporan
-  non-ancaman 2 hari kerja. Pertimbangkan filter kata kasar, cabul, dan SARA serta target 24 jam, atau siapkan catatan
-  reviewer yang menjelaskan proses moderasi.
-- **Teks izin iOS** (`Info.plist`, kamera dan galeri) baru menyebut bukti transfer dan foto profil. Tambahkan foto
-  grup dan gambar chat agar sesuai Kebijakan Privasi bagian 18.
-- **Notifikasi push** belum aktif di konfigurasi build yang ada di repo (`PUSH_ENABLED=false`, entitlement APNs belum
-  ada). Naskah sudah ditulis "bila tersedia", sehingga tetap benar sebelum dan sesudah push diaktifkan.
-- **Hari kerja** di naskah berarti Senin sampai Jumat WIB, sama dengan perhitungan sistem (belum ada kalender libur
-  nasional). Bila pemilik ingin hari libur dikecualikan, kalender libur harus ditambahkan ke kode lebih dahulu.
-- **Pelacakan galat (GlitchTip)** bila diaktifkan hanya menerima data teknis tanpa data pribadi, sebagaimana tertulis
-  di Kebijakan Privasi bagian 4.11. Pertahankan daftar putih field yang ada.
-- **Teks aplikasi tentang iuran** yang masih memakai istilah "terkunci" atau "membuka fitur" tercatat sebagai pemblokir
-  submit di `docs/runbooks/app-store-submission.md` bagian 2. Naskah halaman sudah memakai rumusan status keanggotaan.
-- **Bantuan di iOS** memuat langkah pembayaran transfer. Bila reviewer Apple mempermasalahkannya, pertimbangkan versi
-  Bantuan yang lebih ringkas untuk bagian iuran.
+Syarat tambahan dan daftar butir terbuka lainnya dikelola pengurus secara internal.
