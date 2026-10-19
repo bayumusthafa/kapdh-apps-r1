@@ -233,7 +233,12 @@ All are exported by the global `CoreModule`. Names are binding; exact signatures
 
 Additional decorators (evaluated after authentication, server-side, every request):
 
-- `@MemberAccess("any" | "nonsuspended" | "active")` — mobile only; computes effective status (§3.1).
+- `@MemberAccess("any" | "nonsuspended" | "active")` — mobile only; computes effective status (§3.1) from the
+  session-check row itself (`sessions` ⋈ `users` ⋈ `alumni` in ONE statement, `SessionRow.member`), never from a
+  second read: under READ COMMITTED a second statement can see a commit that landed after the session check (e.g. a
+  deletion request from the member's other device making the account `deletion_pending`) and would reject a request
+  whose session was just judged valid with a contradictory 403 `MEMBERSHIP_REQUIRED` (AC F14-1). Services that need
+  the latest state lock their own rows.
 - `@RequirePermission(...perms)` — admin only; all listed permissions required; evaluated from DB each request
   (AC F15-1, F16-3). `super_admin` has all permissions.
 - `@RequireAnyPermission(...perms)` — admin only; at least ONE listed permission (contract `x-kapdh-access.permissions_any`),

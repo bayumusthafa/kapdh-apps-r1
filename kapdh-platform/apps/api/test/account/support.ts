@@ -42,13 +42,14 @@ import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { decodeJwt } from "jose";
 import { v7 as uuidv7 } from "uuid";
-import { expect } from "vitest";
+import { expect, vi } from "vitest";
 import { createApp } from "../../src/bootstrap.js";
 import { MemoryMailer } from "../../src/core/adapters/mailer.js";
 import { runAsSystem } from "../../src/core/context/request-context.js";
 import { rows } from "../../src/core/db/rows.js";
 import { commitAwareDb } from "../../src/core/db/tx.js";
 import type { Db } from "../../src/core/db/types.js";
+import { SessionValidator } from "../../src/core/guards/session-validator.js";
 import { TokenService } from "../../src/core/identity/token.service.js";
 import { JobRunner } from "../../src/core/jobs/job-runner.js";
 import { MemoryRateLimitStore } from "../../src/core/rate-limit/store.js";
@@ -103,6 +104,46 @@ export async function reauthHeader(
     .get(TokenService)
     .signReauth({ userId: session!.userId, familyId: session!.familyId, level: 1 });
   return { "x-reauth-token": token };
+}
+
+/**
+ * Barrier deterministik race AC F14-1: permintaan PERTAMA yang melewati `SessionValidator.loadActiveSession`
+ * (pemeriksaan sesi AuthGuard terhadap database) sesudah pemanggilan ini ditahan sampai `release()`, permintaan lain
+ * berjalan biasa. Uji dapat meng-commit penghapusan dari perangkat lain TEPAT di antara pemeriksaan sesi dan sisa
+ * AuthGuard/handler permintaan yang ditahan, urutan yang tanpa barrier hanya terjadi sesekali (CI 2026-10-19).
+ * `authenticated` gagal bila permintaan selesai tanpa pernah melewati pemeriksaan sesi.
+ */
+export function holdAfterSessionCheck(app: NestFastifyApplication) {
+  const validator = app.get(SessionValidator);
+  const original = validator.loadActiveSession.bind(validator);
+  let release!: () => void;
+  const released = new Promise<void>((resolve) => (release = resolve));
+  let signal!: () => void;
+  const reached = new Promise<void>((resolve) => (signal = resolve));
+  let held = false;
+  const spy = vi.spyOn(validator, "loadActiveSession").mockImplementation(async (claims, now) => {
+    const row = await original(claims, now);
+    if (held) return row;
+    held = true;
+    signal();
+    await released;
+    return row;
+  });
+  return {
+    /** Menunggu permintaan `pending` lolos pemeriksaan sesi lalu tertahan. */
+    authenticated: (pending: Promise<unknown>) =>
+      Promise.race([
+        reached,
+        pending.then(() => {
+          throw new Error("permintaan selesai tanpa melewati SessionValidator.loadActiveSession");
+        }),
+      ]),
+    release: () => release(),
+    restore: () => {
+      release();
+      spy.mockRestore();
+    },
+  };
 }
 
 /** Berkas tersimpan (baris files `ready` + objek di storage) tanpa melewati endpoint unggah. */

@@ -6,7 +6,9 @@
  * - Dua worker mengeksekusi permintaan yang sama bersamaan: klaim bersyarat membuat tepat satu yang berjalan, kursi
  *   dan pembatalan tidak dihitung ulang (AC F14-2).
  * - Dua perangkat meminta penghapusan bersamaan: satu permintaan terbuka (baris users terkunci,
- *   account_deletions_user_id_open_key; AC F14-1).
+ *   account_deletions_user_id_open_key; AC F14-1), diulang 20 putaran, plus barrier deterministik: perangkat kedua
+ *   yang sudah lolos pemeriksaan sesi saat perangkat pertama commit tetap 202 dengan nomor yang sama (AuthGuard menilai
+ *   @MemberAccess dari snapshot pemeriksaan sesi, bukan bacaan kedua yang melihat deletion_pending).
  * Jalur PGlite (superuser) memakai role kapdh_audit_purge buatan uji dengan grant yang sama (test/account/support.ts).
  */
 import "reflect-metadata";
@@ -30,7 +32,12 @@ import { createRootLogger } from "../../src/core/logging/logger.js";
 import { AccountDeletionProcessor } from "../../src/modules/account/deletion-processor.js";
 import { createWorkerContext, type WorkerContext } from "../../src/worker.js";
 import { expectFullyDeleted } from "../account/expect-deleted.js";
-import { createRichMember, reauthHeader, requestDeletionViaApp } from "../account/support.js";
+import {
+  createRichMember,
+  holdAfterSessionCheck,
+  reauthHeader,
+  requestDeletionViaApp,
+} from "../account/support.js";
 import { createAlumni, signInAlumni } from "../support/factories.js";
 import { httpClient } from "../support/http.js";
 import { FakePush, TestClock, testEnv } from "../support/test-app.js";
@@ -171,30 +178,73 @@ describe("F-14 pada PostgreSQL 17 dengan role production", () => {
     await expectFullyDeleted(fixtures, rich, requestNumber);
   });
 
+  // Interleaving alami (termasuk perangkat kedua menunggu kunci baris users milik yang pertama) diulang 20 putaran.
+  // Jendela race guard terlalu sempit untuk dikenai andal dengan pengulangan (CI 2026-10-19 hanya sesekali); urutan
+  // itu dibuktikan deterministik oleh uji barrier berikutnya.
   it("AC F14-1: dua perangkat meminta penghapusan bersamaan → satu permintaan terbuka; setiap respons 202 membawa nomor yang sama", async () => {
-    const member = await createAlumni(fixtures, { status: "verified" });
-    const sessions = [await signInAlumni(fixtures, member), await signInAlumni(fixtures, member)];
     const client = httpClient(app);
-    const disclosure = await client.get("/me/deletion/disclosure", { token: sessions[0]!.accessToken });
-    const body = { confirm: true, acknowledged_disclosure_version: disclosure.json().version };
-    const headers = await Promise.all(sessions.map((s) => reauthHeader(fixtures, s.accessToken)));
-    const responses = await Promise.all(
-      sessions.map((s, i) =>
-        client.post("/me/deletion", body, { token: s.accessToken, headers: headers[i] }),
-      ),
-    );
-    for (const res of responses) expect([202, 401], res.body).toContain(res.statusCode);
-    const accepted = responses.filter((r) => r.statusCode === 202).map((r) => r.json().request_number);
-    expect(accepted.length).toBeGreaterThanOrEqual(1);
-    expect(new Set(accepted).size).toBe(1);
+    for (let round = 0; round < 20; round++) {
+      const { member, sessions, body, headers } = await twoDevices();
+      const responses = await Promise.all(
+        sessions.map((s, i) =>
+          client.post("/me/deletion", body, { token: s.accessToken, headers: headers[i] }),
+        ),
+      );
+      for (const res of responses)
+        expect([202, 401], `putaran ${round}: ${res.body}`).toContain(res.statusCode);
+      const accepted = responses.filter((r) => r.statusCode === 202).map((r) => r.json().request_number);
+      expect(accepted.length, `putaran ${round}`).toBeGreaterThanOrEqual(1);
+      expect(new Set(accepted).size, `putaran ${round}`).toBe(1);
+      const rows = await tdb.db
+        .select()
+        .from(accountDeletions)
+        .where(eq(accountDeletions.userId, member.userId));
+      expect(rows, `putaran ${round}`).toHaveLength(1);
+      expect(rows[0]!.requestNumber).toBe(accepted[0]);
+    }
+  });
+
+  it("AC F14-1: perangkat kedua lolos pemeriksaan sesi (kapdh_app), perangkat pertama commit sebelum @MemberAccess dinilai → 202 dengan nomor yang sama, bukan 403 MEMBERSHIP_REQUIRED", async () => {
+    const { member, sessions, body, headers } = await twoDevices();
+    const client = httpClient(app);
+    const hold = holdAfterSessionCheck(app);
+    try {
+      const late = client.post("/me/deletion", body, {
+        token: sessions[1]!.accessToken,
+        headers: headers[1],
+      });
+      await hold.authenticated(late);
+      const first = await client.post("/me/deletion", body, {
+        token: sessions[0]!.accessToken,
+        headers: headers[0],
+      });
+      expect(first.statusCode, first.body).toBe(202);
+      hold.release();
+      const second = await late;
+      expect(second.statusCode, second.body).toBe(202);
+      expect(second.json().request_number).toBe(first.json().request_number);
+    } finally {
+      hold.restore();
+    }
     const rows = await tdb.db
       .select()
       .from(accountDeletions)
       .where(eq(accountDeletions.userId, member.userId));
     expect(rows).toHaveLength(1);
-    expect(rows[0]!.requestNumber).toBe(accepted[0]);
   });
 });
+
+/** Anggota verified dengan dua sesi perangkat, body konfirmasi berversi pengungkapan terkini dan header reauth. */
+async function twoDevices() {
+  const member = await createAlumni(fixtures, { status: "verified" });
+  const sessions = [await signInAlumni(fixtures, member), await signInAlumni(fixtures, member)];
+  const disclosure = await httpClient(app).get("/me/deletion/disclosure", {
+    token: sessions[0]!.accessToken,
+  });
+  const body = { confirm: true, acknowledged_disclosure_version: disclosure.json().version };
+  const headers = await Promise.all(sessions.map((s) => reauthHeader(fixtures, s.accessToken)));
+  return { member, sessions, body, headers };
+}
 
 // CLI hasil `pnpm build` (alur verifikasi menjalankan build sebelum test:pg); dilewati bila dist belum ada.
 const cliPath = join(
