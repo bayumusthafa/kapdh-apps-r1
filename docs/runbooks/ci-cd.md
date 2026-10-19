@@ -142,6 +142,9 @@ GAGAL bila `API_BASE_URL` environment berbeda dengan nilai katalog untuk lingkun
     `["self-hosted","kapdh-deploy"]`; atau
   - runner GitHub bawaan (`"ubuntu-24.04"`) dengan secrets Tailscale di environment (ACL: `tag:ci` hanya ke port SSH
     host deploy). Tanpa salah satu, job deploy berhenti; jangan membuka port 22 ke rentang IP GitHub Actions.
+- Runner job `ci.yml` dan `release.yml`: variable repo `CI_RUNS_ON` (JSON), mis.
+  `["self-hosted","linux","x64","kapdh"]`; kosong = runner GitHub `ubuntu-24.04`. Runner self-hosted wajib Linux x86_64,
+  user non-root (embedded-postgres) dengan akses Docker + buildx; Node, pnpm, Flutter dan alat terpin dipasang oleh job.
 - Settings > Actions: izin workflow bawaan "read"; izinkan hanya action GitHub dan action yang dipakai workflow ini.
 - Ruleset branch `main`: wajib pull request dan status "CI lulus".
 - Ruleset tag `v*` dan `contracts-v*`: hanya pengelola rilis; beri bypass untuk GitHub Actions agar job
