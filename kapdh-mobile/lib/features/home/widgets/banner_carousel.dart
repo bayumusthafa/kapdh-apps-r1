@@ -206,31 +206,12 @@ class _BannerTile extends StatelessWidget {
                 ),
                 Positioned(
                   left: KapdhSpace.s3,
-                  // Ruang kanan untuk titik halaman.
-                  right: 52,
+                  right: KapdhSpace.s3,
                   bottom: KapdhSpace.s3,
                   child: MediaQuery.withClampedTextScaling(
                     // Keterangan di atas gambar berasio tetap: judul dan pil 'Tautan luar' dibatasi 1,3 bersama (N-11).
                     maxScaleFactor: 1.3,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            banner.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: KapdhColors.textOnDark,
-                              fontWeight: FontWeight.w700,
-                              height: 1.35,
-                              fontSize: KapdhFontSize.body,
-                            ),
-                          ),
-                        ),
-                        if (external) ...[const SizedBox(width: KapdhSpace.s2), const _ExternalPill()],
-                      ],
-                    ),
+                    child: _BannerCaption(title: banner.title, external: external),
                   ),
                 ),
                 // Lapisan tinta di atas gambar agar ripple tekan dan sorotan fokus keyboard terlihat.
@@ -256,24 +237,110 @@ class _BannerTile extends StatelessWidget {
   }
 }
 
+/// Keterangan banner: judul putih dua baris di atas scrim dan penanda "Tautan luar" untuk target url, di samping judul
+/// (v2). Pada teks yang diperbesar, bila penanda akan memakan lebih dari separuh baris (layar sempit, N-11), penanda
+/// naik ke atas judul: judul tetap selebar baris dan tidak meluap. Pada teks 100 % tata letak v2 tidak berubah.
+class _BannerCaption extends StatelessWidget {
+  const _BannerCaption({required this.title, required this.external});
+
+  /// Ruang kanan judul untuk titik halaman (di dalam padding s3 ubin).
+  static const double dotsGap = 40;
+
+  final String title;
+  final bool external;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Text(
+      title,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+        color: KapdhColors.textOnDark,
+        fontWeight: FontWeight.w700,
+        height: 1.35,
+        fontSize: KapdhFontSize.body,
+      ),
+    );
+    // Judul saja menyisakan ruang kanan untuk titik halaman.
+    final padded = Padding(
+      padding: const EdgeInsets.only(right: dotsGap),
+      child: text,
+    );
+    if (!external) return padded;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final line = constraints.maxWidth - dotsGap;
+        final enlarged = MediaQuery.textScalerOf(context).scale(KapdhFontSize.body) > KapdhFontSize.body;
+        if (!enlarged || _ExternalPill.widthOf(context) + KapdhSpace.s2 <= line / 2) {
+          return Padding(
+            padding: const EdgeInsets.only(right: dotsGap),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(child: text),
+                const SizedBox(width: KapdhSpace.s2),
+                const _ExternalPill(),
+              ],
+            ),
+          );
+        }
+        // Penanda di atas judul boleh memakai ruang titik halaman (titik ada di baris bawah, sejajar judul).
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Penjaga layar sangat sempit: penanda diperkecil, tidak meluap.
+            const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: _ExternalPill()),
+            const SizedBox(height: KapdhSpace.s1),
+            padded,
+          ],
+        );
+      },
+    );
+  }
+}
+
 /// Penanda "Tautan luar" pada banner bertarget url (PRD 3.8).
 class _ExternalPill extends StatelessWidget {
   const _ExternalPill();
 
+  static const _label = 'Tautan luar';
+  static const _padding = EdgeInsets.symmetric(horizontal: KapdhSpace.s2, vertical: 2);
+  static const double _iconGap = 2;
+  static const double _iconSize = 12;
+
+  static TextStyle _style(BuildContext context) =>
+      TextStyle(fontSize: KapdhFontSize.overline, fontWeight: FontWeight.w600, color: context.kc.primary);
+
+  /// Lebar penanda pada skala teks [context], diukur seperti [Text] membangunnya (gaya teks bawaan, teks tebal
+  /// aksesibilitas), agar letaknya dapat dipilih sebelum dibangun ([_BannerCaption]).
+  static double widthOf(BuildContext context) {
+    var style = DefaultTextStyle.of(context).style.merge(_style(context));
+    if (MediaQuery.boldTextOf(context)) style = style.merge(const TextStyle(fontWeight: FontWeight.bold));
+    final painter = TextPainter(
+      text: TextSpan(text: _label, style: style),
+      textScaler: MediaQuery.textScalerOf(context),
+      textDirection: Directionality.of(context),
+      locale: Localizations.maybeLocaleOf(context),
+      maxLines: 1,
+    )..layout();
+    final width = painter.width;
+    painter.dispose();
+    return width + _iconGap + _iconSize + _padding.horizontal;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s2, vertical: 2),
+      padding: _padding,
       decoration: BoxDecoration(color: context.kc.surface, borderRadius: BorderRadius.circular(KapdhRadius.pill)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Tautan luar',
-            style: TextStyle(fontSize: KapdhFontSize.overline, fontWeight: FontWeight.w600, color: context.kc.primary),
-          ),
-          const SizedBox(width: 2),
-          Icon(KapdhIcons.openInNew, size: 12, color: context.kc.primary),
+          Text(_label, style: _style(context)),
+          const SizedBox(width: _iconGap),
+          Icon(KapdhIcons.openInNew, size: _iconSize, color: context.kc.primary),
         ],
       ),
     );

@@ -12,6 +12,7 @@ import 'package:kapdh_mobile/features/home/shared/remote_image.dart';
 
 import '../../support/app_harness.dart';
 import '../../support/fakes.dart';
+import '../../support/widget_harness.dart' show prototypeSize;
 
 /// PNG transparan 1×1 untuk menggantikan gambar jaringan (cover, banner, avatar) di uji.
 final Uint8List transparentPng = Uint8List.fromList(const [
@@ -33,7 +34,7 @@ Override get testImagesOverride => remoteImageProviderFactoryProvider.overrideWi
 /// Menjalankan aplikasi dengan sesi anggota [status] (GET /me) lalu membuka [location] (push di atas rute awal
 /// status agar tombol kembali bekerja seperti dari Beranda). [settled] false: frame dipompa tanpa menunggu tenang
 /// (untuk memeriksa keadaan memuat selagi request ditahan). [overrides] menambah pengganti provider (mis. aliran
-/// realtime tiruan).
+/// realtime tiruan). [size] layar uji (dp), dipasang sebelum frame pertama.
 Future<AppHarness> pumpMemberApp(
   WidgetTester tester, {
   Map<String, FakeHandler> routes = const {},
@@ -43,6 +44,7 @@ Future<AppHarness> pumpMemberApp(
   SecureStore? store,
   TestClock? clock,
   double textScale = 1,
+  Size size = prototypeSize,
   Map<String, Object?>? config,
   bool settled = true,
   List<Override> overrides = const [],
@@ -54,6 +56,7 @@ Future<AppHarness> pumpMemberApp(
     store: store,
     clock: clock,
     textScale: textScale,
+    size: size,
     settle: settled,
     overrides: [testImagesOverride, ...overrides],
     handler: apiRoutes({'/me': (_) => FakeResponse.json(200, meJson(status: status)), ...routes}, config: config),

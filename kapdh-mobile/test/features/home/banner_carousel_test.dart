@@ -10,7 +10,6 @@ import 'package:kapdh_mobile/app/theme/kapdh_tokens.dart';
 import 'package:kapdh_mobile/features/home/shared/remote_image.dart';
 import 'package:kapdh_mobile/features/home/widgets/banner_carousel.dart';
 
-import '../../support/app_harness.dart' show settle;
 import '../../support/fakes.dart';
 import '../../support/test_images.dart';
 import '../../support/widget_harness.dart';
@@ -75,10 +74,7 @@ void main() {
           bannerJson(id: 'banner-2'),
         ],
       );
-      await pumpMemberApp(tester, routes: {'/home': (_) => FakeResponse.json(200, home)});
-      // pumpApp memasang ukuran prototipe (390 dp) dan mengembalikannya sesudah uji; di sini layar dipersempit.
-      tester.view.physicalSize = const Size(360, 780);
-      await settle(tester);
+      await pumpMemberApp(tester, size: const Size(360, 780), routes: {'/home': (_) => FakeResponse.json(200, home)});
       final carouselWidth = tester.getSize(find.byKey(const ValueKey('home-banners'))).width;
       expect(carouselWidth, closeTo(360 - 2 * KapdhSpace.s5, 0.01));
       _expectTiles(tester, carouselWidth: carouselWidth);
