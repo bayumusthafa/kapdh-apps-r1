@@ -46,7 +46,7 @@ interface ProfileState {
 const DEFAULT_PROFILE: ProfileState = {
   role: "super_admin",
   permissions: [],
-  display_name: "Bayu Musthafa",
+  display_name: "Fikri",
   permissions_version: 1,
 };
 

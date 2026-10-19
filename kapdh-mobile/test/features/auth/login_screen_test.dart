@@ -20,7 +20,7 @@ bool submitEnabled(WidgetTester tester) => tester.widget<KapdhButton>(submit).on
 
 Future<void> fillAndSubmit(
   WidgetTester tester, {
-  String email = 'ahmad@email.com',
+  String email = 'ahmad@kapdh.test',
   String password = 'Rahasia#123',
 }) async {
   await tester.enterText(emailField, email);
@@ -42,7 +42,7 @@ void main() {
     expect(find.text('Daftar'), findsOneWidget);
     expect(submitEnabled(tester), isFalse);
 
-    await tester.enterText(emailField, 'ahmad@email.com');
+    await tester.enterText(emailField, 'ahmad@kapdh.test');
     await tester.enterText(passwordField, 'x');
     await tester.pump();
     expect(submitEnabled(tester), isTrue);
@@ -163,12 +163,12 @@ void main() {
 
   testWidgets('F-02: Lupa Password membuka pemulihan dengan email yang sudah diketik', (tester) async {
     final app = await pumpApp(tester, handler: apiRoutes({}));
-    await tester.enterText(emailField, 'ahmad@email.com');
+    await tester.enterText(emailField, 'ahmad@kapdh.test');
     await tester.pump();
     await scrollAndTap(tester, find.byKey(const ValueKey('login-forgot')));
     await settle(tester);
     expect(app.location, '/forgot');
-    expect(find.text('ahmad@email.com'), findsOneWidget);
+    expect(find.text('ahmad@kapdh.test'), findsOneWidget);
   });
 
   testWidgets('AC F02-1: login akun pending_otp yang emailnya pernah dikoreksi membuka OTP email_change', (
@@ -181,11 +181,11 @@ void main() {
             FakeResponse.json(200, {'next': 'verify_otp', 'challenge': otpChallengeJson(purpose: 'email_change')}),
       }),
     );
-    await fillAndSubmit(tester, email: 'ahmad.benar@email.com');
+    await fillAndSubmit(tester, email: 'ahmad.benar@kapdh.test');
     expect(app.location, '/register/otp');
-    expect(find.textContaining('dikirim ke email baru ahmad.benar@email.com'), findsOneWidget);
+    expect(find.textContaining('dikirim ke email baru ahmad.benar@kapdh.test'), findsOneWidget);
     // Kredensial hanya di memori untuk pemulihan hasil verifikasi yang tidak diketahui (kontrak C1).
-    expect(app.container.read(activationCredentialsProvider)?.email, 'ahmad.benar@email.com');
+    expect(app.container.read(activationCredentialsProvider)?.email, 'ahmad.benar@kapdh.test');
   });
 
   testWidgets('akun pending_otp diarahkan ke OTP dengan challenge baru (AC F02-1)', (tester) async {
@@ -271,7 +271,7 @@ void main() {
 
         await tester.tap(emailField);
         await tester.pump();
-        await tester.enterText(emailField, 'ahmad@email.com');
+        await tester.enterText(emailField, 'ahmad@kapdh.test');
         await tester.enterText(passwordField, 'Rahasia#123');
         await tester.pump();
         expect(tester.takeException(), isNull);

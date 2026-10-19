@@ -530,7 +530,7 @@ describe("peserta dan tiket (F-09)", () => {
     await open(user, `/events/${MOCK_EVENT_IDS.reuni}?tab=tickets`, REUNI);
     const table = await screen.findByRole("table", { name: "Peserta dan tiket" });
     await user.click(
-      within(rowOf(table, /Bayu Musthafa/)).getByRole("button", { name: "Batalkan tiket Bayu Musthafa" }),
+      within(rowOf(table, /Fikri Ramadhan/)).getByRole("button", { name: "Batalkan tiket Fikri Ramadhan" }),
     );
     const dialog = await screen.findByRole("alertdialog", { name: /Batalkan tiket\?/ });
     expect(within(dialog).queryByRole("radio")).toBeNull();
@@ -538,7 +538,7 @@ describe("peserta dan tiket (F-09)", () => {
     await user.type(within(dialog).getByLabelText(/^Alasan pembatalan/), "Mundur dari kepanitiaan");
     await user.click(within(dialog).getByRole("checkbox", { name: /Saya memahami tiket ini/ }));
     await user.click(within(dialog).getByRole("button", { name: "Batalkan tiket" }));
-    await findToast("success", "Tiket Bayu Musthafa dibatalkan.");
+    await findToast("success", "Tiket Fikri Ramadhan dibatalkan.");
     const req = eventRequests.find((r) => r.path.endsWith("/cancel") && r.path.includes("/tickets/"))!;
     expect(req.body).toEqual({ reason: "Mundur dari kepanitiaan", refund: false });
   });

@@ -514,7 +514,7 @@ components:
         member_number:
           type: [string, "null"]
           description: Nomor anggota AA.SS.JK.N; null bila belum teraktivasi.
-          examples: ["09.02.01.5"]
+          examples: ["09.02.01.91"]
         avatar_url:
           type: [string, "null"]
           format: uri
@@ -747,7 +747,7 @@ components:
       properties:
         user_id: { type: string, format: uuid }
         full_name: { type: string }
-        member_number: { type: [string, "null"], examples: ["06.02.01.4"] }
+        member_number: { type: [string, "null"], examples: ["06.02.01.92"] }
         email: { type: string, format: email, description: Email akun alumni (untuk Super Admin saja). }
         profession:
           type: [string, "null"]

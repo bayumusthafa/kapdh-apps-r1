@@ -57,7 +57,7 @@ describe("biaya pembayaran (F-03, D4, AC F15-3; server tiruan)", () => {
     });
     await waitFor(() => expect(within(activeFees()).getByText(/Versi 2, berlaku sejak/)).toBeInTheDocument());
     expect(valueOf(activeFees(), "Total iuran pendaftaran")).toHaveTextContent("Rp65.000");
-    expect(valueOf(activeFees(), "Ditetapkan oleh")).toHaveTextContent("Bayu Musthafa");
+    expect(valueOf(activeFees(), "Ditetapkan oleh")).toHaveTextContent("Fikri");
     expect(screen.getByRole("button", { name: "Simpan biaya baru" })).toBeDisabled();
 
     // AC F03-5: tagihan yang sudah dibuat tetap memakai nominal dan versi biaya lamanya.

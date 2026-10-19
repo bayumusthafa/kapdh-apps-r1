@@ -67,7 +67,7 @@ void main() {
 
     await tester.enterText(
       find.descendant(of: find.byKey(const ValueKey('login-email')), matching: find.byType(EditableText)),
-      'ahmad.islam@email.com',
+      'ahmad.islam@contoh.test',
     );
     await tester.enterText(
       find.descendant(of: find.byKey(const ValueKey('login-password')), matching: find.byType(EditableText)),

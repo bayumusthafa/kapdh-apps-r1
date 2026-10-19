@@ -113,7 +113,7 @@ describe("penyesuaian refund dan koreksi (D6, D2, PRD 3.4; server tiruan)", () =
     expect(sent?.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
     expect(sent?.body).toMatchObject({ evidence_file_id: expect.stringMatching(/^[0-9a-f-]{36}$/) });
     expect(within(panel).getByText("Selesai", { selector: "dt" }).nextElementSibling).toHaveTextContent(
-      "oleh Bayu Musthafa",
+      "oleh Fikri",
     );
     expect(within(panel).queryByRole("region", { name: "Rekening tujuan refund" })).toBeNull();
     expect(screen.queryByText("[Nomor rekening refund]")).toBeNull();
@@ -158,7 +158,7 @@ describe("penyesuaian refund dan koreksi (D6, D2, PRD 3.4; server tiruan)", () =
     expect(sent?.ifMatch).toBe("1");
     expect(sent?.body).toEqual({ reason: "Peserta memilih tiket dialihkan ke event pengganti" });
     expect(within(panel).getByText("Dibatalkan", { selector: "dt" }).nextElementSibling).toHaveTextContent(
-      "oleh Bayu Musthafa | Alasan: Peserta memilih tiket dialihkan ke event pengganti",
+      "oleh Fikri | Alasan: Peserta memilih tiket dialihkan ke event pengganti",
     );
     expect(mockPayments.adjustment(IDS.fajarRefund)).toMatchObject({
       status: "cancelled",

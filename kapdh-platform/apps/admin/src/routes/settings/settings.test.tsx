@@ -27,7 +27,7 @@ describe("pengaturan aplikasi (F-15, AC F15-3, F15-4; server tiruan)", () => {
     await user.click(within(card).getByRole("button", { name: "Simpan versi minimum" }));
     expect(await findToast("success", "Versi aplikasi minimum disimpan.")).toBeInTheDocument();
     expectNoReauthDialog();
-    expect(within(card).getByText(/Versi 2 \| diubah .* oleh Bayu Musthafa/)).toBeInTheDocument();
+    expect(within(card).getByText(/Versi 2 \| diubah .* oleh Fikri/)).toBeInTheDocument();
     const sent = puts().at(-1);
     expect(sent).toMatchObject({ path: "/admin/settings/min-app-version", ifMatch: "1", reauth: false });
     expect(sent?.body).toEqual({ android: "1.1.0", ios: "1.0.0" });
@@ -57,14 +57,14 @@ describe("pengaturan aplikasi (F-15, AC F15-3, F15-4; server tiruan)", () => {
     await user.type(email, "pengurus@kapdh.or.id");
     await user.click(within(card).getByRole("button", { name: "Simpan kontak dukungan" }));
     const alert = await within(card).findByRole("alert");
-    expect(alert).toHaveTextContent("sudah diubah Ahmad Zulhadi (versi 2)");
+    expect(alert).toHaveTextContent("sudah diubah Hasan Basri (versi 2)");
     // Tidak ada percobaan kedua otomatis dengan versi baru (tidak menimpa diam-diam).
     expect(puts()).toHaveLength(1);
     expect(within(card).getByRole("button", { name: "Simpan kontak dukungan" })).toBeDisabled();
     expect(email).toHaveValue("pengurus@kapdh.or.id");
     await user.click(within(card).getByRole("button", { name: "Muat versi terbaru" }));
     expect(email).toHaveValue("info@kapdh.or.id");
-    expect(within(card).getByText(/Versi 2 \| diubah .* oleh Ahmad Zulhadi/)).toBeInTheDocument();
+    expect(within(card).getByText(/Versi 2 \| diubah .* oleh Hasan Basri/)).toBeInTheDocument();
     expect(within(card).queryByRole("alert")).toBeNull();
   });
 

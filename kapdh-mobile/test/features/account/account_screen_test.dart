@@ -61,7 +61,7 @@ void main() {
     final app = await openAccount(tester);
     expect(app.location, '/account');
     expect(find.text('Ahmad Islam'), findsOneWidget);
-    expect(find.text('ahmad.islam@email.com'), findsOneWidget);
+    expect(find.text('ahmad.islam@contoh.test'), findsOneWidget);
     expect(find.text('No. anggota 29.01.01.7'), findsOneWidget);
     expect(find.text('KAPDH 29 · Pekanbaru'), findsOneWidget);
     expect(find.bySemanticsLabel('Status: KTA Aktif'), findsOneWidget);

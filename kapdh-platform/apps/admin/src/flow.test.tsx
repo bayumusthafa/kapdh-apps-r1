@@ -18,7 +18,7 @@ describe("alur masuk dan sesi admin (server tiruan)", () => {
     const nav = await signIn(user);
     expect(within(nav).getByRole("link", { name: /Dashboard/ })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
-    expect(screen.getByText(/Masuk sebagai/)).toHaveTextContent("Masuk sebagai Bayu Musthafa (Super Admin)");
+    expect(screen.getByText(/Masuk sebagai/)).toHaveTextContent("Masuk sebagai Fikri (Super Admin)");
   });
 
   it("backup code dapat dipakai bila autentikator tidak tersedia", async () => {

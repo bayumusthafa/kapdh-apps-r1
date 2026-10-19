@@ -51,7 +51,7 @@ describe("undangan admin /invite#t= (F-16, kontrak admin-auth)", () => {
     expect(preview?.path).not.toContain(MOCK_INVITE_TOKEN);
     // Pratinjau: peran, pengundang dan izin berlabel Bahasa Indonesia.
     expect(screen.getByText("si***@kapdh.test")).toBeInTheDocument();
-    expect(screen.getByText("Bayu Musthafa")).toBeInTheDocument();
+    expect(screen.getByText("Fikri")).toBeInTheDocument();
     const perms = screen.getByRole("list", { name: "Izin undangan" });
     expect(within(perms).getByText("Menyetujui atau menolak pembayaran")).toBeInTheDocument();
   });
