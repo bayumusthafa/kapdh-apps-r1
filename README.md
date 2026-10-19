@@ -19,6 +19,8 @@ hanya dipakai untuk push FCM.
 ```
 KAPDHAPPS/                         satu repo selama build (ADR-001); kapdh-mobile dipisah saat rilis
   README.md                        dokumen ini
+  LICENSE                          lisensi proprietary KAPDH (seluruh hak dilindungi)
+  THIRD_PARTY_NOTICES.md           font, ikon, dan kode pihak ketiga di repo beserta lisensinya
   .github/                         workflow GitHub Actions (ci, deploy-staging, release, mobile-android) + action lokal
   docs/
     PRD_KAPDH_Apps_v3.5.pdf        sumber kebenaran produk
@@ -247,3 +249,16 @@ Status terakhir per AC/N/U: `docs/qa/traceability.md`.
    dengan rujukan PRD; status tidak hanya warna; transisi penting atomik dengan audit + outbox di transaksi yang sama;
    `paid` tidak pernah diubah (koreksi lewat penyesuaian); MFA production tidak dimatikan; aksesibilitas N-11.
 8. Upgrade mayor framework/runtime memerlukan ADR (PRD 7.1).
+
+## Lisensi dan merek
+
+- Hak Cipta (c) 2026 Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH). Seluruh hak dilindungi
+  (`LICENSE`, proprietary). Kode dan dokumen boleh dilihat bila repositori dipublikasikan, tetapi memakai, menyalin,
+  mengubah, mendistribusikan, atau membuat karya turunan memerlukan izin tertulis pengurus KAPDH.
+- Nama dan logo KAPDH, ikon aplikasi, nama Pondok Pesantren Darel Hikmah, dan pedoman merek
+  (`docs/reference/Guidelines_KAPDH_v1.0.txt`, `docs/reference/guidelines/`) tidak dilisensikan.
+- Font, ikon, dan kode pihak ketiga yang dibundel atau disalin ke repo tetap tunduk pada lisensinya masing-masing;
+  daftarnya ada di `THIRD_PARTY_NOTICES.md`. Perbarui berkas itu setiap kali aset pihak ketiga ditambah atau diganti.
+- Catatan: naskah `LICENSE` (Bahasa Indonesia dengan terjemahan Bahasa Inggris) disusun tim pengembang dan belum
+  ditinjau secara hukum. Pengurus KAPDH dan/atau penasihat hukumnya perlu meninjaunya sebelum repositori
+  dipublikasikan.

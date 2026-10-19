@@ -28,6 +28,9 @@
     .icon-table th, .icon-table td { padding: 8px 10px; border: 1px solid #E3E3E6; text-align: left; vertical-align: top; }
     .icon-table th { background: #F7F8F5; font-weight: 600; }
     .icon-table-wrap { overflow-x: auto; }
+    .attrib-list { list-style: disc; padding-left: 18px; margin-top: 8px; max-width: 900px; font-size: 13px; line-height: 1.55; color: #3F4A3E; letter-spacing: 0; }
+    .attrib-list li + li { margin-top: 4px; }
+    .attrib-license { max-width: 900px; margin-top: 8px; padding: 12px 14px; overflow-x: auto; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; color: #3F4A3E; background: #F1F3EE; border-radius: 8px; }
   </style>
 </head>
 <body>
@@ -47,7 +50,7 @@
       <div class="icon-table-wrap"><table class="icon-table">
         <thead><tr><th>Set</th><th>Akses cepat</th><th>Navigasi</th><th>Paket Flutter</th><th>Lisensi</th><th>Penilaian</th></tr></thead>
         <tbody>
-          <tr><td>Material Icons (sekarang)</td><td>Outlined</td><td>Outlined / Filled</td><td>bawaan SDK</td><td>Apache 2.0</td><td>Rapi tetapi generik; tidak ada duotone</td></tr>
+          <tr><td>Material Icons (sekarang)</td><td>Outlined</td><td>Outlined / Filled</td><td>bawaan SDK</td><td>CC BY 4.0 (naskah SDK Flutter; wajib atribusi "Material Icons oleh Google")</td><td>Rapi tetapi generik; tidak ada duotone</td></tr>
           <tr><td><a href="#set-ph">Phosphor</a></td><td>Duotone</td><td>Regular (tidak aktif) / Fill (aktif)</td><td><code>phosphor_flutter</code></td><td>MIT (ikon dan paket)</td><td>Rekomendasi</td></tr>
           <tr><td><a href="#set-solar">Solar (480 Design)</a></td><td>Bold Duotone</td><td>Linear (tidak aktif) / Bold (aktif)</td><td><code>solar_iconkit (pembungkus pihak ketiga) atau flutter_svg</code></td><td>CC BY 4.0 (wajib atribusi "Solar by 480 Design")</td><td>Paling premium</td></tr>
           <tr><td><a href="#set-hugeicons">Hugeicons (Free)</a></td><td>Stroke Rounded</td><td>Stroke Rounded (aktif dibedakan warna + indikator)</td><td><code>hugeicons (resmi)</code></td><td>MIT untuk versi gratis; Duotone/Solid/Bulk hanya di Pro (berbayar)</td><td>Garis bersih</td></tr>
@@ -55,7 +58,7 @@
         </tbody>
       </table></div>
       <p class="doc-p"><span class="status-badge status-badge--success">Terpasang</span> Phosphor kini satu-satunya keluarga ikon di semua layar mockup dan aplikasi Flutter (akses cepat duotone, navigasi regular/fill, ikon lain regular/fill; ADR-027). Set Material di bawah hanya acuan.</p>
-      <p class="doc-p"><strong>Rekomendasi: Phosphor.</strong> Duotone untuk ubin akses cepat, Regular/Fill untuk navigasi. Set ini dikurasi skill ui-ux-pro-max, satu keluarga mencakup ketiga gaya, berlisensi MIT tanpa atribusi, dan duotone-nya satu warna sehingga hijau merek tetap dominan. Bila ingin kesan paling mewah, <strong>Solar Bold Duotone</strong> adalah pilihan kedua, dengan syarat atribusi CC BY 4.0. Iconsax tidak disertakan karena lisensi artwork-nya tidak dapat diverifikasi.</p>
+      <p class="doc-p"><strong>Rekomendasi: Phosphor.</strong> Duotone untuk ubin akses cepat, Regular/Fill untuk navigasi. Set ini dikurasi skill ui-ux-pro-max, satu keluarga mencakup ketiga gaya, berlisensi MIT (cukup menyertakan teks lisensinya, tanpa atribusi di layar), dan duotone-nya satu warna sehingga hijau merek tetap dominan. Bila ingin kesan paling mewah, <strong>Solar Bold Duotone</strong> adalah pilihan kedua, dengan syarat atribusi CC BY 4.0. Iconsax tidak disertakan karena lisensi artwork-nya tidak dapat diverifikasi.</p>
     </section>
 
     <section class="icon-set" aria-labelledby="set-material">
@@ -117,7 +120,7 @@
       <dt>Isi</dt><dd>9.072 ikon, 6 bobot</dd>
       <dt>Contoh Dart</dt><dd><code>PhosphorIcon(PhosphorIcons.identificationCard(PhosphorIconsStyle.duotone), color: KapdhColors.primary)</code></dd>
       <dt>Nama ikon</dt><dd><code>identification-card-duotone, bell-simple-ringing-duotone, ticket-duotone, newspaper-clipping-duotone</code> (akses cepat); <code>house-simple, calendar-dots, identification-card, graduation-cap, user-circle</code> (navigasi)</dd>
-      <dt>Kelebihan</dt><dd><ul><li>Set yang dikurasi skill ui-ux-pro-max (data/icons.csv)</li><li>Satu keluarga untuk outline, fill dan duotone: disiplin "outline tidak aktif, fill aktif" mudah</li><li>Duotone mengikuti satu warna (lapisan kedua 20 %), jadi warna merek tetap dominan</li><li>Lisensi MIT, tanpa atribusi wajib</li></ul></dd>
+      <dt>Kelebihan</dt><dd><ul><li>Set yang dikurasi skill ui-ux-pro-max (data/icons.csv)</li><li>Satu keluarga untuk outline, fill dan duotone: disiplin "outline tidak aktif, fill aktif" mudah</li><li>Duotone mengikuti satu warna (lapisan kedua 20 %), jadi warna merek tetap dominan</li><li>Lisensi MIT: cukup menyertakan teks lisensi, tanpa atribusi di layar</li></ul></dd>
       <dt>Catatan</dt><dd><ul><li>Ikon KTA (identification-card) lebih generik daripada badge Material</li></ul></dd>
     </dl>
   </div>
@@ -254,7 +257,34 @@
 
     <section class="doc-section" aria-labelledby="h-atribusi">
       <h2 id="h-atribusi">Atribusi</h2>
-      <p class="doc-p">Phosphor Icons (MIT), Solar Icons oleh 480 Design (CC BY 4.0), Hugeicons Free (MIT), Fluent UI System Icons oleh Microsoft (MIT). Data SVG dari Iconify API (api.iconify.design).</p>
+      <p class="doc-p">Ikon di halaman ini milik pembuatnya masing-masing dan tidak termasuk lisensi proprietary KAPDH (<code>LICENSE</code> di akar repo); daftar lengkap aset pihak ketiga ada di <code>THIRD_PARTY_NOTICES.md</code>. SVG Phosphor, Solar, Hugeicons dan Fluent diambil sekali dari Iconify API (api.iconify.design) lalu ditanam di halaman ini.</p>
+      <ul class="attrib-list">
+        <li><strong>Material Icons</strong> oleh Google, lisensi <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> (naskah dari SDK Flutter: <a href="assets/LICENSE-material-icons.txt"><code>assets/LICENSE-material-icons.txt</code></a>). Diubah: glyph font <code>materialicons-regular.otf</code> dikonversi menjadi path SVG 24x24 (<code>css/icons.css</code>, <code>tools/build-icons.mjs</code>), warna mengikuti <code>currentColor</code>. Disediakan sebagaimana adanya, tanpa jaminan (Section 5 naskah lisensi).</li>
+        <li><strong>Phosphor Icons</strong>, lisensi MIT, Copyright (c) 2023 Phosphor Icons (<a href="assets/LICENSE-phosphor.txt"><code>assets/LICENSE-phosphor.txt</code></a>; sumber <a href="https://github.com/phosphor-icons/core">github.com/phosphor-icons/core</a>).</li>
+        <li><strong>Solar Icons</strong> oleh 480 Design, lisensi <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> (sumber: <a href="https://www.figma.com/community/file/1166831539721848736">Solar Icons Set di Figma Community</a>, lewat set Iconify <code>solar</code>). Diubah: warna asli diganti <code>currentColor</code> sehingga ikon tampil dalam warna token KAPDH, dan SVG ditanam langsung di halaman. Disediakan sebagaimana adanya, tanpa jaminan (Section 5 naskah lisensi).</li>
+        <li><strong>Hugeicons Free</strong>, lisensi MIT, Copyright (c) 2025 Hugeicons (<a href="https://github.com/hugeicons/hugeicons/blob/main/LICENSE.md">teks lisensi</a>; sumber <a href="https://hugeicons.com">hugeicons.com</a>).</li>
+        <li><strong>Fluent UI System Icons</strong>, lisensi MIT, Copyright (c) 2020 Microsoft Corporation (<a href="https://github.com/microsoft/fluentui-system-icons/blob/main/LICENSE">teks lisensi</a>; sumber <a href="https://github.com/microsoft/fluentui-system-icons">github.com/microsoft/fluentui-system-icons</a>).</li>
+      </ul>
+      <p class="doc-p">Teks lisensi MIT untuk Phosphor Icons, Hugeicons Free dan Fluent UI System Icons (baris hak cipta masing-masing tercantum di atas):</p>
+      <pre class="attrib-license">MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
     </section>
   </main>
 </body>
