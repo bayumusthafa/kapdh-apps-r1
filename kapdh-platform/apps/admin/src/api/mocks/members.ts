@@ -11,8 +11,9 @@ import { error, json, type MockRequest, type MockRoute, noContent, paginate, typ
 
 /**
  * Tiruan Manajemen Users (F-15, F-16, AC F05-6, F12-3..F12-5, F16-4) dan master profesi/keahlian (F-10, AC F10-4)
- * mengikuti kontrak admin-members dan admin-masters final (C2). Data contoh mengikuti guideline hal. 16; bukan
- * bukti lulus acceptance criteria (PRD 7.3). Endpoint nyata dibangun irisan API admin dan network.
+ * mengikuti kontrak admin-members dan admin-masters final (C2). Data contoh meniru guideline hal. 16 dengan
+ * identitas sintetis; bukan bukti lulus acceptance criteria (PRD 7.3). Endpoint nyata dibangun irisan API
+ * admin dan network.
  *
  * Aturan server yang ditiru:
  * - Penyaringan per izin pada SETIAP AdminMemberDetail (200 maupun `current` 409): tanpa payments.read
@@ -224,18 +225,21 @@ export function skillId(label: (typeof SKILL_LABELS)[number]): string {
   return mockId("7", SKILL_LABELS.indexOf(label) + 1);
 }
 
-/** Pengguna contoh yang dipakai uji (data guideline hal. 16 dan contoh AC F05-6). */
+/**
+ * Pengguna contoh yang dipakai uji (tata letak guideline hal. 16 dan contoh AC F05-6). Nama, email dan nomor
+ * urut N persona guideline (91-94) sintetis, bukan data alumni nyata.
+ */
 export const MOCK_MEMBER = {
-  ahmad: mockId("5", 1),
-  arya: mockId("5", 2),
-  ridwan: mockId("5", 3),
+  hasan: mockId("5", 1),
+  galih: mockId("5", 2),
+  ridho: mockId("5", 3),
   /** Tertaut ke admin tiruan yang sedang masuk (konflik kepentingan, PRD 2.3). */
-  bayu: mockId("5", 4),
+  fikriRamadhan: mockId("5", 4),
   /** Contoh AC F05-6: 12.02.01.7, kelas keluar 5. */
   umar: mockId("5", 5),
   siti: mockId("5", 6),
   nur: mockId("5", 7),
-  hasan: mockId("5", 8),
+  hendra: mockId("5", 8),
   /** Suspended dengan masa aktif masih berjalan dan banding aktif. */
   rizky: mockId("5", 9),
   /** Suspended dengan masa aktif yang sudah habis (unsuspend -> expired, AC F12-5). */
@@ -261,7 +265,7 @@ const EMPTY_MODERATION: S["AdminMemberModerationSummary"] = {
 
 const SYSTEM_ADMIN: S["AdminMemberActor"] = {
   admin_id: mockId("ad", 2),
-  display_name: "Ahmad Zulhadi",
+  display_name: "Hasan Basri",
 };
 
 function addMonths(iso: string, months: number): string {
@@ -412,27 +416,27 @@ function memberFixtures(): MemberState[] {
   const dewiSuspendedAt = "2026-08-20T04:00:00Z";
   const list: MemberState[] = [
     seed({
-      user_id: MOCK_MEMBER.ahmad,
-      full_name: "Ahmad Zulhadi",
-      email: "ahmad.zulhadi@alumni.test",
+      user_id: MOCK_MEMBER.hasan,
+      full_name: "Hasan Basri",
+      email: "hasan.basri@alumni.test",
       gender: "male",
       cohort: 5,
       class_in: 1,
       class_out: 2,
-      seq: 2,
+      seq: 93,
       city: "Dumai",
       registered_at: "2026-01-04T02:00:00Z",
       phone: "+62 812-7000-1002",
       bio: "Pengusaha konveksi dan pembina UMKM alumni.",
       last_education_institution: "Universitas Riau",
       last_education_city: "Pekanbaru",
-      social_instagram: "ahmad.zulhadi",
-      social_linkedin: "https://www.linkedin.com/in/ahmad-zulhadi",
+      social_instagram: "hasan.uji",
+      social_linkedin: "https://www.linkedin.com/in/hasan-uji",
       profession_id: professionId("Wirausaha"),
       skill_ids: [skillId("Kewirausahaan"), skillId("Pemasaran Digital")],
       linked_admin: {
         admin_id: SYSTEM_ADMIN.admin_id,
-        display_name: "Ahmad Zulhadi",
+        display_name: "Hasan Basri",
         role: "admin",
         status: "active",
       },
@@ -440,14 +444,14 @@ function memberFixtures(): MemberState[] {
       recent_payments: [payment(1, "registration", "paid", "2026-01-04T02:30:00Z", "2026-01-05T03:00:00Z")],
     }),
     seed({
-      user_id: MOCK_MEMBER.arya,
-      full_name: "Arya Kamandanu",
-      email: "arya.kamandanu@alumni.test",
+      user_id: MOCK_MEMBER.galih,
+      full_name: "Galih Saputra",
+      email: "galih.saputra@alumni.test",
       gender: "male",
       cohort: 10,
       class_in: 1,
       class_out: 4,
-      seq: 3,
+      seq: 94,
       city: null,
       registered_at: "2026-04-20T04:00:00Z",
       profession_id: professionId("Karyawan Swasta"),
@@ -455,14 +459,14 @@ function memberFixtures(): MemberState[] {
       recent_payments: [payment(2, "registration", "paid", "2026-04-21T01:00:00Z", "2026-04-25T03:00:00Z")],
     }),
     seed({
-      user_id: MOCK_MEMBER.ridwan,
-      full_name: "Ridwan",
-      email: "ridwan@alumni.test",
+      user_id: MOCK_MEMBER.ridho,
+      full_name: "Ridho",
+      email: "ridho@alumni.test",
       gender: "male",
       cohort: 6,
       class_in: 4,
       class_out: 6,
-      seq: 4,
+      seq: 92,
       city: "Bengkalis",
       registered_at: "2026-01-10T04:00:00Z",
       profession_id: professionId("Ustadz/Dai"),
@@ -470,14 +474,14 @@ function memberFixtures(): MemberState[] {
       periods: [activation(mockId("a", 3), "2026-01-12T03:00:00Z")],
     }),
     seed({
-      user_id: MOCK_MEMBER.bayu,
-      full_name: "Bayu Musthafa Arief",
-      email: "bayu.arief@alumni.test",
+      user_id: MOCK_MEMBER.fikriRamadhan,
+      full_name: "Fikri Ramadhan",
+      email: "fikri.ramadhan@alumni.test",
       gender: "male",
       cohort: 9,
       class_in: 1,
       class_out: 3,
-      seq: 5,
+      seq: 91,
       city: "Pekanbaru",
       registered_at: "2025-09-15T04:00:00Z",
       profession_id: professionId("Profesional Teknologi Informasi"),
@@ -552,9 +556,9 @@ function memberFixtures(): MemberState[] {
       periods: [activation(mockId("a", 7), "2026-07-02T03:00:00Z")],
     }),
     seed({
-      user_id: MOCK_MEMBER.hasan,
-      full_name: "Hasan Basri",
-      email: "hasan.basri@alumni.test",
+      user_id: MOCK_MEMBER.hendra,
+      full_name: "Hendra Gunawan",
+      email: "hendra.gunawan@alumni.test",
       gender: "male",
       cohort: 16,
       class_in: 1,
@@ -964,9 +968,9 @@ export const mockMembers = {
 
 /**
  * Identitas dan status keanggotaan anggota tiruan untuk area pembayaran (baca saja). Tiruan payments memakai anggota
- * yang SAMA (user_id sama) untuk payment contoh Siti, Hasan, Fikri dan Nur, untuk pencatatan iuran D13
- * (adminRecordPayment) dan untuk keputusan iuran, sehingga tautan antara detail anggota dan Verifikasi Pembayaran
- * menunjuk data yang sama di dev:mock.
+ * yang SAMA (user_id sama) untuk payment contoh Siti, Hendra, Muhammad Fikri dan Nur, untuk pencatatan iuran
+ * D13 (adminRecordPayment) dan untuk keputusan iuran, sehingga tautan antara detail anggota dan Verifikasi
+ * Pembayaran menunjuk data yang sama di dev:mock.
  */
 export interface MockMemberSnapshot {
   user_id: string;

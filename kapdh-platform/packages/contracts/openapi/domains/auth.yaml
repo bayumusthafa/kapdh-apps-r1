@@ -800,7 +800,7 @@ components:
         email_masked:
           type: string
           maxLength: 254
-          examples: ["ah***@email.com"]
+          examples: ["ah***@kapdh.test"]
           description: Email tujuan yang disamarkan; klien boleh menampilkan email lengkap yang diketik pengguna sendiri.
         expires_at:
           { type: string, format: date-time, description: "Batas berlaku kode (10 menit, PRD 2.5)." }

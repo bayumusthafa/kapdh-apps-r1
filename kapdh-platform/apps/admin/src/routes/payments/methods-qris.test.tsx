@@ -382,8 +382,8 @@ describe("metode bayar QRIS bergambar (ADR-026; server tiruan)", () => {
     await openPayments(user);
     await user.click(await screen.findByRole("button", { name: "Catat iuran" }));
     const dialog = await screen.findByRole("dialog", { name: "Catat iuran di luar aplikasi" });
-    await user.type(within(dialog).getByRole("combobox", { name: /^Alumni/ }), "Hasan");
-    await user.click(await screen.findByRole("option", { name: /Hasan Basri/ }));
+    await user.type(within(dialog).getByRole("combobox", { name: /^Alumni/ }), "Hendra");
+    await user.click(await screen.findByRole("option", { name: /Hendra Gunawan/ }));
     const receivers = await within(dialog).findByRole("group", { name: /Rekening penerima dana/ });
     const qris = within(receivers).getByRole("radio", { name: /^QRIS/ });
     expect(qris.closest("label")).toHaveTextContent(`QRISNMID ${NMID} a.n. ${MERCHANT}`);

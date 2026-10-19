@@ -558,7 +558,7 @@ components:
         - deletion_token
         - deletion_token_expires_at
       properties:
-        email_masked: { type: string, maxLength: 254, examples: ["ah***@email.com"] }
+        email_masked: { type: string, maxLength: 254, examples: ["ah***@kapdh.test"] }
         deletable: { type: boolean, description: True bila permintaan penghapusan baru dapat dikonfirmasi. }
         registration_pending:
           type: boolean

@@ -85,7 +85,7 @@ describe("N-09: tidak ada NIK pada skema, kontrak, dan payload tersimpan", () =>
   });
 
   it("N-09: NIK yang dikirim klien pada registrasi diabaikan: tidak tersimpan di tabel mana pun dan tidak tercatat di log", async () => {
-    const nik = "3201011507920007";
+    const nik = "9901010101900001";
     const email = "tanpa.nik@contoh.id";
     const res = await httpClient(t.app).post("/auth/register", {
       full_name: "Alumni Tanpa NIK",

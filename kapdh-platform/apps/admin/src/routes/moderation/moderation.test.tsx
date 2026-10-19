@@ -37,11 +37,11 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
     const table = await screen.findByRole("table", { name: "Antrean laporan moderasi" });
     // 6 laporan aktif terlihat; laporan terhadap akun tertaut pemanggil dikecualikan dari item dan total.
     expect(screen.getByText("Menampilkan 6 dari 6")).toBeInTheDocument();
-    expect(within(table).queryByText("Bayu Musthafa Arief")).toBeNull();
+    expect(within(table).queryByText("Fikri Ramadhan")).toBeNull();
     const rows = within(table).getAllByRole("row").slice(1);
     // Urut due_at naik: ancaman (lewat target 6 jam) paling atas.
     expect(
-      within(rows[0]!).getByRole("link", { name: /Ancaman\/keselamatan terhadap Arya Kamandanu/ }),
+      within(rows[0]!).getByRole("link", { name: /Ancaman\/keselamatan terhadap Galih Saputra/ }),
     ).toBeVisible();
     expect(within(rows[0]!).getByText("Mendesak")).toBeInTheDocument();
     expect(within(rows[0]!).getByText("Lewat target")).toBeInTheDocument();
@@ -67,13 +67,13 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
     await user.selectOptions(screen.getByLabelText("Prioritas"), "urgent");
     await screen.findByText(/Tidak ada laporan yang cocok/);
     await user.selectOptions(screen.getByLabelText("Status"), "all");
-    await user.type(screen.getByLabelText("Cari pihak terlapor"), "arya");
+    await user.type(screen.getByLabelText("Cari pihak terlapor"), "galih");
     await screen.findByText("Menampilkan 1 dari 1");
     await waitFor(() =>
       expect(moderationRequests.at(-1)?.query).toMatchObject({
         status: "all",
         priority: "urgent",
-        q: "arya",
+        q: "galih",
       }),
     );
   });
@@ -91,7 +91,7 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
     ).toBeInTheDocument();
     expect(within(items[0]!).getByText("Konteks")).toBeInTheDocument();
     const target = await section("Pihak terlapor");
-    expect(within(target).getByText("Arya Kamandanu (10.02.01.3)")).toBeInTheDocument();
+    expect(within(target).getByText("Galih Saputra (10.02.01.94)")).toBeInTheDocument();
     expect(within(target).getByText("Belum ada peringatan atau suspend.")).toBeInTheDocument();
   });
 
@@ -220,16 +220,16 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
     await waitFor(() => expect(select).toHaveAccessibleDescription(/Pilih anggota grup/));
     expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(select).toBeEnabled());
-    // Urutan kontrak: admin grup joined, anggota joined, lalu mantan anggota. Akun tertaut admin (Bayu) dan undangan
-    // yang dibatalkan sebelum diterima (Hasan) tidak dicantumkan.
+    // Urutan kontrak: admin grup joined, anggota joined, lalu mantan anggota. Akun tertaut admin (Fikri) dan
+    // undangan yang dibatalkan sebelum diterima (Hendra) tidak dicantumkan.
     const labels = within(select)
       .getAllByRole("option")
       .slice(1)
       .map((o) => o.textContent);
     expect(labels).toEqual([
       "Dimas Prasetyo (12.02.01.9) | admin grup",
-      "Arya Kamandanu (10.02.01.3) | anggota",
-      "ridwan (06.02.01.4) | anggota",
+      "Galih Saputra (10.02.01.94) | anggota",
+      "ridho (06.02.01.92) | anggota",
       "Lina Marlina (08.01.02.3) | mantan anggota (dikeluarkan), dulu admin grup",
       "Sari Dewi (11.01.02.8) | mantan anggota (keluar), sedang disuspend",
     ]);
@@ -306,7 +306,7 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
     expect(claim?.ifMatch).toBe("1");
     expect(claim?.idempotencyKey).toBeTruthy();
     const summary = await section("Ringkasan");
-    expect(within(summary).getByText(/Bayu Musthafa sejak/)).toBeInTheDocument();
+    expect(within(summary).getByText(/Fikri sejak/)).toBeInTheDocument();
   });
 
   it("409: keputusan pengurus lain yang lebih dulu dimuat ulang tanpa menimpa", async () => {
@@ -318,7 +318,7 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
     await user.click(within(dialog).getByRole("button", { name: "Ya, abaikan" }));
     expect(await screen.findByText(/sudah diubah atau diputus pengurus lain/)).toBeInTheDocument();
     const decision = await section("Keputusan");
-    expect(within(decision).getByText("Ahmad Zulhadi")).toBeInTheDocument();
+    expect(within(decision).getByText("Hasan Basri")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Putuskan laporan" })).toBeNull();
     expect(await findToast("error", /sudah diputus atau diubah/)).toBeInTheDocument();
   });
@@ -335,7 +335,7 @@ describe("moderasi (F-12, AC F12-2..F12-5; server tiruan)", () => {
     const user = userEvent.setup();
     await openReport(user, MOCK_REPORT_IDS.againstSelf, "Detail Laporan");
     expect(await screen.findByText("Laporan tidak ditemukan.")).toBeInTheDocument();
-    expect(screen.queryByText("Bayu Musthafa Arief")).toBeNull();
+    expect(screen.queryByText("Fikri Ramadhan")).toBeNull();
   });
 
   it("izin: moderation.read saja hanya membaca; tanpa moderation.read halaman menolak tanpa memanggil API", async () => {

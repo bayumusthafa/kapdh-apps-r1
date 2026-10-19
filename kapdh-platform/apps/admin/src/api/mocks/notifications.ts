@@ -48,20 +48,20 @@ export const MOCK_OUTBOX_IDS = {
 } as const;
 
 const RECIPIENTS = {
-  bayu: {
+  fikri: {
     user_id: "0199e000-0000-7000-8000-0000000000c3",
-    full_name: "Bayu Musthafa Arief",
-    member_number: "09.02.01.5",
+    full_name: "Fikri Ramadhan",
+    member_number: "09.02.01.91",
   },
-  ridwan: {
+  ridho: {
     user_id: "0199e000-0000-7000-8000-0000000000c1",
-    full_name: "ridwan",
-    member_number: "06.02.01.4",
+    full_name: "ridho",
+    member_number: "06.02.01.92",
   },
-  arya: {
+  galih: {
     user_id: "0199e000-0000-7000-8000-0000000000c2",
-    full_name: "Arya Kamandanu",
-    member_number: "10.02.01.3",
+    full_name: "Galih Saputra",
+    member_number: "10.02.01.94",
   },
   sari: {
     user_id: "0199e000-0000-7000-8000-0000000000c5",
@@ -112,7 +112,7 @@ function delivery(
     error_class: null,
     sent_at: null,
     updated_at: partial.created_at,
-    recipient: RECIPIENTS.ridwan,
+    recipient: RECIPIENTS.ridho,
     retryable: false,
     ...partial,
   };
@@ -130,7 +130,7 @@ function deliveryFixtures(): Map<string, DeliveryRow> {
         status: "failed",
         error_class: "UNREGISTERED",
         provider_status: "404",
-        recipient: RECIPIENTS.bayu,
+        recipient: RECIPIENTS.fikri,
         created_at: iso(-3 * HOUR),
         updated_at: iso(-3 * HOUR + MINUTE),
       },
@@ -144,7 +144,7 @@ function deliveryFixtures(): Map<string, DeliveryRow> {
       attempt: 5,
       error_class: "UNAVAILABLE",
       provider_status: "503",
-      recipient: RECIPIENTS.arya,
+      recipient: RECIPIENTS.galih,
       created_at: iso(-20 * HOUR),
       updated_at: iso(-2 * HOUR),
     }),
@@ -165,7 +165,7 @@ function deliveryFixtures(): Map<string, DeliveryRow> {
       status: "failed",
       error_class: "bounce_hard",
       provider_status: "550",
-      recipient: RECIPIENTS.ridwan,
+      recipient: RECIPIENTS.ridho,
       created_at: iso(-4 * DAY),
     }),
     delivery(D.reassignedCancelled, {
@@ -174,7 +174,7 @@ function deliveryFixtures(): Map<string, DeliveryRow> {
       status: "cancelled",
       attempt: 0,
       error_class: "token_reassigned",
-      recipient: RECIPIENTS.arya,
+      recipient: RECIPIENTS.galih,
       created_at: iso(-5 * HOUR),
     }),
     delivery(D.sentPush, {
@@ -192,7 +192,7 @@ function deliveryFixtures(): Map<string, DeliveryRow> {
       status: "sent",
       provider_status: "accepted",
       sent_at: iso(-7 * HOUR + MINUTE),
-      recipient: RECIPIENTS.bayu,
+      recipient: RECIPIENTS.fikri,
       created_at: iso(-7 * HOUR),
     }),
     delivery(D.pendingRetry, {
@@ -204,7 +204,7 @@ function deliveryFixtures(): Map<string, DeliveryRow> {
       error_class: "INTERNAL",
       provider_status: "500",
       next_retry_at: iso(4 * MINUTE),
-      recipient: RECIPIENTS.ridwan,
+      recipient: RECIPIENTS.ridho,
       created_at: iso(-30 * MINUTE),
       updated_at: iso(-MINUTE),
     }),
@@ -235,7 +235,7 @@ function deliveryFixtures(): Map<string, DeliveryRow> {
       status: "cancelled",
       attempt: 0,
       error_class: "preference_disabled",
-      recipient: RECIPIENTS.ridwan,
+      recipient: RECIPIENTS.ridho,
       created_at: iso(-8 * HOUR),
     }),
     delivery(
@@ -246,7 +246,7 @@ function deliveryFixtures(): Map<string, DeliveryRow> {
         status: "failed",
         error_class: "SENDER_ID_MISMATCH",
         provider_status: "403",
-        recipient: RECIPIENTS.arya,
+        recipient: RECIPIENTS.galih,
         created_at: iso(-9 * HOUR),
       },
       "token_reassigned",

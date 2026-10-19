@@ -222,7 +222,7 @@ Map<String, Object?> verificationJson({
   String? blockedReason = 'deletion_in_progress',
   Map<String, Object?>? deletion,
 }) => {
-  'email_masked': 'ah***@email.com',
+  'email_masked': 'ah***@contoh.test',
   'deletable': deletable,
   'registration_pending': registrationPending,
   'blocked_reason': blockedReason,

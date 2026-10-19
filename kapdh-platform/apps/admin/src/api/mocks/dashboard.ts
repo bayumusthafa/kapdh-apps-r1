@@ -53,37 +53,37 @@ function iso(offsetMs: number): string {
   return new Date(Date.now() + offsetMs).toISOString();
 }
 
-/** Daftar alumni terbaru (guideline hlm. 12 tabel "Pengguna"). */
+/** Daftar alumni terbaru (tabel "Pengguna" guideline hlm. 12; nama dan No. KTA sintetis). */
 function latestMembers(): S["DashboardMember"][] {
   return [
     {
       user_id: "0199e000-0000-7000-8000-0000000000c3",
-      full_name: "Bayu Musthafa Arief",
-      member_number: "09.02.01.5",
+      full_name: "Fikri Ramadhan",
+      member_number: "09.02.01.91",
       effective_status: "verified",
       linked_admin: true,
       registered_at: iso(-2 * DAY),
     },
     {
       user_id: "0199e000-0000-7000-8000-0000000000c1",
-      full_name: "ridwan",
-      member_number: "06.02.01.4",
+      full_name: "ridho",
+      member_number: "06.02.01.92",
       effective_status: "verified",
       linked_admin: false,
       registered_at: iso(-3 * DAY),
     },
     {
       user_id: "0199e000-0000-7000-8000-0000000000c2",
-      full_name: "Arya Kamandanu",
-      member_number: "10.02.01.3",
+      full_name: "Galih Saputra",
+      member_number: "10.02.01.94",
       effective_status: "expiring",
       linked_admin: false,
       registered_at: iso(-5 * DAY),
     },
     {
       user_id: "0199e000-0000-7000-8000-0000000000c4",
-      full_name: "Ahmad Zulhadi",
-      member_number: "05.03.01.2",
+      full_name: "Hasan Basri",
+      member_number: "05.03.01.93",
       effective_status: "verified",
       linked_admin: true,
       registered_at: iso(-8 * DAY),
@@ -180,17 +180,17 @@ function upcomingEvents(): S["DashboardUpcomingEvent"][] {
 
 /** Riwayat transaksi lama (sebelum data antrean tiruan pembayaran); bentuk DashboardTransaction. */
 function historicalTransactions(): S["DashboardTransaction"][] {
-  const bayu = {
+  const fikri = {
     user_id: "0199e000-0000-7000-8000-0000000000c3",
-    full_name: "Bayu Musthafa Arief",
-    member_number: "09.02.01.5",
+    full_name: "Fikri Ramadhan",
+    member_number: "09.02.01.91",
   };
   return [
     {
       payment_id: "0199e000-0000-7000-8000-0000000004a1",
       type: "ticket",
       event_title: "Mancing Bareng Alumni",
-      member: bayu,
+      member: fikri,
       amount: "15224.00",
       paid_at: iso(-5 * DAY),
     },
@@ -198,7 +198,7 @@ function historicalTransactions(): S["DashboardTransaction"][] {
       payment_id: "0199e000-0000-7000-8000-0000000004a2",
       type: "registration",
       event_title: null,
-      member: bayu,
+      member: fikri,
       amount: "70000.00",
       paid_at: iso(-5 * DAY - 60 * 60_000),
     },
@@ -208,8 +208,8 @@ function historicalTransactions(): S["DashboardTransaction"][] {
       event_title: null,
       member: {
         user_id: "0199e000-0000-7000-8000-0000000000c1",
-        full_name: "ridwan",
-        member_number: "06.02.01.4",
+        full_name: "ridho",
+        member_number: "06.02.01.92",
       },
       amount: "10000.00",
       paid_at: iso(-6 * DAY),

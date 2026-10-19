@@ -154,7 +154,7 @@ components:
       properties:
         user_id: { type: [string, "null"], format: uuid }
         full_name: { type: [string, "null"] }
-        member_number: { type: [string, "null"], examples: ["09.02.01.5"] }
+        member_number: { type: [string, "null"], examples: ["09.02.01.91"] }
 
     DashboardTransaction:
       type: object

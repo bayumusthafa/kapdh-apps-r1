@@ -124,7 +124,7 @@ void main() {
       await container.read(tokenStoreProvider).save(tokens());
 
       await expectLater(
-        container.read(kapdhApiProvider).auth.login(const LoginRequest(email: 'a@b.id', password: 'Rahasia#1')),
+        container.read(kapdhApiProvider).auth.login(const LoginRequest(email: 'a@kapdh.test', password: 'Rahasia#1')),
         throwsA(isA<ApiException>().having((e) => e.message, 'message', 'Email atau password salah.')),
       );
       expect(adapter.requestsTo('/auth/refresh'), isEmpty);

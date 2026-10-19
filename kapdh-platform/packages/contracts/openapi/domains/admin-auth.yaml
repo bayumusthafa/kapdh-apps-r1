@@ -575,7 +575,7 @@ components:
       description: Ringkasan undangan untuk halaman /invite (F-16); email disamarkan bila token bocor.
       required: [email_masked, display_name, role, permissions, invited_by_display_name, expires_at]
       properties:
-        email_masked: { type: string, maxLength: 254, examples: ["ba***@kapdh.or.id"] }
+        email_masked: { type: string, maxLength: 254, examples: ["fi***@kapdh.test"] }
         display_name: { type: string, maxLength: 120 }
         role: { $ref: "#/components/schemas/AdminRole" }
         permissions:

@@ -26,7 +26,7 @@ Map<String, Object?> adminResetChallenge({
 }) => otpChallengeJson(
   id: linkId,
   purpose: purpose,
-  emailMasked: 'ah***@email.com',
+  emailMasked: 'ah***@contoh.test',
   attemptsLeft: attemptsLeft,
   expiresAt: expiresAt ?? testNow.add(const Duration(minutes: 7)),
   resendAvailableAt: resendAvailableAt ?? testNow.subtract(const Duration(minutes: 2)),
@@ -67,7 +67,7 @@ void main() {
       expect(app.adapter.requestsTo('/auth/password/forgot'), isEmpty);
 
       // Email tersamar dari server, masa berlaku, sisa percobaan, kirim ulang sudah tersedia.
-      expect(find.textContaining('ah***@email.com'), findsOneWidget);
+      expect(find.textContaining('ah***@contoh.test'), findsOneWidget);
       expect(find.text('Sisa percobaan: 5 dari 5'), findsOneWidget);
       expect(find.text('Kirim ulang'), findsOneWidget);
 
