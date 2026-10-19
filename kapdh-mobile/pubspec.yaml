@@ -79,6 +79,10 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo-kapdh.png
+    # Teks lisensi font pihak ketiga untuk halaman Akun > Lisensi sumber terbuka (lib/app/app_licenses.dart,
+    # THIRD_PARTY_NOTICES.md): Phosphor dibundel langsung, Poppins dimuat google_fonts.
+    - assets/fonts/phosphor/LICENSE
+    - assets/licenses/Poppins-OFL.txt
 
   # Ikon Phosphor 2.1 (MIT, assets/fonts/phosphor/LICENSE; ADR-027). Font dibundel langsung karena paket
   # phosphor_flutter 2.1.0 tidak kompatibel dengan Flutter 3.47 (meng-extend IconData yang final). Dipangkas otomatis

@@ -26,7 +26,9 @@ lisensi, kode salinan, dan aset yang tertanam di berkas HTML bundel di repositor
 - Sumber: https://phosphoricons.com, https://github.com/phosphor-icons/core.
 - Font aplikasi Flutter: `Phosphor-Regular.ttf`, `Phosphor-Fill.ttf`, `Phosphor-Duotone.ttf` (Phosphor 2.1) di
   `kapdh-mobile/assets/fonts/phosphor/`, didaftarkan di `kapdh-mobile/pubspec.yaml` dan ikut dibundel ke aplikasi
-  (ADR-027). Teks lisensi: `kapdh-mobile/assets/fonts/phosphor/LICENSE`.
+  (ADR-027). Teks lisensi: `kapdh-mobile/assets/fonts/phosphor/LICENSE`, ikut dibundel sebagai aset dan tampil di
+  aplikasi pada Akun > Lisensi sumber terbuka (entri "Phosphor Icons", didaftarkan
+  `kapdh-mobile/lib/app/app_licenses.dart`).
 - Mockup HTML: SVG dari set Iconify `ph`, dibangkitkan `kapdh-mobile/mockup-html/tools/build-icons-phosphor.mjs`
   menjadi `css/icons-phosphor.css`, dan SVG pembanding di `ikon.html`. Teks lisensi:
   `kapdh-mobile/mockup-html/assets/LICENSE-phosphor.txt`.
@@ -44,7 +46,9 @@ lisensi, kode salinan, dan aset yang tertanam di berkas HTML bundel di repositor
     `kapdh-platform/apps/admin`). Font tidak disimpan di repositori, tetapi ikut dibundel ke hasil build; paketnya
     menyertakan teks OFL.
   - Aplikasi Flutter: paket `google_fonts` memuat Poppins dari Google Fonts saat runtime (`KapdhTheme`). Font tidak
-    disimpan di repositori.
+    disimpan di repositori. Teks OFL (`kapdh-mobile/assets/licenses/Poppins-OFL.txt`, isi `OFL-Poppins.txt` dengan
+    baris hak cipta per berkas font diringkas menjadi satu) dibundel sebagai aset dan tampil di aplikasi pada Akun >
+    Lisensi sumber terbuka (entri "Poppins (google_fonts)", didaftarkan `kapdh-mobile/lib/app/app_licenses.dart`).
   - Prototipe satu berkas `docs/Prototipe KAPDH Apps.html`: woff2 Poppins dari Google Fonts (bobot 400, 500, 600,
     700) tertanam di dalam bundelnya (lihat [Prototipe satu berkas](#prototipe-satu-berkas)).
 
@@ -134,7 +138,8 @@ Dependensi yang dipasang lewat pnpm (`kapdh-platform/pnpm-lock.yaml`) dan pub (`
 React, paket `@tiptap/*`, `lucide-react`, `@fontsource/poppins`, dan `google_fonts`, tidak disalin ke repositori ini
 (kecuali salinan yang disebut di atas, mis. React 18.3.1 di prototipe satu berkas) dan tunduk pada lisensinya
 masing-masing. Daftarnya dapat dihimpun dengan `pnpm licenses list` dari `kapdh-platform/`;
-Flutter menghimpun lisensi paket pub ke berkas `NOTICES` di hasil build aplikasi.
+Flutter menghimpun lisensi paket pub ke berkas `NOTICES` di hasil build aplikasi; aplikasi menampilkannya bersama
+lisensi Phosphor dan Poppins di Akun > Lisensi sumber terbuka.
 
 ## Teks lisensi MIT
 
