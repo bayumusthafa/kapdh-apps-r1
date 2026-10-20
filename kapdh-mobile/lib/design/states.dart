@@ -5,6 +5,7 @@ import '../app/theme/kapdh_palette.dart';
 import '../app/theme/kapdh_tokens.dart';
 import 'kapdh_button.dart';
 import 'kapdh_icons.dart';
+import 'text_context_menu.dart';
 
 /// Keadaan kosong dengan pesan dan tindakan spesifik (PRD 4.5, N-03).
 class EmptyState extends StatelessWidget {
@@ -157,6 +158,7 @@ class _CenteredState extends StatelessWidget {
               const SizedBox(height: KapdhSpace.s4),
               SelectableText(
                 footnote!,
+                contextMenuBuilder: kapdhTextContextMenu,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: KapdhFontSize.overline, color: context.kc.textMuted),
               ),

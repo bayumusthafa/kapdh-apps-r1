@@ -11,6 +11,7 @@ import '../app/theme/kapdh_tokens.dart';
 import 'design_constants.dart';
 import 'kapdh_button.dart';
 import 'kapdh_icons.dart';
+import 'text_context_menu.dart';
 
 /// Digit pertama sebanyak [length] dari teks tempelan ("Kode Anda: 482 913" menjadi "482913").
 String otpDigits(String text, int length) {
@@ -256,6 +257,7 @@ class _OtpBoxesState extends State<OtpBoxes> {
                     ),
                     child: TextField(
                       key: const ValueKey('otp-input'),
+                      contextMenuBuilder: kapdhTextContextMenu,
                       controller: widget.controller,
                       focusNode: _focus,
                       enabled: widget.enabled,

@@ -248,6 +248,7 @@ class _MemberPickerPageState extends ConsumerState<MemberPickerPage> {
               padding: const EdgeInsets.fromLTRB(KapdhSpace.s4, KapdhSpace.s3, KapdhSpace.s4, 0),
               child: TextField(
                 controller: _search,
+                contextMenuBuilder: kapdhTextContextMenu,
                 onChanged: _onSearch,
                 textInputAction: TextInputAction.search,
                 onSubmitted: (_) => unawaited(_load()),

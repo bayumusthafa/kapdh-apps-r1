@@ -5,6 +5,7 @@ import '../app/theme/kapdh_palette.dart';
 import '../app/theme/kapdh_theme.dart';
 import '../app/theme/kapdh_tokens.dart';
 import 'kapdh_icons.dart';
+import 'text_context_menu.dart';
 
 /// Label di atas field (guideline hal. 5: "Email", "Password", "Jenis Kelamin"). Teks label visual dikecualikan dari
 /// semantics dan dipasang sebagai label field, sehingga pembaca layar membacakan "Email, kolom teks" satu kali
@@ -142,6 +143,7 @@ class _KapdhTextFieldState extends State<KapdhTextField> {
       requiredMark: widget.requiredMark,
       child: TextFormField(
         controller: widget.controller,
+        contextMenuBuilder: kapdhTextContextMenu,
         focusNode: widget.focusNode,
         enabled: widget.enabled,
         autofocus: widget.autofocus,

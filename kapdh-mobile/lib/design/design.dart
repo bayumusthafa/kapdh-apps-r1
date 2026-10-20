@@ -24,6 +24,7 @@ export 'states.dart';
 export 'status_badge.dart';
 export 'status_hero.dart';
 export 'summary_card.dart';
+export 'text_context_menu.dart';
 export 'support_contact_card.dart';
 export 'timeline.dart';
 export 'under_construction.dart';
