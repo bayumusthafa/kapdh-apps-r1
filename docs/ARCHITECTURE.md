@@ -1,6 +1,6 @@
 # KAPDH Apps — Architecture and Engineering Contract
 
-Status: binding for every contributor and AI agent in the R1.0 build. Source of product truth is the PRD
+Status: binding for every contributor in the R1.0 build. Source of product truth is the PRD
 (`docs/PRD_KAPDH_Apps_v3.5.pdf`, text copy `docs/reference/PRD_v3.5.txt`). This document records the engineering
 decisions that turn the PRD into code. When this document and existing code disagree, this document wins. When this
 document and the PRD disagree on product behaviour, the PRD wins — report the conflict instead of guessing.
@@ -9,7 +9,7 @@ Reference material:
 
 - PRD text: `docs/reference/PRD_v3.5.txt` (section 3 = features/AC, 4 = flows/states, 5 = architecture, 6 = data).
 - Approved prototype screens (HTML, inline styles = exact visual spec): `docs/reference/prototype/screen_*.html`.
-- Brand guideline mockups (PNG, read them with the Read tool): `docs/reference/guidelines/page-01.png … page-18.png`
+- Brand guideline mockups (PNG): `docs/reference/guidelines/page-01.png … page-18.png`
   (p5 login/register, p6 KTA, p7 jejaring, p8 event/tiket, p10–17 web admin).
 - Brand logo: `docs/reference/prototype/logo.png` (also `kapdh-mobile/assets/logo-kapdh.png`, `kapdh-platform/apps/web/public/logo-kapdh.png`).
 
@@ -188,7 +188,7 @@ apps/api/src/
 ```
 
 Every module is a Nest `@Module` registered in `AppModule`. Foundation pre-creates all module folders with an empty
-module class so later agents never edit `app.module.ts`. Job-owning modules (membership, payments, files, content,
+module class so later slices never edit `app.module.ts`. Job-owning modules (membership, payments, files, content,
 events, notifications, account, admin) also have `modules/<m>/<m>-jobs.module.ts`: job processors, outbox topic
 handlers, payment type handlers and the domain services they need, with NO controllers and NO API-only providers
 (`API_ONLY_PROVIDERS` in core.module.ts: TokenService, SessionIssuer, PasswordVerifier, QrTokenService, guards,
@@ -573,7 +573,7 @@ ledger, monthly restore drill, Uptime Kuma + GlitchTip, staging and production f
   databases without `ALTER DATABASE ... SET kapdh.environment = 'staging'`); `docs/runbooks/load-test.md`.
 - Storage migration local -> S3 with `STORAGE_FALLBACK_LOCAL_ROOT` (ADR-022); `docs/runbooks/storage-migration.md`.
 
-## 11. Agent protocol
+## 11. Contributor protocol
 
 1. Read this file, `docs/BUILD_PLAN.md`, and the PRD sections for your slice before coding.
 2. Only touch the paths your task owns. Shared files (core, schema, root.yaml, app.module, routers, pubspec, lockfiles)
@@ -582,5 +582,4 @@ ledger, monthly restore drill, Uptime Kuma + GlitchTip, staging and production f
 3. Do not modify generated files by hand. Do not commit generated outputs.
 4. Before finishing: run the verification commands for your area; all must pass. Report exactly what passed and
    what did not. Never claim a pass you did not observe.
-5. Commit your work on your branch with a message `feat(<area>): … (F-xx, AC …)`. End commit messages with
-   `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+5. Commit your work on your branch with a message `feat(<area>): … (F-xx, AC …)`.

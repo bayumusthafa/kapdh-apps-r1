@@ -1,9 +1,9 @@
 # Phase B handoff: core-api
 
-Core runtime and domain kernels (apps/api/src/core, packages/storage, packages/config) after build (2 stages), integration with the final contract, adversarial review (21 findings, all fixed) and fixes. Phase C module agents build on these APIs.
+Core runtime and domain kernels (apps/api/src/core, packages/storage, packages/config) after build (2 stages), integration with the final contract, adversarial review (21 findings, all fixed) and fixes. Phase C modules build on these APIs.
 
 ## Core API reference (fixer, authoritative)
-Commands (run from kapdh-platform): pnpm install; pnpm build; pnpm typecheck; pnpm lint; pnpm test; pnpm --filter @kapdh/api test:pg; pnpm contracts:lint; PATH=/c/flutter/flutter/bin:$PATH pnpm contracts:test-dart; pnpm format:check. Write patch scripts with the Write tool; bash heredocs break on quotes on this host.
+Commands (run from kapdh-platform): pnpm install; pnpm build; pnpm typecheck; pnpm lint; pnpm test; pnpm --filter @kapdh/api test:pg; pnpm contracts:lint; PATH=/c/flutter/flutter/bin:$PATH pnpm contracts:test-dart; pnpm format:check. Save patch scripts as files from an editor; bash heredocs break on quotes on this host.
 
 IMPORT PATH: everything below comes from `apps/api/src/core` (barrel `core/index.js`; module code imports e.g. `../../core/index.js`, or the specific file to avoid cycles). Core never imports from modules/.
 
@@ -170,7 +170,7 @@ IMPORT PATH: everything below comes from `apps/api/src/core` (barrel `core/index
 - Postgres lane (test/pg/support.ts): `createPgTestDatabase`, `connectAs(tdb, 'kapdh_app')`, `withLockWaitGate(tdb, hold => ...)` → {result, lockWaitObserved}, `pgError`, `publishLegalVersions(sql)`.
 
 ## Integration notes
-Commands (from kapdh-platform): pnpm install; pnpm build; pnpm typecheck; pnpm lint; pnpm test; pnpm --filter @kapdh/api test:pg; pnpm contracts:lint; PATH=/c/flutter/flutter/bin:$PATH pnpm contracts:test-dart; pnpm format:check. Write node patch scripts with the Write tool: Bash heredocs on this host can break on quotes and backslashes.
+Commands (from kapdh-platform): pnpm install; pnpm build; pnpm typecheck; pnpm lint; pnpm test; pnpm --filter @kapdh/api test:pg; pnpm contracts:lint; PATH=/c/flutter/flutter/bin:$PATH pnpm contracts:test-dart; pnpm format:check. Save node patch scripts as files from an editor: Bash heredocs on this host can break on quotes and backslashes.
 
 New or changed core APIs (apps/api/src/core):
 - guards/decorators.ts: `@RequireAnyPermission(...perms)` (at least one) and `@RequireRole("super_admin")`, admin audience only. RouteAuthMeta has `permissionsAny` and `role`. AuthGuard checks both from the DB. test/support/contract.ts `accessMismatches` also compares `permissions_any` and `role`.
@@ -207,7 +207,7 @@ Test helpers:
 - test/pg/support.ts: `withLockWaitGate(tdb, (hold) => ...)` returns {result, lockWaitObserved}; call `hold()` before commit in each transaction. Also `publishLegalVersions(sql)` and `PG_CONSENT_VERSION`.
 
 ## Fix summary
-All 21 review findings are fixed and every check on the list passes. The work is in two commits on the branch: 33333f9 (checkpoint saved when the session hit its usage limit) and 628c8cb (final commit). No finding was rejected. Findings 2 and 12 were the same reauth bug, fixed once.
+All 21 review findings are fixed and every check on the list passes. The work is in two commits on the branch: 33333f9 (checkpoint saved when the work was interrupted) and 628c8cb (final commit). No finding was rejected. Findings 2 and 12 were the same reauth bug, fixed once.
 
 **What was fixed**
 - **Parallel guessing of passwords and codes (high):** member login, admin login, admin MFA and OTP-verify now reserve one attempt atomically before any password or code is checked. A wrong attempt keeps its slot; a correct one gives it back. On real Postgres, 40 parallel wrong logins get exactly 10 password checks and 30 × 429 (same for admin login). 40 parallel wrong MFA codes get exactly 5 checks and 35 × 429. The password check and session creation moved to core (`PasswordVerifier`, `SessionIssuer`).
@@ -238,7 +238,7 @@ All 21 review findings are fixed and every check on the list passes. The work is
 
 ## Open issues
 - No review finding was rejected; all 21 are fixed with tests (2 and 12 were duplicates of the reauth family-binding bug).
-- Carried over from the integration, not caused here: `flutter analyze` on kapdh-mobile still has 4 errors from main's final contracts vs main's mobile foundation (repositories.dart:51 getPublicPage, session_controller.dart:177 LoginNext.deletionPending, status_badge.dart:154 AccountDeletionStatus.failed, test/core/realtime_client_test.dart:129 typed MessageCreatedPayload). Owner: mobile foundation / Flutter feature agents.
+- Carried over from the integration, not caused here: `flutter analyze` on kapdh-mobile still has 4 errors from main's final contracts vs main's mobile foundation (repositories.dart:51 getPublicPage, session_controller.dart:177 LoginNext.deletionPending, status_badge.dart:154 AccountDeletionStatus.failed, test/core/realtime_client_test.dart:129 typed MessageCreatedPayload). Owner: mobile foundation / Flutter feature owners.
 - Redocly reports 2 no-ambiguous-paths warnings (/files/content/{token} and /files/public/{fileId} vs /files/{fileId}/access). Harmless at runtime because fileId is a UUID; renaming them would be a breaking contract change.
 - MembershipKernel.unsuspend does not yet close open appeals. It is blocked on the 'appeal' report_category migration (C2/C6). For now a caller that closes an appeal in the same transaction passes `appealGranted: true` to get the single combined notification.
 - Still-required DB migrations from main's handoffs (schema owner): C3 payment_adjustments.cancel_reason/cancelled_by_admin_id + CHECK; C6 report_category 'appeal', reports.claimed_by_admin_id/claimed_at/member_message/message_removed_at, reports.due_at NOT NULL.

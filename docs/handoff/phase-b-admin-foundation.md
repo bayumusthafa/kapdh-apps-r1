@@ -87,7 +87,7 @@ TESTS
 - src/test/utils.tsx adds toasts(tone?) and findToast(tone, text). Do not query toasts by role=alert/status.
 - mockAuth.failRefresh('network'|status|null, times?) makes /auth/refresh fail. mockAuth.holdLogout() returns release().
 - RTE tests stub Range.getClientRects/getBoundingClientRect for ProseMirror under jsdom.
-- When writing patch scripts on this Windows/Git Bash host, write them with the Write tool: backslashes inside a Bash heredoc get collapsed.
+- When writing patch scripts on this Windows/Git Bash host, save them as files from an editor instead of a Bash heredoc: backslashes inside a Bash heredoc get collapsed.
 
 ## Shared changes
 - Rewrote the history of branch worktree-wf_dd0a0393-234-9 (local only, no other branch contains these commits). WIP commits 86d7947 and c3cfe56 are gone. 946180d and 071803b were recreated with identical trees as 721a66d and ff8f3c0, then the fix commit b8cd7e2 was added. The builder's reported hashes 946180d/071803b no longer appear on the branch.

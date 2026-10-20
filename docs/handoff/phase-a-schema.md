@@ -1,6 +1,6 @@
 # Phase A handoff: schema
 
-Facts recorded by the Phase A agents after build, adversarial review and fixes. Binding for later phases unless docs/ARCHITECTURE.md says otherwise.
+Facts recorded in Phase A after build, adversarial review and fixes. Binding for later phases unless docs/ARCHITECTURE.md says otherwise.
 
 ## FIX open_issues
 - The OpenAPI contract is still not aligned with the database enums (carried over from the builder): OtpChallenge.purpose has no email_change; the Permission enum has 14 values while the database has 15; FilePurpose and NotificationCategory ('account') differ; DeletionRequest.status has no 'failed'; FeeSettings is now app_settings 'fees'. New: the page contract should expose published_version and published content separately from the draft.

@@ -32,7 +32,7 @@ import { PublicModule } from "./modules/public/public.module.js";
  */
 export type AppDeps = CoreDeps<ApiEnv>;
 
-/** Semua modul domain ARCHITECTURE §4.1; sudah terdaftar sehingga agen modul tidak perlu menyunting berkas ini. */
+/** Semua modul domain ARCHITECTURE §4.1; sudah terdaftar sehingga pemilik modul tidak perlu menyunting berkas ini. */
 export const DOMAIN_MODULES: Type[] = [
   AuthModule,
   AdminAuthModule,
@@ -55,7 +55,7 @@ export const DOMAIN_MODULES: Type[] = [
  * tanpa controller), bukan modul domain utuh, sehingga controller/layanan HTTP modul (yang boleh memakai TokenService,
  * QrTokenService, dst.) tidak pernah dibuat di worker. Provider di modul ini tidak boleh bergantung pada layanan khusus
  * API (core.module.ts API_ONLY_PROVIDERS): worker memakai WorkerEnv tanpa secret JWT/OTP/TOTP/QR (least privilege).
- * Modul domain mengimpor modul job-nya sendiri, sehingga daftar ini tidak perlu disunting agen modul.
+ * Modul domain mengimpor modul job-nya sendiri, sehingga daftar ini tidak perlu disunting pemilik modul.
  */
 export const WORKER_MODULES: Type[] = [
   MembershipJobsModule,

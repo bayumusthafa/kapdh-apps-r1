@@ -112,6 +112,6 @@ I checked the new login, upload-tile and realtime tests by temporarily undoing t
 - Not done for finding 5: deleting an unreadable token key after repeated read failures. Doing so would log the user out on a transient Keystore problem; the splash retry is the recovery path instead.
 - Push unregister relies on deleting the FCM token on the device, plus POST /auth/logout when online. There is still no DELETE /devices in the contract. A logout that fails offline leaves the server session to expire by TTL.
 - The app gate leaves maintenance mode only through the maintenance screen's 'Coba lagi', on app resume (recheckIfStale), or on a fresh /public/config. There is no periodic recheck while users browse in read-only mode.
-- The list of data-change-only routes (`isMutationOnlyRoute`: auth, /payments/new/*, /renewal, /account/password, /account/delete, /chat/new-group) must be extended by feature agents when they add similar routes.
+- The list of data-change-only routes (`isMutationOnlyRoute`: auth, /payments/new/*, /renewal, /account/password, /account/delete, /chat/new-group) must be extended by feature slices when they add similar routes.
 - The launcher icons are generated from assets/logo-kapdh.png on #0E280C. They should be replaced with official design files when available. The Android 13 monochrome themed icon and the notification icon are still release follow-ups.
 - The Gradle and Xcode resource changes are unverified until CI builds them.

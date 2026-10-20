@@ -191,7 +191,7 @@ paths now route on readiness.
 - Section 6: each finding D2-01..D2-14 carries its final status (D2-01 and D2-02 fixed; the others have tooling or
   partial fixes and an operational remainder).
 - Every cited test name (598 citations) was checked to exist in the cited file after the merge
-  (script in the integrator's scratchpad, not committed); `[pass]` markers on new citations refer to the final run in
+  (ad-hoc script, not committed); `[pass]` markers on new citations refer to the final run in
   section 8.
 
 ## 8. Final verification
@@ -225,9 +225,9 @@ result was observed in the fix-round session. turbo build/typecheck/lint/test ru
 | `sh infra/monitoring/test/dry-run.sh` | 37 pass, 0 fail |
 | `sh infra/scripts/release-job.test.sh` | all 19 scenarios pass (25 checks) |
 | `shellcheck --severity=style` on the 18 `infra/**/*.sh` (extra, same as the CI job) and `sh -n` on every infra script | clean, exit 0 |
-| Traceability citation check (extra, scratchpad script) | 599 citations, 0 missing |
+| Traceability citation check (extra, ad-hoc script) | 599 citations, 0 missing |
 
-The brief for this round gave `main` at API 2674 tests and PG lane 235 (not re-measured here); the merged tree has
+The plan for this round put `main` at API 2674 tests and PG lane 235 (not re-measured here); the merged tree has
 2718 and 257 (E1 go-live gate and release job, E2 trust proxy/health/gate tests, E3 ops, account, logging and backup
 role tests). Admin went from 618 right after merge 1 to 628 (E1/E2 nginx and editor tests).
 

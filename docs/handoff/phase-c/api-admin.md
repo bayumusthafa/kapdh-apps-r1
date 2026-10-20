@@ -3,7 +3,7 @@
 Final report after build, adversarial review (7 findings) and fixes (commit 9936d41f245dcee140c2c94ee4054095c7ac6717).
 
 ## Summary
-I checked all 7 findings. I fixed 6 of them here, each with a test that fails on the old code. The 7th (shared queue formulas) is real but needs the payments and moderation slices, so it is left for integration and documented. An earlier fixer had done most of the work before a session limit (wip commit 9556dca). I checked that work, added the missing tests, fixed one core test it broke, and squashed everything into one commit, 9936d41 (fix(api-admin)). All required checks pass on the final tree.
+I checked all 7 findings. I fixed 6 of them here, each with a test that fails on the old code. The 7th (shared queue formulas) is real but needs the payments and moderation slices, so it is left for integration and documented. An earlier fixer had done most of the work before it was interrupted (wip commit 9556dca). I checked that work, added the missing tests, fixed one core test it broke, and squashed everything into one commit, 9936d41 (fix(api-admin)). All required checks pass on the final tree.
 
 Per finding:
 1. (high) Invitation link. FIXED. AdminMailJob now builds the link with adminInvitationLink(), which gives `${ADMIN_ORIGIN}/invite#t=<token>` with the token in the URL fragment. Tests: jobs.e2e checks the exact link form, that the token matches the stored hash, and that the link has no `/invite/` path or `?token=` query. The invitationLink() helper in admins.e2e now rejects the old path and query forms. The topics.ts comment and the CHANGELOG were corrected.

@@ -43,7 +43,7 @@ To keep the existing tests stable, adjustment tests now wait for the process but
 - pass `pnpm typecheck (kapdh-platform)`: 15 of 15 tasks successful
 - pass `pnpm lint (kapdh-platform)`: 9 of 9 tasks successful
 - pass `pnpm format:check (kapdh-platform)`: All matched files use Prettier code style
-- pass `pnpm --filter @kapdh/admin test`: 18 files, 190 tests passed. An earlier run of only the payments test files, while about 38 node processes from other agents were running, failed on 1 s findBy waits and 20 s test timeouts. The same files all passed when run in smaller groups. The final full-suite run was green.
+- pass `pnpm --filter @kapdh/admin test`: 18 files, 190 tests passed. An earlier run of only the payments test files, while about 38 node processes from other parallel builds were running, failed on 1 s findBy waits and 20 s test timeouts. The same files all passed when run in smaller groups. The final full-suite run was green.
 - not_run `API tests, test:pg, contracts:lint`: No API, contract or database files changed; only apps/admin was touched.
 
 ## Contract changes
@@ -55,7 +55,7 @@ To keep the existing tests stable, adjustment tests now wait for the process but
 
 ## Open issues
 - Finding 6 is fixed without a contract change: the adjustment panel makes one extra GET /admin/payments/{payment_id} to read the server's conflict_of_interest. If api-payments (owner of admin-payments.yaml) adds an `actions.can_process` or `conflict_of_interest` field to AdminPaymentAdjustment, the panel could drop that request. This is optional.
-- Carried over from the builder: D13 adminRecordPayment (POST /admin/payments) still has no admin UI or mock route. It was outside this slice's brief and needs a member picker.
+- Carried over from the builder: D13 adminRecordPayment (POST /admin/payments) still has no admin UI or mock route. It was outside this slice's scope and needs a member picker.
 - Carried over from the builder: nav.ts (foundation) still labels /payments 'Verifikasi Pembayaran' for an admin who has only settings.manage.
 - Mock evidence is not AC proof (PRD 7.3). The real concurrency and conflict-of-interest proof belongs to the API PG lane.
 

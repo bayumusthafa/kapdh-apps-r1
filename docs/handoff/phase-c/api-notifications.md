@@ -3,7 +3,7 @@
 Final report after build, adversarial review (4 findings) and fixes (commit a04c3a4).
 
 ## Summary
-I checked all 4 findings. All were real and are fixed, each with a regression test. An earlier fixer session had done most of the code before it hit its session limit (commits fe0b310, 72554a5, 32e6949). I re-verified that work, did two mutation checks, finished the contract wording, fixed formatting and added one small hardening. The full verification is green.
+I checked all 4 findings. All were real and are fixed, each with a regression test. An earlier fix round had done most of the code before it was interrupted (commits fe0b310, 72554a5, 32e6949). I re-verified that work, did two mutation checks, finished the contract wording, fixed formatting and added one small hardening. The full verification is green.
 
 **Finding 1 (high, AC F13-5): fixed.** `NotificationDeliveryService.begin()` now runs a short transaction for each delivery right before the provider call:
 - It locks the device token FOR SHARE, using the same lock order (token, then delivery) as logout, registerDevice, unregister, the device sweep and record.
@@ -26,7 +26,7 @@ Effects:
 
 **Finding 4 (low, English validation messages): fixed.** New validation.ts helpers (`strictBody`, `queryText`, `uuidList`) give Indonesian messages for every notifications and admin-notifications body and query, including `error_class=`, `topic=`, `all:"true"`, the `ids` type, unknown keys and non-object bodies.
 
-**Changes in this session:**
+**Changes in this round:**
 - Ran prettier on 10 files.
 - Added wording to notifications.yaml (registerDevice) and admin-notifications.yaml (deliveries list and retry) and the CHANGELOG.
 - SmtpMailer now keeps its 'error' listener attached with `on` instead of `once`, so a later error during teardown can't become an unhandled 'error' event that crashes the process.
@@ -47,7 +47,7 @@ Effects:
 - pass `pnpm build (kapdh-platform)`: 10/10 tasks, re-run after the contract description edits
 - pass `pnpm typecheck`: 15/15 tasks
 - pass `pnpm lint`: 9/9 tasks; contracts show only the 2 known no-ambiguous-paths warnings (files)
-- pass `pnpm test --concurrency=1`: 15/15 tasks. API: 42 files, 522 tests passed (505 at builder report). Admin: 143 passed. With default turbo concurrency the admin package failed 1-2 flow tests at ~5-6 s timeouts, a different test on each run; machine CPU was at 90-100% from other agents. No admin files were changed. Admin also passed 143/143 alone with --testTimeout=120000, and with --concurrency=1.
+- pass `pnpm test --concurrency=1`: 15/15 tasks. API: 42 files, 522 tests passed (505 at builder report). Admin: 143 passed. With default turbo concurrency the admin package failed 1-2 flow tests at ~5-6 s timeouts, a different test on each run; machine CPU was at 90-100% from other parallel builds. No admin files were changed. Admin also passed 143/143 alone with --testTimeout=120000, and with --concurrency=1.
 - pass `pnpm --filter @kapdh/api test:pg`: 11 files, 74 tests passed (including the 2 new batch tests on real PG17), exit=0. Teardown prints the known embedded-postgres 'done is not a function'.
 - pass `pnpm contracts:lint`: Valid; 2 known warnings; 17 realtime event schemas valid
 - pass `pnpm format:check`: All matched files use Prettier code style (10 files were reformatted first)
@@ -99,4 +99,4 @@ Tests:
 - test/notifications/smtp-provider.e2e.test.ts: SmtpMailer against a local mock SMTP server.
 - test/pg/notifications.pg.test.ts: describe 'Batch klaim yang dikirim bergiliran' on real PG17.
 
-Commits on the branch after the builder's a6f3c87: fe0b310, 72554a5, 32e6949 (earlier fixer session); 0c044f3 and 7f45c4f (this session's wip); a04c3a4 (final fix commit, empty, because everything was already checkpointed).
+Commits on the branch after the builder's a6f3c87: fe0b310, 72554a5, 32e6949 (earlier fix round); 0c044f3 and 7f45c4f (this round's wip); a04c3a4 (final fix commit, empty, because everything was already checkpointed).

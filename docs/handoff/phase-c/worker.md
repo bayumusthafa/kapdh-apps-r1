@@ -36,7 +36,7 @@ I also ran Prettier on the earlier fixer's files, which had never been formatted
 - pass `pnpm build`: 10/10 tasks, final tree
 - pass `pnpm typecheck`: 16/16 tasks, final tree
 - pass `pnpm lint`: 9/9 tasks; only the 2 known contract warnings
-- pass `pnpm test`: Final tree, exit 0: api 404/404, admin 143, worker 54/54, config 24, storage 33, database 23, shared 16, web 5. An earlier run on a machine at 100% CPU (other agents) had two timing failures in core-owned API tests: worker-package.e2e timed out at 30 s while importing @kapdh/api/worker (13-35 s here, main 21 s at the same load) and the realtime expires_at test. Both passed on rerun and in the final full run; neither touches worker code.
+- pass `pnpm test`: Final tree, exit 0: api 404/404, admin 143, worker 54/54, config 24, storage 33, database 23, shared 16, web 5. An earlier run on a machine at 100% CPU (other parallel builds) had two timing failures in core-owned API tests: worker-package.e2e timed out at 30 s while importing @kapdh/api/worker (13-35 s here, main 21 s at the same load) and the realtime expires_at test. Both passed on rerun and in the final full run; neither touches worker code.
 - pass `pnpm --filter @kapdh/api test:pg`: 10 files, 66/66, exit 0 (final tree)
 - pass `pnpm --filter @kapdh/worker test:pg`: 3 files, 11/11, exit 0 (final tree)
 - pass `pnpm contracts:lint`: Valid; 2 known warnings; event schemas valid
@@ -72,7 +72,7 @@ Run from kapdh-platform:
 - `pnpm --filter @kapdh/worker test` (PGlite plus real ioredis/BullMQ against a fake RESP server)
 - `pnpm --filter @kapdh/worker test:pg` (embedded PG17, connects as kapdh_worker)
 
-Module agents:
+Module owners:
 - Handlers must still be idempotent. An event is reprocessed after its lease expires if a DB error happened after the takeover.
 - `t.jobs.dispatchOutbox()` / `drainOutbox()` behave exactly as before.
 

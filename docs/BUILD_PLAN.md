@@ -5,16 +5,16 @@ stepping on each other. Engineering rules are in `docs/ARCHITECTURE.md`.
 
 ## Phase overview
 
-| Phase | Goal | Work items (one agent each, isolated git worktree unless noted) |
-| ----- | ---- | ---------------------------------------------------------------- |
+| Phase | Goal | Work items (one branch each, isolated git worktree unless noted) |
+| ----- | ---- | ----------------------------------------------------------------- |
 | A. Foundation-1 | Data model and contract pipeline | `schema` (all tables, triggers, migration runner, seeds, PG lane); `contracts-infra` (split OpenAPI, assemble, lint rules, TS gen, Dart SDK generator, contract test hardening, error/permission catalogs) |
 | B. Foundation-2 | Shared runtime and client shells | `core-api` (CoreModule, guards, ctx, logging, idempotency, audit, outbox, settings, rate limit, files/storage, QR, membership kernel, payment handler registry, notifications kernel, realtime base, job registry, module skeletons, test factories, auth security fixes); contract authors `C1..C7` (one domain group each); `admin-foundation`; `mobile-foundation` |
 | C. Build | Vertical slices against the agreed contract | API modules (auth, admin-auth, membership, payments, content, events, network, chat, moderation, notifications, account, admin); worker runtime; admin pages (5 groups); Flutter features (5 groups); public web |
 | D. Hardening | Prove the ACs | security review, AC coverage audit, concurrency lane, privacy/deletion audit, fix loops |
 | E. Release readiness | Operate it | infra (Dockerfiles, compose fallback, CI, backup/restore scripts), runbooks, ADRs, README, final verification |
 
-The integrator (main session) merges each phase into `main`, regenerates contracts/SDK, runs the full verification
-suite, and fixes integration breaks before the next phase starts.
+The integrator merges each phase into `main`, regenerates contracts/SDK, runs the full verification suite, and fixes
+integration breaks before the next phase starts.
 
 ## Ownership map (who may edit what)
 
@@ -24,14 +24,14 @@ suite, and fixes integration breaks before the next phase starts.
 | `packages/contracts/{scripts,openapi/root.yaml,redocly.yaml,package.json,dart/kapdh_api/pubspec.yaml}`, `packages/shared/**` | contracts-infra (A), integrator after |
 | `packages/contracts/openapi/domains/<d>.yaml` | contract author (B), then the API module owner of `<d>` (C, additive only) |
 | `apps/api/src/core/**`, `apps/api/src/app.module.ts`, `apps/api/src/bootstrap.ts`, `apps/api/test/support/**`, `packages/storage/**`, `packages/config/**` | core-api (B), integrator after |
-| `apps/api/src/modules/<m>/**`, `apps/api/test/<m>/**` | API module agent `<m>` (C) |
-| `apps/worker/**` | worker agent (C) |
+| `apps/api/src/modules/<m>/**`, `apps/api/test/<m>/**` | API module `<m>` owner (C) |
+| `apps/worker/**` | worker owner (C) |
 | `apps/admin/src/{components,api/client.ts,auth,routes/__root*,router.tsx,nav.ts}` | admin-foundation (B) |
-| `apps/admin/src/routes/<area>/**`, `apps/admin/src/api/mocks/<area>.ts` | admin page agent `<area>` (C) |
+| `apps/admin/src/routes/<area>/**`, `apps/admin/src/api/mocks/<area>.ts` | admin page `<area>` owner (C) |
 | `kapdh-mobile/lib/{app,design,core}/**`, `pubspec.yaml` | mobile-foundation (B) |
-| `kapdh-mobile/lib/features/<f>/**`, `kapdh-mobile/test/features/<f>/**` | Flutter feature agent `<f>` (C) |
-| `apps/web/**` | public-web agent (C) |
-| `infra/**`, `docs/runbooks/**`, `docs/adr/**`, `.github/**` | ops agent (E) |
+| `kapdh-mobile/lib/features/<f>/**`, `kapdh-mobile/test/features/<f>/**` | Flutter feature `<f>` owner (C) |
+| `apps/web/**` | public-web owner (C) |
+| `infra/**`, `docs/runbooks/**`, `docs/adr/**`, `.github/**` | ops owner (E) |
 
 ## Contract domain groups (Phase B authors)
 

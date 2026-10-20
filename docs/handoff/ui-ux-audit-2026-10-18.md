@@ -25,8 +25,7 @@ dari DOM dan CSS terkompilasi, bukan perkiraan.
 
 | Hal | Nilai |
 | --- | --- |
-| Worktree | `.claude/worktrees/flutter-ui-ux-skills-cc4d37` |
-| Branch | `claude/flutter-ui-ux-skills-cc4d37` |
+| Branch | branch fitur redesain v2 (belum digabung ke `main`) |
 | Basis | `main` = `89db9f4` (mockup "apa adanya", **belum ada v2 sama sekali**) |
 | Commit v2 | 10 commit di depan `main`, puncaknya `5959651` |
 | Server mockup | `node kapdh-mobile/mockup-html/tools/serve.mjs` → port 5178 |
@@ -49,9 +48,9 @@ Diukur pada 7 layar perwakilan (Beranda, Masuk, KTA, Event, Jejaring, Akun, App 
 | Target sentuh < 44 px | **0** di area aplikasi (setelah chrome dokumentasi dikecualikan) |
 | Gradien header | Kontras putih di semua titik henti gradien: 6,66–15,82:1 — aman |
 
-Rekomendasi gaya dari skill `ui-ux-pro-max` untuk produk *Membership/Community* adalah
-**Soft UI Evolution + Accessible & Ethical** — dan itulah yang sudah dipakai. Output warna/font
-otomatis dari skill tersebut (ungu `#7C3AED`, Cormorant Garamond) **harus diabaikan**: itu template
+Rekomendasi gaya dari rujukan desain UI/UX untuk produk *Membership/Community* adalah
+**Soft UI Evolution + Accessible & Ethical** — dan itulah yang sudah dipakai. Usulan warna/font
+bawaan rujukan tersebut (ungu `#7C3AED`, Cormorant Garamond) **harus diabaikan**: itu template
 generik yang tidak cocok. Hijau `#1A4B17` + emas `#E6D312` + Poppins sudah tepat.
 
 ## Koreksi: tiga klaim yang tidak terbukti
@@ -84,7 +83,7 @@ Nilai v2 justru menggeser dari `#6B6B6B` (3,9:1) ke `#6E766C` — makin pucat.
 Terdampak: tombol "Masuk" nonaktif, "Memeriksa…", "Coba lagi dalam 4:59", "Perpanjang".
 
 Catatan kejujuran: WCAG 1.4.3 **mengecualikan** komponen nonaktif, jadi ini bukan pelanggaran.
-Tapi checklist `ui-ux-pro-max` meminta 4,5:1 dan secara praktis teksnya tidak terbaca.
+Tapi daftar periksa rujukan desain UI/UX meminta 4,5:1 dan secara praktis teksnya tidak terbaca.
 
 **Perbaikan** — ubah di dua tempat:
 
@@ -213,7 +212,7 @@ Risiko: teks judul berbahasa Indonesia bisa pindah baris. Uji ulang setelah diub
 ### P2-2. Mode gelap belum ada
 
 `KapdhTheme.light()` adalah satu-satunya tema. `kapdh-mobile/lib/app/app.dart` hanya memasang
-`theme:` tanpa `darkTheme:` dan `themeMode:`. Skill `flutter-ai-ui-skill` menandai ini **High**.
+`theme:` tanpa `darkTheme:` dan `themeMode:`. Daftar periksa desain Flutter menandai ini **High**.
 
 Ini pekerjaan besar (1–2 hari), bukan tambalan. Butuh:
 

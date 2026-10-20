@@ -11,8 +11,8 @@
 PRD 7.2 menetapkan backend dan web dalam satu monorepo, sedangkan Flutter berada di repository tersendiri yang memakai
 SDK Dart bertag versi dari `packages/contracts`. Selama build R1.0, kontrak OpenAPI, SDK Dart terbangkit, API dan
 aplikasi Flutter berubah bersamaan dalam satu irisan vertikal (PRD 7.3). Bila Flutter sudah dipisah sejak awal, setiap
-perubahan kontrak memerlukan rilis SDK, tag, dan pembaruan dependensi di repo lain sebelum layar dapat diuji, dan agen
-paralel tidak dapat memverifikasi kontrak terhadap klien dalam satu worktree.
+perubahan kontrak memerlukan rilis SDK, tag, dan pembaruan dependensi di repo lain sebelum layar dapat diuji, dan
+pekerjaan paralel tidak dapat memverifikasi kontrak terhadap klien dalam satu worktree.
 
 ## Keputusan
 

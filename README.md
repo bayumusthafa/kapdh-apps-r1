@@ -25,7 +25,7 @@ KAPDHAPPS/                         satu repo selama build (ADR-001); kapdh-mobil
   .github/                         workflow GitHub Actions (ci, deploy-staging, release, mobile-android) + action lokal
   docs/
     PRD_KAPDH_Apps_v3.5.pdf        sumber kebenaran produk
-    ARCHITECTURE.md                kontrak rekayasa (mengikat untuk kontributor dan agen AI)
+    ARCHITECTURE.md                kontrak rekayasa (mengikat untuk setiap kontributor)
     BUILD_PLAN.md                  fase build dan peta kepemilikan path
     adr/                           catatan keputusan arsitektur 001-024
     runbooks/                      production-init, go-live (+ rollback), rilis-dan-gerbang-go-live, ci-cd,
@@ -242,8 +242,7 @@ Status terakhir per AC/N/U: `docs/qa/traceability.md`.
 5. Sebelum selesai jalankan verifikasi area Anda (`pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm test`,
    `pnpm test:pg`, `pnpm format:check`, `pnpm contracts:lint`; mobile `flutter analyze`, `flutter test`). Laporkan
    persis yang lulus dan yang tidak; jangan pernah mengklaim lulus yang tidak diamati.
-6. Pesan commit `feat(<area>): ... (F-xx, AC ...)` / `fix(...)` / `docs: ...`; agen AI mengakhiri pesan commit dengan
-   baris `Co-Authored-By` sesuai ARCHITECTURE §11.
+6. Pesan commit `feat(<area>): ... (F-xx, AC ...)` / `fix(...)` / `docs: ...`.
 7. Aturan yang tidak dapat ditawar: aturan bisnis di server; tidak ada NIK/Nomor KTP di mana pun; tidak mencatat
    sandi, OTP, token, secret TOTP, isi chat, bukti bayar, atau token push; uang `numeric(14,2)`/string `Money`; waktu
    dari Clock dan disimpan UTC; UUID v7 dibuat aplikasi; JSON snake_case; teks pengguna dan komentar Bahasa Indonesia
