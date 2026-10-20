@@ -231,7 +231,7 @@
   /* -------------------------------------------------------------------------------------------------------------------
      RADIUS  (KapdhRadius.* | tokens.json radius) + literal di kode
      ------------------------------------------------------------------------------------------------------------------- */
-  /* [v2] Skala radius disatukan menjadi 8 / 12 / 16 / 24 (skill flutter-ui-design: radius komponen seragam 12-16).
+  /* [v2] Skala radius disatukan menjadi 8 / 12 / 16 / 24 (rujukan desain Flutter: radius komponen seragam 12-16).
      Literal lama 10 dan 14 yang berdekatan dilebur; --r-12 dan --r-16 kini sama dengan --r-md dan --r-lg. */
   --r-sm:   8px;   /* KapdhRadius.sm: CategoryChip, TagChip, blok skeleton  [v2; dulu 6] */
   --r-md:   12px;  /* KapdhRadius.md: tombol, field, OTP, kartu direktori, cover event  [v2; dulu 10] */
@@ -259,8 +259,8 @@
   --shadow-card:   0 1px 2px rgba(14, 40, 12, .06), 0 4px 12px rgba(14, 40, 12, .08); /* tokens.json shadow.card (web; tidak dipakai Flutter) */
   --shadow-raised: 0 8px 24px rgba(14, 40, 12, .16);                                  /* tokens.json shadow.raised (web) */
 
-  /* [v2 baru] Kedalaman lembut "Soft UI Evolution" (ui-ux-pro-max): bayangan berlapis bernada hijau gelap, kontras
-     rendah, menggantikan kartu datar bergaris yang nyaris menyatu dengan latar (putih vs latar lama = 1,04:1).
+  /* [v2 baru] Kedalaman lembut "Soft UI Evolution" (rujukan desain UI/UX): bayangan berlapis bernada hijau gelap,
+     kontras rendah, menggantikan kartu datar bergaris yang nyaris menyatu dengan latar (putih vs latar lama = 1,04:1).
      Flutter: BoxShadow di KapdhShadows (usulan token tokens.json shadow.*), CardTheme elevation 0 + dekorasi. */
   --shadow-xs: 0 1px 2px rgba(14, 40, 12, .06);                                          /* chip terangkat, tombol tonal */
   --shadow-sm: 0 1px 2px rgba(14, 40, 12, .04), 0 2px 8px rgba(14, 40, 12, .06);         /* kartu, field pencarian */
@@ -271,7 +271,7 @@
   --shadow-bar-top: 0 -1px 0 var(--color-divider), 0 -6px 20px rgba(14, 40, 12, .06);    /* navigasi bawah & bilah aksi bawah */
   --ring-focus-field: 0 0 0 4px rgba(45, 122, 40, .16);                                  /* halo field fokus (di luar garis 2 px) */
 
-  /* [v2 baru] MOTION  (skill flutter-ui-design + ui-ux-pro-max: tap 100-150 ms, transisi layar 250-350 ms, easeOutCubic;
+  /* [v2 baru] MOTION  (rujukan desain Flutter dan UI/UX: tap 100-150 ms, transisi layar 250-350 ms, easeOutCubic;
      durasi berbeda per jarak/kompleksitas). Flutter: KapdhMotion.press/fast/base/slow + Curves.easeOutCubic. */
   --dur-press: 100ms;  /* umpan balik tekan (state layer) */
   --dur-fast:  150ms;  /* hover, warna, garis field */
@@ -281,7 +281,7 @@
   --ease-out:      cubic-bezier(.215, .61, .355, 1);  /* Curves.easeOutCubic */
 
   /* [v2 baru] STATE LAYER Material 3 (InkWell/overlayColor): lapisan warna konten di atas permukaan, tanpa menggeser
-     tata letak (ui-ux-pro-max: "pressed state tanpa layout shift"). */
+     tata letak (rujukan desain: "pressed state tanpa layout shift"). */
   --state-hover:   .08;
   --state-pressed: .12;
 
@@ -353,7 +353,7 @@
 /* =====================================================================================================================
    MODE GELAP  [v2 P2-2, usulan; belum ada di Flutter]
    Aktif bila <html data-theme="dark"> (tombol Terang / Gelap / Sistem di strip kepala halaman, js/theme.js).
-   Prinsip (skill ui-ux-pro-max "color-dark-mode"): varian tonal yang lebih terang dan tidak jenuh, bukan warna dibalik;
+   Prinsip (rujukan desain "color-dark-mode"): varian tonal yang lebih terang dan tidak jenuh, bukan warna dibalik;
    permukaan bertingkat (latar < permukaan < permukaan terangkat), merek hijau tetap dominan lewat pita/kartu KTA yang
    sudah gelap. Kontras terukur (WCAG): teks 13,5-14,9:1, teks redup 6,5-8,0:1, garis 3,9:1, primary sebagai teks
    9,1:1, status 7,1-8,7:1, cincin fokus emas 10,5:1. Flutter: KapdhTheme.dark() dengan token yang sama.

@@ -21,7 +21,7 @@ What changed, by finding:
 The CHANGELOG is updated under "Belum dirilis". Outside my three files I made two small edits needed to keep checks green: the admin mock and two Dart test fixtures.
 
 ## contract/shared changes
-- kapdh-platform/apps/admin/src/api/mock.ts (admin-foundation / admin payments page agent): added `event_starts_at: null` to the mock AdminPaymentDetail so it typechecks against the new required field.
+- kapdh-platform/apps/admin/src/api/mock.ts (admin-foundation / admin payments page owner): added `event_starts_at: null` to the mock AdminPaymentDetail so it typechecks against the new required field.
 - kapdh-platform/packages/contracts/dart/kapdh_api/test/api_test.dart and models_test.dart (contracts-infra / integrator): payment fixtures now include the new required `instructions_hidden: false` on PaymentDetail.
 - REQUIRED, not made (schema owner): additive migration on packages/database payments.ts paymentAdjustments, adding `cancel_reason text`, `cancelled_by_admin_id uuid REFERENCES admins(id) ON DELETE SET NULL` with a partial index, and extending CHECK payment_adjustments_cancelled_chk to `status <> 'cancelled' or (cancelled_at is not null and cancel_reason is not null and btrim(cancel_reason) <> '')`. Without it the contract fields cancel_reason and cancelled_by cannot be stored. They must never be read back from audit_logs.
 - REQUIRED, not made (schema owner and integrator): new app_settings key `payment_instructions`. Add it to APP_SETTING_KEYS in packages/database/src/schema/settings.ts, seed `{dues_hidden_platforms: []}` in seeds/reference.ts, add the zod type in core/settings/keys.ts, and add a row to ARCHITECTURE §5.4.
@@ -40,7 +40,7 @@ The CHANGELOG is updated under "Belum dirilis". Outside my three files I made tw
 - (5) throw RESERVATION_EXPIRED from onProofSubmitted, which payments maps to HTTP 410.
 - Product-owner decision still open: a rejected registration/renewal payment can only go back to pending through the owner (PRD 4.3). With the iOS fallback active, an iOS-only member who has a rejected dues payment blocks adminRecordPayment (409 with current). Allowing an admin to abandon or settle it would need a PRD 4.3 / ARCHITECTURE §3.3 change.
 - Product owner should confirm the 1-working-day dues review threshold: it comes from prototype screen_8 and the PRD 1.6 proposal. Tickets use the earlier of 2 working days (D5) and check-in opening.
-- Admin PaymentsPage (admin payments page agent) still defaults to status=pending and gates the decide button on status. It should send stage=awaiting_review for 'Menunggu' and use AdminPaymentDetail.actions.can_decide / can_cancel.
+- Admin PaymentsPage (admin payments page owner) still defaults to status=pending and gates the decide button on status. It should send stage=awaiting_review for 'Menunggu' and use AdminPaymentDetail.actions.can_decide / can_cancel.
 - No findings were rejected; all 11 were confirmed and fixed. #10 is fixed by recording the files.yaml change as a merge gate, because files.yaml is outside this fixer's ownership.
 
 ## handoff

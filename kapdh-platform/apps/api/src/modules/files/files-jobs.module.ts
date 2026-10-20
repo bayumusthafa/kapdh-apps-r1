@@ -8,7 +8,7 @@ import { Module } from "@nestjs/common";
  * RealtimeGateway) karena worker memakai WorkerEnv tanpa secret JWT/OTP/TOTP/QR (least privilege); controller dan
  * layanan yang memerlukannya tetap di modul utama. Uji `test/core/jobs.e2e.test.ts` gagal bila aturan ini dilanggar.
  * Layanan yang juga dipakai controller modul utama diekspor dari sini (`exports`).
- * Diisi agen modul files (Tahap C).
+ * Diisi pemilik modul files (Tahap C).
  */
 @Module({})
 export class FilesJobsModule {}

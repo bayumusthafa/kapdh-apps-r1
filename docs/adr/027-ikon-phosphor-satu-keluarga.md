@@ -21,9 +21,9 @@
 
 Atas permintaan pemilik, menu cepat dan navigasi bawah memakai ikon Phosphor (duotone untuk menu cepat,
 regular/fill untuk navigasi; perbandingan di `mockup-html/ikon.html`). Akibatnya satu layar mencampur dua keluarga
-ikon: Phosphor di menu dan navigasi, Material Icons di app bar, kartu dan field. Audit desain dengan skill
-ui-ux-pro-max (`references/pro-rules.md`: "All icons come from a consistent icon family and style", "Filled vs
-Outline discipline", "Stroke consistency") menandai campuran ini sebagai pelanggaran.
+ikon: Phosphor di menu dan navigasi, Material Icons di app bar, kartu dan field. Audit desain terhadap
+rujukan desain UI/UX ("All icons come from a consistent icon family and style", "Filled vs Outline discipline",
+"Stroke consistency") menandai campuran ini sebagai pelanggaran.
 
 ## Keputusan
 

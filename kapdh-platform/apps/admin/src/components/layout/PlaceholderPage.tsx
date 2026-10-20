@@ -5,7 +5,7 @@ import { UnderConstruction } from "../ui/States";
 
 /**
  * Halaman area yang rutenya, izinnya dan menunya sudah terdaftar sejak fondasi tetapi isinya dibangun irisan
- * halaman admin Phase C (BUILD_PLAN). Agen area mengganti komponen ini di src/routes/<area>/.
+ * halaman admin Phase C (BUILD_PLAN). Pemilik area mengganti komponen ini di src/routes/<area>/.
  */
 export function PlaceholderPage({
   title,

@@ -15,17 +15,13 @@ Di CSS, nilai yang berubah diberi tanda `[v2]` dan komentar `dulu ...`, yaitu ni
 
 ## Dasar keputusan
 
-Tiga skill yang dipasang di `.claude/skills/`:
+Rujukan desain (prinsip dan daftar periksa UI/UX) yang dipakai:
 
-| Skill | Yang diambil |
+| Rujukan | Yang diambil |
 | --- | --- |
-| `ui-ux-pro-max` | Gaya untuk aplikasi komunitas/keanggotaan dan organisasi keagamaan: **Soft UI Evolution + Accessible & Ethical** (bayangan lembut berlapis, radius 8-12, animasi 200-300 ms, cincin fokus 2-3 px, kontras teks minimal 4,5:1). Ditambah *Pre-Delivery Checklist* di `references/pro-rules.md`: target sentuh 48 dp, umpan balik tekan tanpa pergeseran tata letak, isi gulir tidak tertutup bilah tetap, warna bukan satu-satunya penanda. |
-| `flutter-ui-design` | Radius komponen seragam (12-16), kedalaman halus alih-alih desain terlalu datar, hierarki tebal-tipis judul vs isi, waktu animasi (tap 100-150 ms, transisi 250-350 ms, `easeOutCubic`), skala spasi 8. |
-| `flutter-ui-ux` | Tiap keadaan (memuat, kosong, galat) punya tampilan yang jelas, mikro-interaksi tombol, aksesibilitas wajib (Semantics, kontras, skala teks). |
-
-Catatan: skrip pencarian `ui-ux-pro-max` butuh Python, yang belum terpasang di mesin ini. Datanya dibaca langsung dari
-CSV di `data/` (`products.csv` baris *Membership/Community*, `ui-reasoning.csv`, `styles.csv` *Soft UI Evolution*,
-`stacks/flutter.csv`).
+| Gaya dan daftar periksa UI/UX | Gaya untuk aplikasi komunitas/keanggotaan dan organisasi keagamaan: **Soft UI Evolution + Accessible & Ethical** (bayangan lembut berlapis, radius 8-12, animasi 200-300 ms, cincin fokus 2-3 px, kontras teks minimal 4,5:1). Ditambah *Pre-Delivery Checklist*: target sentuh 48 dp, umpan balik tekan tanpa pergeseran tata letak, isi gulir tidak tertutup bilah tetap, warna bukan satu-satunya penanda. |
+| Desain UI Flutter | Radius komponen seragam (12-16), kedalaman halus alih-alih desain terlalu datar, hierarki tebal-tipis judul vs isi, waktu animasi (tap 100-150 ms, transisi 250-350 ms, `easeOutCubic`), skala spasi 8. |
+| UX Flutter | Tiap keadaan (memuat, kosong, galat) punya tampilan yang jelas, mikro-interaksi tombol, aksesibilitas wajib (Semantics, kontras, skala teks). |
 
 ## Temuan audit pada versi lama
 
@@ -96,8 +92,8 @@ fokus keyboard.
 ## Beranda v2: adaptasi desain `NewDesign/home.html`
 
 Sumber: prototipe Tailwind `Unduhan/NewDesign/home.html` (16 keadaan, sama dengan `beranda/home.html`). Bahasa visualnya
-diambil, lalu disesuaikan dengan aturan mockup dan skill. Keputusan pemilik: isi akses cepat tetap sesuai aplikasi,
-tab KTA menjadi tombol tengah yang menonjol di semua layar, dan font tetap Poppins.
+diambil, lalu disesuaikan dengan aturan mockup dan rujukan desain. Keputusan pemilik: isi akses cepat tetap sesuai
+aplikasi, tab KTA menjadi tombol tengah yang menonjol di semua layar, dan font tetap Poppins.
 
 | Bagian | Diambil dari desain baru | Disesuaikan (alasan) | Widget Dart |
 | --- | --- | --- | --- |
@@ -113,15 +109,15 @@ tab KTA menjadi tombol tengah yang menonjol di semua layar, dan font tetap Poppi
 | Beranda terkunci | StatusHero + tombol aksi dalam satu kartu | Judul "Akses Tersedia" tidak ditambahkan (teks baru) | `_GatedHome` |
 | Keadaan kosong/galat | Ikon dalam persegi membulat | `EmptyState`/`ErrorState` di semua layar ikut berubah | `states.dart` |
 
-Tidak diambil karena melanggar aturan mockup atau skill: Tailwind, Lucide dan foto Unsplash dari CDN, JavaScript
-pengganti keadaan, teks 9-10 px, teks `slate-400` (2,6:1 di putih), modal KTA (di aplikasi tab KTA membuka layar KTA),
-toast, dan data nyata pada contoh (mockup memakai "Ahmad Fauzi").
+Tidak diambil karena melanggar aturan mockup atau rujukan desain: Tailwind, Lucide dan foto Unsplash dari CDN,
+JavaScript pengganti keadaan, teks 9-10 px, teks `slate-400` (2,6:1 di putih), modal KTA (di aplikasi tab KTA membuka
+layar KTA), toast, dan data nyata pada contoh (mockup memakai "Ahmad Fauzi").
 
 ## Ikon Phosphor untuk akses cepat dan navigasi bawah
 
 Dipilih dari perbandingan di [`ikon.html`](ikon.html) (Phosphor, Solar, Hugeicons, Fluent; Material sebagai acuan).
-Phosphor adalah set yang dikurasi skill ui-ux-pro-max, berlisensi MIT tanpa atribusi wajib, dan menyediakan gaya
-regular, fill dan duotone dalam satu keluarga.
+Phosphor termasuk set ikon yang direkomendasikan rujukan desain UI/UX, berlisensi MIT tanpa atribusi wajib, dan
+menyediakan gaya regular, fill dan duotone dalam satu keluarga.
 
 | Tempat | Gaya | Material lama -> Phosphor | Dart |
 | --- | --- | --- | --- |
@@ -149,7 +145,7 @@ tersisa di ikon status bar sistem Android dan di halaman perbandingan (`ikon.htm
 ## Audit standar desain Flutter (18 Oktober 2026)
 
 Seluruh mockup diaudit otomatis di browser (52 halaman, sekitar 10.800 teks, semua kontrol) dan manual terhadap
-checklist `flutter-ui-design`, alur `flutter-ui-ux` dan *Pre-Delivery Checklist* `ui-ux-pro-max`. Tujuh temuan
+daftar periksa desain UI Flutter, alur UX Flutter dan *Pre-Delivery Checklist* rujukan desain UI/UX. Tujuh temuan
 diperbaiki di mockup DAN aplikasi Flutter:
 
 | # | Temuan | Perbaikan |

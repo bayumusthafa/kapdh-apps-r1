@@ -2,7 +2,7 @@
 
 Contract author notes after build, adversarial review and fixes. The domain YAML files are the source of truth; this file explains decisions, open issues and implementation notes for the Phase C slice owners.
 
-The builder report attached to the first review (49d8c40) is stale. It says the apps/api files were not edited and that test/typecheck/build fail; since 79ec626 the GET /me controller, PUBLIC_CONFIG and public controller ARE adapted in the repo and the branch is green. Do not apply `scratchpad/c2-legacy-api-integration.patch`; follow the merge guidance under "contract/shared changes" below.
+The builder report attached to the first review (49d8c40) is stale. It says the apps/api files were not edited and that test/typecheck/build fail; since 79ec626 the GET /me controller, PUBLIC_CONFIG and public controller ARE adapted in the repo and the branch is green. Do not apply the uncommitted patch `c2-legacy-api-integration.patch`; follow the merge guidance under "contract/shared changes" below.
 
 ## fix summary (round 2: post-merge review of 79ec626)
 Seven findings checked; six were contract defects and are fixed in the C2 domain files, one (the stale builder report) is fixed by this document. Verification after the fix: contracts:lint, contracts:gen, contracts:test-dart, @kapdh/contracts tests (39/39), pnpm build, typecheck+lint (21/21), pnpm test (13/13 tasks, API 89/89) and format:check pass.
@@ -23,12 +23,12 @@ Seven findings checked; six were contract defects and are fixed in the C2 domain
 4. recent_tickets leaked ticket payment info (low). `AdminMemberDetail.recent_tickets` is now `[array, null]`, null unless the caller has events.manage or payments.read (events.checkin alone is not enough). Applies to every AdminMemberDetail response and to `current` in 409s.
 5. verifyKta per-number rate limit could be exhausted with garbage tokens (low). Limits are now per IP (all requests), per token hash (SHA-256, all requests) and per member number ONLY for requests that pass signature/iss/aud (step 1). 429 carries retry_after_seconds and clients show "Tidak dapat memverifikasi" with retry.
 6. Period kind vocabulary mismatch (low). `MembershipPeriodKind` is now `[activation, renewal]` (was `[registration, renewal]`), matching membership_events.kind and AdminMembershipEventKind. Breaking for GET /me/membership (no server implementation yet); recorded in CHANGELOG.
-7. Stale builder report (low). Fixed by the note at the top of this file and the accurate report of this round. The scratchpad patch must not be re-applied.
+7. Stale builder report (low). Fixed by the note at the top of this file and the accurate report of this round. The uncommitted patch must not be re-applied.
 
 ## fix summary (round 1, commit 79ec626)
 I checked all 8 review findings for C2 Membership. Seven were real and are fixed. The low-severity maintenance finding was partly real: I fixed the wording but did not declare a 503 response (reason in open_issues). Everything is committed in 79ec626 on top of 49d8c40, and the branch is green: build, typecheck, lint, all tests and format checks pass, with API tests at 89 of 89.
 
-1. Red branch (high). I put the API adaptation into the repo instead of leaving it as a scratchpad patch.
+1. Red branch (high). I put the API adaptation into the repo instead of leaving it as an uncommitted patch.
    - GET /me (apps/api/src/me/me.controller.ts) now returns the new contract shape from real data: account_status, cohort_code, starts_at, renewal_eligible and renewal_opens_at, a profession and skills with historical labels, and registration/renewal payment pointers with their stage (awaiting_proof, awaiting_review or rejected).
    - avatar_url is still null in this interim controller because it has no storage driver yet.
    - GET /public/config now gets server_time from the injected CLOCK inside PublicController, not from `new Date()`. app.module.ts adds store_links and legal.

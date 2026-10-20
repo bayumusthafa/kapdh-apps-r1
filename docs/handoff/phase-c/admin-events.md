@@ -38,9 +38,9 @@ New mock controls in src/api/mocks/events.ts, all cleared by reset(): holdChecki
 - pass `pnpm build (kapdh-platform)`: 10/10 tasks successful (admin rebuilt).
 - pass `pnpm typecheck`: 15/15 tasks successful.
 - pass `pnpm lint`: 9/9 tasks successful.
-- pass `pnpm --filter @kapdh/admin test`: 15 files, 204 tests passed on the final run after the last code change. The full suite also passed (204) on the run before the unknown-result queue redesign, and checkin.test.tsx passed 26/26 after it. Before my changes, a baseline run of only the events tests had one timeout in the first test, which loads its page code on demand, while the machine was ~60% loaded by other agents. It did not recur.
+- pass `pnpm --filter @kapdh/admin test`: 15 files, 204 tests passed on the final run after the last code change. The full suite also passed (204) on the run before the unknown-result queue redesign, and checkin.test.tsx passed 26/26 after it. Before my changes, a baseline run of only the events tests had one timeout in the first test, which loads its page code on demand, while the machine was ~60% loaded by other parallel builds. It did not recur.
 - pass `pnpm format:check`: All matched files use Prettier code style.
-- not_run `Manual browser check (vite --mode mock)`: Not run in this fixer pass. Starting a dev server for the preview needs a .claude/launch.json outside this worktree, which I may not edit. The new UI was checked through jsdom tests only: queue status, Pemindaian sebelumnya list, category stale banner, price confirm dialog and reload banner.
+- not_run `Manual browser check (vite --mode mock)`: Not run in this fix round. Starting a dev server for the preview needs a local preview configuration outside this worktree, which I may not edit. The new UI was checked through jsdom tests only: queue status, Pemindaian sebelumnya list, category stale banner, price confirm dialog and reload banner.
 
 ## Contract changes
 

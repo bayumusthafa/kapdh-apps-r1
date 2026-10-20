@@ -41,7 +41,7 @@ a { color: inherit; text-decoration: none; }
 .home-header, .brand-band, .kta-card, .kta-mini, .amount-box, .snackbar, .specimen__stage--dark { --focus-ring: var(--color-focus-ring-on-dark); }
 
 /* [v2] STATE LAYER (InkWell M3): lapisan warna konten 8 % saat hover, 12 % saat ditekan, digambar sebagai bayangan
-   inset sehingga mengikuti radius dan tidak menggeser tata letak (ui-ux-pro-max: pressed state tanpa layout shift).
+   inset sehingga mengikuti radius dan tidak menggeser tata letak (rujukan desain: pressed state tanpa layout shift).
    Komponen yang punya bayangan sendiri mengisinya lewat --elev agar bayangan tidak hilang saat ditekan.
    Flutter: InkWell / ButtonStyle.overlayColor sudah ada; yang baru hanya durasi transisinya (KapdhMotion.press). */
 :where(.btn, .btn-m3, .btn-text, .btn-link, .icon-btn, .fab-small, .menu-tile, .list-tile, .popup-menu__item,

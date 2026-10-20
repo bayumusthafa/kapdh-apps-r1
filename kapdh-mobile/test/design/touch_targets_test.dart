@@ -7,7 +7,7 @@ import 'package:kapdh_mobile/features/network/widgets/tag_chip.dart';
 import '../support/widget_harness.dart';
 import 'package:kapdh_mobile/design/kapdh_icons.dart';
 
-/// Target sentuh minimal 48 dp (ui-ux-pro-max `touch-target-size`, Material) untuk kontrol kecil hasil audit mockup.
+/// Target sentuh minimal 48 dp (pedoman aksesibilitas dan Material) untuk kontrol kecil hasil audit mockup.
 void main() {
   testWidgets('chip filter: seluruh chip menghapus filter, area ketuk setinggi 48', (tester) async {
     var deleted = 0;

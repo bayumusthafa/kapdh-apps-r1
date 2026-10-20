@@ -1,6 +1,6 @@
 # Phase A handoff: contracts-infra
 
-Facts recorded by the Phase A agents after build, adversarial review and fixes. Binding for later phases unless docs/ARCHITECTURE.md says otherwise.
+Facts recorded in Phase A after build, adversarial review and fixes. Binding for later phases unless docs/ARCHITECTURE.md says otherwise.
 
 ## FIX open_issues
 - All 10 realtime event types are listed in `x-kapdh-payload-pending` in events/envelope.schema.json. C6 must add events/<type>.schema.json for each type (or move a type to x-kapdh-payload-less) and remove it from the pending list. Until then the TS payloads are Record<string, unknown> and the Dart event classes expose the raw Map, and contracts:lint prints a warning.

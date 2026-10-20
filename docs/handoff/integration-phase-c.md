@@ -242,7 +242,7 @@ heavier lazily loaded check-in page. Verified after the merge: admin typecheck, 
 - `docs/ARCHITECTURE.md` §7 listed `/invite/$token`; the contract and both slices use `/invite#t=<token>` (token in
   the fragment, never sent to a server). The route list now says so (governance open issue).
 
-## 9. Review follow-up (fixer pass on the integrated tree)
+## 9. Review follow-up (fix round on the integrated tree)
 
 A review of the integrated tree raised four low-severity findings. All four were checked against the code and are
 real; all four are fixed. No finding was rejected.
@@ -326,7 +326,7 @@ Found by the first full API run after merge 1; neither involves an api-admin fil
 ## Final verification (final tree, after the section 9 review follow-up)
 
 Run from `kapdh-platform` on the tree with the section 9 fixes (the follow-up commit on top of `0b63b12`). Every
-result below was observed in this session. The test run used `--force`, so no turbo cache was replayed.
+result below was observed in this round. The test run used `--force`, so no turbo cache was replayed.
 
 | Command                                            | Result                                                                                                                                     |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |

@@ -1,7 +1,7 @@
 /**
  * Titik impor worker untuk apps/worker (ARCHITECTURE §1: "apps/worker thin runtime ... (uses @kapdh/api/worker)"):
- * package.json @kapdh/api mengekspor `./worker` beserta deklarasi tipe hasil build, sehingga agen worker tidak perlu
- * menyunting konfigurasi build core.
+ * package.json @kapdh/api mengekspor `./worker` beserta deklarasi tipe hasil build, sehingga pemilik worker tidak
+ * perlu menyunting konfigurasi build core.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
