@@ -24,9 +24,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:kapdh_mobile/app/theme/kapdh_theme.dart';
 import 'package:kapdh_mobile/core/api/idempotency_store.dart';
 import 'package:kapdh_mobile/core/cache/home_cache_store.dart';
 import 'package:kapdh_mobile/core/cache/kta_cache_store.dart';
@@ -91,9 +89,7 @@ void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    // Font sistem perangkat (tanpa unduhan Google Fonts) agar hasil tidak bergantung jaringan perangkat uji.
-    KapdhTheme.runtimeFonts = false;
-    GoogleFonts.config.allowRuntimeFetching = false;
+    // Poppins dibundel sebagai font aset, jadi tampilan uji tidak bergantung jaringan perangkat.
     await initFormatting();
   });
 

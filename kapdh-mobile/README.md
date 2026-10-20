@@ -105,8 +105,9 @@ Aturan yang wajib diikuti fitur:
 ## Uji
 
 `flutter test` menjalankan uji unit dan widget tanpa jaringan (`test/support/fakes.dart`: adapter HTTP palsu, jam uji,
-secure storage memori; `test/support/app_harness.dart`: aplikasi lengkap dari splash). Font runtime dimatikan di
-`test/flutter_test_config.dart`. Jumlah berkas/uji terakhir yang tercatat: `../docs/qa/traceability.md` bagian 2.
+secure storage memori; `test/support/app_harness.dart`: aplikasi lengkap dari splash). Font aset (Poppins) tidak dimuat
+harness `flutter test`, jadi teks uji memakai font uji; `test/flutter_test_config.dart` memuat data tanggal dan zona
+waktu. Jumlah berkas/uji terakhir yang tercatat: `../docs/qa/traceability.md` bagian 2.
 
 ```bash
 flutter analyze
@@ -149,9 +150,6 @@ flutter drive --profile --driver=test_driver/integration_test.dart \
   ("`<tab>` terkunci", "Perpanjang KTA untuk membuka kembali fitur ini", "mengaktifkan KTA dan fitur alumni"). Daftar
   berkas, arah penulisan ulang, dan perintah pemeriksaan ada di `../docs/runbooks/app-store-submission.md` bagian 2;
   uji widget yang memeriksa teks itu ikut diperbarui.
-- Bundel TTF Poppins sebagai aset dan matikan `GoogleFonts.config.allowRuntimeFetching` (saat ini Poppins diunduh
-  saat runtime dari server Google dengan font sistem sebagai cadangan; ARCHITECTURE §8.1). Selama belum dibundel,
-  permintaan itu harus diungkap di formulir privasi toko.
 - Android: kunci rilis (`android/key.properties`), `assetlinks.json` di kapdh.or.id untuk App Links (berkas belum ada
   di `apps/web/public`, dan `infra/nginx-web.conf` saat ini menolak semua path berawalan titik sehingga
   `/.well-known/` harus dikecualikan), ikon notifikasi

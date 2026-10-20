@@ -159,6 +159,7 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen> with SingleTicker
                     Expanded(
                       child: TextField(
                         controller: _search,
+                        contextMenuBuilder: kapdhTextContextMenu,
                         onChanged: _onSearchChanged,
                         onSubmitted: _submitSearch,
                         textInputAction: TextInputAction.search,

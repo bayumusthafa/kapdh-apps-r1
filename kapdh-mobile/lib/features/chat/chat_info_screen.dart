@@ -550,6 +550,7 @@ class _RenameGroupDialogState extends State<_RenameGroupDialog> {
       title: const Text('Ubah nama grup'),
       content: TextField(
         controller: _name,
+        contextMenuBuilder: kapdhTextContextMenu,
         autofocus: true,
         inputFormatters: [LengthLimitingTextInputFormatter(maxGroupNameChars)],
         decoration: const InputDecoration(hintText: 'Nama grup'),

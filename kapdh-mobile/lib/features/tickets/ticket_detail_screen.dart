@@ -825,6 +825,7 @@ class _CancelDialogState extends State<_CancelDialog> {
             TextField(
               key: const ValueKey('cancel-reason'),
               controller: _reason,
+              contextMenuBuilder: kapdhTextContextMenu,
               maxLength: 500,
               maxLines: 3,
               minLines: 1,

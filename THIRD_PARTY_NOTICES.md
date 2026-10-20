@@ -12,7 +12,7 @@ lisensi, kode salinan, dan aset yang tertanam di berkas HTML bundel di repositor
 | -------- | -------------------- | ------- | -------------------- |
 | [Phosphor Icons 2.1 (font)](#phosphor-icons) | `kapdh-mobile/assets/fonts/phosphor/*.ttf` | MIT | Copyright (c) 2020-2021 Phosphor Icons |
 | [Phosphor Icons (SVG)](#phosphor-icons) | `kapdh-mobile/mockup-html/css/icons-phosphor.css`, `kapdh-mobile/mockup-html/ikon.html` | MIT | Copyright (c) 2023 Phosphor Icons |
-| [Poppins](#poppins) | `kapdh-mobile/mockup-html/fonts/*.woff2`, tertanam di `docs/Prototipe KAPDH Apps.html` | SIL OFL 1.1 | Copyright 2020 The Poppins Project Authors |
+| [Poppins](#poppins) | `kapdh-mobile/assets/fonts/poppins/*.ttf`, `kapdh-mobile/mockup-html/fonts/*.woff2`, tertanam di `docs/Prototipe KAPDH Apps.html` | SIL OFL 1.1 | Copyright 2020 The Poppins Project Authors |
 | [Material Icons](#material-icons) | `kapdh-mobile/mockup-html/css/icons.css`, `kapdh-mobile/mockup-html/assets/icons.svg`, galeri di `kapdh-mobile/mockup-html/components.html` | CC BY 4.0 | Google |
 | [Solar Icons](#solar-icons) | `kapdh-mobile/mockup-html/ikon.html` | CC BY 4.0 | 480 Design |
 | [Hugeicons Free](#hugeicons-free) | `kapdh-mobile/mockup-html/ikon.html` | MIT | Copyright (c) 2025 Hugeicons |
@@ -38,17 +38,20 @@ lisensi, kode salinan, dan aset yang tertanam di berkas HTML bundel di repositor
 
 - Hak cipta: Copyright 2020 The Poppins Project Authors (https://github.com/itfoundry/Poppins).
 - Lisensi: SIL Open Font License 1.1 (https://openfontlicense.org). Teks lengkap:
-  `kapdh-mobile/mockup-html/fonts/OFL-Poppins.txt`.
+  `kapdh-mobile/mockup-html/fonts/OFL-Poppins.txt` dan `kapdh-mobile/assets/licenses/Poppins-OFL.txt` (dibundel di
+  aplikasi).
 - Pemakaian:
   - Mockup HTML: sepuluh berkas woff2 (latin dan latin-ext; bobot 400, 500, 600, 700, dan 400 italic) disalin tanpa
     perubahan dari paket npm `@fontsource/poppins` 5.3.0, berdampingan dengan `OFL-Poppins.txt`.
   - Situs publik dan web admin: paket npm `@fontsource/poppins` 5.3.0 (`kapdh-platform/apps/web`,
     `kapdh-platform/apps/admin`). Font tidak disimpan di repositori, tetapi ikut dibundel ke hasil build; paketnya
     menyertakan teks OFL.
-  - Aplikasi Flutter: paket `google_fonts` memuat Poppins dari Google Fonts saat runtime (`KapdhTheme`). Font tidak
-    disimpan di repositori. Teks OFL (`kapdh-mobile/assets/licenses/Poppins-OFL.txt`, isi `OFL-Poppins.txt` dengan
-    baris hak cipta per berkas font diringkas menjadi satu) dibundel sebagai aset dan tampil di aplikasi pada Akun >
-    Lisensi sumber terbuka (entri "Poppins (google_fonts)", didaftarkan `kapdh-mobile/lib/app/app_licenses.dart`).
+  - Aplikasi Flutter: lima berkas TTF Poppins 4.004 (Regular, Italic, Medium, SemiBold, Bold) di
+    `kapdh-mobile/assets/fonts/poppins/`, disalin tanpa perubahan dari repositori Google Fonts
+    (https://github.com/google/fonts, folder `ofl/poppins`) dan dibundel sebagai font aset (`KapdhTheme`). Teks OFL
+    (`kapdh-mobile/assets/licenses/Poppins-OFL.txt`, isi `OFL-Poppins.txt` dengan baris hak cipta per berkas font
+    diringkas menjadi satu) dibundel sebagai aset dan tampil di aplikasi pada Akun > Lisensi sumber terbuka (entri
+    "Poppins", didaftarkan `kapdh-mobile/lib/app/app_licenses.dart`).
   - Prototipe satu berkas `docs/Prototipe KAPDH Apps.html`: woff2 Poppins dari Google Fonts (bobot 400, 500, 600,
     700) tertanam di dalam bundelnya (lihat [Prototipe satu berkas](#prototipe-satu-berkas)).
 
@@ -135,7 +138,7 @@ Isi layar, teks, dan logo di prototipe itu tetap milik KAPDH (`LICENSE`).
 ## Dependensi paket
 
 Dependensi yang dipasang lewat pnpm (`kapdh-platform/pnpm-lock.yaml`) dan pub (`kapdh-mobile/pubspec.lock`), misalnya
-React, paket `@tiptap/*`, `lucide-react`, `@fontsource/poppins`, dan `google_fonts`, tidak disalin ke repositori ini
+React, paket `@tiptap/*`, `lucide-react`, dan `@fontsource/poppins`, tidak disalin ke repositori ini
 (kecuali salinan yang disebut di atas, mis. React 18.3.1 di prototipe satu berkas) dan tunduk pada lisensinya
 masing-masing. Daftarnya dapat dihimpun dengan `pnpm licenses list` dari `kapdh-platform/`;
 Flutter menghimpun lisensi paket pub ke berkas `NOTICES` di hasil build aplikasi; aplikasi menampilkannya bersama

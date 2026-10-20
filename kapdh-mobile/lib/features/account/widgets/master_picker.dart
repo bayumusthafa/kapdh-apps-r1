@@ -233,6 +233,7 @@ class _MasterSheetState extends State<_MasterSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: KapdhSpace.s5, vertical: KapdhSpace.s2),
                 child: TextField(
                   controller: _search,
+                  contextMenuBuilder: kapdhTextContextMenu,
                   decoration: const InputDecoration(hintText: 'Cari', prefixIcon: Icon(KapdhIcons.search)),
                   onChanged: (_) => setState(() {}),
                 ),

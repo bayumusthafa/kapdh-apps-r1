@@ -172,6 +172,7 @@ class _SearchField extends StatelessWidget {
       builder: (context, value, _) => TextField(
         key: const ValueKey('events-search'),
         controller: controller,
+        contextMenuBuilder: kapdhTextContextMenu,
         onChanged: onChanged,
         onSubmitted: onSubmitted,
         maxLength: 100,
