@@ -117,12 +117,12 @@ void main() {
       expect(find.text('1.2.0 (7)'), findsOneWidget);
       expect(find.text('Hak Cipta (c) 2026 Perkumpulan Keluarga Alumni Pesantren Darel Hikmah'), findsOneWidget);
       expect(find.text('Phosphor Icons'), findsOneWidget);
-      expect(find.text('Poppins (google_fonts)'), findsOneWidget);
+      expect(find.text('Poppins'), findsOneWidget);
 
       // Rincian tiap entri menampilkan teks dari aset bundel (bukan hanya judul paket).
       for (final (package, copyright, license) in [
         ('Phosphor Icons', 'Copyright (c) 2020-2021 Phosphor Icons', 'Permission is hereby granted'),
-        ('Poppins (google_fonts)', 'Copyright 2020 The Poppins Project Authors', 'SIL Open Font License, Version 1.1'),
+        ('Poppins', 'Copyright 2020 The Poppins Project Authors', 'SIL Open Font License, Version 1.1'),
       ]) {
         await tester.tap(find.text(package));
         await settle(tester);

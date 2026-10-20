@@ -48,7 +48,6 @@ dependencies:
   file_picker: ^10.2.4
 
   # Tampilan.
-  google_fonts: ^6.3.3
   qr_flutter: ^4.1.0
   cached_network_image: ^4.0.4
   # Sudah terkunci sebagai dependensi cached_network_image; dipakai langsung untuk cache foto KTA tersendiri yang
@@ -80,14 +79,29 @@ flutter:
   assets:
     - assets/logo-kapdh.png
     # Teks lisensi font pihak ketiga untuk halaman Akun > Lisensi sumber terbuka (lib/app/app_licenses.dart,
-    # THIRD_PARTY_NOTICES.md): Phosphor dibundel langsung, Poppins dimuat google_fonts.
+    # THIRD_PARTY_NOTICES.md): Phosphor dan Poppins dibundel langsung sebagai font aset.
     - assets/fonts/phosphor/LICENSE
     - assets/licenses/Poppins-OFL.txt
 
-  # Ikon Phosphor 2.1 (MIT, assets/fonts/phosphor/LICENSE; ADR-027). Font dibundel langsung karena paket
-  # phosphor_flutter 2.1.0 tidak kompatibel dengan Flutter 3.47 (meng-extend IconData yang final). Dipangkas otomatis
-  # oleh --tree-shake-icons saat build rilis.
   fonts:
+    # Poppins 4.004 (SIL OFL 1.1, assets/licenses/Poppins-OFL.txt) dari github.com/google/fonts ofl/poppins, tanpa
+    # perubahan. Dibundel agar tipografi sama sejak peluncuran pertama tanpa koneksi dan aplikasi tidak menghubungi
+    # server font pihak ketiga (ARCHITECTURE §8.1). Hanya bobot yang dipakai lib/: 400, 400 italic, 500, 600, 700;
+    # tebal-miring (mis. <strong><em> di isi berita) disintesis engine dari Italic 400.
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/poppins/Poppins-Regular.ttf
+        - asset: assets/fonts/poppins/Poppins-Italic.ttf
+          style: italic
+        - asset: assets/fonts/poppins/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/poppins/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/poppins/Poppins-Bold.ttf
+          weight: 700
+    # Ikon Phosphor 2.1 (MIT, assets/fonts/phosphor/LICENSE; ADR-027). Font dibundel langsung karena paket
+    # phosphor_flutter 2.1.0 tidak kompatibel dengan Flutter 3.47 (meng-extend IconData yang final). Dipangkas otomatis
+    # oleh --tree-shake-icons saat build rilis.
     - family: PhosphorRegular
       fonts:
         - asset: assets/fonts/phosphor/Phosphor-Regular.ttf

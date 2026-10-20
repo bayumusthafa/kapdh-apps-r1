@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../design/kapdh_icons.dart';
 import 'kapdh_focus.dart';
@@ -16,23 +15,17 @@ import 'kapdh_tokens.dart';
 /// prototipe (app bar 17 px, field label di atas), navigasi bawah, dialog dan target sentuh 48 px (N-11). Widget
 /// badge status ada di `lib/design/status_badge.dart`.
 ///
-/// Font: Poppins dimuat google_fonts saat runtime dan di-cache di perangkat; tanpa koneksi pada peluncuran pertama
-/// teks memakai font sistem (fallback) sampai Poppins tersedia. Membundel TTF Poppins sebagai aset adalah tindak
-/// lanjut rilis (README). Heading memakai Telegraf bila font berlisensi sudah dibundel sebagai aset `Telegraf`.
+/// Font: Poppins dibundel sebagai font aset (pubspec `fonts`, bobot 400/500/600/700 dan 400 italic) sehingga tampil
+/// sejak peluncuran pertama tanpa koneksi dan tanpa permintaan ke server font pihak ketiga (ARCHITECTURE §8.1). Uji
+/// widget tidak memuat font aset, jadi teks uji memakai font uji. Heading memakai Telegraf bila font berlisensi sudah
+/// dibundel sebagai aset `Telegraf`.
 abstract final class KapdhTheme {
   static const bool useTelegraf = false; // ubah ke true setelah lisensi Telegraf dimiliki
 
-  /// `false` mematikan pemuatan font runtime (uji widget dan lingkungan tanpa jaringan); teks memakai font sistem.
-  static bool runtimeFonts = true;
-
   static const String _family = 'Poppins';
 
-  static TextStyle _poppins({double? fontSize, FontWeight? fontWeight, Color? color, double? height}) {
-    if (runtimeFonts) {
-      return GoogleFonts.poppins(fontSize: fontSize, fontWeight: fontWeight, color: color, height: height);
-    }
-    return TextStyle(fontFamily: _family, fontSize: fontSize, fontWeight: fontWeight, color: color, height: height);
-  }
+  static TextStyle _poppins({double? fontSize, FontWeight? fontWeight, Color? color, double? height}) =>
+      TextStyle(fontFamily: _family, fontSize: fontSize, fontWeight: fontWeight, color: color, height: height);
 
   /// Gaya teks berfont Poppins untuk tempat yang tidak mewarisi tema (ButtonStyle.textStyle menggantikan, tidak
   /// menggabungkan, gaya label tema; tanpa keluarga font tombol teks jatuh ke font sistem).
@@ -52,7 +45,6 @@ abstract final class KapdhTheme {
 
   static TextTheme _bodyTheme(Brightness brightness) {
     final base = brightness == Brightness.dark ? Typography.material2021().white : Typography.material2021().black;
-    if (runtimeFonts) return GoogleFonts.poppinsTextTheme(base);
     return base.apply(fontFamily: _family);
   }
 
@@ -140,7 +132,7 @@ abstract final class KapdhTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: p.background,
       textTheme: textTheme,
-      fontFamily: runtimeFonts ? null : _family,
+      fontFamily: _family,
       materialTapTargetSize: MaterialTapTargetSize.padded,
       // [v2] Riak InkRipple: lebih singkat dari InkSparkle bawaan M3 (mockup: transisi 100-150 ms).
       splashFactory: InkRipple.splashFactory,

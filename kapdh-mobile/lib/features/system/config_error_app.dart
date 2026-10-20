@@ -18,6 +18,8 @@ class ConfigErrorApp extends StatelessWidget {
     return MaterialApp(
       title: 'KAPDH',
       debugShowCheckedModeBanner: false,
+      // Tanpa KapdhTheme (konfigurasi tidak sah), tetapi Poppins dibundel sebagai font aset sehingga tetap dipakai.
+      theme: ThemeData(fontFamily: 'Poppins'),
       home: Scaffold(
         backgroundColor: KapdhColors.surfaceDark,
         body: SafeArea(
