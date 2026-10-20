@@ -113,11 +113,13 @@ class KtaCard extends StatelessWidget {
   static const double _padding = 12;
   static const _nameSizes = [20.0, 18.0, 16.0];
 
-  /// Ukuran huruf nama terbesar yang muat dua baris pada lebar [maxWidth].
-  static double nameFontSize(String name, double maxWidth, TextScaler scaler) {
+  /// Ukuran huruf nama terbesar yang muat dua baris pada lebar [maxWidth]. [base] adalah gaya teks bawaan tempat nama
+  /// dibangun (DefaultTextStyle: keluarga font Poppins, letterSpacing tema) agar pengukuran sama dengan [Text] yang
+  /// tampil; tanpa itu nama diukur dengan font platform yang lebih sempit lalu terpotong elipsis.
+  static double nameFontSize(String name, double maxWidth, TextScaler scaler, {TextStyle base = const TextStyle()}) {
     for (final size in _nameSizes) {
       final painter = TextPainter(
-        text: TextSpan(text: name, style: _nameStyle(size)),
+        text: TextSpan(text: name, style: base.merge(_nameStyle(size))),
         maxLines: 2,
         textDirection: TextDirection.ltr,
         textScaler: scaler,
@@ -177,7 +179,12 @@ class KtaCard extends StatelessWidget {
             builder: (context, constraints) {
               final inner = constraints.maxWidth;
               final scaler = MediaQuery.textScalerOf(context);
-              final nameSize = nameFontSize(data.fullName, inner - _Avatar.size - 10, scaler);
+              final nameSize = nameFontSize(
+                data.fullName,
+                inner - _Avatar.size - 10,
+                scaler,
+                base: DefaultTextStyle.of(context).style,
+              );
               final qr = qrSize(inner);
               // Teks diperbesar: kode angkatan dan nomor anggota bertumpuk agar nomor tidak terpecah di tengah
               // angka (kolom berdampingan hanya sekitar 89 dp pada teks 200 % di layar 360 dp).
