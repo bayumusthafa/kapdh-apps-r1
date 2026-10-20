@@ -150,10 +150,6 @@ flutter drive --profile --driver=test_driver/integration_test.dart \
   ("`<tab>` terkunci", "Perpanjang KTA untuk membuka kembali fitur ini", "mengaktifkan KTA dan fitur alumni"). Daftar
   berkas, arah penulisan ulang, dan perintah pemeriksaan ada di `../docs/runbooks/app-store-submission.md` bagian 2;
   uji widget yang memeriksa teks itu ikut diperbarui.
-- Kebijakan Privasi yang tayang (versi 3; bagian 8, 9, 10 dan 17) masih menyebut unduhan huruf dari Google Fonts dan
-  cache huruf, padahal Poppins kini dibundel sebagai font aset. Revisi dan terbitkan ulang lewat web admin sebelum
-  submit (formulir Data safety harus konsisten dengan kebijakan privasi), lalu samakan
-  `../docs/legal/kebijakan-privasi.html` dan `../docs/legal/pratinjau.html`.
 - Android: kunci rilis (`android/key.properties`), `assetlinks.json` di kapdh.or.id untuk App Links (berkas belum ada
   di `apps/web/public`, dan `infra/nginx-web.conf` saat ini menolak semua path berawalan titik sehingga
   `/.well-known/` harus dikecualikan), ikon notifikasi
