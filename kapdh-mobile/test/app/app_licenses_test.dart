@@ -12,7 +12,7 @@ void main() {
     final entries = await LicenseRegistry.licenses.toList();
     expect(entries.map((entry) => entry.packages), [
       ['Phosphor Icons'],
-      ['Poppins (google_fonts)'],
+      ['Poppins'],
     ]);
 
     String text(int index) => entries[index].paragraphs.map((paragraph) => paragraph.text).join('\n');

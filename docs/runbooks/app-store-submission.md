@@ -18,7 +18,7 @@ Payments. Keputusan teknis: ADR-015 (fallback iOS), ADR-016 (konfigurasi build),
 | Signing iOS | Sertifikat distribusi, provisioning profile App Store, tim Apple | Belum |
 | Push | Capability Push Notifications (`aps-environment`) + kunci APNs di Firebase production; `POST_NOTIFICATIONS` Android 13+ sudah dideklarasikan | Entitlement iOS belum ada |
 | Deep link | `kapdh://app/...` sudah; HTTPS `https://kapdh.or.id/app/...` butuh `assetlinks.json` dan `apple-app-site-association` di `/.well-known/` serta Associated Domains iOS | Belum: berkas tidak ada di `apps/web/public`, dan `infra/nginx-web.conf` menolak semua path berawalan titik (`location ~ /\.` → 404), sehingga verifikasi App Links/Universal Links gagal sampai nginx mengecualikan `/.well-known/` |
-| Font | ARCHITECTURE §8.1 meminta Poppins dibundel; aplikasi masih memuat Poppins lewat `google_fonts` saat runtime (permintaan ke server Google) | Selesaikan sebelum submit atau ungkapkan di formulir privasi |
+| Font | Poppins dibundel sebagai font aset (`kapdh-mobile/assets/fonts/poppins`, ARCHITECTURE §8.1); aplikasi tidak menghubungi server font pihak ketiga | Ada |
 | Konfigurasi build | `flutter build appbundle` / `flutter build ipa` dengan `--dart-define-from-file=<berkas production dari secret CI>` yang memuat `KAPDH_ENV=production`, `API_BASE_URL=https://api.kapdh.or.id/api/v1`, `PUSH_ENABLED=true` dan `FIREBASE_*` | `config/production.json` di repo sengaja kosong untuk Firebase |
 | Versi | `pubspec.yaml` `version: x.y.z+n`; `min_app_version` di web admin sama dengan versi rilis pertama | `1.0.0+1` saat ini (sama dengan `min_app_version` seed); naikkan `+n` setiap unggahan |
 
@@ -146,7 +146,6 @@ Jawaban umum:
 - Data ditautkan ke identitas pengguna: **ya** (semua baris di atas). Pelacakan (Apple ATT/"Tracking"): **tidak**.
 - Data dibagikan ke pihak ketiga (Google): **tidak**; pemroses atas nama organisasi: Firebase Cloud Messaging (token
   push), provider email transaksional D10 (alamat dan isi email), penyimpanan backup di luar VPS (terenkripsi).
-  Selama Poppins masih diunduh saat runtime, perangkat juga menghubungi server Google Fonts (alamat IP).
 - Dienkripsi saat transit: **ya** (HTTPS/WSS, N-07). Pengguna dapat meminta penghapusan: **ya** (bagian 7).
 - Keputusan PP/hukum sebelum submit: keanggotaan pada asosiasi alumni pesantren dapat dianggap mengindikasikan
   keyakinan agama (Apple "Sensitive Info", Google "Religious beliefs"). Aplikasi tidak mengumpulkan field agama;

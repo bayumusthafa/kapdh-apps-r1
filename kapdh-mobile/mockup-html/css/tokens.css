@@ -14,8 +14,8 @@
    ===================================================================================================================== */
 
 /* ---------------------------------------------------------------------------------------------------------------------
-   Font Poppins lokal (salinan @fontsource/poppins 5.3.0, OFL: fonts/OFL-Poppins.txt). Aplikasi memuat Poppins lewat
-   google_fonts (KapdhTheme._poppins); bobot yang dipakai kode: 400, 500, 600, 700 (+ italic 400 untuk isi berita).
+   Font Poppins lokal (salinan @fontsource/poppins 5.3.0, OFL: fonts/OFL-Poppins.txt). Aplikasi membundel Poppins
+   sebagai font aset (kapdh-mobile/assets/fonts/poppins, KapdhTheme._poppins); bobot yang dipakai kode: 400, 500, 600, 700 (+ italic 400 untuk isi berita).
    --------------------------------------------------------------------------------------------------------------------- */
 @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 400; font-display: swap;
   src: url('../fonts/poppins-latin-400-normal.woff2') format('woff2');

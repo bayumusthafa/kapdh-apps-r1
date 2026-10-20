@@ -2,11 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// Lisensi font pihak ketiga yang tidak terhimpun otomatis ke `NOTICES` paket pub (THIRD_PARTY_NOTICES.md): font
-/// ikon Phosphor dibundel langsung sebagai aset (ADR-027) dan Poppins dimuat google_fonts saat runtime. Nama paket
+/// ikon Phosphor (ADR-027) dan Poppins dibundel langsung sebagai font aset. Nama paket
 /// tampil sebagai judul di halaman Akun > Lisensi sumber terbuka; berkasnya terdaftar sebagai aset di pubspec.
 const appLicenseAssets = <({String package, String asset})>[
   (package: 'Phosphor Icons', asset: 'assets/fonts/phosphor/LICENSE'),
-  (package: 'Poppins (google_fonts)', asset: 'assets/licenses/Poppins-OFL.txt'),
+  (package: 'Poppins', asset: 'assets/licenses/Poppins-OFL.txt'),
 ];
 
 bool _registered = false;
