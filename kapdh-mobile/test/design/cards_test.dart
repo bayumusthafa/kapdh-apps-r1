@@ -101,6 +101,12 @@ void main() {
 
     test('ukuran huruf nama dan sisi QR', () {
       expect(KtaCard.nameFontSize('Ahmad Fauzi', 230, TextScaler.noScaling), 20);
+      // Nama diukur dengan gaya bawaan tempat ia tampil (font dan letterSpacing tema), bukan gaya kosong.
+      expect(KtaCard.nameFontSize('Ahmad Fauzi Rahman', 230, TextScaler.noScaling), 20);
+      expect(
+        KtaCard.nameFontSize('Ahmad Fauzi Rahman', 230, TextScaler.noScaling, base: const TextStyle(letterSpacing: 4)),
+        lessThan(20),
+      );
       expect(KtaCard.qrSize(292), closeTo(96.4, 0.1));
       expect(KtaCard.qrSize(500), 112);
       expect(KtaCard.qrSize(200), 96);
