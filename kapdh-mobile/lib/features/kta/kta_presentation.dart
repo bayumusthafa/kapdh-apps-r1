@@ -48,12 +48,12 @@ class KtaAction {
     case MemberCardStatus.active:
       final String message;
       if (opens != null) {
-        message = 'Seluruh fitur alumni aktif. Perpanjangan dibuka mulai ${formatDate(opens)}.';
+        message = 'Keanggotaan organisasi aktif. Perpanjangan dibuka mulai ${formatDate(opens)}.';
       } else if (serverAction == null) {
         // Tombol Perpanjang nonaktif tanpa tanggal pembukaan: alasannya tetap disebutkan.
-        message = 'Seluruh fitur alumni aktif. Perpanjangan belum dibuka.';
+        message = 'Keanggotaan organisasi aktif. Perpanjangan belum dibuka.';
       } else {
-        message = 'Seluruh fitur alumni aktif.';
+        message = 'Keanggotaan organisasi aktif.';
       }
       return (message: message, action: serverAction ?? const KtaAction(label: 'Perpanjang'));
     case MemberCardStatus.expiring:
@@ -67,15 +67,15 @@ class KtaAction {
       return (
         message: card.action == MemberCardAction.continuePayment
             ? 'Iuran pendaftaran sedang diproses. Lihat status pembayaran Anda.'
-            : 'Selesaikan iuran pendaftaran untuk mengaktifkan KTA dan fitur alumni.',
+            : 'Selesaikan iuran pendaftaran. KTA berlaku setelah pengurus memverifikasi iuran organisasi Anda.',
         action: serverAction,
       );
     case MemberCardStatus.expired:
       return (
         message: expires == null
-            ? 'Masa aktif KTA sudah berakhir. Perpanjang untuk mengaktifkan kembali KTA dan fitur alumni.'
-            : 'Masa aktif berakhir ${formatDate(expires)}. Perpanjang untuk mengaktifkan kembali KTA dan fitur '
-                  'alumni.',
+            ? 'Masa keanggotaan sudah berakhir. Hubungi pengurus atau perpanjang keanggotaan organisasi.'
+            : 'Masa keanggotaan berakhir ${formatDate(expires)}. Hubungi pengurus atau perpanjang keanggotaan '
+                  'organisasi.',
         action: serverAction,
       );
     case MemberCardStatus.suspended:

@@ -53,7 +53,7 @@ yang disetujui, dan tidak boleh dipakai untuk mengecualikan keamanan atau integr
       dan RTO <= 4 jam.
 - [ ] Image API, release, worker, web dan admin dibangun CI dari tag rilis dan lulus uji asap image serta job
       `compose-stack` (`production-init.md` 1.3; `docs/runbooks/ci-cd.md`). Belum pernah dijalankan di GitHub.
-- [ ] Teks aplikasi memenuhi D13 mitigasi 1 (`app-store-submission.md` bagian 2; per 14 Oktober 2026 belum).
+- [ ] Teks aplikasi memenuhi D13 mitigasi 1 (`app-store-submission.md` bagian 2; sesuai sejak 21 Oktober 2026).
 - [ ] Skenario kritis PRD 9.2 nomor 1-10 lulus (`traceability.md` bagian 5.2); nomor 8 (restore + ledger) dibuktikan
       pada drill restore gladi, nomor 9 (konfigurasi belum disahkan) oleh gerbang `golive:check` mode enforce di job
       rilis (bagian 2.3).

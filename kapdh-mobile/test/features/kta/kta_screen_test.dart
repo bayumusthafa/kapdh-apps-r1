@@ -100,8 +100,11 @@ void main() {
       expect(find.text('QR muncul setelah KTA aktif'), findsOneWidget);
       expect(find.text('Berlaku sampai: belum aktif'), findsOneWidget);
       expect(find.bySemanticsLabel('Status: KTA Tidak Aktif'), findsOneWidget);
-      expect(find.text('Selesaikan iuran pendaftaran untuk mengaktifkan KTA dan fitur alumni.'), findsOneWidget);
-      expect(find.text('Terbuka setelah KTA aktif'), findsOneWidget);
+      expect(
+        find.text('Selesaikan iuran pendaftaran. KTA berlaku setelah pengurus memverifikasi iuran organisasi Anda.'),
+        findsOneWidget,
+      );
+      expect(find.text('Layanan untuk anggota terverifikasi'), findsOneWidget);
       expect(find.text('Jejaring alumni dan chat'), findsOneWidget);
       expect(find.byKey(const ValueKey('kta-brightness-tip')), findsNothing);
 
@@ -148,7 +151,7 @@ void main() {
         routes: {'/me': (_) => FakeResponse.json(200, meJson(status: paid ? 'verified' : 'unverified'))},
       );
       expect(shownCard(tester).qrData, isNull);
-      expect(find.byTooltip('Event, terkunci'), findsOneWidget);
+      expect(find.byTooltip('Event, khusus anggota aktif'), findsOneWidget);
 
       paid = true;
       updates.add(notificationOf('membership', title: 'KTA Anda aktif'));
@@ -159,7 +162,7 @@ void main() {
       expect(shownCard(tester).memberNumber, '29.01.01.7');
       expect(find.bySemanticsLabel('Status: KTA Aktif'), findsOneWidget);
       // Status sesi ikut diperbarui sehingga tab Event dan Jejaring terbuka (PRD 2.2).
-      expect(find.byTooltip('Event, terkunci'), findsNothing);
+      expect(find.byTooltip('Event, khusus anggota aktif'), findsNothing);
     });
 
     testWidgets('AC F05-1, AC F07-5: KTA Aktif: QR dari qr.url, waktu sinkron, tips kecerahan; Perpanjang nonaktif '
@@ -172,7 +175,7 @@ void main() {
       expect(find.text('Berlaku sampai 12/10/2027'), findsOneWidget);
       expect(find.text('Tersinkron 12 Okt 2026, 14.00 WIB'), findsOneWidget);
       expect(find.bySemanticsLabel('Status: KTA Aktif'), findsOneWidget);
-      expect(find.text('Seluruh fitur alumni aktif. Perpanjangan dibuka mulai 12 Sep 2027.'), findsOneWidget);
+      expect(find.text('Keanggotaan organisasi aktif. Perpanjangan dibuka mulai 12 Sep 2027.'), findsOneWidget);
       expect(tester.widget<KapdhButton>(buttonLabelled('Perpanjang')).onPressed, isNull);
       // Tips kecerahan di bawah kartu status; kartu KTA v2 lebih tinggi sehingga perlu digulir.
       await tester.scrollUntilVisible(
@@ -484,7 +487,7 @@ void main() {
         card: () => FakeResponse.json(200, {...memberCardJson(expiresAt: expiresAt), 'renewal_opens_at': null}),
       );
 
-      expect(find.text('Seluruh fitur alumni aktif. Perpanjangan belum dibuka.'), findsOneWidget);
+      expect(find.text('Keanggotaan organisasi aktif. Perpanjangan belum dibuka.'), findsOneWidget);
       expect(tester.widget<KapdhButton>(buttonLabelled('Perpanjang')).onPressed, isNull);
     });
 
@@ -546,7 +549,7 @@ void main() {
 
       expect(tester.takeException(), isNull);
       await tester.dragUntilVisible(
-        find.text('Terbuka setelah KTA aktif'),
+        find.text('Layanan untuk anggota terverifikasi'),
         find.byType(ListView).first,
         const Offset(0, -300),
       );

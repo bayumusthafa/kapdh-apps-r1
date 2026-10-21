@@ -110,13 +110,13 @@ void main() {
     app.router.go('/home');
     await settle(tester);
     final nav = find.byType(NavigationBar);
-    expect(find.byTooltip('Event, terkunci'), findsOneWidget);
-    expect(find.byTooltip('Jejaring, terkunci'), findsOneWidget);
+    expect(find.byTooltip('Event, khusus anggota aktif'), findsOneWidget);
+    expect(find.byTooltip('Jejaring, khusus anggota aktif'), findsOneWidget);
     expect(find.byTooltip('KTA'), findsOneWidget);
 
     await tester.tap(find.descendant(of: nav, matching: find.text('Event')));
     await settle(tester);
-    expect(find.text('Event terkunci'), findsOneWidget);
+    expect(find.text('Event khusus anggota aktif'), findsOneWidget);
     expect(app.location, '/home');
     await tester.tap(find.text('Bayar iuran'));
     await settle(tester);

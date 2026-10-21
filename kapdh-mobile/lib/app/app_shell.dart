@@ -69,7 +69,7 @@ class AppShell extends ConsumerWidget {
     int badgeOf(int index) => tabs[index].location == AppRoutes.network && !locked[index] ? chatBadge.total : 0;
     String tooltipOf(int index) {
       final tab = tabs[index];
-      if (locked[index]) return '${tab.label}, terkunci';
+      if (locked[index]) return '${tab.label}, khusus anggota aktif';
       if (badgeOf(index) == 0) return tab.label;
       return [
         tab.label,
@@ -250,13 +250,14 @@ Future<void> showLockedTabSheet(BuildContext context, {required ShellTab tab, re
   final showTickets = status == EffectiveStatus.expired && tab.location == AppRoutes.events;
   final (String message, String? actionLabel, String? actionLocation) = switch (status) {
     EffectiveStatus.unverified => (
-      '${tab.label} terbuka setelah KTA aktif. Selesaikan iuran pendaftaran agar pengurus dapat memverifikasi '
-          'keanggotaan Anda.',
+      '${tab.label} adalah layanan untuk anggota terverifikasi. Status keanggotaan diperbarui pengurus setelah '
+          'iuran pendaftaran organisasi diverifikasi.',
       'Bayar iuran',
       AppRoutes.onboardingFees,
     ),
     EffectiveStatus.expired => (
-      '${tab.label} hanya untuk anggota aktif. Perpanjang KTA untuk membuka kembali fitur ini.'
+      '${tab.label} adalah layanan untuk anggota aktif. Masa keanggotaan Anda berakhir; hubungi pengurus atau '
+          'perpanjang keanggotaan organisasi.'
           '${showTickets ? ' Tiket yang sudah lunas tetap dapat dibuka di Tiket Saya.' : ''}',
       'Perpanjang KTA',
       AppRoutes.renewal,
@@ -286,7 +287,7 @@ Future<void> showLockedTabSheet(BuildContext context, {required ShellTab tab, re
                   ? StatusStyles.membership(EffectiveStatus.unknown)
                   : StatusStyles.membership(status),
               icon: KapdhIcons.lockOutline,
-              title: '${tab.label} terkunci',
+              title: '${tab.label} khusus anggota aktif',
               message: message,
             ),
             const SizedBox(height: KapdhSpace.s5),

@@ -50,38 +50,38 @@ Aturan teks (aplikasi, listing, catatan reviewer, tangkapan layar):
 - Risiko yang tersisa (D13): Apple 3.1.1 dapat menilai bahwa pembayaran membuka fitur di aplikasi. Rencana cadangan
   ada di bagian 6.
 
-**Status teks aplikasi: BELUM sesuai (pemblokir submit, pemilik: mobile).** Judul jenis pembayaran sudah memakai
-istilah iuran keanggotaan (`kapdh-mobile/lib/features/payments/payment_presentation.dart`), tetapi teks lain
-mengaitkan iuran/perpanjangan dengan "membuka" atau "mengaktifkan" fitur aplikasi, persis pemicu 3.1.1 yang hendak
-dihindari mitigasi D13 butir 1. Ditemukan 14 Oktober 2026 dengan pemeriksaan di bawah:
+**Status teks aplikasi: sesuai sejak 21 Oktober 2026 (teks disahkan PP).** Temuan 14 Oktober 2026 menunjukkan teks
+aplikasi mengaitkan iuran/perpanjangan dengan "membuka" atau "mengaktifkan" fitur aplikasi, persis pemicu 3.1.1 yang hendak
+dihindari mitigasi D13 butir 1. Semua teks itu kini ditulis sebagai status keanggotaan organisasi:
 
-| Berkas (`kapdh-mobile/lib/`) | Teks yang bermasalah |
-| ---------------------------- | -------------------- |
-| `app/app_shell.dart:55`, `:156` | label semantik "`<tab>`, terkunci" dan judul lembar "`<tab>` terkunci" |
-| `app/app_shell.dart:131` | "... hanya untuk anggota aktif. Perpanjang KTA untuk membuka kembali fitur ini." |
-| `features/kta/kta_presentation.dart:51`, `:54`, `:56` | "Seluruh fitur alumni aktif ..." |
-| `features/kta/kta_presentation.dart:70` | "Selesaikan iuran pendaftaran untuk mengaktifkan KTA dan fitur alumni." |
-| `features/kta/kta_presentation.dart:76-77` | "Perpanjang untuk mengaktifkan kembali KTA dan fitur alumni" |
-| `features/home/home_screen.dart:296` | "Perpanjang KTA untuk kembali membuka berita, event, jejaring dan chat" |
-| `features/home/shared/member_gate.dart:35` | "Perpanjang KTA untuk membukanya kembali" |
-| `features/chat/chat_room_screen.dart:842` | "Perpanjang KTA untuk membuka kembali percakapan" |
-| `features/account/widgets/account_section.dart:103` | label semantik "terkunci" pada menu akun |
+| Tempat (`kapdh-mobile/lib/`) | Teks lama | Teks sekarang |
+| ------------------------------ | --------- | ------------- |
+| `app/app_shell.dart` tooltip/semantik tab, `features/account/widgets/account_section.dart` semantik menu | "`<menu>`, terkunci" | "`<menu>`, khusus anggota aktif" |
+| `app/app_shell.dart` judul lembar | "`<tab>` terkunci" | "`<tab>` khusus anggota aktif" (sama dengan `MemberOnlyNotice`) |
+| `app/app_shell.dart`, `features/home/shared/member_gate.dart` (unverified) | "... terbuka setelah KTA aktif. Selesaikan iuran pendaftaran agar pengurus dapat memverifikasi keanggotaan Anda." | "... adalah layanan untuk anggota terverifikasi. Status keanggotaan diperbarui pengurus setelah iuran pendaftaran organisasi diverifikasi." |
+| `app/app_shell.dart`, `features/home/shared/member_gate.dart` (expired) | "... hanya untuk anggota aktif. Perpanjang KTA untuk membuka kembali fitur ini / membukanya kembali." | "... adalah layanan untuk anggota aktif. Masa keanggotaan Anda berakhir; hubungi pengurus atau perpanjang keanggotaan organisasi." |
+| `features/home/home_screen.dart` (unverified) | "Setelah KTA aktif, berita, event dan jejaring alumni terbuka di Beranda." | "Berita, event dan jejaring alumni adalah layanan untuk anggota terverifikasi." |
+| `features/home/home_screen.dart` (expired) | "Perpanjang KTA untuk kembali membuka berita, event, jejaring dan chat." | "Berita, event, jejaring dan chat adalah layanan untuk anggota aktif. Hubungi pengurus atau perpanjang keanggotaan organisasi." |
+| `features/chat/chat_room_screen.dart` | "Perpanjang KTA untuk membuka kembali percakapan." | "Percakapan adalah layanan untuk anggota aktif; hubungi pengurus atau perpanjang keanggotaan organisasi." |
+| `features/kta/kta_presentation.dart` (aktif) | "Seluruh fitur alumni aktif ..." | "Keanggotaan organisasi aktif ..." |
+| `features/kta/kta_presentation.dart` (tidak aktif) | "Selesaikan iuran pendaftaran untuk mengaktifkan KTA dan fitur alumni." | "Selesaikan iuran pendaftaran. KTA berlaku setelah pengurus memverifikasi iuran organisasi Anda." |
+| `features/kta/kta_presentation.dart` (expired) | "Masa aktif ... Perpanjang untuk mengaktifkan kembali KTA dan fitur alumni." | "Masa keanggotaan ... berakhir. Hubungi pengurus atau perpanjang keanggotaan organisasi." |
+| `features/kta/kta_screen.dart` judul daftar layanan | "Terbuka setelah KTA aktif" | "Layanan untuk anggota terverifikasi" |
 
-Arah perbaikan (disahkan PP sebelum diubah): tulis sebagai status keanggotaan, mis. "Layanan untuk anggota
-terverifikasi. Status keanggotaan diperbarui pengurus setelah iuran organisasi diverifikasi." dan "Masa keanggotaan
-berakhir. Hubungi pengurus atau perpanjang keanggotaan organisasi.", tanpa "terkunci", "membuka", atau "mengaktifkan
-fitur". Uji widget yang memeriksa teks ini ikut diperbarui.
+Ikon gembok pada tab dan lembar penjelasan tetap dipakai sebagai penanda visual; tinjau ulang bila reviewer mempersoalkannya.
+Uji widget yang memeriksa teks ini ikut diperbarui.
 
 Pemeriksaan sebelum setiap submit (dari root repo; hasil yang diharapkan: kosong, atau hanya baris yang sudah ditinjau
 PP dan dicatat bukan soal akses berbayar):
 
 ```sh
-grep -rniE "'[^']*(terkunci|membuka (kembali )?fitur|membuka kembali percakapan|membukanya kembali|kembali membuka|fitur alumni|mengaktifkan (kembali )?KTA|upgrade|premium|langganan)[^']*'" \
+grep -rniE "'[^']*(terkunci|terbuka setelah KTA|membuka (kembali )?fitur|membuka kembali percakapan|membukanya kembali|kembali membuka|fitur alumni|mengaktifkan (kembali )?KTA|upgrade|premium|langganan)[^']*'" \
   kapdh-mobile/lib --include='*.dart' | grep -vE '^[^:]+:[0-9]+:[[:space:]]*//'
 ```
 
-Pada 14 Oktober 2026 perintah ini mengembalikan 13 baris, tepat baris-baris pada tabel di atas. Pola ini hanya
-menangkap literal string berkutip tunggal; tinjau juga tangkapan layar toko dan teks listing secara manual.
+Pada 14 Oktober 2026 perintah ini (tanpa pola "terbuka setelah KTA") mengembalikan 13 baris; pada 21 Oktober 2026,
+setelah perbaikan, hasilnya kosong. Pola ini hanya menangkap literal string berkutip tunggal; tinjau juga tangkapan
+layar toko dan teks listing secara manual.
 
 Deskripsi listing (draf, Bahasa Indonesia; disahkan PP):
 

@@ -384,7 +384,7 @@ class _SyncedAt extends StatelessWidget {
   }
 }
 
-/// "Terbuka setelah KTA aktif" (prototipe layar 6): fitur anggota aktif yang menunggu iuran pendaftaran (PRD 2.2).
+/// "Layanan untuk anggota terverifikasi" (prototipe layar 6, teks D13): fitur anggota aktif yang menunggu iuran pendaftaran (PRD 2.2).
 class _LockedFeatures extends StatelessWidget {
   const _LockedFeatures();
 
@@ -408,7 +408,7 @@ class _LockedFeatures extends StatelessWidget {
           Semantics(
             header: true,
             child: const Text(
-              'Terbuka setelah KTA aktif',
+              'Layanan untuk anggota terverifikasi',
               style: TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
             ),
           ),
