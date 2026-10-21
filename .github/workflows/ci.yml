@@ -363,10 +363,11 @@ jobs:
           node infra/ci/vuln-gate.mjs --source grype "$RUNNER_TEMP/grype.json" --fail-on critical --label "$LABEL"
 
   # Stack Compose production lengkap dengan image commit ini (PRD 5.5, 9.2 #9; N-07; temuan audit D2-07, D3-07):
-  # dry-run entry image, `nginx -t` varian production dan staging, uji asap header web/admin, job rilis nyata dengan
-  # psql (cek versi skema, gerbang pra-migrasi menolak database baru), healthcheck, DB/Redis privat, edge staging
-  # terpisah (infra/scripts/ci-stack-smoke.sh). Image hanya dimuat lokal; publish dan promosi ada di
-  # deploy-staging.yml dan release.yml (infra/ci/images.json).
+  # dry-run entry image, `nginx -t` varian production dan staging, uji asap header web/admin (termasuk berkas asosiasi
+  # tautan aplikasi diterbitkan dari konfigurasi uji), job rilis nyata dengan psql (cek versi skema, gerbang
+  # pra-migrasi menolak database baru), healthcheck, DB/Redis privat, edge staging terpisah
+  # (infra/scripts/ci-stack-smoke.sh). Image hanya dimuat lokal; publish dan promosi ada di deploy-staging.yml dan
+  # release.yml (infra/ci/images.json).
   compose-stack:
     name: Stack Compose production (job rilis, gerbang, header, jaringan)
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '"ubuntu-24.04"') }}
@@ -378,6 +379,13 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Node terpin di host: smoke-static.sh dan ci-stack-smoke.sh membaca apps/web/app-links.json dan merender berkas
+      # asosiasi tautan aplikasi dengan node (hanya modul bawaan, tanpa pnpm install).
+      - name: Siapkan Node.js (skrip uji asap tanpa dependensi)
+        uses: ./.github/actions/setup-platform
+        with:
+          install: "false"
+          cache: "false"
       - name: Siapkan Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Build image (tag lokal kapdh-ci/kapdh-<layanan>:ci)
@@ -426,6 +434,26 @@ jobs:
           sh infra/scripts/smoke-static.sh web http://127.0.0.1:18080
           sh infra/scripts/smoke-static.sh admin http://127.0.0.1:18081
           docker rm -f web admin
+      # apps/web/app-links.json masih kosong sehingga langkah di atas hanya menguji cabang 404. Cabang diterbitkan (200,
+      # Content-Type persis application/json termasuk AASA tanpa ekstensi, cache 1 jam, tanpa pengalihan, isi sama
+      # dengan render) diuji pada image web yang sama dengan berkas dari konfigurasi UJI berisi nilai palsu
+      # (infra/ci/test/fixtures/app-links.uji.json) yang dipasang hanya-baca di /.well-known/.
+      - name: Uji asap berkas asosiasi tautan aplikasi diterbitkan (konfigurasi uji)
+        run: |
+          set -euo pipefail
+          fixture=infra/ci/test/fixtures/app-links.uji.json
+          rendered="$(mktemp -d "$RUNNER_TEMP/app-links-uji.XXXXXX")"
+          trap 'docker rm -f web-app-links >/dev/null 2>&1 || true; rm -rf "$rendered"' EXIT
+          # write-app-links.mjs hanya menulis ke dist hasil build (wajib ada index.html); index.html ini tidak dipasang.
+          : >"$rendered/index.html"
+          node apps/web/scripts/write-app-links.mjs --config "$fixture" --dist "$rendered"
+          test -s "$rendered/.well-known/assetlinks.json"
+          test -s "$rendered/.well-known/apple-app-site-association"
+          docker run -d --name web-app-links --read-only --tmpfs /tmp -p 127.0.0.1:18082:8080 \
+            -v "$rendered/.well-known:/usr/share/nginx/html/.well-known:ro" kapdh-ci/kapdh-web:ci
+          sleep 3
+          KAPDH_APP_LINKS_CONFIG="$fixture" KAPDH_EXPECT_ASSETLINKS=1 KAPDH_EXPECT_AASA=1 \
+            sh infra/scripts/smoke-static.sh web http://127.0.0.1:18082
       - name: Stack Compose production (job rilis, healthcheck, gerbang, DB privat)
         run: sh infra/scripts/ci-stack-smoke.sh
 

@@ -1,0 +1,14 @@
+{
+  "$comment": "UJI CI SAJA, bukan konfigurasi situs dan jangan disalin ke apps/web/app-links.json. Job compose-stack (.github/workflows/ci.yml) merender kedua berkas asosiasi tautan aplikasi dari berkas ini dengan apps/web/scripts/write-app-links.mjs, memasangnya hanya-baca ke kontainer image web kedua, lalu menjalankan infra/scripts/smoke-static.sh pada cabang berkas diterbitkan (200). Nilai berbentuk sah tetapi palsu: sidik = SHA-256 dari teks \"bukan-sertifikat-uji-ci\" (bukan sertifikat apa pun) dan Team ID K4PDHUJI01 (bukan Team ID Apple Developer).",
+  "android": {
+    "package_name": "id.or.kapdh.app",
+    "sha256_cert_fingerprints": [
+      "92:1B:6A:05:A0:D9:69:2F:FF:55:AE:A1:27:7D:D7:05:92:34:18:8D:EC:34:9B:8E:FC:9B:00:36:68:0D:78:55"
+    ]
+  },
+  "ios": {
+    "app_id_prefix": "K4PDHUJI01",
+    "bundle_id": "id.or.kapdh.app"
+  },
+  "paths": ["/app", "/app/*"]
+}
