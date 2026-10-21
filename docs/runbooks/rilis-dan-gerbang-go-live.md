@@ -46,7 +46,8 @@ Lakukan untuk **staging dulu**, lalu production. Keduanya terpisah penuh (D12, P
 user DB, Redis, direktori berkas, secret, domain dan proyek FCM.
 
 1. **VPS dan firewall** (D7, D9): hanya 80/443 publik; SSH 22 dari IP tepercaya/VPN dengan key; panel Coolify di
-   subdomain sendiri dengan 2FA; port 8000/6001/6002 tidak dibuka langsung.
+   subdomain sendiri dengan 2FA; port 8000/6001/6002 dan 8080 (`coolify-proxy`) tidak dibuka langsung (DROP di
+   `DOCKER-USER`).
 2. **Direktori berkas** (PRD 5.4): `sudo install -d -o 1000 -g 1000 -m 750 /srv/kapdh/<lingkungan>/files`.
    Dipasang di `/data/files` pada resource API **dan** worker (mount direktori host yang sama). Dicadangkan restic harian.
 3. **Resource Coolify per lingkungan** (label menu dapat berbeda per versi Coolify; verifikasi saat gladi staging):
@@ -57,8 +58,9 @@ user DB, Redis, direktori berkas, secret, domain dan proyek FCM.
    - Aplikasi dari image registry: `kapdh-api` (domain `api.` / `staging-api.`, port 3000, healthcheck Coolify
      `/api/v1/health/ready`: 503 sampai deletion ledger diterapkan setelah restore, ADR-014, sehingga replika itu tidak
      menerima trafik; `HEALTHCHECK` image sendiri hanya liveness `/api/v1/health`), `kapdh-worker` (tanpa domain,
-     healthcheck `/healthz` port 3001), `kapdh-web` (domain
-     `kapdh.or.id` + `www` / `staging.`, port 8080), `kapdh-admin` (domain `admin.` / `staging-admin.`, port 8080).
+     healthcheck `/healthz` port 3001), `kapdh-web` (domain `kapdh.or.id` saja dengan Direction "Allow www &
+     non-www"; `www` dialihkan berkas dinamis bagian 7.1 / `staging.`, port 8080), `kapdh-admin` (domain `admin.` /
+     `staging-admin.`, port 8080).
    - Environment variable dari `infra/.env.<lingkungan>.example` bagian A (API) dan worker; `DATABASE_URL`/`REDIS_URL`
      ditulis lengkap per resource (bagian B): API memakai login `kapdh_app`, worker `kapdh_worker`. Worker TIDAK diberi
      `JWT_ACCESS_SECRET`, `OTP_HMAC_SECRET`, `TOTP_ENC_KEY`, `QR_SIGNING_KEYS` (PRD 5.1).
@@ -127,6 +129,9 @@ commit; log run adalah bukti. Langkah manual berikut dipakai bila jalur otomatis
      KAPDH_VPS_HOST=<ip-vps> sh kapdh-platform/infra/scripts/staging-smoke.sh
    ```
 
+   Hasil port dari skrip ini (`nc -z`) bukan bukti bila jaringan di jalur menerima koneksi ke port apa pun; port
+   dibuktikan dengan prosedur `go-live.md` 2.4.
+
    Ditambah SSL Labs untuk ketiga domain, dan `docker exec <worker> wget -qO- http://127.0.0.1:3001/healthz` → `ok`.
 
 ## 4. Inisialisasi production pertama (PRD 8.2) dan go-live (PRD 8.3)
@@ -194,7 +199,8 @@ Gladi seluruh bagian ini dijalankan lebih dahulu dari **database staging kosong*
    Pencocokan mandiri dilakukan dengan mengunduh gambar dari URL publik (pratinjau di web admin) lalu `sha256sum`.
 
 8. **Backup pertama** dibuat dan direstore ke lingkungan bersih (PRD 8.3 langkah 2).
-9. **Smoke production** (PRD 8.3 langkah 3) dengan akun uji, `staging-smoke.sh` terhadap domain production, lalu
+9. **Smoke production** (PRD 8.3 langkah 3) dengan akun uji, `staging-smoke.sh` terhadap domain production (port dengan
+   prosedur `go-live.md` 2.4), lalu
    lanjutkan review toko dan rilis bertahap (PRD 8.3 langkah 4-6, D16).
 
 ### Penyebab penolakan gerbang dan perbaikannya
@@ -359,7 +365,8 @@ untuk ketiga domain:
 
 1. API: `HSTS_ENABLED=true` pada resource API production (helmet: `max-age=31536000; includeSubDomains`).
 2. Web dan admin (jalur Coolify): nginx di image tidak mengirim HSTS. Header dipasang **sekali per server Coolify**
-   lewat middleware entrypoint `https`, sekaligus dengan pengalihan HTTP → HTTPS permanen (301). Efeknya global:
+   lewat middleware entrypoint `https`, sekaligus dengan pengalihan HTTP → HTTPS permanen (301 untuk GET, 308 untuk
+   HEAD/POST). Efeknya global:
    setiap host HTTPS di proxy itu (web, admin, API, panel Coolify, staging di server yang sama) mendapat
    `Strict-Transport-Security: max-age=31536000`, tanpa `includeSubDomains`, jadi hanya berlaku untuk host yang persis
    sama. Label kontainer per resource tidak dipakai: selama label dapat diedit, Coolify mengunci perubahan domain,
@@ -422,6 +429,83 @@ untuk ketiga domain:
 4. Bukti **[bukti]**: staging dengan `KAPDH_EXPECT_HSTS=true` pada `staging-smoke.sh` bila HSTS staging memakai
    `includeSubDomains`; production dengan blok gerbang `go-live.md` 2.4.
 
+### 7.1 Pengalihan host lama ke alamat utama
+
+`www.kapdh.or.id` dan alamat sementara masa persiapan (`baru.kapdh.or.id` untuk situs, `admin-baru.kapdh.or.id`
+untuk admin) tidak melayani aplikasi. API hanya menerima satu origin situs (`PUBLIC_WEB_URL`) dan satu origin admin
+(`ADMIN_ORIGIN`), jadi halaman yang dibuka di host lain gagal CORS. Ketiganya dialihkan permanen ke alamat utama, dengan
+path dan query tetap utuh. Fragmen (token `#t=` QR KTA lama yang berisi `baru.kapdh.or.id`) dibawa peramban karena
+`location` tidak memuat fragmen. Perilaku ini standar peramban, tetapi perlu diuji sekali dengan QR yang sah (langkah 4).
+
+1. **Resource Coolify.** `kapdh-web` hanya memakai domain `https://kapdh.or.id` dengan Direction "Allow www &
+   non-www"; `kapdh-admin` hanya `https://admin.kapdh.or.id`. Jangan memakai Direction "Redirect to non-www": Coolify
+   memakai pengalihan sementara (`302` untuk GET, `307` untuk HEAD/POST).
+2. **API dan worker.** `PUBLIC_WEB_URL=https://kapdh.or.id` (API dan worker; dipakai juga untuk isi QR KTA) dan
+   `ADMIN_ORIGIN=https://admin.kapdh.or.id` (API), lalu Redeploy.
+3. **Berkas dinamis.** Servers → `localhost` → Proxy → 'Dynamic configurations', berkas `kapdh-pengalihan.yaml`:
+
+   ```yaml
+   http:
+     routers:
+       kapdh-alihkan-www:
+         rule: Host(`www.kapdh.or.id`)
+         entryPoints:
+           - https
+         service: noop@internal
+         middlewares:
+           - kapdh-alihkan-ke-apex
+         tls:
+           certResolver: letsencrypt
+       kapdh-alihkan-baru:
+         rule: Host(`baru.kapdh.or.id`)
+         entryPoints:
+           - https
+         service: noop@internal
+         middlewares:
+           - kapdh-alihkan-ke-apex
+         tls:
+           certResolver: letsencrypt
+       kapdh-alihkan-admin-baru:
+         rule: Host(`admin-baru.kapdh.or.id`)
+         entryPoints:
+           - https
+         service: noop@internal
+         middlewares:
+           - kapdh-alihkan-ke-admin
+         tls:
+           certResolver: letsencrypt
+     middlewares:
+       kapdh-alihkan-ke-apex:
+         redirectRegex:
+           regex: "^https://(www|baru)\\.kapdh\\.or\\.id/(.*)"
+           replacement: "https://kapdh.or.id/${2}"
+           permanent: true
+       kapdh-alihkan-ke-admin:
+         redirectRegex:
+           regex: "^https://admin-baru\\.kapdh\\.or\\.id/(.*)"
+           replacement: "https://admin.kapdh.or.id/${1}"
+           permanent: true
+   ```
+
+   Middleware HSTS entrypoint (bagian 7 langkah 2) ikut berlaku pada ketiga router ini. Jangan memakai 'Reset configuration'
+   atau 'Switch proxy' (lihat perilaku Coolify di atas).
+4. **Periksa.** Untuk GET, `https://www.kapdh.or.id/kebijakan-privasi?x=1` → `301 https://kapdh.or.id/kebijakan-privasi?x=1`,
+   `https://baru.kapdh.or.id/kta/<nomor>` → `301 https://kapdh.or.id/kta/<nomor>`, `https://admin-baru.kapdh.or.id/login`
+   → `301 https://admin.kapdh.or.id/login`; HEAD dan POST dijawab `308` dengan `location` yang sama. Ketiga host tetap
+   bersertifikat Let's Encrypt dan memuat `strict-transport-security`. CORS API hanya menerima `https://kapdh.or.id` dan
+   `https://admin.kapdh.or.id`. Sekali saja, buka QR KTA yang sah dengan alamat `baru.kapdh.or.id` di peramban; alamat
+   akhirnya harus `https://kapdh.or.id/kta/<nomor>#t=<token>` dengan status terkini.
+5. **Jalur Compose cadangan** (`compose-cadangan.md`) mengalihkan `www` ke apex secara bawaan
+   (`KAPDH_PRODUCTION_WWW_REDIRECT=true` di `infra/traefik/render-dynamic.sh`), tetapi tidak merutekan `baru` dan
+   `admin-baru`. Skrip itu belum punya masukan untuk host tambahan dan Traefik cadangan merender konfigurasinya saat
+   start (tanpa watch), jadi pengalihan keduanya memerlukan perubahan `render-dynamic.sh` yang diuji sebelum dipakai.
+   Tanpa perubahan itu, kedua alamat tidak tersedia selama jalur cadangan; hapus record DNS keduanya setelah masa
+   transisi.
+
+Status production: sejak 21 Oktober 2026 domain resource (langkah 1), variabel API dan worker (langkah 2), dan berkas
+dinamis (langkah 3) aktif. Pemeriksaan langkah 4 lulus, kecuali uji token `#t=` yang belum dilakukan (bukti:
+`docs/qa/transport/2026-10/README.md`).
+
 ## 8. Wajib dibuktikan pada staging nyata (belum dapat diuji di mesin build tanpa Docker)
 
 - Build semua image dan workflow `ci.yml` hijau (termasuk job "Stack Compose production"), lalu run pertama
@@ -429,9 +513,10 @@ untuk ketiga domain:
 - `psql` di image rilis menjalankan cek versi skema, `roles.sql` dan `role-passwords.sql` (`\getenv`, `\if`)
   terhadap PostgreSQL 17.
 - `run-release.sh` dengan nama host/jaringan PostgreSQL resource Coolify yang sebenarnya dan `docker login ghcr.io`.
-- TLS grade (SSL Labs), pengalihan HTTP→HTTPS, upgrade WSS `/socket.io/`, port 5432/6379/3000/3001/8000 tertutup dari
-  internet (`staging-smoke.sh`); HSTS dan pengalihan 301 proxy Coolify (bagian 7; production sudah sejak
-  17 Oktober 2026).
+- TLS grade (SSL Labs), pengalihan HTTP→HTTPS, upgrade WSS `/socket.io/`, port 5432/6379/3000/3001/8000/8080
+  tertutup dari internet (`staging-smoke.sh` untuk TLS/WSS; port dengan prosedur `go-live.md` 2.4, karena `nc -z` di
+  skrip itu menghitung koneksi yang diterima perangkat jaringan sebagai port terbuka); HSTS dan pengalihan permanen
+  proxy Coolify (bagian 7; production sudah sejak 17 Oktober 2026, gerbang 2.4 production lulus 21 Oktober 2026).
 - Batas memori/CPU di bawah beban (N-01..N-04) dan heap Node (`--max-old-space-size`).
 - Web admin di peramban nyata dengan CSP production: login, TOTP, editor berita (TipTap tanpa `<style>` sisipan),
   pratinjau unggahan (`blob:`), QR TOTP (`data:`), pemindai check-in (kamera).

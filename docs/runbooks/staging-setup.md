@@ -220,12 +220,13 @@ Pastikan SSH admin lewat tailnet berhasil **sebelum** menutup port 22 publik, da
   sudo ufw status verbose           # wajib "Status: active" dan "Default: deny (incoming)"
   ```
 
-  Port yang dipublikasikan Docker (Coolify `8000`, `6001`, `6002`) **melewati** ufw: aturan ufw tidak menutupnya.
+  Port yang dipublikasikan Docker (Coolify `8000`, `6001`, `6002`, dan `8080` milik `coolify-proxy`) **melewati** ufw:
+  aturan ufw tidak menutupnya.
   Tutup di rantai `DOCKER-USER`, mis. lewat alat `ufw-docker` yang dirujuk dokumentasi firewall Coolify, atau aturan
   berikut (`<iface-publik>` = antarmuka ber-IP publik dari `ip -br addr`, mis. `eth0`):
 
   ```bash
-  for p in 8000 6001 6002; do
+  for p in 8000 6001 6002 8080; do
     sudo iptables -I DOCKER-USER -i <iface-publik> -p tcp -m conntrack --ctorigdstport "$p" --ctdir ORIGINAL -j DROP
   done
   ```
@@ -237,8 +238,10 @@ Pastikan SSH admin lewat tailnet berhasil **sebelum** menutup port 22 publik, da
 
 - [panel] Machines: VPS bertag `tag:kapdh-staging` dengan kedaluwarsa kunci nonaktif; policy (termasuk blok `tests`)
   tersimpan tanpa galat.
-- Dari mesin di luar VPS: `nmap -Pn -p 22,80,443,3000,3001,5432,6001,6002,6379,8000,8080 <ip-publik-vps>` → hanya 80
-  dan 443 `open` (ulangi dengan alamat IPv6 publik bila ada, `nmap -6`).
+- Dari mesin di luar VPS, bukan lewat VPN: `nmap -Pn -sV -p 22,80,443,3000,3001,5432,6001,6002,6379,8000,8080,9999
+  <ip-publik-vps>` → hanya 80 dan 443 (dan 22 selama belum ditutup) yang dikenali layanannya; port lain `filtered`
+  atau sama dengan port kontrol 9999 (`tcpwrapped`). Cara membaca hasil dan pemeriksaan pelengkap di VPS (`ss`,
+  `docker ps`, `iptables -S DOCKER-USER`): `go-live.md` 2.4. Ulangi dengan alamat IPv6 publik bila ada (`nmap -6`).
 - [panel] Server `localhost` di Coolify tetap terjangkau (validasi server di menu Servers).
 - [PC] `ssh <admin>@<ip-tailnet-vps>` masih berhasil.
 
@@ -835,7 +838,9 @@ KAPDH_WEB=staging.kapdh.or.id KAPDH_ADMIN=staging-admin.kapdh.or.id KAPDH_API=st
 
 - `KAPDH_VPS_HOST` = IP **publik** (dengan IP tailnet pemeriksaan port tidak bermakna).
 - Tanpa `nc` (Git Bash bawaan) pemeriksaan port dilewati dengan `PERINGATAN`; jalankan dari mesin yang punya `nc`,
-  atau `nmap -Pn -p 22,3000,3001,5432,6379,8000,8080,6001,6002 <ip-publik-vps>`. Skrip tidak memeriksa port 22.
+  atau pakai prosedur port `go-live.md` 2.4 (`nmap -Pn -sV` dengan port kontrol 9999). Skrip tidak memeriksa port 22.
+- `nc -z` menghitung setiap koneksi yang diterima sebagai port terbuka. Bila jaringan di jalur menerima koneksi ke
+  port apa pun (port kontrol 9999 ikut tersambung), `TERBUKA` dari skrip bukan bukti; ikuti prosedur `go-live.md` 2.4.
 - HSTS hanya baris `info` (`HSTS_ENABLED=false`, belum diwajibkan; `rilis-dan-gerbang-go-live.md` bagian 7).
 - SSL Labs untuk ketiga domain.
 
@@ -1003,4 +1008,4 @@ skrip Node tercetak sebagai anotasi `::error title=...::<pesan>`.
 | Pesan                                                                                     | Penyebab                                                                                | Perbaikan                                         |
 | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | `GAGAL  <domain> HTTP → 302 https://... (harus 301/308 ke https)`                         | pengalihan proxy tidak permanen (middleware Coolify `redirectscheme` tanpa `permanent`) | tahap 6.2a                                        |
-| `GAGAL  port 8000 TERBUKA di <ip-publik-vps> (harus tertutup firewall)` (juga 6001, 6002) | port yang dipublikasikan Docker melewati ufw                                            | firewall penyedia atau aturan `DOCKER-USER` (2.4) |
+| `GAGAL  port 8000 TERBUKA di <ip-publik-vps> (harus tertutup firewall)` (juga 6001, 6002, 8080) | port yang dipublikasikan Docker melewati ufw; atau jaringan/VPN di jalur menerima semua port (port kontrol 9999 ikut tersambung, `go-live.md` 2.4) | firewall penyedia atau aturan `DOCKER-USER` (2.4) |

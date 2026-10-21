@@ -46,7 +46,10 @@ Langkah berikutnya: `docs/runbooks/go-live.md`. Persiapan toko aplikasi: `docs/r
 - [ ] VPS 4 vCPU, RAM 8 GB, disk 100 GB, region Jakarta atau Singapura (D7). Catat penyedia, region, ukuran.
 - [ ] Akses root/Coolify hanya pemilik produk dan satu cadangan, SSH key, 2FA (D9). Login SSH dengan sandi dimatikan.
 - [ ] Firewall: hanya 80/443 publik; SSH 22 dari IP tepercaya/VPN. PostgreSQL dan Redis **tidak** punya port publik
-      (PRD 5.3). **[bukti]** keluaran pemindaian port dari luar VPS (mis. `nmap -Pn -p 22,80,443,5432,6379 <ip>`).
+      (PRD 5.3). Port panel Coolify (8000/6001/6002) dan 8080 milik `coolify-proxy` dipublikasikan Docker sehingga
+      melewati ufw; paketnya dari antarmuka publik di-DROP rantai `DOCKER-USER`. **[bukti]** pemeriksaan port
+      `go-live.md` 2.4: `nmap -Pn -sV` dengan port kontrol 9999 dari jaringan tanpa VPN, ditambah `ss`, `docker ps`
+      dan `iptables -S DOCKER-USER` di VPS.
 - [ ] Panel Coolify di subdomain tersendiri dengan 2FA dan daftar pengelola yang tercatat.
 
 ### 1.2 DNS, TLS, dan header keamanan (D12; N-07)
@@ -54,17 +57,20 @@ Langkah berikutnya: `docs/runbooks/go-live.md`. Persiapan toko aplikasi: `docs/r
 | Nama | Isi | Staging |
 | ---- | --- | ------- |
 | `kapdh.or.id` | situs publik (`apps/web`) | `staging.kapdh.or.id` |
-| `www.kapdh.or.id` | **hanya** pengalihan permanen 301 ke `https://kapdh.or.id` (path dipertahankan) | tidak dipakai |
+| `www.kapdh.or.id` | **hanya** pengalihan permanen ke `https://kapdh.or.id` (301 untuk GET, 308 untuk HEAD/POST; path dan query dipertahankan) | tidak dipakai |
 | `admin.kapdh.or.id` | web admin (`apps/admin`) | `staging-admin.kapdh.or.id` |
 | `api.kapdh.or.id` | API + Socket.IO (`apps/api`) | `staging-api.kapdh.or.id` |
 
 - [ ] Record A/AAAA ke VPS; sertifikat TLS diterbitkan Traefik (Coolify). **[bukti]** `curl -sI https://api.kapdh.or.id/api/v1/health`.
-- [ ] `www.kapdh.or.id` **tidak** melayani situs; Traefik mengalihkannya 301 ke apex. Alasannya: API hanya menerima
+- [ ] `www.kapdh.or.id` **tidak** melayani situs; Traefik mengalihkannya permanen ke apex. Alasannya: API hanya menerima
       Origin `new URL(PUBLIC_WEB_URL).origin` untuk CORS dan Socket.IO (`apps/api/src/bootstrap.ts`), jadi di `www`
       halaman legal (isinya dibaca dari `GET /public/pages/{slug}`), verifikasi KTA dan `/delete-account` gagal CORS.
       Pada API lokal (14 Oktober 2026) permintaan ber-Origin `https://www.kapdh.or.id` tidak menerima
-      `access-control-allow-origin`. **[bukti]** `curl -sI https://www.kapdh.or.id/kebijakan-privasi` → `301` dengan
-      `location: https://kapdh.or.id/kebijakan-privasi`.
+      `access-control-allow-origin`. Pengalihan dipasang lewat berkas dinamis Traefik (`rilis-dan-gerbang-go-live.md`
+      bagian 7.1), bukan lewat pilihan Direction "Redirect to non-www" di resource Coolify: pilihan itu memakai
+      pengalihan sementara (`302` untuk GET, `307` untuk HEAD/POST). **[bukti]** `curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n'
+      https://www.kapdh.or.id/kebijakan-privasi` → `301 https://kapdh.or.id/kebijakan-privasi`; `curl -sI` (HEAD) pada
+      alamat yang sama menjawab `308` dengan `location` yang sama.
 - [ ] Admin dan API berada pada site yang sama (`*.kapdh.or.id`); cookie refresh admin SameSite=Strict bergantung pada
       ini (ADR-013).
 - [ ] Traefik meneruskan upgrade WebSocket ke API (`/socket.io/`, namespace `/realtime`; ADR-009). **[bukti]** cek WSS
@@ -88,7 +94,8 @@ Langkah berikutnya: `docs/runbooks/go-live.md`. Persiapan toko aplikasi: `docs/r
   - Traefik: header `Strict-Transport-Security` `max-age=31536000` untuk `kapdh.or.id`, `www.kapdh.or.id` dan
     `admin.kapdh.or.id` (`infra/nginx-web.conf` menyerahkan HSTS ke Traefik). `includeSubDomains` hanya bila setiap
     subdomain `kapdh.or.id` (termasuk staging dan panel Coolify) sudah HTTPS. Jalur Coolify: middleware dynamic
-    `kapdh-hsts` + middleware entrypoint `https` beserta pengalihan 301 (`rilis-dan-gerbang-go-live.md` bagian 7;
+    `kapdh-hsts` + middleware entrypoint `https` beserta pengalihan HTTP → HTTPS permanen (301 untuk GET, 308 untuk
+    HEAD/POST; `rilis-dan-gerbang-go-live.md` bagian 7;
     aktif di production sejak 17 Oktober 2026, tanpa `includeSubDomains`).
   - API: `HSTS_ENABLED=true` (helmet, `max-age=31536000; includeSubDomains`).
   - **[bukti]** keluaran `curl -sI` empat host pada gerbang transport `go-live.md` bagian 2.4.
@@ -216,7 +223,8 @@ flag maintenance ada di database yang direstore), salinan ledger terbaru diamank
   ```
 
   Diuji 14 Oktober 2026 terhadap API lokal tanpa TLS (`http://127.0.0.1`): keluar `101 Switching Protocols`. Lewat
-  Traefik/TLS belum diuji.
+  Traefik/TLS pada production: `101` pada 21 Oktober 2026 (`docs/qa/transport/2026-10/README.md`). Cek sintetis
+  terjadwal belum dipasang.
 - [ ] **Kegagalan provider (PRD 5.5)** sebagai alert, bukan hanya tampilan web admin (Notifikasi → Pengiriman). Cron
       VPS tiap 15 menit yang hanya mengirim "sehat" ke monitor push (mis. Uptime Kuma Push; tidak ada kiriman dalam
       interval = alert):
@@ -524,4 +532,5 @@ yang diaktifkan lewat SQL menolak login 503 `MAINTENANCE`, cek WebSocket 1.6 (`1
 `create database`, `roles.sql`, migrasi 8, `roles.sql`), dan keluaran `pnpm --filter @kapdh/api deploy --prod --legacy`
 (semua CLI ada). SQL dijalankan lewat klien Node pengganti `psql`, bukan `psql` di kontainer. **Belum diuji**: image Docker (`Dockerfile.api` di `main` gagal dibangun, 1.3), `psql` di kontainer, Coolify,
 Traefik/TLS/WSS, header admin dan HSTS, Redis/BullMQ nyata, SMTP/FCM nyata, backup/restore, cron monitor. Semuanya
-wajib dibuktikan pada gladi staging (langkah 7).
+wajib dibuktikan pada gladi staging (langkah 7). Catatan kemudian: Traefik/TLS/WSS, header dan HSTS sudah terbukti
+pada production 21 Oktober 2026 (`docs/qa/transport/2026-10/README.md`); gladi staging tetap wajib.

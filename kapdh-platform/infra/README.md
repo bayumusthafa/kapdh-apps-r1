@@ -108,7 +108,8 @@ kondisi, PostgreSQL 17), `apps/api/test/pg/critical-9-2.pg.test.ts` skenario 9, 
   api 1 GB (heap 768 MB), worker 768 MB (heap 512 MB), web/admin 64 MB, Traefik 256 MB. Staging lebih kecil. Angka awal;
   diukur ulang dengan uji beban N-01..N-04 (PRD 10.2).
 - Firewall VPS: hanya 80/443 publik; SSH 22 dari IP tepercaya/VPN dengan key; port panel Coolify (8000, 6001, 6002)
-  tidak dibuka langsung (panel di subdomain sendiri dengan 2FA). Periksa dengan `scripts/staging-smoke.sh`.
+  dan 8080 `coolify-proxy` tidak dibuka langsung (panel di subdomain sendiri dengan 2FA; DROP di `DOCKER-USER`).
+  Periksa TLS/WSS dengan `scripts/staging-smoke.sh` dan port dengan prosedur `docs/runbooks/go-live.md` 2.4.
 
 ## Verifikasi lokal tanpa Docker
 
