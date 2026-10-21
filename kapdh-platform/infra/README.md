@@ -57,7 +57,7 @@ Push `main` yang lolos CI menerbitkan `ghcr.io/<org>/kapdh-<image>:sha-<commit 4
 `vX.Y.Z` yang disetujui gerbang rilis memberi tag versi pada **digest yang sama** (`crane tag`, `release.yml`), tanpa
 build ulang (PRD 5.5); promosi gagal dengan pesan jelas bila salah satu image `sha-<commit>` belum ada. Paket GHCR
 privat: VPS dan Coolify menarik image setelah `docker login ghcr.io` (token `read:packages`; runbook rilis bagian 2). Semua base image dipin digest
-(Node 24.21.0/Alpine 3.24, nginx 1.30.5, PostgreSQL 17.11, Redis 7.4.11, Traefik 3.7.13; PRD 7.1).
+(Node 24.21.0/Alpine 3.24, nginx 1.30.6, PostgreSQL 17.11, Redis 7.4.11, Traefik 3.7.13; PRD 7.1).
 
 ## Job rilis (PRD 5.5) dan gerbang go-live (PRD 9.2, 9.3)
 
