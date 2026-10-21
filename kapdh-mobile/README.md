@@ -150,14 +150,24 @@ flutter drive --profile --driver=test_driver/integration_test.dart \
   ("`<tab>` terkunci", "Perpanjang KTA untuk membuka kembali fitur ini", "mengaktifkan KTA dan fitur alumni"). Daftar
   berkas, arah penulisan ulang, dan perintah pemeriksaan ada di `../docs/runbooks/app-store-submission.md` bagian 2;
   uji widget yang memeriksa teks itu ikut diperbarui.
-- Android: kunci rilis (`android/key.properties`), `assetlinks.json` di kapdh.or.id untuk App Links (berkas belum ada
-  di `apps/web/public`, dan `infra/nginx-web.conf` saat ini menolak semua path berawalan titik sehingga
-  `/.well-known/` harus dikecualikan), ikon notifikasi
-  monokrom dan ikon tema monokrom Android 13 (`<monochrome>` pada `mipmap-anydpi-v26/ic_launcher.xml`). Ikon
-  peluncur Android/iOS saat ini dibangkitkan dari `assets/logo-kapdh.png` di atas hijau gelap surface-dark
-  (`tool/generate_launcher_icons.ps1`); ganti dengan berkas desain resmi bila tersedia.
-- iOS: tim Apple, entitlement Push Notifications (`aps-environment`) dan Associated Domains `applinks:kapdh.or.id`
-  untuk Universal Links (`apple-app-site-association` di `/.well-known/`); kunci APNs di proyek Firebase.
+- Android: kunci rilis (`android/key.properties`). App Links butuh SHA-256 kunci penandatanganan aplikasi Play App
+  Signing (baru tampil setelah AAB pertama diunggah ke Play Console, jalur pengujian internal cukup; AAB rilis itu
+  butuh `android/key.properties`, `docs/BUILD.md` bagian 3.1) di `kapdh-platform/apps/web/app-links.json`
+  (`android.sha256_cert_fingerprints`), yang terbit sebagai `https://kapdh.or.id/.well-known/assetlinks.json`; selama
+  kosong tautan https dibuka di peramban. Verifikasi di perangkat:
+  `adb shell pm verify-app-links --re-verify id.or.kapdh.app` lalu `adb shell pm get-app-links id.or.kapdh.app`
+  (`docs/BUILD.md` bagian 3.2). Ikon notifikasi monokrom dan ikon tema monokrom Android 13 (`<monochrome>` pada
+  `mipmap-anydpi-v26/ic_launcher.xml`). Ikon peluncur Android/iOS saat ini dibangkitkan dari `assets/logo-kapdh.png`
+  di atas hijau gelap surface-dark (`tool/generate_launcher_icons.ps1`); ganti dengan berkas desain resmi bila
+  tersedia.
+- iOS: `ios/Runner/Runner.entitlements` sudah di repo (`aps-environment` development, menjadi production saat ekspor
+  App Store/TestFlight; Associated Domains `applinks:kapdh.or.id`). Tersisa: pilih Team di Xcode (menulis
+  `DEVELOPMENT_TEAM`); unggah kunci APNs `.p8` ke proyek Firebase yang dipakai build (`kapdh-prod` untuk build
+  production, proyek Firebase staging untuk build staging di TestFlight; `.p8` yang sama boleh diunggah ke keduanya)
+  SEBELUM membagikan build yang membawa entitlement ini (tanpa itu push iOS gagal `AUTH_ERROR`); isi Team ID di
+  `kapdh-platform/apps/web/app-links.json` (`ios.app_id_prefix`) agar `apple-app-site-association` terbit di
+  kapdh.or.id; periksa IPA dengan `codesign -d --entitlements :- Payload/Runner.app` (wajib `aps-environment`
+  production dan associated-domains). Rincian: `docs/BUILD.md` bagian 4.
 - Pelaporan galat (GlitchTip, PRD 5.5) belum terpasang (`lib/bootstrap.dart`); bila ditambahkan, perbarui formulir
   privasi toko.
 - Predictive back Android belum diaktifkan; bila diaktifkan, jalurnya wajib lewat `RedirectingBackButtonDispatcher`
