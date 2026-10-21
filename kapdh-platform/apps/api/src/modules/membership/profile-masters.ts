@@ -9,7 +9,10 @@ export interface MasterRef {
   active: boolean;
 }
 
-/** Profesi (maksimal satu) dan keahlian alumni dengan label historis, termasuk master nonaktif (AC F10-4). */
+/**
+ * Profesi lama (alumni_professions: profesi pertama yang tertaut master, field kontrak lama `profession`) dan keahlian
+ * alumni dengan label historis, termasuk master nonaktif (AC F10-4). Daftar profesi lengkap ada di profile-lists.ts.
+ */
 export async function loadMemberMasters(
   db: DbOrTx,
   userId: string,
@@ -27,42 +30,6 @@ export async function loadMemberMasters(
     .where(eq(alumniSkills.alumniUserId, userId))
     .orderBy(asc(masterSkills.sortOrder), asc(masterSkills.label), asc(masterSkills.id));
   return { profession: profession ?? null, skills };
-}
-
-/**
- * Mengganti profesi (AC F10-4): pilihan BARU wajib master aktif; master nonaktif hanya boleh dipertahankan bila sudah
- * terpasang pada profil ini (label historis). Baris master dikunci FOR SHARE sehingga penonaktifan bersamaan
- * menunggu transaksi ini (tidak ada pemilihan baru atas master yang sudah dinonaktifkan). Mengembalikan true bila
- * berubah. `undefined` = tidak diubah, `null` = profesi dihapus.
- */
-export async function replaceProfession(
-  tx: Tx,
-  userId: string,
-  professionId: string | null | undefined,
-  now: Date,
-): Promise<boolean> {
-  if (professionId === undefined) return false;
-  const [current] = await tx
-    .select({ professionId: alumniProfessions.professionId })
-    .from(alumniProfessions)
-    .where(eq(alumniProfessions.alumniUserId, userId));
-  if ((current?.professionId ?? null) === professionId) return false;
-  if (professionId !== null) {
-    const [master] = await tx
-      .select({ active: masterProfessions.active })
-      .from(masterProfessions)
-      .where(eq(masterProfessions.id, professionId))
-      .for("share");
-    if (!master || !master.active)
-      throw fieldError(
-        "profession_id",
-        "Profesi tidak tersedia untuk dipilih. Pilih dari daftar profesi aktif.",
-      );
-  }
-  await tx.delete(alumniProfessions).where(eq(alumniProfessions.alumniUserId, userId));
-  if (professionId !== null)
-    await tx.insert(alumniProfessions).values({ alumniUserId: userId, professionId, createdAt: now });
-  return true;
 }
 
 /**

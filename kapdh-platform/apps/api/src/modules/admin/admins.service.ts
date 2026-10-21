@@ -5,10 +5,8 @@ import {
   adminPermissions,
   admins,
   alumni,
-  alumniProfessions,
   type FilePurpose,
   files,
-  masterProfessions,
   mfaTotp,
   sessions,
   users,
@@ -61,6 +59,7 @@ import { RateLimitService } from "../../core/rate-limit/rate-limit.service.js";
 import { RealtimeService } from "../../core/realtime/realtime.service.js";
 import { CLOCK, DB, ENV } from "../../core/tokens.js";
 import { validate, validateQuery } from "../../core/validation/validate.js";
+import { primaryProfessionLabel } from "../membership/profile-lists.js";
 import { containsPattern } from "./audit-filter.js";
 import {
   AdminCursorSchema,
@@ -403,7 +402,7 @@ export class AdminsService {
           expiresAt: alumni.expiresAt,
           suspendedAt: alumni.suspendedAt,
           createdAt: users.createdAt,
-          profession: masterProfessions.label,
+          profession: primaryProfessionLabel(alumni.userId),
           avatarId: files.id,
           avatarPurpose: files.purpose,
           avatarVisibility: files.visibility,
@@ -414,8 +413,6 @@ export class AdminsService {
         })
         .from(alumni)
         .innerJoin(users, eq(users.id, alumni.userId))
-        .leftJoin(alumniProfessions, eq(alumniProfessions.alumniUserId, alumni.userId))
-        .leftJoin(masterProfessions, eq(masterProfessions.id, alumniProfessions.professionId))
         .leftJoin(files, and(eq(files.id, alumni.avatarFileId), eq(files.status, "ready")))
         .where(
           and(

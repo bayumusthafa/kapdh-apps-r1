@@ -3,11 +3,9 @@ import type { components, Permission } from "@kapdh/contracts";
 import {
   admins,
   alumni,
-  alumniProfessions,
   alumniSkills,
   events,
   files,
-  masterProfessions,
   membershipEvents,
   payments,
   reports,
@@ -51,8 +49,20 @@ import { queryBool, queryInt, validateQuery } from "../../core/validation/valida
 import { closeAppealsAsGranted, lockActiveAppeals } from "./appeals.js";
 import { fileSubjectOf, MemberProfileService } from "./member-profile.service.js";
 import { escapeLike, renewalState } from "./membership-view.js";
-import type { AdminMemberUpdateInput } from "./profile-input.js";
-import { loadMemberMasters, replaceProfession, replaceSkills } from "./profile-masters.js";
+import { assertGraduationYears, type AdminMemberUpdateInput } from "./profile-input.js";
+import {
+  applyLegacyInput,
+  hasProfession,
+  legacyEducationCity,
+  loadProfileLists,
+  markListWriter,
+  primaryProfessionLabel,
+  projectLegacyColumns,
+  replaceEducation,
+  replaceProfessions,
+  replaceSocialLinks,
+} from "./profile-lists.js";
+import { loadMemberMasters, replaceSkills } from "./profile-masters.js";
 
 type AdminMemberDetail = components["schemas"]["AdminMemberDetail"];
 type AdminMemberPage = components["schemas"]["AdminMemberPage"];
@@ -296,8 +306,14 @@ function effectiveStatusPredicate(status: EffectiveStatusValue, now: Date): SQL 
   }
 }
 
-/** Penanda tidak berubah untuk field kontak/PII pada audit (audit bukan salinan payload, F-17). */
+/**
+ * Field kontak/PII dan isian bebas profil yang hanya dicatat namanya pada audit, tanpa nilai (audit bukan salinan
+ * payload, F-17).
+ */
 const CONTACT_FIELDS = new Set([
+  "professions",
+  "education",
+  "social_links",
   "city",
   "phone",
   "bio",
@@ -390,7 +406,7 @@ export class AdminMembersService {
         city: alumni.city,
         expiresAt: alumni.expiresAt,
         suspendedAt: alumni.suspendedAt,
-        professionLabel: masterProfessions.label,
+        professionLabel: primaryProfessionLabel(users.id),
         hasLinkedAdmin: sql<boolean>`exists (select 1 from ${admins} where ${admins.linkedAlumniUserId} = ${users.id})`,
         avatarFileId: files.id,
         avatarPurpose: files.purpose,
@@ -399,8 +415,6 @@ export class AdminMembersService {
       })
       .from(users)
       .innerJoin(alumni, eq(alumni.userId, users.id))
-      .leftJoin(alumniProfessions, eq(alumniProfessions.alumniUserId, users.id))
-      .leftJoin(masterProfessions, eq(masterProfessions.id, alumniProfessions.professionId))
       .leftJoin(files, eq(files.id, alumni.avatarFileId))
       .where(after ? and(where, after) : where)
       .orderBy(...orderOf(keys))
@@ -444,20 +458,8 @@ export class AdminMembersService {
     if (filters.effective_status) conditions.push(effectiveStatusPredicate(filters.effective_status, now));
     if (filters.city) conditions.push(sql`lower(${alumni.city}) = lower(${filters.city})`);
     if (filters.gender) conditions.push(eq(alumni.gender, filters.gender));
-    if (filters.profession_id)
-      conditions.push(
-        exists(
-          this.db
-            .select({ one: sql`1` })
-            .from(alumniProfessions)
-            .where(
-              and(
-                eq(alumniProfessions.alumniUserId, users.id),
-                eq(alumniProfessions.professionId, filters.profession_id),
-              ),
-            ),
-        ),
-      );
+    // Profesi boleh lebih dari satu: cocok bila salah satunya tertaut master ini (master nonaktif juga).
+    if (filters.profession_id) conditions.push(hasProfession(this.db, users.id, filters.profession_id));
     if (filters.skill_id)
       conditions.push(
         exists(
@@ -538,13 +540,10 @@ export class AdminMembersService {
       .select({
         user: users,
         profile: alumni,
-        professionLabel: masterProfessions.label,
         suspendedByName: admins.displayName,
       })
       .from(users)
       .innerJoin(alumni, eq(alumni.userId, users.id))
-      .leftJoin(alumniProfessions, eq(alumniProfessions.alumniUserId, users.id))
-      .leftJoin(masterProfessions, eq(masterProfessions.id, alumniProfessions.professionId))
       .leftJoin(admins, eq(admins.id, alumni.suspendedByAdminId))
       .where(and(eq(users.id, userId), eq(users.kind, "alumni"), ne(users.status, "deleted")))
       .limit(1);
@@ -561,6 +560,7 @@ export class AdminMembersService {
       now,
     );
     const masters = await loadMemberMasters(db, userId);
+    const lists = await loadProfileLists(db, userId);
     const [linked] = await db
       .select({
         adminId: admins.id,
@@ -587,7 +587,7 @@ export class AdminMembersService {
       member_number: profile.memberNumber,
       city: profile.city,
       avatar_url: avatarUrl,
-      profession_label: row.professionLabel ?? null,
+      profession_label: lists.professions[0] ?? null,
       account_status: user.status,
       effective_status: status,
       expires_at: iso(profile.expiresAt),
@@ -614,6 +614,9 @@ export class AdminMembersService {
         show_social: profile.showSocial,
       },
       profession: masters.profession,
+      professions: lists.professions,
+      education: lists.education,
+      social_links: lists.social_links,
       skills: masters.skills,
       avatar_file_id: profile.avatarFileId,
       email_verified_at: iso(user.emailVerifiedAt),
@@ -786,6 +789,7 @@ export class AdminMembersService {
     expectedVersion: number,
     input: AdminMemberUpdateInput,
   ): Promise<AdminMemberDetail> {
+    assertGraduationYears(input.education, this.clock.now());
     await this.db.transaction(async (tx) => {
       const { user, profile } = await this.lockForAdmin(tx, auth, userId, expectedVersion);
       if (user.status === "deletion_pending")
@@ -832,17 +836,28 @@ export class AdminMembersService {
       track("city", "city", input.city);
       track("phone", "phone", input.phone);
       track("bio", "bio", input.bio);
-      track("last_education_institution", "lastEducationInstitution", input.last_education_institution);
-      track("last_education_city", "lastEducationCity", input.last_education_city);
-      track("social_instagram", "socialInstagram", input.social_instagram);
-      track("social_x", "socialX", input.social_x);
-      track("social_facebook", "socialFacebook", input.social_facebook);
-      track("social_linkedin", "socialLinkedin", input.social_linkedin);
 
+      // Daftar profil berulang (sumber kebenaran) lalu proyeksi ke kolom lama; field lama diterapkan ke entri padanannya.
       const mastersBefore = await loadMemberMasters(tx, userId);
-      if (await replaceProfession(tx, userId, input.profession_id, now)) {
+      await markListWriter(tx);
+      const legacyChanged = await applyLegacyInput(tx, userId, input, profile);
+      const listChanges = [
+        ...legacyChanged.filter((field) => field !== "profession_id"),
+        ...((await replaceProfessions(tx, userId, input.professions, now)) ? ["professions"] : []),
+        ...((await replaceEducation(tx, userId, input.education, now)) ? ["education"] : []),
+        ...((await replaceSocialLinks(tx, userId, input.social_links, now)) ? ["social_links"] : []),
+      ];
+      const listsChanged = legacyChanged.length > 0 || listChanges.length > 0;
+      if (listsChanged) await projectLegacyColumns(tx, userId);
+      changedContactFields.push(...listChanges);
+      if (legacyChanged.includes("profession_id")) {
         before.profession_id = mastersBefore.profession?.id ?? null;
         after.profession_id = input.profession_id ?? null;
+      }
+      const legacyCity = legacyEducationCity(input, profile, listsChanged);
+      if (legacyCity !== undefined) {
+        changes.lastEducationCity = legacyCity;
+        if (legacyCity !== profile.lastEducationCity) changedContactFields.push("last_education_city");
       }
       if (await replaceSkills(tx, userId, input.skill_ids, now)) {
         before.skill_ids = mastersBefore.skills.map((skill) => skill.id);

@@ -1,5 +1,12 @@
+import {
+  EDUCATION_LEVELS,
+  MAX_ALUMNI_EDUCATION,
+  MAX_ALUMNI_PROFESSIONS,
+  MAX_ALUMNI_SOCIAL_LINKS,
+  SOCIAL_PLATFORMS,
+} from "@kapdh/database";
 import { z } from "zod";
-import { AppException } from "../../core/errors/app-exception.js";
+import { AppException, fieldError } from "../../core/errors/app-exception.js";
 import { isUuid } from "../../core/validation/validate.js";
 
 /**
@@ -22,10 +29,14 @@ export function normalizeSocialHandle(value: string): string {
   return value.startsWith("@") ? value.slice(1) : value;
 }
 
+/** Karakter kontrol Unicode (Cc): NUL ditolak PostgreSQL (22021) sehingga tanpa pemeriksaan ini menjadi 500. */
+const CONTROL_CHAR = /\p{Cc}/u;
+
 const socialHandle = z
   .string()
   .min(1, "Wajib diisi atau kosongkan dengan null")
   .max(200, "Maksimal 200 karakter")
+  .refine((value) => !CONTROL_CHAR.test(value), "Tautan tidak boleh memuat karakter kontrol")
   .regex(SOCIAL_HANDLE_PATTERN, "Gunakan nama pengguna atau tautan https:// yang valid")
   .transform(normalizeSocialHandle);
 
@@ -58,6 +69,77 @@ const bio = z.union([
   z.null(),
 ]);
 
+/** Satu profesi (kontrak ProfessionLabel): dirapikan, 1..100 karakter, tanpa karakter kontrol. */
+const professionLabel = z
+  .string()
+  .trim()
+  .min(1, "Profesi tidak boleh kosong")
+  .max(100, "Maksimal 100 karakter")
+  .refine((value) => !CONTROL_CHAR.test(value), "Profesi tidak boleh memuat karakter kontrol");
+
+const professions = z
+  .array(professionLabel)
+  .max(MAX_ALUMNI_PROFESSIONS, `Maksimal ${MAX_ALUMNI_PROFESSIONS} profesi`)
+  .refine(
+    (labels) => new Set(labels.map((label) => label.toLowerCase())).size === labels.length,
+    "Profesi tidak boleh ganda",
+  );
+
+/** Entri riwayat pendidikan (kontrak EducationEntryInput); tahun tamat <= tahun berjalan diperiksa layanan. */
+const educationEntry = z
+  .object({
+    institution: z
+      .string()
+      .trim()
+      .min(1, "Universitas/instansi wajib diisi")
+      .max(120, "Maksimal 120 karakter")
+      .refine((value) => !CONTROL_CHAR.test(value), "Tidak boleh memuat karakter kontrol"),
+    major: z
+      .union([
+        trimmedText(120).refine((value) => !CONTROL_CHAR.test(value), "Tidak boleh memuat karakter kontrol"),
+        z.null(),
+      ])
+      .optional(),
+    level: z.enum(EDUCATION_LEVELS, { message: "Strata tidak dikenal" }).nullable().optional(),
+    graduation_year: z
+      .number({ message: "Tahun tamat harus berupa angka" })
+      .int("Tahun tamat harus bilangan bulat")
+      .min(1950, "Tahun tamat minimal 1950")
+      .max(2100, "Tahun tamat tidak valid")
+      .nullable()
+      .optional(),
+  })
+  .strict();
+
+const education = z
+  .array(educationEntry)
+  .max(MAX_ALUMNI_EDUCATION, `Maksimal ${MAX_ALUMNI_EDUCATION} riwayat pendidikan`);
+
+/** Tautan sosial (kontrak SocialLinkInput): aturan SocialHandle; situs web hanya URL https. */
+const socialLink = z
+  .object({
+    platform: z.enum(SOCIAL_PLATFORMS, { message: "Platform tidak dikenal" }),
+    value: socialHandle,
+  })
+  .strict()
+  .superRefine((link, ctx) => {
+    if (link.platform === "website" && !link.value.startsWith("https://"))
+      ctx.addIssue({ code: "custom", path: ["value"], message: "Situs web harus berupa tautan https://" });
+  });
+
+const socialLinks = z
+  .array(socialLink)
+  .max(MAX_ALUMNI_SOCIAL_LINKS, `Maksimal ${MAX_ALUMNI_SOCIAL_LINKS} tautan`)
+  .superRefine((links, ctx) => {
+    const seen = new Set<string>();
+    links.forEach((link, index) => {
+      const key = `${link.platform}:${link.value.toLowerCase()}`;
+      if (seen.has(key))
+        ctx.addIssue({ code: "custom", path: [index, "value"], message: "Tautan ini sudah ada" });
+      seen.add(key);
+    });
+  });
+
 const skillIds = z
   .array(uuid)
   .max(10, "Maksimal 10 keahlian")
@@ -77,6 +159,9 @@ const privacyUpdate = z
 const commonProfileFields = {
   phone,
   bio,
+  professions,
+  education,
+  social_links: socialLinks,
   last_education_institution: z.union([trimmedText(120), z.null()]),
   last_education_city: z.union([trimmedText(80), z.null()]),
   social_instagram: nullableSocial,
@@ -114,6 +199,9 @@ export const adminMemberUpdateSchema = z.object({
   city: z.union([trimmedText(80), z.null()]).optional(),
   phone: commonProfileFields.phone.optional(),
   bio: commonProfileFields.bio.optional(),
+  professions: professions.optional(),
+  education: education.optional(),
+  social_links: socialLinks.optional(),
   last_education_institution: commonProfileFields.last_education_institution.optional(),
   last_education_city: commonProfileFields.last_education_city.optional(),
   social_instagram: nullableSocial.optional(),
@@ -126,6 +214,43 @@ export const adminMemberUpdateSchema = z.object({
 });
 
 export type AdminMemberUpdateInput = z.infer<typeof adminMemberUpdateSchema>;
+
+export type EducationEntryInput = z.infer<typeof educationEntry>;
+export type SocialLinkInput = z.infer<typeof socialLink>;
+
+/**
+ * Field lama aplikasi 1.0.0 per daftar penggantinya (kontrak updateMyProfile "Masa transisi"). Field lama bersama
+ * penggantinya dalam satu body ditolak 400 pada field lama: urutan penerapan keduanya tidak terdefinisi.
+ */
+const LEGACY_FIELDS = {
+  professions: ["profession_id"],
+  education: ["last_education_institution", "last_education_city"],
+  social_links: ["social_instagram", "social_x", "social_facebook", "social_linkedin"],
+} as const;
+
+export function assertNoLegacyMix(input: Record<string, unknown>): void {
+  const fieldErrors: Record<string, string[]> = {};
+  for (const [list, legacy] of Object.entries(LEGACY_FIELDS)) {
+    if (input[list] === undefined) continue;
+    for (const key of legacy)
+      if (input[key] !== undefined)
+        fieldErrors[key] = [`Field lama ini tidak dapat dikirim bersama ${list}. Kirim ${list} saja.`];
+  }
+  if (Object.keys(fieldErrors).length > 0)
+    throw new AppException(400, "VALIDATION_ERROR", "Periksa kembali isian yang ditandai.", { fieldErrors });
+}
+
+/** Tahun tamat tidak boleh melewati tahun berjalan Asia/Jakarta (kontrak EducationEntryInput). */
+export function assertGraduationYears(entries: readonly EducationEntryInput[] | undefined, now: Date): void {
+  if (!entries) return;
+  const currentYear = Number(
+    new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Jakarta", year: "numeric" }).format(now),
+  );
+  entries.forEach((entry, index) => {
+    if (entry.graduation_year != null && entry.graduation_year > currentYear)
+      throw fieldError(`education.${index}.graduation_year`, "Tahun tamat tidak boleh melewati tahun ini.");
+  });
+}
 
 /** Field identitas keanggotaan: hanya dikoreksi pengurus members.manage (PRD 3.5, AC F05-6). */
 const IDENTITY_KEYS = new Set(["full_name", "gender", "cohort", "class_in", "class_out"]);

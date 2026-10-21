@@ -283,6 +283,324 @@ describe("PATCH /me/profile (F-10)", () => {
   });
 });
 
+type ListsProfile = MeBody["profile"] & {
+  professions: string[];
+  education: {
+    institution: string;
+    major: string | null;
+    level: string | null;
+    graduation_year: number | null;
+  }[];
+  social_links: { platform: string; value: string }[];
+};
+
+describe("PATCH /me/profile: profil berulang (professions, education, social_links)", () => {
+  async function masterLabel(label: string, active = true) {
+    const id = uuidv7();
+    const now = t.clock.now();
+    await t.db.insert(masterProfessions).values({ id, label, active, createdAt: now, updatedAt: now });
+    return id;
+  }
+
+  it("profesi lebih dari satu: label master aktif ditautkan (tanpa beda huruf besar), ketikan sendiri disimpan, urutan dipertahankan", async () => {
+    const m = await setup();
+    const suffix = uuidv7().slice(-8);
+    const guru = await masterLabel(`Guru ${suffix}`);
+    await masterLabel(`Arsip ${suffix}`, false);
+    const res = await m.patch(
+      { professions: [`  penerjemah lepas ${suffix} `, `GURU ${suffix}`, `arsip ${suffix}`] },
+      (await m.get()).version,
+    );
+    expect(res.statusCode, res.body).toBe(200);
+    const profile = (expectOperation("patch", "/me/profile", res) as MeBody).profile as ListsProfile;
+    // Label master memakai ejaan master; master nonaktif yang belum terpasang menjadi ketikan sendiri.
+    expect(profile.professions).toEqual([`penerjemah lepas ${suffix}`, `Guru ${suffix}`, `arsip ${suffix}`]);
+    // Field lama: profesi pertama yang tertaut master.
+    expect(profile.profession).toMatchObject({ id: guru, active: true });
+    // KTA: profesi utama = pertama di daftar, termasuk ketikan sendiri.
+    expect((await getCard(t, m.token)).profession_label).toBe(`penerjemah lepas ${suffix}`);
+
+    const version = (await m.get()).version;
+    for (const professions of [
+      ["A", "B", "C", "D", "E", "F"],
+      [`Guru ${suffix}`, `guru ${suffix}`],
+      ["Baris\nbaru"],
+      [" "],
+    ]) {
+      const bad = await m.patch({ professions }, version);
+      expect(bad.statusCode, JSON.stringify(professions)).toBe(400);
+      expect(Object.keys(bad.json().field_errors).some((key) => key.startsWith("professions"))).toBe(true);
+    }
+    const cleared = await m.patch({ professions: [] }, version);
+    expect((cleared.json() as MeBody).profile).toMatchObject({ professions: [], profession: null });
+  });
+
+  it("riwayat pendidikan berulang: terbaru di atas, entri tanpa tahun di atas; field lama = institusi teratas", async () => {
+    const m = await setup();
+    const res = await m.patch(
+      {
+        education: [
+          {
+            institution: "Universitas Riau",
+            major: "Pendidikan Bahasa Arab",
+            level: "s1",
+            graduation_year: 2019,
+          },
+          { institution: "UIN Sultan Syarif Kasim Riau", level: "s2", graduation_year: 2022 },
+          { institution: "Ma'had Aly Contoh", major: null, level: "other", graduation_year: null },
+          { institution: "Politeknik Contoh", level: "d3", graduation_year: 2019 },
+        ],
+      },
+      (await m.get()).version,
+    );
+    expect(res.statusCode, res.body).toBe(200);
+    const profile = (expectOperation("patch", "/me/profile", res) as MeBody).profile as ListsProfile;
+    expect(profile.education).toEqual([
+      { institution: "Ma'had Aly Contoh", major: null, level: "other", graduation_year: null },
+      { institution: "UIN Sultan Syarif Kasim Riau", major: null, level: "s2", graduation_year: 2022 },
+      {
+        institution: "Universitas Riau",
+        major: "Pendidikan Bahasa Arab",
+        level: "s1",
+        graduation_year: 2019,
+      },
+      { institution: "Politeknik Contoh", major: null, level: "d3", graduation_year: 2019 },
+    ]);
+    expect(profile.last_education_institution).toBe("Ma'had Aly Contoh");
+
+    const version = (await m.get()).version;
+    const nextYear = Number(
+      new Date(t.clock.now().getTime() + 366 * 24 * 3600_000).toISOString().slice(0, 4),
+    );
+    for (const [education, key] of [
+      [[{ institution: "UI", graduation_year: nextYear }], "education.0.graduation_year"],
+      [[{ institution: "UI", level: "s4" }], "education.0.level"],
+      [[{ institution: "   " }], "education.0.institution"],
+      [[{ institution: "UI", kota: "Depok" }], "education.0"],
+      [Array.from({ length: 11 }, (_, i) => ({ institution: `Kampus ${i}` })), "education"],
+    ] as const) {
+      const bad = await m.patch({ education }, version);
+      expect(bad.statusCode, key).toBe(400);
+      expect(Object.keys(bad.json().field_errors), key).toContain(key);
+    }
+  });
+
+  it("media sosial dinamis: urutan dipertahankan, situs web hanya https, tidak ganda, maksimal 10; field lama = tautan pertama per platform", async () => {
+    const m = await setup();
+    const res = await m.patch(
+      {
+        social_links: [
+          { platform: "tiktok", value: "@alumni.uji" },
+          { platform: "instagram", value: "satu.uji" },
+          { platform: "instagram", value: "dua.uji" },
+          { platform: "website", value: "https://contoh.test/alumni" },
+        ],
+      },
+      (await m.get()).version,
+    );
+    expect(res.statusCode, res.body).toBe(200);
+    const profile = (expectOperation("patch", "/me/profile", res) as MeBody).profile as ListsProfile;
+    expect(profile.social_links).toEqual([
+      { platform: "tiktok", value: "alumni.uji" },
+      { platform: "instagram", value: "satu.uji" },
+      { platform: "instagram", value: "dua.uji" },
+      { platform: "website", value: "https://contoh.test/alumni" },
+    ]);
+    expect(profile).toMatchObject({ social_instagram: "satu.uji", social_x: null, social_linkedin: null });
+
+    const version = (await m.get()).version;
+    for (const [links, key] of [
+      [[{ platform: "website", value: "contoh" }], "social_links.0.value"],
+      [[{ platform: "x", value: "javascript:alert(1)" }], "social_links.0.value"],
+      [[{ platform: "myspace", value: "uji" }], "social_links.0.platform"],
+      [
+        [
+          { platform: "x", value: "uji" },
+          { platform: "x", value: "@UJI" },
+        ],
+        "social_links.1.value",
+      ],
+      [
+        Array.from({ length: 11 }, (_, i) => ({ platform: "website", value: `https://contoh.test/${i}` })),
+        "social_links",
+      ],
+    ] as const) {
+      const bad = await m.patch({ social_links: links }, version);
+      expect(bad.statusCode, key).toBe(400);
+      expect(Object.keys(bad.json().field_errors), key).toContain(key);
+    }
+  });
+
+  it("kompatibilitas aplikasi 1.0.0: field lama mengubah entri padanannya; kota lulusan lama tetap; field lama + penggantinya 400", async () => {
+    const m = await setup();
+    const suffix = uuidv7().slice(-8);
+    const dosen = await masterLabel(`Dosen ${suffix}`);
+    const seeded = await m.patch(
+      {
+        professions: [`Penulis ${suffix}`],
+        education: [
+          { institution: "Universitas Lama", level: "s1", graduation_year: 2015 },
+          { institution: "Universitas Baru", level: "s2", graduation_year: 2020 },
+        ],
+        social_links: [
+          { platform: "youtube", value: "kanal.uji" },
+          { platform: "x", value: "lama.x" },
+        ],
+      },
+      (await m.get()).version,
+    );
+    expect(seeded.statusCode, seeded.body).toBe(200);
+
+    // Body persis seperti aplikasi lama: hanya field lama yang berubah.
+    const legacy = await m.patch(
+      {
+        profession_id: dosen,
+        last_education_institution: "Universitas Baru Sekali",
+        last_education_city: "Pekanbaru",
+        social_x: "@baru.x",
+        social_instagram: "baru.ig",
+      },
+      (seeded.json() as MeBody).version,
+    );
+    expect(legacy.statusCode, legacy.body).toBe(200);
+    const after = (expectOperation("patch", "/me/profile", legacy) as MeBody).profile as ListsProfile;
+    expect(after.professions).toEqual([`Dosen ${suffix}`, `Penulis ${suffix}`]);
+    expect(after.profession).toMatchObject({ id: dosen });
+    expect(after.education.map((e) => [e.institution, e.level])).toEqual([
+      ["Universitas Baru Sekali", "s2"],
+      ["Universitas Lama", "s1"],
+    ]);
+    expect(after.social_links).toEqual([
+      { platform: "youtube", value: "kanal.uji" },
+      { platform: "x", value: "baru.x" },
+      { platform: "instagram", value: "baru.ig" },
+    ]);
+    expect(after).toMatchObject({
+      last_education_institution: "Universitas Baru Sekali",
+      last_education_city: "Pekanbaru",
+      social_x: "baru.x",
+      social_instagram: "baru.ig",
+    });
+
+    // Aplikasi lama hanya mengganti institusi: kotanya tetap. Aplikasi baru mengganti pendidikan teratas: kota lama
+    // (tidak tampil di aplikasi baru) dikosongkan.
+    const renamed = await m.patch(
+      { last_education_institution: "Universitas Ganti" },
+      (legacy.json() as MeBody).version,
+    );
+    expect((renamed.json() as MeBody).profile).toMatchObject({
+      last_education_institution: "Universitas Ganti",
+      last_education_city: "Pekanbaru",
+    });
+    const modern = await m.patch(
+      { education: [{ institution: "Universitas Modern", graduation_year: 2024 }] },
+      (renamed.json() as MeBody).version,
+    );
+    expect((modern.json() as MeBody).profile).toMatchObject({
+      last_education_institution: "Universitas Modern",
+      last_education_city: null,
+    });
+
+    const mixed = await m.patch(
+      {
+        professions: [],
+        profession_id: null,
+        social_links: [],
+        social_x: null,
+        education: [],
+        last_education_city: null,
+      },
+      (modern.json() as MeBody).version,
+    );
+    expect(mixed.statusCode).toBe(400);
+    expect(Object.keys(mixed.json().field_errors).sort()).toEqual(
+      ["last_education_city", "profession_id", "social_x"].sort(),
+    );
+  });
+
+  it("aplikasi 1.0.0: tautan lama tidak dapat ditambahkan bila daftar tautan penuh; master yang sudah ada menjadi profesi utama", async () => {
+    const m = await setup();
+    const suffix = uuidv7().slice(-8);
+    const first = await masterLabel(`Guru Utama ${suffix}`);
+    const chosen = await masterLabel(`Penulis Pilihan ${suffix}`);
+    const full = await m.patch(
+      {
+        professions: [`Guru Utama ${suffix}`, `Dosen Ketik ${suffix}`, `Penulis Pilihan ${suffix}`],
+        social_links: Array.from({ length: 10 }, (_, i) => ({
+          platform: "website",
+          value: `https://contoh.test/${i}`,
+        })),
+      },
+      (await m.get()).version,
+    );
+    expect(full.statusCode, full.body).toBe(200);
+    const version = (full.json() as MeBody).version;
+    const rejected = await m.patch({ social_instagram: "baru.ig" }, version);
+    expect(rejected.statusCode).toBe(400);
+    expect(rejected.json().field_errors).toHaveProperty("social_instagram");
+    expect((await m.get()).version).toBe(version);
+
+    // Aplikasi lama memilih master yang sudah ada di posisi ketiga: master itu menjadi profesi utama (KTA).
+    const legacy = await m.patch({ profession_id: chosen }, version);
+    expect(legacy.statusCode, legacy.body).toBe(200);
+    const profile = (legacy.json() as MeBody).profile as ListsProfile;
+    expect(profile.professions).toEqual([`Penulis Pilihan ${suffix}`, `Dosen Ketik ${suffix}`]);
+    expect(profile.profession).toMatchObject({ id: chosen });
+    expect((await getCard(t, m.token)).profession_label).toBe(`Penulis Pilihan ${suffix}`);
+    expect(first).not.toBe(chosen);
+  });
+
+  it("karakter kontrol pada pendidikan dan tautan ditolak 400 (bukan 500); master diganti nama tidak menghasilkan profesi ganda", async () => {
+    const m = await setup();
+    const version = (await m.get()).version;
+    for (const [body, key] of [
+      [{ education: [{ institution: "UI\u0000" }] }, "education.0.institution"],
+      [{ education: [{ institution: "UI", major: "Ilmu\u0007Komputer" }] }, "education.0.major"],
+      [
+        { social_links: [{ platform: "website", value: "https://contoh.test/\u0000" }] },
+        "social_links.0.value",
+      ],
+    ] as const) {
+      const res = await m.patch(body, version);
+      expect(res.statusCode, key).toBe(400);
+      expect(Object.keys(res.json().field_errors), key).toContain(key);
+    }
+
+    const suffix = uuidv7().slice(-8);
+    const master = await masterLabel(`Pengajar Lama ${suffix}`);
+    const saved = await m.patch(
+      { professions: [`Pengajar Lama ${suffix}`, `Pengajar Baru ${suffix}`] },
+      version,
+    );
+    expect(saved.statusCode, saved.body).toBe(200);
+    // Pengurus mengganti nama master menjadi sama dengan ketikan sendiri anggota.
+    await t.db
+      .update(masterProfessions)
+      .set({ label: `pengajar baru ${suffix}` })
+      .where(eq(masterProfessions.id, master));
+    const after = (await m.get()).profile as ListsProfile;
+    expect(after.professions).toEqual([`pengajar baru ${suffix}`]);
+    // Daftar yang dibaca dapat dikirim kembali apa adanya.
+    const resend = await m.patch(
+      { professions: after.professions, bio: "Bio baru" },
+      (await m.get()).version,
+    );
+    expect(resend.statusCode, resend.body).toBe(200);
+  });
+
+  it("aplikasi 1.0.0: profesi master tidak dapat ditambahkan bila daftar profesi sudah penuh (400 tanpa perubahan)", async () => {
+    const m = await setup();
+    const suffix = uuidv7().slice(-8);
+    const dosen = await masterLabel(`Dosen Penuh ${suffix}`);
+    const full = await m.patch({ professions: ["A", "B", "C", "D", "E"] }, (await m.get()).version);
+    expect(full.statusCode, full.body).toBe(200);
+    const res = await m.patch({ profession_id: dosen }, (full.json() as MeBody).version);
+    expect(res.statusCode).toBe(400);
+    expect(res.json().field_errors).toHaveProperty("profession_id");
+    expect(((await m.get()).profile as ListsProfile).professions).toEqual(["A", "B", "C", "D", "E"]);
+  });
+});
+
 describe("GET /masters/{kind} (F-10, AC F10-4)", () => {
   it("AC F10-4: hanya master aktif terurut sort_order lalu label; jenis tidak dikenal 400; suspended 403", async () => {
     const m = await setup();

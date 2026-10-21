@@ -14,8 +14,18 @@ import { MembershipKernel } from "../../core/membership/membership.kernel.js";
 import { academicYears, cohortCode, educationStatus } from "../../core/membership/member-number.js";
 import { CLOCK, DB } from "../../core/tokens.js";
 import { renewalState, toMembershipPayment } from "./membership-view.js";
-import { loadMemberMasters, replaceProfession, replaceSkills } from "./profile-masters.js";
-import type { ProfileUpdateInput } from "./profile-input.js";
+import { assertGraduationYears, type ProfileUpdateInput } from "./profile-input.js";
+import {
+  applyLegacyInput,
+  legacyEducationCity,
+  loadProfileLists,
+  markListWriter,
+  projectLegacyColumns,
+  replaceEducation,
+  replaceProfessions,
+  replaceSocialLinks,
+} from "./profile-lists.js";
+import { loadMemberMasters, replaceSkills } from "./profile-masters.js";
 
 type Me = components["schemas"]["Me"];
 type Membership = components["schemas"]["Membership"];
@@ -134,6 +144,7 @@ export class MemberProfileService {
     const { user, profile } = account;
     // Berurutan: `db` dapat berupa transaksi (satu koneksi) saat membangun `current` untuk 409.
     const masters = await loadMemberMasters(db, user.id);
+    const lists = await loadProfileLists(db, user.id);
     const open = await this.openPayments(user.id, db);
     const status = await this.statusOf(auth, db);
     const now = this.clock.now();
@@ -175,6 +186,9 @@ export class MemberProfileService {
         social_facebook: profile.socialFacebook,
         social_linkedin: profile.socialLinkedin,
         profession: masters.profession,
+        professions: lists.professions,
+        education: lists.education,
+        social_links: lists.social_links,
         skills: masters.skills,
         avatar_file_id: profile.avatarFileId,
         avatar_url: await this.ownAvatarUrl(auth, status, profile.avatarFileId, db),
@@ -190,17 +204,27 @@ export class MemberProfileService {
 
   /**
    * PATCH /me/profile (F-10, PRD 3.5, 6.4; AC F10-2, F10-4, F05-6, F15-4). Satu transaksi dengan baris alumni
-   * terkunci: versi If-Match dibandingkan (409 VERSION_CONFLICT dengan `current` berbentuk Me), master baru wajib
-   * aktif, keahlian diganti hapus-lalu-sisipkan, avatar wajib berkas `avatar` milik sendiri yang `ready` (422
-   * FILE_INVALID; foto lama dibuang), lalu field yang berubah ditulis dengan version + 1. Identitas keanggotaan dan
-   * kolom keanggotaan tidak pernah disentuh (ditolak di validasi body).
+   * terkunci: versi If-Match dibandingkan (409 VERSION_CONFLICT dengan `current` berbentuk Me), daftar profesi,
+   * pendidikan dan tautan sosial diganti lalu diproyeksikan ke kolom lama (field kontrak aplikasi 1.0.0 diterapkan
+   * ke entri padanannya), keahlian diganti hapus-lalu-sisipkan, avatar wajib berkas `avatar` milik sendiri yang
+   * `ready` (422 FILE_INVALID; foto lama dibuang), lalu field yang berubah ditulis dengan version + 1. Identitas
+   * keanggotaan dan kolom keanggotaan tidak pernah disentuh (ditolak di validasi body).
    */
   async updateProfile(auth: AuthContext, expectedVersion: number, input: ProfileUpdateInput): Promise<Me> {
+    assertGraduationYears(input.education, this.clock.now());
     await this.db.transaction(async (tx) => {
       const [locked] = await tx.select().from(alumni).where(eq(alumni.userId, auth.userId)).for("update");
       if (!locked) throw notFound("Profil tidak ditemukan.");
       if (locked.version !== expectedVersion) throw versionConflict(await this.me(auth, tx));
       const now = this.clock.now();
+
+      await markListWriter(tx);
+      const legacyChanged = await applyLegacyInput(tx, auth.userId, input, locked);
+      const professionsChanged = await replaceProfessions(tx, auth.userId, input.professions, now);
+      const educationChanged = await replaceEducation(tx, auth.userId, input.education, now);
+      const linksChanged = await replaceSocialLinks(tx, auth.userId, input.social_links, now);
+      const listsChanged = legacyChanged.length > 0 || professionsChanged || educationChanged || linksChanged;
+      if (listsChanged) await projectLegacyColumns(tx, auth.userId);
 
       const changes: Partial<typeof alumni.$inferInsert> = {};
       const setIfChanged = <K extends keyof AlumniRow>(key: K, value: AlumniRow[K] | undefined) => {
@@ -209,12 +233,8 @@ export class MemberProfileService {
       setIfChanged("city", input.city);
       setIfChanged("phone", input.phone);
       setIfChanged("bio", input.bio);
-      setIfChanged("lastEducationInstitution", input.last_education_institution);
-      setIfChanged("lastEducationCity", input.last_education_city);
-      setIfChanged("socialInstagram", input.social_instagram);
-      setIfChanged("socialX", input.social_x);
-      setIfChanged("socialFacebook", input.social_facebook);
-      setIfChanged("socialLinkedin", input.social_linkedin);
+      const legacyCity = legacyEducationCity(input, locked, listsChanged);
+      if (legacyCity !== undefined) changes.lastEducationCity = legacyCity;
       if (input.privacy) {
         setIfChanged("showInDirectory", input.privacy.show_in_directory);
         setIfChanged("showPhone", input.privacy.show_phone);
@@ -222,7 +242,6 @@ export class MemberProfileService {
         setIfChanged("showSocial", input.privacy.show_social);
       }
 
-      const professionChanged = await replaceProfession(tx, auth.userId, input.profession_id, now);
       const skillsChanged = await replaceSkills(tx, auth.userId, input.skill_ids, now);
       const avatarChanged = await this.replaceAvatar(
         tx,
@@ -232,7 +251,7 @@ export class MemberProfileService {
       );
       if (avatarChanged) changes.avatarFileId = input.avatar_file_id ?? null;
 
-      if (Object.keys(changes).length === 0 && !professionChanged && !skillsChanged) return;
+      if (Object.keys(changes).length === 0 && !listsChanged && !skillsChanged) return;
       const [updated] = await tx
         .update(alumni)
         .set({ ...changes, version: sql`${alumni.version} + 1`, updatedAt: now })
