@@ -1,19 +1,28 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { components } from "@kapdh/contracts";
 import { useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, TriangleAlert } from "lucide-react";
+import { Plus, RefreshCw, Trash2, TriangleAlert } from "lucide-react";
 import { useId, useRef, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { api } from "../../api/client";
 import { useApiMutation } from "../../api/query";
-import { Button } from "../../components/ui/Button";
+import { Button, IconButton } from "../../components/ui/Button";
 import { Checkbox } from "../../components/ui/Choice";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { Dialog } from "../../components/ui/Dialog";
 import { FormError, FormField } from "../../components/ui/FormField";
 import { Input, Select, Textarea } from "../../components/ui/Input";
-import { CLASS_OPTIONS, classLabel, GENDER_LABEL, GENDER_OPTIONS, latestCohort } from "./labels";
+import {
+  CLASS_OPTIONS,
+  classLabel,
+  currentYear,
+  EDUCATION_LEVEL_OPTIONS,
+  GENDER_LABEL,
+  GENDER_OPTIONS,
+  latestCohort,
+  SOCIAL_PLATFORM_OPTIONS,
+} from "./labels";
 import { usePreconditionHandler } from "./MemberActionDialogs";
 import type { MemberNotice } from "./MemberDetailPage";
 import {
@@ -27,24 +36,78 @@ import {
 
 type Update = components["schemas"]["AdminMemberUpdate"];
 type MasterItem = components["schemas"]["AdminMasterItem"];
+type EducationLevel = components["schemas"]["EducationLevel"];
+type SocialPlatform = components["schemas"]["SocialPlatform"];
 
 /** Pola SocialHandle kontrak (me.yaml): nama pengguna atau URL https; server memeriksa ulang (N-14). */
 export const SOCIAL_HANDLE =
   /^(?:@?[A-Za-z0-9._-]{1,100}|https:\/\/[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:[/?#][^\s<>"'`]*)?)$/;
 const PHONE = /^\+?[0-9][0-9 -]{5,22}$/;
 export const MAX_SKILLS = 10;
+/** Batas daftar profil berulang (kontrak AdminMemberUpdate maxItems). */
+export const MAX_PROFESSIONS = 5;
+export const MAX_EDUCATION = 10;
+export const MAX_SOCIAL_LINKS = 10;
 
 const optionalText = (label: string, max: number) =>
   z.string().trim().max(max, `${label} maksimal ${max} karakter.`);
 
-const social = z
-  .string()
-  .trim()
-  .max(200, "Maksimal 200 karakter.")
-  .refine(
-    (v) => v === "" || SOCIAL_HANDLE.test(v),
-    "Isi nama pengguna tanpa spasi atau tautan yang diawali https://.",
-  );
+/** Nama pengguna disimpan tanpa @ di depan; URL https apa adanya (aturan SocialHandle server). */
+export function normalizeHandle(value: string): string {
+  const v = value.trim();
+  return v.startsWith("https://") ? v : v.replace(/^@/, "");
+}
+
+/** Baris profesi; baris kosong diabaikan saat menyimpan. */
+const professionRow = z.object({
+  label: z
+    .string()
+    .trim()
+    .max(100, "Profesi maksimal 100 karakter.")
+    .refine((v) => !/\p{Cc}/u.test(v), "Profesi tidak boleh memuat karakter kontrol."),
+});
+
+/** Baris riwayat pendidikan; baris yang seluruhnya kosong diabaikan saat menyimpan. */
+const educationRow = z
+  .object({
+    institution: optionalText("Universitas/instansi", 120),
+    major: optionalText("Jurusan", 120),
+    level: z.string(),
+    graduation_year: z.string().trim(),
+  })
+  .superRefine((row, ctx) => {
+    if (!row.institution && !row.major && !row.level && !row.graduation_year) return;
+    if (!row.institution)
+      ctx.addIssue({ code: "custom", path: ["institution"], message: "Universitas/instansi wajib diisi." });
+    if (row.graduation_year) {
+      const max = currentYear();
+      const year = Number(row.graduation_year);
+      if (!/^\d{4}$/.test(row.graduation_year) || year < 1950 || year > max)
+        ctx.addIssue({
+          code: "custom",
+          path: ["graduation_year"],
+          message: `Tahun tamat berupa tahun 1950 sampai ${max}.`,
+        });
+    }
+  });
+
+/** Baris tautan sosial; nilai kosong diabaikan saat menyimpan. */
+const socialRow = z
+  .object({
+    platform: z.string(),
+    value: z.string().trim().max(200, "Maksimal 200 karakter."),
+  })
+  .superRefine((row, ctx) => {
+    if (!row.value) return;
+    if (!SOCIAL_HANDLE.test(row.value))
+      ctx.addIssue({
+        code: "custom",
+        path: ["value"],
+        message: "Isi nama pengguna tanpa spasi atau tautan yang diawali https://.",
+      });
+    else if (row.platform === "website" && !row.value.startsWith("https://"))
+      ctx.addIssue({ code: "custom", path: ["value"], message: "Situs web harus berupa tautan https://." });
+  });
 
 /** Pra-validasi klien sesuai AdminMemberUpdate; server tetap sumber kebenaran (ARCHITECTURE §2.1). */
 export const memberEditSchema = z
@@ -73,13 +136,32 @@ export const memberEditSchema = z
       .max(24, "Nomor telepon maksimal 24 karakter.")
       .refine((v) => v === "" || PHONE.test(v), "Nomor telepon tidak valid. Contoh: +62 812-3456-7890."),
     bio: z.string().max(500, "Bio maksimal 500 karakter."),
-    last_education_institution: optionalText("Institusi pendidikan", 120),
-    last_education_city: optionalText("Kota pendidikan", 80),
-    social_instagram: social,
-    social_x: social,
-    social_facebook: social,
-    social_linkedin: social,
-    profession_id: z.string(),
+    professions: z.array(professionRow).superRefine((rows, ctx) => {
+      const seen = new Set<string>();
+      rows.forEach((row, i) => {
+        const key = row.label.trim().toLowerCase();
+        if (!key) return;
+        if (seen.has(key))
+          ctx.addIssue({ code: "custom", path: [i, "label"], message: "Profesi ini sudah ada." });
+        seen.add(key);
+      });
+      if (seen.size > MAX_PROFESSIONS)
+        ctx.addIssue({ code: "custom", message: `Pilih paling banyak ${MAX_PROFESSIONS} profesi.` });
+    }),
+    education: z.array(educationRow).max(MAX_EDUCATION, `Paling banyak ${MAX_EDUCATION} riwayat pendidikan.`),
+    social_links: z
+      .array(socialRow)
+      .max(MAX_SOCIAL_LINKS, `Paling banyak ${MAX_SOCIAL_LINKS} tautan.`)
+      .superRefine((rows, ctx) => {
+        const seen = new Set<string>();
+        rows.forEach((row, i) => {
+          if (!row.value) return;
+          const key = `${row.platform}:${normalizeHandle(row.value).toLowerCase()}`;
+          if (seen.has(key))
+            ctx.addIssue({ code: "custom", path: [i, "value"], message: "Tautan ini sudah ada." });
+          seen.add(key);
+        });
+      }),
     skill_ids: z.array(z.string()).max(MAX_SKILLS, `Pilih paling banyak ${MAX_SKILLS} keahlian.`),
     remove_avatar: z.boolean(),
     reason: z
@@ -105,33 +187,44 @@ export function valuesFrom(m: MemberDetail): MemberEditValues {
     city: m.city ?? "",
     phone: m.phone ?? "",
     bio: m.bio ?? "",
-    last_education_institution: m.last_education_institution ?? "",
-    last_education_city: m.last_education_city ?? "",
-    social_instagram: m.social_instagram ?? "",
-    social_x: m.social_x ?? "",
-    social_facebook: m.social_facebook ?? "",
-    social_linkedin: m.social_linkedin ?? "",
-    profession_id: m.profession?.id ?? "",
+    professions: m.professions.map((label) => ({ label })),
+    education: m.education.map((e) => ({
+      institution: e.institution,
+      major: e.major ?? "",
+      level: e.level ?? "",
+      graduation_year: e.graduation_year === null ? "" : String(e.graduation_year),
+    })),
+    social_links: m.social_links.map((l) => ({ platform: l.platform, value: l.value })),
     skill_ids: m.skills.map((s) => s.id),
     remove_avatar: false,
     reason: "",
   };
 }
 
-const NULLABLE_TEXT = [
-  "city",
-  "phone",
-  "last_education_institution",
-  "last_education_city",
-  "social_instagram",
-  "social_x",
-  "social_facebook",
-  "social_linkedin",
-] as const;
+const NULLABLE_TEXT = ["city", "phone"] as const;
+
+type ListValues = Pick<MemberEditValues, "professions" | "education" | "social_links">;
+
+/** Baris yang benar-benar terisi; baris kosong dari tombol "Tambah" diabaikan. */
+export function filledRows(values: ListValues): ListValues {
+  return {
+    professions: values.professions.filter((p) => p.label.trim()),
+    education: values.education.filter(
+      (e) => e.institution.trim() || e.major.trim() || e.level || e.graduation_year.trim(),
+    ),
+    social_links: values.social_links.filter((l) => l.value.trim()),
+  };
+}
+
+function sameJson(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
 
 /**
  * Body PATCH hanya berisi field yang berubah dari data yang dibuka (kontrak: field yang tidak dikirim tidak
- * berubah) ditambah alasan. Teks kosong menjadi null untuk field yang boleh dikosongkan.
+ * berubah) ditambah alasan. Teks kosong menjadi null untuk field yang boleh dikosongkan. Profesi, pendidikan dan
+ * tautan dikirim sebagai daftar pengganti utuh; field lama (profession_id, last_education_*, social_*) tidak
+ * pernah dikirim karena server menolaknya bersama daftar penggantinya.
  */
 export function buildUpdate(values: MemberEditValues, base: MemberDetail): Update {
   const body: Update = { reason: values.reason.trim() };
@@ -147,8 +240,21 @@ export function buildUpdate(values: MemberEditValues, base: MemberDetail): Updat
   }
   const bio = values.bio.trim() || null;
   if (bio !== base.bio) body.bio = bio;
-  const profession = values.profession_id || null;
-  if (profession !== (base.profession?.id ?? null)) body.profession_id = profession;
+  const lists = filledRows(values);
+  const professions = lists.professions.map((p) => p.label.trim());
+  if (!sameJson(professions, base.professions)) body.professions = professions;
+  const education = lists.education.map((e) => ({
+    institution: e.institution.trim(),
+    major: e.major.trim() || null,
+    level: (e.level || null) as EducationLevel | null,
+    graduation_year: e.graduation_year.trim() ? Number(e.graduation_year) : null,
+  }));
+  if (!sameJson(education, base.education)) body.education = education;
+  const socialLinks = lists.social_links.map((l) => ({
+    platform: l.platform as SocialPlatform,
+    value: normalizeHandle(l.value),
+  }));
+  if (!sameJson(socialLinks, base.social_links)) body.social_links = socialLinks;
   const before = base.skills.map((s) => s.id);
   const sameSkills =
     before.length === values.skill_ids.length && values.skill_ids.every((id) => before.includes(id));
@@ -237,6 +343,10 @@ export function MemberEditDialog({
   const professions = useMasterOptions("professions");
   const skills = useMasterOptions("skills");
   const onPrecondition = usePreconditionHandler(member, onClose, onDone);
+  const professionRows = useFieldArray({ control: form.control, name: "professions" });
+  const educationRows = useFieldArray({ control: form.control, name: "education" });
+  const socialRows = useFieldArray({ control: form.control, name: "social_links" });
+  const suggestionsId = useId();
 
   const save = useApiMutation<MemberDetail, SaveVars, MemberEditValues>({
     setError: form.setError,
@@ -280,6 +390,12 @@ export function MemberEditDialog({
   }
 
   const onSubmit = form.handleSubmit((values) => {
+    // Baris kosong dibuang dari formulir agar indeks galat server (mis. education.1.institution) tetap sama
+    // dengan baris yang tampil.
+    const lists = filledRows(values);
+    if (lists.professions.length !== values.professions.length) professionRows.replace(lists.professions);
+    if (lists.education.length !== values.education.length) educationRows.replace(lists.education);
+    if (lists.social_links.length !== values.social_links.length) socialRows.replace(lists.social_links);
     const body = buildUpdate(values, base);
     if (Object.keys(body).length <= 1) {
       form.setError("root.server", {
@@ -297,8 +413,10 @@ export function MemberEditDialog({
 
   const errors = form.formState.errors;
   const selectedSkills = form.watch("skill_ids");
-  const professionChoices = masterChoices(professions.data?.items, base.profession ? [base.profession] : []);
+  const professionSuggestions = (professions.data?.items ?? []).filter((i) => i.active).map((i) => i.label);
   const skillChoices = masterChoices(skills.data?.items, base.skills);
+  const listError = (error: { message?: string; root?: { message?: string } } | undefined) =>
+    error?.root?.message ?? error?.message;
   const changes = confirmBody ? identityChanges(confirmBody, base) : [];
   const numberAffected = confirmBody ? NUMBER_FIELDS.some((f) => confirmBody[f] !== undefined) : false;
 
@@ -461,30 +579,52 @@ export function MemberEditDialog({
             <legend className="mb-1 font-heading text-base font-semibold">
               Profesi, keahlian dan pendidikan
             </legend>
-            <FormField<MemberEditValues, "profession_id">
-              name="profession_id"
-              label="Profesi"
-              hint={
-                professions.isError
-                  ? "Pilihan profesi gagal dimuat; pilihan saat ini dipertahankan."
-                  : "Profesi nonaktif tidak dapat dipilih baru (AC F10-4)."
-              }
-            >
-              {(field, a11y) => (
-                <Select
-                  {...a11y}
-                  ref={field.ref}
-                  name={field.name}
-                  onBlur={field.onBlur}
-                  options={[
-                    { value: "", label: "Tidak ada" },
-                    ...professionChoices.map((c) => ({ value: c.id, label: c.label })),
-                  ]}
-                  value={field.value}
-                  onValueChange={field.onChange}
-                />
-              )}
-            </FormField>
+            <fieldset aria-describedby="profesi-petunjuk" className="flex flex-col gap-2">
+              <legend className="text-sm font-medium">Profesi</legend>
+              <p id="profesi-petunjuk" className="text-xs text-text-muted">
+                Maksimal {MAX_PROFESSIONS}; profesi pertama tampil di KTA. Pilih saran dari daftar profesi
+                aktif atau ketik sendiri; label yang sama dengan master aktif ditautkan ke master itu (filter
+                direktori).
+                {professions.isError ? " Saran profesi gagal dimuat." : ""}
+              </p>
+              <datalist id={suggestionsId}>
+                {professionSuggestions.map((label) => (
+                  <option key={label} value={label} />
+                ))}
+              </datalist>
+              {professionRows.fields.map((row, i) => (
+                <div key={row.id} className="flex items-end gap-2">
+                  <FormField<MemberEditValues, `professions.${number}.label`>
+                    name={`professions.${i}.label`}
+                    label={`Profesi ${i + 1}`}
+                    className="flex-1"
+                  >
+                    {(field, a11y) => (
+                      <Input {...field} {...a11y} list={suggestionsId} maxLength={100} autoComplete="off" />
+                    )}
+                  </FormField>
+                  <IconButton
+                    label={`Hapus profesi ${i + 1}`}
+                    icon={<Trash2 aria-hidden="true" />}
+                    tone="danger"
+                    onClick={() => professionRows.remove(i)}
+                  />
+                </div>
+              ))}
+              {listError(errors.professions) ? (
+                <p className="text-xs font-medium text-danger">{listError(errors.professions)}</p>
+              ) : null}
+              <Button
+                variant="outline"
+                size="sm"
+                className="self-start"
+                leftIcon={<Plus aria-hidden="true" className="size-4" />}
+                disabled={professionRows.fields.length >= MAX_PROFESSIONS}
+                onClick={() => professionRows.append({ label: "" })}
+              >
+                Tambah profesi
+              </Button>
+            </fieldset>
             <fieldset
               aria-describedby="keahlian-petunjuk"
               aria-invalid={errors.skill_ids ? true : undefined}
@@ -523,20 +663,88 @@ export function MemberEditDialog({
                 <p className="text-xs font-medium text-danger">{errors.skill_ids.message}</p>
               ) : null}
             </fieldset>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField<MemberEditValues, "last_education_institution">
-                name="last_education_institution"
-                label="Institusi pendidikan terakhir"
+            <fieldset aria-describedby="pendidikan-petunjuk" className="flex flex-col gap-2">
+              <legend className="text-sm font-medium">Riwayat pendidikan</legend>
+              <p id="pendidikan-petunjuk" className="text-xs text-text-muted">
+                Pendidikan setelah pondok, maksimal {MAX_EDUCATION}. Server menyimpan urutan terbaru di atas
+                (tahun tamat menurun; tanpa tahun tamat di atas).
+              </p>
+              {educationRows.fields.map((row, i) => (
+                <div key={row.id} className="flex flex-col gap-3 rounded-md border border-divider p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold">Pendidikan {i + 1}</span>
+                    <IconButton
+                      label={`Hapus riwayat pendidikan ${i + 1}`}
+                      icon={<Trash2 aria-hidden="true" />}
+                      tone="danger"
+                      onClick={() => educationRows.remove(i)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <FormField<MemberEditValues, `education.${number}.institution`>
+                      name={`education.${i}.institution`}
+                      label="Universitas/instansi"
+                      required
+                    >
+                      {(field, a11y) => <Input {...field} {...a11y} maxLength={120} />}
+                    </FormField>
+                    <FormField<MemberEditValues, `education.${number}.major`>
+                      name={`education.${i}.major`}
+                      label="Jurusan/program studi"
+                    >
+                      {(field, a11y) => <Input {...field} {...a11y} maxLength={120} />}
+                    </FormField>
+                    <FormField<MemberEditValues, `education.${number}.level`>
+                      name={`education.${i}.level`}
+                      label="Strata"
+                    >
+                      {(field, a11y) => (
+                        <Select
+                          {...a11y}
+                          ref={field.ref}
+                          name={field.name}
+                          onBlur={field.onBlur}
+                          options={[{ value: "", label: "Tidak diisi" }, ...EDUCATION_LEVEL_OPTIONS]}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        />
+                      )}
+                    </FormField>
+                    <FormField<MemberEditValues, `education.${number}.graduation_year`>
+                      name={`education.${i}.graduation_year`}
+                      label="Tahun tamat"
+                      hint="Tahun ijazah terbit; kosongkan bila belum tamat."
+                    >
+                      {(field, a11y) => (
+                        <Input
+                          {...field}
+                          {...a11y}
+                          type="number"
+                          inputMode="numeric"
+                          min={1950}
+                          max={currentYear()}
+                        />
+                      )}
+                    </FormField>
+                  </div>
+                </div>
+              ))}
+              {listError(errors.education) ? (
+                <p className="text-xs font-medium text-danger">{listError(errors.education)}</p>
+              ) : null}
+              <Button
+                variant="outline"
+                size="sm"
+                className="self-start"
+                leftIcon={<Plus aria-hidden="true" className="size-4" />}
+                disabled={educationRows.fields.length >= MAX_EDUCATION}
+                onClick={() =>
+                  educationRows.append({ institution: "", major: "", level: "", graduation_year: "" })
+                }
               >
-                {(field, a11y) => <Input {...field} {...a11y} maxLength={120} />}
-              </FormField>
-              <FormField<MemberEditValues, "last_education_city">
-                name="last_education_city"
-                label="Kota pendidikan"
-              >
-                {(field, a11y) => <Input {...field} {...a11y} maxLength={80} />}
-              </FormField>
-            </div>
+                Tambah riwayat
+              </Button>
+            </fieldset>
             <FormField<MemberEditValues, "bio"> name="bio" label="Bio">
               {(field, a11y) => <Textarea {...field} {...a11y} rows={3} maxLength={500} showCount />}
             </FormField>
@@ -545,22 +753,54 @@ export function MemberEditDialog({
           <fieldset className="flex flex-col gap-3">
             <legend className="mb-1 font-heading text-base font-semibold">Tautan sosial</legend>
             <p className="text-xs text-text-muted">
-              Isi nama pengguna atau tautan https://. Kosongkan untuk menghapus.
+              Isi nama pengguna atau tautan https://; situs web wajib tautan https://. Maksimal{" "}
+              {MAX_SOCIAL_LINKS} tautan.
             </p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField<MemberEditValues, "social_instagram"> name="social_instagram" label="Instagram">
-                {(field, a11y) => <Input {...field} {...a11y} maxLength={200} autoComplete="off" />}
-              </FormField>
-              <FormField<MemberEditValues, "social_x"> name="social_x" label="X">
-                {(field, a11y) => <Input {...field} {...a11y} maxLength={200} autoComplete="off" />}
-              </FormField>
-              <FormField<MemberEditValues, "social_facebook"> name="social_facebook" label="Facebook">
-                {(field, a11y) => <Input {...field} {...a11y} maxLength={200} autoComplete="off" />}
-              </FormField>
-              <FormField<MemberEditValues, "social_linkedin"> name="social_linkedin" label="LinkedIn">
-                {(field, a11y) => <Input {...field} {...a11y} maxLength={200} autoComplete="off" />}
-              </FormField>
-            </div>
+            {socialRows.fields.map((row, i) => (
+              <div key={row.id} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[12rem_1fr_auto]">
+                <FormField<MemberEditValues, `social_links.${number}.platform`>
+                  name={`social_links.${i}.platform`}
+                  label={`Platform tautan ${i + 1}`}
+                >
+                  {(field, a11y) => (
+                    <Select
+                      {...a11y}
+                      ref={field.ref}
+                      name={field.name}
+                      onBlur={field.onBlur}
+                      options={SOCIAL_PLATFORM_OPTIONS}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    />
+                  )}
+                </FormField>
+                <FormField<MemberEditValues, `social_links.${number}.value`>
+                  name={`social_links.${i}.value`}
+                  label={`Tautan ${i + 1}`}
+                >
+                  {(field, a11y) => <Input {...field} {...a11y} maxLength={200} autoComplete="off" />}
+                </FormField>
+                <IconButton
+                  label={`Hapus tautan ${i + 1}`}
+                  icon={<Trash2 aria-hidden="true" />}
+                  tone="danger"
+                  onClick={() => socialRows.remove(i)}
+                />
+              </div>
+            ))}
+            {listError(errors.social_links) ? (
+              <p className="text-xs font-medium text-danger">{listError(errors.social_links)}</p>
+            ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              className="self-start"
+              leftIcon={<Plus aria-hidden="true" className="size-4" />}
+              disabled={socialRows.fields.length >= MAX_SOCIAL_LINKS}
+              onClick={() => socialRows.append({ platform: "instagram", value: "" })}
+            >
+              Tambah tautan
+            </Button>
           </fieldset>
 
           {base.avatar_file_id ? (
