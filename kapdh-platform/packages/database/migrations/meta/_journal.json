@@ -64,6 +64,20 @@
       "when": 1792062113847,
       "tag": "0008_qris_payment_method",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792591532605,
+      "tag": "0009_profile_lists",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792591540265,
+      "tag": "0010_profile_lists_bridge",
+      "breakpoints": true
     }
   ]
 }

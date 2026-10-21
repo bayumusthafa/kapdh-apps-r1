@@ -6,8 +6,11 @@ import { events, tickets } from "./events.js";
 import { adminPermissions, admins, mfaTotp, otpCodes, sessions, users } from "./identity.js";
 import {
   alumni,
+  alumniEducation,
+  alumniProfessionEntries,
   alumniProfessions,
   alumniSkills,
+  alumniSocialLinks,
   masterProfessions,
   masterSkills,
   membershipEvents,
@@ -83,11 +86,31 @@ export const alumniRelations = relations(alumni, ({ one, many }) => ({
   avatar: one(files, { fields: [alumni.avatarFileId], references: [files.id] }),
   suspendedBy: one(admins, { fields: [alumni.suspendedByAdminId], references: [admins.id] }),
   professions: many(alumniProfessions),
+  professionEntries: many(alumniProfessionEntries),
+  education: many(alumniEducation),
+  socialLinks: many(alumniSocialLinks),
   skills: many(alumniSkills),
 }));
 
 export const masterProfessionsRelations = relations(masterProfessions, ({ many }) => ({
   alumni: many(alumniProfessions),
+  entries: many(alumniProfessionEntries),
+}));
+
+export const alumniProfessionEntriesRelations = relations(alumniProfessionEntries, ({ one }) => ({
+  alumni: one(alumni, { fields: [alumniProfessionEntries.alumniUserId], references: [alumni.userId] }),
+  profession: one(masterProfessions, {
+    fields: [alumniProfessionEntries.professionId],
+    references: [masterProfessions.id],
+  }),
+}));
+
+export const alumniEducationRelations = relations(alumniEducation, ({ one }) => ({
+  alumni: one(alumni, { fields: [alumniEducation.alumniUserId], references: [alumni.userId] }),
+}));
+
+export const alumniSocialLinksRelations = relations(alumniSocialLinks, ({ one }) => ({
+  alumni: one(alumni, { fields: [alumniSocialLinks.alumniUserId], references: [alumni.userId] }),
 }));
 
 export const masterSkillsRelations = relations(masterSkills, ({ many }) => ({

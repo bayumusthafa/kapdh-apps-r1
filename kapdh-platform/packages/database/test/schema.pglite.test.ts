@@ -136,7 +136,7 @@ describe("migrasi journal pada PGlite", () => {
       "select created_at from drizzle.__drizzle_migrations order by id",
     );
     expect(recorded.rows.map((r) => Number(r.created_at))).toEqual(journal.entries.map((e) => e.when));
-    expect(await count("select count(*)::int as n from pg_tables where schemaname = 'app'")).toBe(40);
+    expect(await count("select count(*)::int as n from pg_tables where schemaname = 'app'")).toBe(43);
   });
 
   it("journal berurutan naik dan setiap migrasi memisahkan satu statement per breakpoint", () => {
@@ -254,6 +254,163 @@ describe("migrasi journal pada PGlite", () => {
     } finally {
       await existing.close();
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("0009-0010 pada database sampai 0008: profesi, lulusan terakhir dan empat kolom sosial lama menjadi daftar", async () => {
+    const dir = migrationsUpTo("0008_qris_payment_method");
+    const existing = new PGlite();
+    try {
+      // Production: alumni dengan data profil lama sebelum profil berulang dirilis.
+      await migrate(drizzle(existing), { migrationsFolder: dir });
+      const master = uuidv7();
+      await existing.query("insert into app.master_professions (id, label) values ($1, 'Guru')", [master]);
+      const insert = async (columns: Record<string, string | null>) => {
+        const userId = uuidv7();
+        await existing.query(
+          "insert into app.users (id, email, password_hash, kind) values ($1, $2, 'hash', 'alumni')",
+          [userId, `profil-${userId}@contoh.test`],
+        );
+        await existing.query(
+          `insert into app.alumni (user_id, full_name, gender, cohort, class_in, class_out, last_education_institution,
+             last_education_city, social_instagram, social_x, social_facebook, social_linkedin)
+           values ($1, 'Alumni Uji', 'male', 12, 1, 6, $2, $3, $4, $5, $6, $7)`,
+          [
+            userId,
+            columns.institution ?? null,
+            columns.city ?? null,
+            columns.instagram ?? null,
+            columns.x ?? null,
+            columns.facebook ?? null,
+            columns.linkedin ?? null,
+          ],
+        );
+        return userId;
+      };
+      const full = await insert({
+        institution: "Universitas Contoh",
+        city: "Pekanbaru",
+        instagram: "ahmad.uji",
+        facebook: "ahmad.uji.fb",
+        linkedin: "https://www.linkedin.com/in/ahmad.uji",
+      });
+      await existing.query(
+        "insert into app.alumni_professions (alumni_user_id, profession_id) values ($1, $2)",
+        [full, master],
+      );
+      const cityOnly = await insert({ city: "Dumai", x: "uji_x" });
+
+      await migrate(drizzle(existing), { migrationsFolder: MIGRATIONS_FOLDER });
+      const professions = await existing.query(
+        "select alumni_user_id, position, profession_id, label from app.alumni_profession_entries",
+      );
+      expect(professions.rows).toEqual([
+        { alumni_user_id: full, position: 0, profession_id: master, label: null },
+      ]);
+      const education = await existing.query(
+        "select alumni_user_id, position, institution, major, level, graduation_year from app.alumni_education",
+      );
+      expect(education.rows).toEqual([
+        {
+          alumni_user_id: full,
+          position: 0,
+          institution: "Universitas Contoh",
+          major: null,
+          level: null,
+          graduation_year: null,
+        },
+      ]);
+      const links = await existing.query(
+        "select alumni_user_id, position, platform, value from app.alumni_social_links order by alumni_user_id, position",
+      );
+      expect(links.rows).toEqual(
+        [
+          { alumni_user_id: full, position: 0, platform: "instagram", value: "ahmad.uji" },
+          { alumni_user_id: full, position: 1, platform: "facebook", value: "ahmad.uji.fb" },
+          {
+            alumni_user_id: full,
+            position: 2,
+            platform: "linkedin",
+            value: "https://www.linkedin.com/in/ahmad.uji",
+          },
+          { alumni_user_id: cityOnly, position: 0, platform: "x", value: "uji_x" },
+        ].sort((a, b) =>
+          a.alumni_user_id === b.alumni_user_id
+            ? a.position - b.position
+            : a.alumni_user_id < b.alumni_user_id
+              ? -1
+              : 1,
+        ),
+      );
+      // Kolom lama tidak diubah (image API sebelum 0009 tetap membaca data yang sama).
+      const legacy = await existing.query<{ city: string | null; institution: string | null }>(
+        "select last_education_city as city, last_education_institution as institution from app.alumni where user_id = $1",
+        [cityOnly],
+      );
+      expect(legacy.rows).toEqual([{ city: "Dumai", institution: null }]);
+    } finally {
+      await existing.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("pembatalan darurat 0009-0010 (infra/db/rollback): bentuk 0008 kembali, kolom lama utuh, migrasi dapat diulang", async () => {
+    const existing = new PGlite();
+    try {
+      await migrate(drizzle(existing), { migrationsFolder: MIGRATIONS_FOLDER });
+      const userId = uuidv7();
+      await existing.query(
+        "insert into app.users (id, email, password_hash, kind) values ($1, $2, 'hash', 'alumni')",
+        [userId, `batal-${userId}@contoh.test`],
+      );
+      await existing.query(
+        `insert into app.alumni (user_id, full_name, gender, cohort, class_in, class_out, social_instagram,
+           last_education_institution)
+         values ($1, 'Alumni Uji', 'male', 12, 1, 6, 'ahmad.uji', 'Universitas Contoh')`,
+        [userId],
+      );
+      // Isi yang hanya ada di daftar baru (tautan kedua) hilang saat dibatalkan; kolom lama tetap.
+      await existing.query(
+        "insert into app.alumni_social_links (alumni_user_id, position, platform, value) values ($1, 5, 'tiktok', 'uji.tt')",
+        [userId],
+      );
+      const script = readFileSync(
+        join(MIGRATIONS_FOLDER, "..", "..", "..", "infra", "db", "rollback", "0009-0010-profile-lists.sql"),
+        "utf8",
+      );
+      await existing.exec(`begin; ${script} commit;`);
+
+      const tables = await existing.query<{ n: number }>(
+        "select count(*)::int as n from pg_tables where schemaname = 'app'",
+      );
+      expect(tables.rows[0]!.n).toBe(40);
+      const leftovers = await existing.query<{ name: string }>(
+        `select proname as name from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+         where n.nspname = 'app' and (proname like 'alumni_%legacy%' or proname in ('alumni_list_limit', 'profile_lists_api_writer'))
+         union all select tgname from pg_trigger where tgname like '%legacy%'`,
+      );
+      expect(leftovers.rows).toEqual([]);
+      const recorded = await existing.query<{ n: number }>(
+        "select count(*)::int as n from drizzle.__drizzle_migrations",
+      );
+      expect(recorded.rows[0]!.n).toBe(journal.entries.length - 2);
+      const legacy = await existing.query(
+        "select social_instagram, last_education_institution from app.alumni where user_id = $1",
+        [userId],
+      );
+      expect(legacy.rows).toEqual([
+        { social_instagram: "ahmad.uji", last_education_institution: "Universitas Contoh" },
+      ]);
+
+      // Diterapkan lagi kelak: daftar diisi ulang dari kolom lama.
+      await migrate(drizzle(existing), { migrationsFolder: MIGRATIONS_FOLDER });
+      const links = await existing.query(
+        "select platform, value from app.alumni_social_links where alumni_user_id = $1",
+        [userId],
+      );
+      expect(links.rows).toEqual([{ platform: "instagram", value: "ahmad.uji" }]);
+    } finally {
+      await existing.close();
     }
   });
 
@@ -819,6 +976,325 @@ describe("constraint data pada PGlite", () => {
       await pg.exec("reset enable_seqscan");
     }
     expect(withoutIndex).toEqual([]);
+  });
+});
+
+describe("profil berulang (migrasi 0009-0010) pada PGlite", () => {
+  async function insertMaster(label: string): Promise<string> {
+    const id = uuidv7();
+    await pg.query("insert into app.master_professions (id, label) values ($1, $2)", [id, label]);
+    return id;
+  }
+
+  async function lists(userId: string) {
+    const professions = await pg.query<{ profession_id: string | null; label: string | null }>(
+      "select profession_id, label from app.alumni_profession_entries where alumni_user_id = $1 order by position",
+      [userId],
+    );
+    const education = await pg.query<{ institution: string; level: string | null }>(
+      "select institution, level from app.alumni_education where alumni_user_id = $1 order by position",
+      [userId],
+    );
+    const links = await pg.query<{ platform: string; value: string }>(
+      "select platform, value from app.alumni_social_links where alumni_user_id = $1 order by position",
+      [userId],
+    );
+    return { professions: professions.rows, education: education.rows, links: links.rows };
+  }
+
+  async function legacy(userId: string) {
+    const row = await pg.query<Record<string, string | null>>(
+      `select social_instagram, social_x, social_facebook, social_linkedin, last_education_institution,
+              last_education_city,
+              (select profession_id from app.alumni_professions where alumni_user_id = $1) as profession_id
+       from app.alumni where user_id = $1`,
+      [userId],
+    );
+    return row.rows[0]!;
+  }
+
+  /** Tulisan API baru: penanda 'api' aktif (jembatan diam) lalu proyeksi ke kolom lama, dalam satu transaksi. */
+  async function asApi(statements: string): Promise<void> {
+    await pg.exec(`begin; select set_config('kapdh.profile_lists', 'api', true); ${statements}; commit;`);
+  }
+
+  it("batas daftar, satu sumber profesi, CHECK strata/platform/tahun, dan master terpakai RESTRICT", async () => {
+    const userId = await insertUser();
+    await insertAlumni(userId, null);
+    for (let i = 0; i < 5; i++)
+      await pg.query(
+        "insert into app.alumni_profession_entries (alumni_user_id, position, label) values ($1, $2, $3)",
+        [userId, i, `Profesi ${i}`],
+      );
+    expect(
+      await errorOf(
+        "insert into app.alumni_profession_entries (alumni_user_id, position, label) values ($1, 9, 'Lebih')",
+        [userId],
+      ),
+    ).toMatchObject({ code: "23514", constraint: "alumni_profession_entries_limit_chk" });
+    await pg.query("delete from app.alumni_profession_entries where alumni_user_id = $1 and position = 4", [
+      userId,
+    ]);
+    // Label ketikan sendiri unik per alumni tanpa membedakan huruf besar/kecil.
+    expect(
+      await errorOf(
+        "insert into app.alumni_profession_entries (alumni_user_id, position, label) values ($1, 9, 'profesi 0')",
+        [userId],
+      ),
+    ).toMatchObject({ code: "23505", constraint: "alumni_profession_entries_label_key" });
+    await pg.query("delete from app.alumni_profession_entries where alumni_user_id = $1", [userId]);
+    const master = await insertMaster("Penerjemah Uji");
+    expect(
+      await errorOf(
+        "insert into app.alumni_profession_entries (alumni_user_id, position, profession_id, label) values ($1, 0, $2, 'X')",
+        [userId, master],
+      ),
+    ).toMatchObject({ code: "23514", constraint: "alumni_profession_entries_source_chk" });
+    expect(
+      await errorOf(
+        "insert into app.alumni_profession_entries (alumni_user_id, position, label) values ($1, 0, ' Guru ')",
+        [userId],
+      ),
+    ).toMatchObject({ code: "23514", constraint: "alumni_profession_entries_label_chk" });
+    await asApi(
+      `insert into app.alumni_profession_entries (alumni_user_id, position, profession_id) values ('${userId}', 0, '${master}')`,
+    );
+    const restricted = await errorOf("delete from app.master_professions where id = $1", [master]);
+    expect(["23503", "23001"]).toContain(restricted.code);
+    expect(restricted.constraint).toBe("alumni_profession_entries_profession_id_fk");
+
+    expect(
+      await errorOf(
+        "insert into app.alumni_education (alumni_user_id, position, institution, level) values ($1, 0, 'UI', 's4')",
+        [userId],
+      ),
+    ).toMatchObject({ code: "23514", constraint: "alumni_education_level_chk" });
+    expect(
+      await errorOf(
+        "insert into app.alumni_education (alumni_user_id, position, institution, graduation_year) values ($1, 0, 'UI', 1900)",
+        [userId],
+      ),
+    ).toMatchObject({ code: "23514", constraint: "alumni_education_year_chk" });
+    for (let i = 0; i < 10; i++)
+      await pg.query(
+        "insert into app.alumni_education (alumni_user_id, position, institution) values ($1, $2, $3)",
+        [userId, i, `Kampus ${i}`],
+      );
+    expect(
+      await errorOf(
+        "insert into app.alumni_education (alumni_user_id, position, institution) values ($1, 10, 'Lebih')",
+        [userId],
+      ),
+    ).toMatchObject({ code: "23514", constraint: "alumni_education_limit_chk" });
+
+    expect(
+      await errorOf(
+        "insert into app.alumni_social_links (alumni_user_id, position, platform, value) values ($1, 0, 'myspace', 'x')",
+        [userId],
+      ),
+    ).toMatchObject({ code: "23514", constraint: "alumni_social_links_platform_chk" });
+    for (let i = 0; i < 10; i++)
+      await pg.query(
+        "insert into app.alumni_social_links (alumni_user_id, position, platform, value) values ($1, $2, 'website', $3)",
+        [userId, i, `https://contoh.test/${i}`],
+      );
+    expect(
+      await errorOf(
+        "insert into app.alumni_social_links (alumni_user_id, position, platform, value) values ($1, 10, 'tiktok', 'lebih')",
+        [userId],
+      ),
+    ).toMatchObject({ code: "23514", constraint: "alumni_social_links_limit_chk" });
+  });
+
+  it("jembatan penulis lama: perubahan kolom sosial, lulusan terakhir dan alumni_professions diterapkan ke daftar", async () => {
+    const userId = await insertUser();
+    await insertAlumni(userId, null);
+    const guru = await insertMaster("Guru Jembatan");
+    const dosen = await insertMaster("Dosen Jembatan");
+
+    // Image sebelum 0009 mengubah kolom lama dengan satu UPDATE (tanpa penanda 'api').
+    await pg.query(
+      `update app.alumni set social_instagram = 'lama.ig', social_linkedin = 'lama.in',
+         last_education_institution = 'Universitas Lama', last_education_city = 'Pekanbaru' where user_id = $1`,
+      [userId],
+    );
+    await pg.query("insert into app.alumni_professions (alumni_user_id, profession_id) values ($1, $2)", [
+      userId,
+      guru,
+    ]);
+    expect(await lists(userId)).toEqual({
+      professions: [{ profession_id: guru, label: null }],
+      education: [{ institution: "Universitas Lama", level: null }],
+      links: [
+        { platform: "instagram", value: "lama.ig" },
+        { platform: "linkedin", value: "lama.in" },
+      ],
+    });
+
+    // Daftar dari API baru: dua tautan Instagram, ketikan sendiri, pendidikan berstrata.
+    await asApi(`
+      delete from app.alumni_social_links where alumni_user_id = '${userId}';
+      insert into app.alumni_social_links (alumni_user_id, position, platform, value) values
+        ('${userId}', 0, 'tiktok', 'baru.tt'), ('${userId}', 1, 'instagram', 'satu'), ('${userId}', 2, 'instagram', 'dua');
+      delete from app.alumni_profession_entries where alumni_user_id = '${userId}';
+      insert into app.alumni_profession_entries (alumni_user_id, position, label) values ('${userId}', 0, 'Penulis');
+      insert into app.alumni_profession_entries (alumni_user_id, position, profession_id) values ('${userId}', 1, '${guru}');
+      delete from app.alumni_education where alumni_user_id = '${userId}';
+      insert into app.alumni_education (alumni_user_id, position, institution, level) values
+        ('${userId}', 0, 'Universitas Baru', 's2'), ('${userId}', 1, 'Universitas Lama', 's1');
+      select app.alumni_project_legacy_profile('${userId}')`);
+    expect(await legacy(userId)).toEqual({
+      social_instagram: "satu",
+      social_x: null,
+      social_facebook: null,
+      social_linkedin: null,
+      last_education_institution: "Universitas Baru",
+      // Institusi teratas berganti: kota lama tidak lagi berpasangan dengannya.
+      last_education_city: null,
+      profession_id: guru,
+    });
+
+    // Penulis lama mengganti Instagram: tautan Instagram pertama diganti, tautan bernilai sama dibuang.
+    await pg.query("update app.alumni set social_instagram = 'dua' where user_id = $1", [userId]);
+    expect((await lists(userId)).links).toEqual([
+      { platform: "tiktok", value: "baru.tt" },
+      { platform: "instagram", value: "dua" },
+    ]);
+    // Null menghapus tautan pertama platform itu; kolom baru ditambahkan di akhir.
+    await pg.query("update app.alumni set social_instagram = null, social_x = 'baru.x' where user_id = $1", [
+      userId,
+    ]);
+    expect((await lists(userId)).links).toEqual([
+      { platform: "tiktok", value: "baru.tt" },
+      { platform: "x", value: "baru.x" },
+    ]);
+    // Institusi lama mengganti entri teratas; strata tetap. Null menghapus entri teratas.
+    await pg.query(
+      "update app.alumni set last_education_institution = 'Universitas Baru Sekali' where user_id = $1",
+      [userId],
+    );
+    expect((await lists(userId)).education).toEqual([
+      { institution: "Universitas Baru Sekali", level: "s2" },
+      { institution: "Universitas Lama", level: "s1" },
+    ]);
+    await pg.query("update app.alumni set last_education_institution = null where user_id = $1", [userId]);
+    expect((await lists(userId)).education).toEqual([{ institution: "Universitas Lama", level: "s1" }]);
+    // replaceProfession lama: hapus lalu sisipkan. Profesi bertaut master yang lama dilepas, yang baru paling depan.
+    await pg.query("delete from app.alumni_professions where alumni_user_id = $1", [userId]);
+    await pg.query("insert into app.alumni_professions (alumni_user_id, profession_id) values ($1, $2)", [
+      userId,
+      dosen,
+    ]);
+    expect((await lists(userId)).professions).toEqual([
+      { profession_id: dosen, label: null },
+      { profession_id: null, label: "Penulis" },
+    ]);
+    // Ketikan sendiri berlabel sama dengan master yang dipilih aplikasi lama digantikan entri bertaut master.
+    await asApi(`
+      delete from app.alumni_profession_entries where alumni_user_id = '${userId}';
+      insert into app.alumni_profession_entries (alumni_user_id, position, label) values ('${userId}', 0, 'guru jembatan');
+      select app.alumni_project_legacy_profile('${userId}')`);
+    expect((await legacy(userId)).profession_id).toBeNull();
+    await pg.query("insert into app.alumni_professions (alumni_user_id, profession_id) values ($1, $2)", [
+      userId,
+      guru,
+    ]);
+    expect((await lists(userId)).professions).toEqual([{ profession_id: guru, label: null }]);
+  });
+
+  it("jembatan: kolom lama diproyeksikan ulang saat commit; replaceProfession lama dalam satu transaksi; daftar penuh ditolak", async () => {
+    const userId = await insertUser();
+    await insertAlumni(userId, null);
+    const a = await insertMaster("Profesi A Proyeksi");
+    const b = await insertMaster("Profesi B Proyeksi");
+    const c = await insertMaster("Profesi C Proyeksi");
+    await asApi(`
+      insert into app.alumni_profession_entries (alumni_user_id, position, label) values ('${userId}', 0, 'Ketikan X');
+      insert into app.alumni_profession_entries (alumni_user_id, position, profession_id) values
+        ('${userId}', 1, '${a}'), ('${userId}', 2, '${b}');
+      insert into app.alumni_social_links (alumni_user_id, position, platform, value) values
+        ('${userId}', 0, 'instagram', 'satu'), ('${userId}', 1, 'instagram', 'dua');
+      insert into app.alumni_education (alumni_user_id, position, institution) values
+        ('${userId}', 0, 'Kampus Atas'), ('${userId}', 1, 'Kampus Bawah');
+      select app.alumni_project_legacy_profile('${userId}')`);
+    expect(await legacy(userId)).toMatchObject({
+      social_instagram: "satu",
+      last_education_institution: "Kampus Atas",
+      profession_id: a,
+    });
+
+    // Aplikasi lama mengosongkan Instagram dan lulusan terakhir: kolom mengikuti entri berikutnya di daftar.
+    await pg.query(
+      "update app.alumni set social_instagram = null, last_education_institution = null where user_id = $1",
+      [userId],
+    );
+    expect(await legacy(userId)).toMatchObject({
+      social_instagram: "dua",
+      last_education_institution: "Kampus Bawah",
+    });
+
+    // replaceProfession image lama (hapus lalu sisipkan dalam satu transaksi) memilih B yang sudah ada: B menjadi profesi
+    // utama, tanpa bentrok unik alumni_professions.
+    await pg.exec(`begin;
+      delete from app.alumni_professions where alumni_user_id = '${userId}';
+      insert into app.alumni_professions (alumni_user_id, profession_id) values ('${userId}', '${b}');
+      commit;`);
+    expect((await lists(userId)).professions).toEqual([
+      { profession_id: b, label: null },
+      { profession_id: null, label: "Ketikan X" },
+    ]);
+    expect((await legacy(userId)).profession_id).toBe(b);
+    // Profesi dilepas saja: kolom lama mengikuti master berikutnya bila ada (di sini tidak ada).
+    await pg.exec(`begin; delete from app.alumni_professions where alumni_user_id = '${userId}'; commit;`);
+    expect((await legacy(userId)).profession_id).toBeNull();
+    await pg.exec(`begin;
+      insert into app.alumni_professions (alumni_user_id, profession_id) values ('${userId}', '${c}');
+      commit;`);
+    expect((await legacy(userId)).profession_id).toBe(c);
+
+    // Daftar penuh: tulisan lama ditolak (tidak tersimpan di kolom lalu hilang dari daftar).
+    await asApi(`
+      delete from app.alumni_social_links where alumni_user_id = '${userId}';
+      insert into app.alumni_social_links (alumni_user_id, position, platform, value)
+        select '${userId}', g, 'website', 'https://contoh.test/' || g from generate_series(0, 9) g;
+      delete from app.alumni_profession_entries where alumni_user_id = '${userId}';
+      insert into app.alumni_profession_entries (alumni_user_id, position, label)
+        select '${userId}', g, 'Ketikan ' || g from generate_series(0, 4) g;
+      select app.alumni_project_legacy_profile('${userId}')`);
+    expect(
+      await errorOf("update app.alumni set social_x = 'tidak.muat' where user_id = $1", [userId]),
+    ).toMatchObject({ code: "23514", constraint: "alumni_social_links_limit_chk" });
+    expect(
+      await errorOf("insert into app.alumni_professions (alumni_user_id, profession_id) values ($1, $2)", [
+        userId,
+        a,
+      ]),
+    ).toMatchObject({ code: "23514", constraint: "alumni_profession_entries_limit_chk" });
+    expect(await legacy(userId)).toMatchObject({ social_x: null, profession_id: null });
+  });
+
+  it("penanda 'api' membuat jembatan diam; tanpa transaksi API kolom lama tetap memicu jembatan", async () => {
+    const userId = await insertUser();
+    await insertAlumni(userId, null);
+    await asApi(`update app.alumni set social_facebook = 'tidak.ikut' where user_id = '${userId}'`);
+    expect((await lists(userId)).links).toEqual([]);
+    // Penanda lokal transaksi: setelah commit, penulis berikutnya kembali dijembatani.
+    await pg.query("update app.alumni set social_facebook = 'ikut' where user_id = $1", [userId]);
+    expect((await lists(userId)).links).toEqual([{ platform: "facebook", value: "ikut" }]);
+    // Akun dihapus: daftar ikut terhapus (CASCADE), jembatan alumni_professions tidak menghalangi.
+    const master = await insertMaster("Profesi Hapus");
+    await pg.query("insert into app.alumni_professions (alumni_user_id, profession_id) values ($1, $2)", [
+      userId,
+      master,
+    ]);
+    await pg.query("delete from app.users where id = $1", [userId]);
+    expect(
+      await count(
+        `select ((select count(*) from app.alumni_profession_entries where alumni_user_id = $1)
+              + (select count(*) from app.alumni_social_links where alumni_user_id = $1))::int as n`,
+        [userId],
+      ),
+    ).toBe(0);
   });
 });
 

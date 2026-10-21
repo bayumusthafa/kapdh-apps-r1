@@ -3,6 +3,7 @@ import {
   bigint,
   boolean,
   check,
+  foreignKey,
   index,
   primaryKey,
   smallint,
@@ -10,7 +11,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { app, createdAt, id, tstz, updatedAt, version } from "./_common.js";
+import { app, createdAt, id, sqlInList, tstz, updatedAt, version } from "./_common.js";
 import { admins, users } from "./identity.js";
 import { payments } from "./payments.js";
 import { files } from "./platform.js";
@@ -160,7 +161,11 @@ export const alumni = app.table(
   ],
 );
 
-/** Profesi alumni: paling banyak satu per alumni (kontrak Profile.profession tunggal), master RESTRICT (PRD 6.3). */
+/**
+ * Profesi lama: paling banyak satu per alumni, master RESTRICT (PRD 6.3). Sejak migrasi 0009 hanya proyeksi
+ * `alumni_profession_entries` (profesi pertama yang tertaut master) untuk field kontrak lama `profession`/
+ * `profession_id` dan image API sebelum 0009; jangan ditulis langsung oleh layanan (lihat README, profil berulang).
+ */
 export const alumniProfessions = app.table(
   "alumni_professions",
   {
@@ -194,6 +199,123 @@ export const alumniSkills = app.table(
   (t) => [
     primaryKey({ columns: [t.alumniUserId, t.skillId] }),
     index("alumni_skills_skill_id_idx").on(t.skillId),
+  ],
+);
+
+/** Strata pendidikan (kontrak EducationLevel): D3, S1, S2, S3, Lainnya. */
+export const EDUCATION_LEVELS = ["d3", "s1", "s2", "s3", "other"] as const;
+/** Platform tautan sosial (kontrak SocialPlatform). */
+export const SOCIAL_PLATFORMS = [
+  "instagram",
+  "tiktok",
+  "x",
+  "facebook",
+  "linkedin",
+  "youtube",
+  "threads",
+  "telegram",
+  "website",
+] as const;
+/** Batas daftar profil berulang (kontrak maxItems); sama dengan argumen trigger `app.alumni_list_limit` (0010). */
+export const MAX_ALUMNI_PROFESSIONS = 5;
+export const MAX_ALUMNI_EDUCATION = 10;
+export const MAX_ALUMNI_SOCIAL_LINKS = 10;
+
+/**
+ * Daftar profesi alumni (kontrak Profile.professions, maksimal 5, urutan pemilik; position terkecil = profesi utama).
+ * Satu entri tertaut master (`profession_id`, label dibaca dari master sehingga label historis tetap, AC F10-4) ATAU
+ * ketikan sendiri (`label`), tidak keduanya. position hanya kunci urut: penulis lama (jembatan migrasi 0010) dapat
+ * memakai nilai negatif atau berlubang; layanan menulis ulang 0..n-1.
+ */
+export const alumniProfessionEntries = app.table(
+  "alumni_profession_entries",
+  {
+    alumniUserId: uuid("alumni_user_id")
+      .notNull()
+      .references(() => alumni.userId, { onDelete: "cascade" }),
+    position: smallint("position").notNull(),
+    professionId: uuid("profession_id"),
+    label: text("label"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.alumniUserId, t.position] }),
+    // Nama eksplisit: nama bawaan Drizzle melebihi 63 karakter dan dipotong PostgreSQL.
+    foreignKey({
+      name: "alumni_profession_entries_profession_id_fk",
+      columns: [t.professionId],
+      foreignColumns: [masterProfessions.id],
+    }).onDelete("restrict"),
+    uniqueIndex("alumni_profession_entries_profession_key").on(t.alumniUserId, t.professionId),
+    uniqueIndex("alumni_profession_entries_label_key")
+      .on(t.alumniUserId, sql`lower(${t.label})`)
+      .where(sql`${t.label} is not null`),
+    index("alumni_profession_entries_profession_id_idx")
+      .on(t.professionId)
+      .where(sql`${t.professionId} is not null`),
+    check("alumni_profession_entries_source_chk", sql`(${t.professionId} is null) <> (${t.label} is null)`),
+    check(
+      "alumni_profession_entries_label_chk",
+      sql`${t.label} is null or (${t.label} = btrim(${t.label}) and char_length(${t.label}) between 1 and 100)`,
+    ),
+  ],
+);
+
+/**
+ * Riwayat pendidikan setelah pondok (kontrak Profile.education, maksimal 10). position 0 = entri teratas (terbaru);
+ * layanan menyimpan urutan tahun tamat menurun dengan entri tanpa tahun di atas.
+ */
+export const alumniEducation = app.table(
+  "alumni_education",
+  {
+    alumniUserId: uuid("alumni_user_id")
+      .notNull()
+      .references(() => alumni.userId, { onDelete: "cascade" }),
+    position: smallint("position").notNull(),
+    institution: text("institution").notNull(),
+    major: text("major"),
+    level: text("level"),
+    graduationYear: smallint("graduation_year"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.alumniUserId, t.position] }),
+    check(
+      "alumni_education_institution_chk",
+      sql`${t.institution} = btrim(${t.institution}) and char_length(${t.institution}) between 1 and 120`,
+    ),
+    check(
+      "alumni_education_major_chk",
+      sql`${t.major} is null or (${t.major} = btrim(${t.major}) and char_length(${t.major}) between 1 and 120)`,
+    ),
+    check(
+      "alumni_education_level_chk",
+      sql`${t.level} is null or ${t.level} in (${sqlInList(EDUCATION_LEVELS)})`,
+    ),
+    check(
+      "alumni_education_year_chk",
+      sql`${t.graduationYear} is null or ${t.graduationYear} between 1950 and 2100`,
+    ),
+  ],
+);
+
+/** Tautan sosial alumni (kontrak Profile.social_links, maksimal 10, urutan pemilik). */
+export const alumniSocialLinks = app.table(
+  "alumni_social_links",
+  {
+    alumniUserId: uuid("alumni_user_id")
+      .notNull()
+      .references(() => alumni.userId, { onDelete: "cascade" }),
+    position: smallint("position").notNull(),
+    platform: text("platform").notNull(),
+    value: text("value").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.alumniUserId, t.position] }),
+    uniqueIndex("alumni_social_links_value_key").on(t.alumniUserId, t.platform, sql`lower(${t.value})`),
+    check("alumni_social_links_platform_chk", sql`${t.platform} in (${sqlInList(SOCIAL_PLATFORMS)})`),
+    check("alumni_social_links_value_chk", sql`char_length(${t.value}) between 1 and 200`),
   ],
 );
 
