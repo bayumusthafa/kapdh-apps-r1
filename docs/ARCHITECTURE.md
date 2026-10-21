@@ -392,8 +392,11 @@ production migrator both apply journaled migrations in order inside a transactio
 ### 5.3 Tables (37 PRD tables + 2 justified extras)
 
 Identity: `users`, `otp_codes`, `sessions`, `mfa_totp`, `admins`, `admin_permissions`(extra, normalized permission set).
-Membership: `alumni`, `master_professions`, `master_skills`, `alumni_professions` (≤1 per alumni), `alumni_skills`
-(≤10), `membership_events`, sequence `membership_no_seq`.
+Membership: `alumni`, `master_professions`, `master_skills`, `alumni_profession_entries` (≤5, master or typed label),
+`alumni_education` (≤10), `alumni_social_links` (≤10), `alumni_skills` (≤10), `membership_events`, sequence
+`membership_no_seq`. Since migration 0009 the three lists are the source of truth; `alumni_professions` (≤1 per alumni)
+and the old `alumni.social_*`/`last_education_*` columns are a projection kept for the 1.0.0 app and older API images
+(`packages/database/README.md`, profile lists).
 Finance: `payments`, `payment_events` (append-only), `payment_methods`, `payment_adjustments`, `app_settings`.
 Content: `categories`(extra, kind post|event — guideline "Manajemen Kategori"), `posts`, `post_likes`, `banners`, `pages`.
 Events: `events`, `tickets`.
