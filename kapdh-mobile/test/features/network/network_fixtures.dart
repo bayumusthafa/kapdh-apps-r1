@@ -10,15 +10,26 @@ Map<String, Object?> masterRefJson(String id, String label, {bool active = true}
   'active': active,
 };
 
-/// `DirectoryMember`: hanya field kartu (tanpa kontak, AC F10-2).
+/// `NetworkEducationEntry` (riwayat pendidikan, terbaru di atas).
+Map<String, Object?> educationJson(String institution, {String? major, String? level, int? year}) => {
+  'institution': institution,
+  'major': major,
+  'level': level,
+  'graduation_year': year,
+};
+
+/// `DirectoryMember`: hanya field kartu (tanpa kontak, AC F10-2). [professions] bawaan = label [profession]; field
+/// lama mengikuti daftar barunya seperti proyeksi server.
 Map<String, Object?> directoryMemberJson({
   required String userId,
   required String name,
   int cohort = 29,
   String? city = 'Pekanbaru',
   Map<String, Object?>? profession,
+  List<String>? professions,
   List<Map<String, Object?>> skills = const [],
   String? institution = 'Universitas Indonesia',
+  String? level,
 }) => {
   'user_id': userId,
   'full_name': name,
@@ -27,6 +38,8 @@ Map<String, Object?> directoryMemberJson({
   'cohort_code': 'KAPDH $cohort',
   'city': city,
   'profession': profession,
+  'professions': professions ?? [if (profession != null) profession['label']],
+  'latest_education': institution == null ? null : educationJson(institution, level: level),
   'last_education_institution': institution,
   'last_education_city': null,
   'skills': skills,
@@ -38,8 +51,9 @@ Map<String, Object?> directoryPageJson(List<Map<String, Object?>> items, {int? t
   'next_cursor': nextCursor,
 };
 
-/// `NetworkMemberProfile`. Kunci email/phone/social hanya ditambahkan bila [email]/[phone]/[social] diisi, persis
-/// seperti server yang tidak mengirim kunci bila flag privasi mati (AC F10-2).
+/// `NetworkMemberProfile`. Kunci email/phone/social/social_links hanya ditambahkan bila [email]/[phone]/[social] atau
+/// [socialLinks] diisi, persis seperti server yang tidak mengirim kunci bila flag privasi mati (AC F10-2). Tanpa
+/// [socialLinks], daftar tautan diturunkan dari [social] (empat platform lama).
 Map<String, Object?> profileJson({
   String userId = 'user-2',
   String name = 'Ahmad Islam',
@@ -50,9 +64,12 @@ Map<String, Object?> profileJson({
   String? email,
   String? phone,
   Map<String, Object?>? social,
+  List<Map<String, Object?>>? socialLinks,
   String? bio = 'Guru lulusan pondok pesantren.',
   Map<String, Object?>? profession,
+  List<String>? professions,
   List<Map<String, Object?>>? skills,
+  List<Map<String, Object?>>? education,
 }) => {
   'user_id': userId,
   'full_name': name,
@@ -62,13 +79,24 @@ Map<String, Object?> profileJson({
   'graduation_year': 1997,
   'city': 'Pekanbaru',
   'profession': profession ?? masterRefJson('p-1', 'Guru'),
+  'professions': professions ?? [(profession ?? masterRefJson('p-1', 'Guru'))['label']],
   'skills': skills ?? [masterRefJson('s-1', 'Mengajar'), masterRefJson('s-2', 'Berhitung Cepat', active: false)],
+  'education':
+      education ?? [educationJson('Universitas Indonesia', major: 'Pendidikan Matematika', level: 's1', year: 2018)],
   'last_education_institution': 'Universitas Indonesia',
   'last_education_city': 'Jakarta',
   'bio': bio,
   'email': ?email,
   'phone': ?phone,
   'social': ?social,
+  'social_links':
+      ?(socialLinks ??
+      (social == null
+          ? null
+          : [
+              for (final platform in const ['instagram', 'x', 'facebook', 'linkedin'])
+                if (social[platform] case final String value) {'platform': platform, 'value': value},
+            ])),
   'is_me': isMe,
   'is_blocked_by_me': isBlockedByMe,
   'can_message': canMessage,

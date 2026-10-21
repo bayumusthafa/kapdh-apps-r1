@@ -81,7 +81,12 @@ abstract final class KapdhMembershipStatus {
   static const expiring = KapdhStatusStyle(Color(0xFF8A5A00), Color(0xFFFFF4D6), 'Segera Berakhir', 'schedule');
   static const expired = KapdhStatusStyle(Color(0xFFB3261E), Color(0xFFFDECEA), 'KTA Kedaluwarsa', 'cancel');
   static const unverified = KapdhStatusStyle(Color(0xFFB3261E), Color(0xFFFDECEA), 'KTA Tidak Aktif', 'cancel');
-  static const pendingReview = KapdhStatusStyle(Color(0xFF1F5FA8), Color(0xFFE7F0FB), 'Menunggu Verifikasi', 'hourglass_top');
+  static const pendingReview = KapdhStatusStyle(
+    Color(0xFF1F5FA8),
+    Color(0xFFE7F0FB),
+    'Menunggu Verifikasi',
+    'hourglass_top',
+  );
   static const suspended = KapdhStatusStyle(Color(0xFF3F4A3E), Color(0xFFEEEFEE), 'Dibatasi', 'block');
 }
 
@@ -124,47 +129,108 @@ abstract final class KapdhDarkColors {
 }
 
 abstract final class KapdhGradients {
-  static const ktaCard = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-      colors: [Color(0xFF020702), Color(0xFF0E280C), Color(0xFF215E1E)], stops: [0, 0.45, 1]);
-  static const buttonPrimary = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-      colors: [Color(0xFF215E1E), Color(0xFF1A4B17)]);
+  static const ktaCard = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF020702), Color(0xFF0E280C), Color(0xFF215E1E)],
+    stops: [0, 0.45, 1],
+  );
+  static const buttonPrimary = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFF215E1E), Color(0xFF1A4B17)],
+  );
+
   /// Dasar mesh zamrud (gradient.brand-mesh): diagonal green950 -> green800 -> green700. Cahaya emas dan hijau
   /// ditumpuk oleh BrandMesh (lib/design/brand_mesh.dart).
-  static const brandMeshBase = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-      colors: [Color(0xFF0E280C), Color(0xFF1A4B17), Color(0xFF215E1E)], stops: [0, 0.55, 1]);
-  static const brandMeshGold = RadialGradient(center: Alignment(0.84, -1), radius: 0.92,
-      colors: [Color(0x33E6D312), Color(0x00E6D312)]);
-  static const brandMeshGreen = RadialGradient(center: Alignment(-0.88, 1), radius: 1.1,
-      colors: [Color(0x573F9A38), Color(0x003F9A38)]);
+  static const brandMeshBase = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF0E280C), Color(0xFF1A4B17), Color(0xFF215E1E)],
+    stops: [0, 0.55, 1],
+  );
+  static const brandMeshGold = RadialGradient(
+    center: Alignment(0.84, -1),
+    radius: 0.92,
+    colors: [Color(0x33E6D312), Color(0x00E6D312)],
+  );
+  static const brandMeshGreen = RadialGradient(
+    center: Alignment(-0.88, 1),
+    radius: 1.1,
+    colors: [Color(0x573F9A38), Color(0x003F9A38)],
+  );
+
   /// Latar Splash mode terang (gradient.splash).
-  static const splash = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-      colors: [Color(0xFFFAFAFA), Color(0xFFEEEFED), Color(0xFFE2E4E1)], stops: [0, 0.55, 1]);
+  static const splash = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFFFAFAFA), Color(0xFFEEEFED), Color(0xFFE2E4E1)],
+    stops: [0, 0.55, 1],
+  );
 }
 
 /// Bayangan v2 (elevation.light).
 abstract final class KapdhShadows {
   static const xs = <BoxShadow>[BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: Color(0x0F0E280C))];
-  static const sm = <BoxShadow>[BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: Color(0x0A0E280C)), BoxShadow(offset: Offset(0, 2), blurRadius: 8, color: Color(0x0F0E280C))];
-  static const md = <BoxShadow>[BoxShadow(offset: Offset(0, 2), blurRadius: 4, color: Color(0x0D0E280C)), BoxShadow(offset: Offset(0, 8), blurRadius: 20, color: Color(0x140E280C))];
-  static const lg = <BoxShadow>[BoxShadow(offset: Offset(0, 4), blurRadius: 8, color: Color(0x140E280C)), BoxShadow(offset: Offset(0, 16), blurRadius: 40, color: Color(0x2E0E280C))];
-  static const kta = <BoxShadow>[BoxShadow(offset: Offset(0, 4), blurRadius: 8, color: Color(0x24020702)), BoxShadow(offset: Offset(0, 14), blurRadius: 32, color: Color(0x470E280C))];
-  static const primaryButton = <BoxShadow>[BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: Color(0x290E280C)), BoxShadow(offset: Offset(0, 4), blurRadius: 12, color: Color(0x3D1A4B17))];
+  static const sm = <BoxShadow>[
+    BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: Color(0x0A0E280C)),
+    BoxShadow(offset: Offset(0, 2), blurRadius: 8, color: Color(0x0F0E280C)),
+  ];
+  static const md = <BoxShadow>[
+    BoxShadow(offset: Offset(0, 2), blurRadius: 4, color: Color(0x0D0E280C)),
+    BoxShadow(offset: Offset(0, 8), blurRadius: 20, color: Color(0x140E280C)),
+  ];
+  static const lg = <BoxShadow>[
+    BoxShadow(offset: Offset(0, 4), blurRadius: 8, color: Color(0x140E280C)),
+    BoxShadow(offset: Offset(0, 16), blurRadius: 40, color: Color(0x2E0E280C)),
+  ];
+  static const kta = <BoxShadow>[
+    BoxShadow(offset: Offset(0, 4), blurRadius: 8, color: Color(0x24020702)),
+    BoxShadow(offset: Offset(0, 14), blurRadius: 32, color: Color(0x470E280C)),
+  ];
+  static const primaryButton = <BoxShadow>[
+    BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: Color(0x290E280C)),
+    BoxShadow(offset: Offset(0, 4), blurRadius: 12, color: Color(0x3D1A4B17)),
+  ];
   static const barTop = <BoxShadow>[BoxShadow(offset: Offset(0, -6), blurRadius: 20, color: Color(0x0F0E280C))];
-  static const brandBand = <BoxShadow>[BoxShadow(offset: Offset(0, 12), blurRadius: 28, spreadRadius: -10, color: Color(0x8C0E280C))];
-  static const ringFocusField = <BoxShadow>[BoxShadow(offset: Offset(0, 0), blurRadius: 0, spreadRadius: 4, color: Color(0x292D7A28))];
+  static const brandBand = <BoxShadow>[
+    BoxShadow(offset: Offset(0, 12), blurRadius: 28, spreadRadius: -10, color: Color(0x8C0E280C)),
+  ];
+  static const ringFocusField = <BoxShadow>[
+    BoxShadow(offset: Offset(0, 0), blurRadius: 0, spreadRadius: 4, color: Color(0x292D7A28)),
+  ];
 }
 
 /// Bayangan v2 (elevation.dark).
 abstract final class KapdhShadowsDark {
   static const xs = <BoxShadow>[BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: Color(0x59000000))];
-  static const sm = <BoxShadow>[BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: Color(0x4D000000)), BoxShadow(offset: Offset(0, 2), blurRadius: 8, color: Color(0x47000000))];
-  static const md = <BoxShadow>[BoxShadow(offset: Offset(0, 2), blurRadius: 4, color: Color(0x52000000)), BoxShadow(offset: Offset(0, 8), blurRadius: 20, color: Color(0x5C000000))];
-  static const lg = <BoxShadow>[BoxShadow(offset: Offset(0, 4), blurRadius: 8, color: Color(0x5C000000)), BoxShadow(offset: Offset(0, 16), blurRadius: 40, color: Color(0x80000000))];
-  static const kta = <BoxShadow>[BoxShadow(offset: Offset(0, 4), blurRadius: 8, color: Color(0x59000000)), BoxShadow(offset: Offset(0, 14), blurRadius: 32, color: Color(0x80000000))];
-  static const primaryButton = <BoxShadow>[BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: Color(0x4D000000)), BoxShadow(offset: Offset(0, 4), blurRadius: 12, color: Color(0x2E8BD47E))];
+  static const sm = <BoxShadow>[
+    BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: Color(0x4D000000)),
+    BoxShadow(offset: Offset(0, 2), blurRadius: 8, color: Color(0x47000000)),
+  ];
+  static const md = <BoxShadow>[
+    BoxShadow(offset: Offset(0, 2), blurRadius: 4, color: Color(0x52000000)),
+    BoxShadow(offset: Offset(0, 8), blurRadius: 20, color: Color(0x5C000000)),
+  ];
+  static const lg = <BoxShadow>[
+    BoxShadow(offset: Offset(0, 4), blurRadius: 8, color: Color(0x5C000000)),
+    BoxShadow(offset: Offset(0, 16), blurRadius: 40, color: Color(0x80000000)),
+  ];
+  static const kta = <BoxShadow>[
+    BoxShadow(offset: Offset(0, 4), blurRadius: 8, color: Color(0x59000000)),
+    BoxShadow(offset: Offset(0, 14), blurRadius: 32, color: Color(0x80000000)),
+  ];
+  static const primaryButton = <BoxShadow>[
+    BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: Color(0x4D000000)),
+    BoxShadow(offset: Offset(0, 4), blurRadius: 12, color: Color(0x2E8BD47E)),
+  ];
   static const barTop = <BoxShadow>[BoxShadow(offset: Offset(0, -6), blurRadius: 20, color: Color(0x4D000000))];
-  static const brandBand = <BoxShadow>[BoxShadow(offset: Offset(0, 12), blurRadius: 28, spreadRadius: -10, color: Color(0x99000000))];
-  static const ringFocusField = <BoxShadow>[BoxShadow(offset: Offset(0, 0), blurRadius: 0, spreadRadius: 4, color: Color(0x388BD47E))];
+  static const brandBand = <BoxShadow>[
+    BoxShadow(offset: Offset(0, 12), blurRadius: 28, spreadRadius: -10, color: Color(0x99000000)),
+  ];
+  static const ringFocusField = <BoxShadow>[
+    BoxShadow(offset: Offset(0, 0), blurRadius: 0, spreadRadius: 4, color: Color(0x388BD47E)),
+  ];
 }
 
 /// Durasi (motion, ms) dan kurva (easing) animasi v2.

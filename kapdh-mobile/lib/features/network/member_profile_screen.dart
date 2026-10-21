@@ -9,6 +9,7 @@ import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
 import '../../core/api/error_presenter.dart';
 import '../../core/ui/external_links.dart';
+import '../../core/ui/profile_lists.dart';
 import '../../design/design.dart';
 import '../chat/chat_repository.dart';
 import 'moderation_actions.dart';
@@ -23,35 +24,6 @@ final memberProfileProvider = FutureProvider.autoDispose.family<NetworkMemberPro
   (ref, userId) => ref.watch(networkRepositoryProvider).profile(userId),
   retry: (_, _) => null,
 );
-
-/// Jaringan sosial di profil ("Media Sosial"; v2 berlogo platform Phosphor).
-enum SocialNetwork {
-  instagram('Instagram', KapdhIcons.instagramLogo, 'https://instagram.com/'),
-  x('X (Twitter)', KapdhIcons.xLogo, 'https://x.com/'),
-  facebook('Facebook', KapdhIcons.facebook, 'https://facebook.com/'),
-  linkedin('LinkedIn', KapdhIcons.linkedinLogo, 'https://www.linkedin.com/in/');
-
-  const SocialNetwork(this.label, this.icon, this.baseUrl);
-
-  final String label;
-  final IconData icon;
-  final String baseUrl;
-
-  /// Tautan https dari nama pengguna atau URL tersimpan; null bila nilainya tidak dapat dibuka dengan aman (hanya
-  /// https yang dibuka, bukan skema lain).
-  Uri? linkFor(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return null;
-    if (trimmed.contains('://')) {
-      final uri = Uri.tryParse(trimmed);
-      return uri != null && uri.scheme == 'https' && uri.host.isNotEmpty ? uri : null;
-    }
-    final handle = trimmed.startsWith('@') ? trimmed.substring(1) : trimmed;
-    // Hanya nama pengguna sederhana; nilai lain (mis. skema berbahaya) tidak dijadikan tautan.
-    if (!RegExp(r'^[A-Za-z0-9._-]{1,100}$').hasMatch(handle)) return null;
-    return Uri.parse('$baseUrl${Uri.encodeComponent(handle)}');
-  }
-}
 
 /// Profil alumni (guideline hal. 7; v2): pita zamrud, avatar bercincin emas, nama, email dan kota; Angkatan, Riwayat
 /// Pendidikan, Profesi, Keahlian, Nomor Telpon, Tentang, Media Sosial; tombol "Kirim Pesan". Kontak hanya tampil bila
@@ -188,37 +160,42 @@ class _ProfileViewState extends ConsumerState<_ProfileView> {
   @override
   Widget build(BuildContext context) {
     final p = profile;
-    final education = educationLine(p.lastEducationInstitution, p.lastEducationCity);
     final banner = AppBannerScope.of(context);
-    final social = p.social;
-    final socialEntries = social == null
-        ? const <(SocialNetwork, String)>[]
-        : [
-            if (social.instagram != null) (SocialNetwork.instagram, social.instagram!),
-            if (social.x != null) (SocialNetwork.x, social.x!),
-            if (social.facebook != null) (SocialNetwork.facebook, social.facebook!),
-            if (social.linkedin != null) (SocialNetwork.linkedin, social.linkedin!),
-          ];
+    // Kunci social_links hanya ada bila show_social=true (AC F10-2); platform yang belum dikenal versi ini dilewati.
+    final socialEntries = [
+      for (final link in p.socialLinks ?? const <NetworkSocialLink>[])
+        if (link.platform != SocialPlatform.unknown && link.value.trim().isNotEmpty) link,
+    ];
 
     final sections = <Widget>[
       _Section(
         title: 'Angkatan',
         child: Text('${cohortTag(p.cohortCode)} · Lulus ${p.graduationYear}', style: _valueStyle(context)),
       ),
-      if (education.isNotEmpty)
+      // [v2] Riwayat pendidikan berupa daftar, terbaru di atas (urutan server).
+      if (p.education.isNotEmpty)
         _Section(
           title: 'Riwayat Pendidikan',
-          child: _EducationItem(
-            name: p.lastEducationInstitution?.trim().isNotEmpty == true ? p.lastEducationInstitution! : education,
-            meta: p.lastEducationInstitution?.trim().isNotEmpty == true ? p.lastEducationCity : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final (index, entry) in p.education.indexed) ...[
+                if (index > 0) const SizedBox(height: KapdhSpace.s3),
+                _EducationItem(
+                  name: entry.institution,
+                  meta: educationMetaLine(level: entry.level, major: entry.major, graduationYear: entry.graduationYear),
+                ),
+              ],
+            ],
           ),
         ),
-      if (p.profession != null)
+      if (p.professions.isNotEmpty)
         _Section(
           title: 'Profesi',
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: TagChip(label: p.profession!.label),
+          child: Wrap(
+            spacing: KapdhSpace.s2,
+            runSpacing: KapdhSpace.s2,
+            children: [for (final profession in p.professions) TagChip(label: profession)],
           ),
         ),
       if (p.skills.isNotEmpty)
@@ -251,11 +228,14 @@ class _ProfileViewState extends ConsumerState<_ProfileView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (final (network, value) in socialEntries)
+              for (final link in socialEntries)
                 _SocialLink(
-                  network: network,
-                  value: value,
-                  onTap: network.linkFor(value) == null ? null : () => _open(network.linkFor(value)!),
+                  platform: link.platform,
+                  value: link.value,
+                  onTap: switch (link.platform.linkFor(link.value)) {
+                    final uri? => () => _open(uri),
+                    null => null,
+                  },
                 ),
             ],
           ),
@@ -657,9 +637,9 @@ class _PhoneLink extends StatelessWidget {
 /// Baris media sosial (v2): logo platform dalam kotak tint 36, nama platform 12 abu + nama pengguna/tautan 14 primary,
 /// ikon tautan luar; seluruh baris 56 dapat diketuk bila tautannya aman (https).
 class _SocialLink extends StatelessWidget {
-  const _SocialLink({required this.network, required this.value, required this.onTap});
+  const _SocialLink({required this.platform, required this.value, required this.onTap});
 
-  final SocialNetwork network;
+  final SocialPlatform platform;
   final String value;
   final VoidCallback? onTap;
 
@@ -672,8 +652,10 @@ class _SocialLink extends StatelessWidget {
         .trim()
         .replaceFirst(RegExp(r'^https?://(www\.)?', caseSensitive: false), '')
         .replaceFirst(RegExp(r'/+$'), '');
+    // container: setiap baris satu node pembaca layar, juga baris tanpa tautan (nilai yang tidak aman dibuka).
     return Semantics(
-      label: '${network.label}: $value',
+      container: true,
+      label: '${platform.label}: $value',
       link: onTap != null,
       excludeSemantics: true,
       child: InkWell(
@@ -683,7 +665,7 @@ class _SocialLink extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 56),
           child: Row(
             children: [
-              _TintIcon(icon: network.icon),
+              _TintIcon(icon: platform.icon),
               const SizedBox(width: KapdhSpace.s3),
               Expanded(
                 child: Column(
@@ -691,7 +673,7 @@ class _SocialLink extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      network.label,
+                      platform.label,
                       style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.4, color: p.textMuted),
                     ),
                     Text(
@@ -727,8 +709,7 @@ class _TintIcon extends StatelessWidget {
   );
 }
 
-/// Satu pendidikan (v2): ikon toga, nama institusi 14 w600, keterangan 12 abu (kota). Riwayat berulang menunggu
-/// kontrak education[].
+/// Satu pendidikan (v2): ikon toga, nama institusi 14 w600, keterangan 12 abu ("S1 · Jurusan · Tamat 2019").
 class _EducationItem extends StatelessWidget {
   const _EducationItem({required this.name, this.meta});
 

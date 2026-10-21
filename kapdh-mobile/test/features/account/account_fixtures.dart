@@ -17,7 +17,8 @@ Map<String, Object?> masterJson(String id, String label, {bool? active}) => {
   'active': ?active,
 };
 
-/// GET /me (`Me`) dengan profil lengkap yang dapat diubah per uji.
+/// GET /me (`Me`) dengan profil lengkap yang dapat diubah per uji. Field lama (profession, social_instagram) diisi
+/// sebagai proyeksi daftar seperti server: [instagram] menjadi tautan Instagram pertama bila [socialLinks] kosong.
 Map<String, Object?> meFullJson({
   String status = 'verified',
   String version = '3',
@@ -26,6 +27,9 @@ Map<String, Object?> meFullJson({
   String? bio,
   String? instagram,
   Map<String, Object?>? profession,
+  List<String> professions = const [],
+  List<Map<String, Object?>> education = const [],
+  List<Map<String, Object?>>? socialLinks,
   List<Map<String, Object?>> skills = const [],
   String? avatarFileId,
   String? avatarUrl,
@@ -44,6 +48,13 @@ Map<String, Object?> meFullJson({
     ..['bio'] = bio
     ..['social_instagram'] = instagram
     ..['profession'] = profession
+    ..['professions'] = professions
+    ..['education'] = education
+    ..['social_links'] =
+        socialLinks ??
+        [
+          if (instagram != null) {'platform': 'instagram', 'value': instagram},
+        ]
     ..['skills'] = skills
     ..['avatar_file_id'] = avatarFileId
     ..['avatar_url'] = avatarUrl
@@ -55,6 +66,14 @@ Map<String, Object?> meFullJson({
     };
   return {...base, 'version': version, 'profile': profile};
 }
+
+/// `EducationEntry` profil sendiri.
+Map<String, Object?> educationEntryJson(String institution, {String? major, String? level, int? year}) => {
+  'institution': institution,
+  'major': major,
+  'level': level,
+  'graduation_year': year,
+};
 
 Map<String, Object?> sessionJson(
   String id, {

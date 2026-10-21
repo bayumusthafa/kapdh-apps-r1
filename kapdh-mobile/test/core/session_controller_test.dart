@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
 import 'package:dio/dio.dart';
@@ -42,6 +44,34 @@ void main() {
       expect(state.effectiveStatus, EffectiveStatus.unverified);
       expect(state.syncedAt, testNow);
       expect((await container.read(meSnapshotStoreProvider).read())?.me.userId, 'user-1');
+    });
+
+    test('offline dengan snapshot aplikasi 1.0.0 (tanpa daftar profil berulang): tetap offlineLastKnown', () async {
+      final store = MemorySecureStore();
+      final container = makeContainer(store: store, adapter: FakeHttpAdapter((_) => FakeResponse.network()));
+      await container.read(tokenStoreProvider).save(storedTokens());
+      // Bentuk snapshot yang disimpan sebelum kontrak profil berulang: tanpa professions/education/social_links.
+      final legacy = meJson(status: 'verified');
+      final profile = Map<String, Object?>.from(legacy['profile']! as Map<String, Object?>)
+        ..remove('professions')
+        ..remove('education')
+        ..remove('social_links');
+      await store.write(
+        MeSnapshotStore.storageKey,
+        jsonEncode({
+          'me': {...legacy, 'profile': profile},
+          'fetched_at': testNow.toUtc().toIso8601String(),
+        }),
+      );
+
+      await container.read(sessionProvider.notifier).bootstrap();
+
+      final state = container.read(sessionProvider);
+      expect(state.phase, SessionPhase.offlineLastKnown);
+      expect(state.effectiveStatus, EffectiveStatus.verified);
+      final snapshot = await container.read(meSnapshotStoreProvider).read();
+      expect(snapshot?.me.profile.professions, isEmpty);
+      expect(snapshot?.me.profile.socialLinks, isEmpty);
     });
 
     test('offline dengan snapshot: offlineLastKnown, token tetap', () async {

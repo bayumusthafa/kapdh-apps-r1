@@ -34,7 +34,7 @@ class MeSnapshotStore {
     try {
       final json = jsonDecode(raw) as Map<String, Object?>;
       return MeSnapshot(
-        me: Me.fromJson(json['me']! as Map<String, Object?>),
+        me: Me.fromJson(_withProfileLists(json['me']! as Map<String, Object?>)),
         fetchedAt: DateTime.parse(json['fetched_at']! as String).toUtc(),
       );
     } on Object {
@@ -44,4 +44,21 @@ class MeSnapshotStore {
   }
 
   Future<void> clear() => _store.delete(storageKey);
+
+  /// Snapshot yang disimpan aplikasi sebelum profil berulang (1.0.0) belum memuat `professions`, `education` dan
+  /// `social_links`; diisi daftar kosong agar KTA offline tetap dapat dibuka pada pembukaan pertama setelah
+  /// pembaruan. Data lengkap datang dari GET /me berikutnya.
+  static Map<String, Object?> _withProfileLists(Map<String, Object?> me) {
+    final profile = me['profile'];
+    if (profile is! Map<String, Object?>) return me;
+    return {
+      ...me,
+      'profile': {
+        'professions': const <Object?>[],
+        'education': const <Object?>[],
+        'social_links': const <Object?>[],
+        ...profile,
+      },
+    };
+  }
 }

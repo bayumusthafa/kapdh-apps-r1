@@ -255,7 +255,7 @@ Tombol hapus di kedua daftar berulang (Pendidikan, tautan) sama-sama merah (acua
 satu warna. Label tetap tampil di atas field (bukan hanya placeholder seperti acuan) agar sesuai bagian lain dan tetap terbaca saat
 terisi. Bagian lain di layar ini masih memakai judul kecil di atas kartu.
 
-Dampak di luar mockup: kontrak profil (C1) perlu `professions: string[]` dan `education: [{institution, major, level,
+Dampak di luar mockup (diterapkan 21 Oktober 2026, lihat Implementasi Flutter): kontrak profil (C2) perlu `professions: string[]` dan `education: [{institution, major, level,
 graduation_year}]` sebagai ganti `profession`, `last_education_institution` dan `last_education_city`, serta `social_links: [{platform, value}]`
 (maks. 10) sebagai ganti field Instagram/X/Facebook/LinkedIn. Profil Alumni
 (Jejaring) sudah ikut diubah di mockup:
@@ -316,7 +316,9 @@ karena memang khusus (ilustrasi keadaan kosong, lencana, status bar, ubin akses 
 
 ## Implementasi Flutter (18 Oktober 2026)
 
-Usulan v2 di dokumen ini sudah diterapkan ke `kapdh-mobile` (tanpa perubahan kontrak server):
+Usulan v2 di dokumen ini sudah diterapkan ke `kapdh-mobile`. Tahap pertama (18 Oktober) tanpa perubahan kontrak
+server; daftar berulang Ubah Profil dan Profil Alumni menyusul 21 Oktober 2026 bersama kontrak profil berulang (baris
+"Profil berulang" di bawah):
 
 | Bagian | Di Flutter |
 | --- | --- |
@@ -325,7 +327,8 @@ Usulan v2 di dokumen ini sudah diterapkan ke `kapdh-mobile` (tanpa perubahan kon
 | Komponen | Tombol utama berbayangan, OTP aktif bergaris primary + halo + kursor berkedip (statis bila *reduce motion*), kartu bergaris rambut + `shadowSm` (TappableCard, SummaryCard, StatusActionCard, QRIS, kontak, AccountSection, akses cepat), InfoBox bergaris 20 %, keadaan kosong/galat berikon persegi membulat, skeleton berkilau (`KapdhShimmer`), SectionEmpty bergaris putus, bilah aksi bawah berbayangan. |
 | Pita hijau | `BrandMeshPainter` di semua `BrandHeader`; `BrandIconButton` (tombol kaca), `BrandLogoFrame`; header Beranda, Akun dan Profil Alumni bersudut bawah 24. Masuk tetap bermotif gelombang. |
 | Beranda | Akses cepat di atas banner, ikon fill bergradasi dalam lingkaran 56, Pesan (membuka tab Jejaring > Pesan) menggantikan KTA untuk anggota aktif, lencana emas belum dibaca; tombol KTA tengah menonjol; titik banner di dalam gambar; judul bagian dengan pil "Lihat semua"; kartu event berfooter; berita hero + baris ringkas; skeleton berbentuk Beranda; Beranda terkunci dalam satu kartu; tombol Perpanjang terisi. |
-| Layar lain | Splash abu terang (gelap tetap hijau tua; latar peluncuran Android/iOS ikut), Ubah Profil (kartu Profesi & Keahlian dengan cip yang dapat dihapus, Riwayat Pendidikan, Media Sosial berlogo), Profil Alumni (Riwayat Pendidikan, Keahlian, Media Sosial berupa baris). |
+| Layar lain | Splash abu terang (gelap tetap hijau tua; latar peluncuran Android/iOS ikut), Ubah Profil (tampilan tiga kartu berkepala ikon), Profil Alumni (bagian Riwayat Pendidikan, Keahlian, Media Sosial berupa baris). |
+| Profil berulang (21 Oktober 2026) | Kontrak C2 `professions[]`, `education[]`, `social_links[]` (migrasi 0009-0010, API, web admin, SDK Dart). Ubah Profil: profesi lebih dari satu (maks. 5) lewat lembar "Pilih profesi" yang menerima master aktif atau ketikan sendiri; entri "Pendidikan n" berulang (Universitas/Instansi, Jurusan/Program Studi, Strata D3/S1/S2/S3/Lainnya, Tahun Tamat) dengan "Tambah Riwayat" dan hapus merah, maks. 10; baris tautan berulang dengan pemilih platform berlogo Phosphor (sembilan platform, menu seperti frame 17), hapus merah dan "Tambah tautan", maks. 10. Profil Alumni: riwayat pendidikan terbaru di atas ("Strata · Jurusan · Tamat tahun"), cip profesi jamak, Media Sosial dari `social_links`. Kartu direktori: profesi jamak dan pendidikan teratas. Uji widget mencakup teks 200 % dan tema gelap. |
 | Teks 200 % | Label navigasi dan judul banner dibatasi 1,3; kepala Beranda 1,3 seperti app bar; akses cepat 2 x 2; stepper hanya label aktif; judul bagian membungkus. |
 | Tablet | `ContentWidth`: isi selebar 600 di tengah pada layar > 640 (AppScaffold, BrandSheetScaffold, Beranda, Jejaring, Akun, Profil Alumni). |
 | Fokus dan gerak | Cincin fokus 3 px di semua kontrol yang dapat diketuk (emas di permukaan hijau), `KapdhMotion` + kurva `easeStandard`/`easeOut` di navigasi bawah, banner, KTA layar penuh dan gulir chat; semuanya diam bila *reduce motion*. Status bar berikon terang di semua pita hijau (`kBrandStatusBarOverlay`); Akun dan Profil Alumni menahan area status bar tetap hijau saat pita tergulir (`BrandStatusBarFill`). |
@@ -336,11 +339,11 @@ gelap, teks 200 % dan tablet dibandingkan dengan mockup.
 
 ## Belum dikerjakan
 
-- **Kontrak profil berulang** (keputusan pemilik: menyusul). `professions[]`, `education[]`
-  (`institution, major, level, graduation_year`) dan `social_links[]` (maks. 10) di OpenAPI, basis data, API, SDK
-  Dart, admin dan filter direktori. Sampai itu Ubah Profil/Profil Alumni memakai satu profesi, satu pendidikan
-  (institusi + kota) dan empat media sosial tetap; tombol "Tambah Riwayat"/"Tambah tautan" dan Strata/Tahun Tamat belum
-  ada di aplikasi.
+- **Keahlian ketik sendiri.** Helper mockup Keahlian menyebut "Pilih dari daftar atau ketik sendiri", tetapi kontrak
+  `skill_ids` tetap master terkontrol; aplikasi hanya menawarkan daftar master keahlian. Profesi sudah menerima ketikan
+  sendiri.
+- **Kota lulusan lama.** Kolom `last_education_city` dari aplikasi 1.0.0 tidak punya padanan di `education[]` dan tidak
+  ditampilkan lagi; kolom itu tetap tersimpan sampai field lama dihapus dari kontrak.
 - **NavigationRail** untuk layar >= 840 dp (tablet melebar): belum dimockup.
 - **Peluncuran iOS** memakai warna bernama `LaunchBackground` (terang/gelap) di `LaunchScreen.storyboard`; belum
   dibangun di Mac.
