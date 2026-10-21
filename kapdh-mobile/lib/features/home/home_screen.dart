@@ -356,15 +356,15 @@ class _GatedHome extends StatelessWidget {
     final (String title, String message, String? actionLabel, String? actionRoute) = switch (current) {
       EffectiveStatus.unverified => (
         'KTA Anda belum aktif',
-        'Selesaikan iuran pendaftaran agar pengurus dapat memverifikasi keanggotaan. Setelah KTA aktif, berita, '
-            'event dan jejaring alumni terbuka di Beranda.',
+        'Selesaikan iuran pendaftaran agar pengurus dapat memverifikasi keanggotaan. Berita, event dan jejaring '
+            'alumni adalah layanan untuk anggota terverifikasi.',
         'Selesaikan Iuran Pendaftaran',
         AppRoutes.onboardingFees,
       ),
       EffectiveStatus.expired => (
         'Masa keanggotaan berakhir',
-        'Perpanjang KTA untuk kembali membuka berita, event, jejaring dan chat. Tiket event yang sudah lunas tetap '
-            'berlaku dan dapat dibuka di Tiket Saya.',
+        'Berita, event, jejaring dan chat adalah layanan untuk anggota aktif. Hubungi pengurus atau perpanjang '
+            'keanggotaan organisasi. Tiket event yang sudah lunas tetap berlaku dan dapat dibuka di Tiket Saya.',
         'Perpanjang Keanggotaan',
         AppRoutes.renewal,
       ),

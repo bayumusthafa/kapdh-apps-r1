@@ -147,6 +147,7 @@ DATABASE_URL=postgres://... pnpm --filter @kapdh/api golive:check   # 0 lulus, 1
 Perintah: `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:pg`, `pnpm test:live`,
 `pnpm contracts:lint`, `pnpm contracts:test-dart`, `pnpm format:check`, `pnpm audit --prod`; infra tanpa Docker:
 `node infra/scripts/validate-infra.mjs`, `node infra/ci/check-workflows.mjs`, `node --test 'infra/ci/test/*.test.mjs'`,
-`sh infra/scripts/release-job.test.sh`, `sh infra/backup/test/dry-run.sh`, `sh infra/monitoring/test/dry-run.sh`.
+`sh infra/scripts/release-job.test.sh`, `sh infra/scripts/staging-smoke.test.sh`, `sh infra/backup/test/dry-run.sh`,
+`sh infra/monitoring/test/dry-run.sh`.
 Hasil terakhir yang tercatat per lajur ada di `../docs/qa/traceability.md` bagian 2 dan
 `../docs/handoff/integration-final.md` "Verifikasi akhir".

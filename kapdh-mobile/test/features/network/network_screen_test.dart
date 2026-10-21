@@ -510,7 +510,7 @@ void main() {
       await settle(tester);
       expect(app.location, '/home');
       expect(app.adapter.requestsTo('/chat/rooms'), isEmpty);
-      expect(find.byTooltip('Jejaring, terkunci'), findsOneWidget);
+      expect(find.byTooltip('Jejaring, khusus anggota aktif'), findsOneWidget);
     });
 
     testWidgets('kosong: arahan memulai percakapan dari profil', (tester) async {

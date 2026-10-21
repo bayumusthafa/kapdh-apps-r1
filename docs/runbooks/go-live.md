@@ -53,7 +53,7 @@ yang disetujui, dan tidak boleh dipakai untuk mengecualikan keamanan atau integr
       dan RTO <= 4 jam.
 - [ ] Image API, release, worker, web dan admin dibangun CI dari tag rilis dan lulus uji asap image serta job
       `compose-stack` (`production-init.md` 1.3; `docs/runbooks/ci-cd.md`). Belum pernah dijalankan di GitHub.
-- [ ] Teks aplikasi memenuhi D13 mitigasi 1 (`app-store-submission.md` bagian 2; per 14 Oktober 2026 belum).
+- [ ] Teks aplikasi memenuhi D13 mitigasi 1 (`app-store-submission.md` bagian 2; sesuai sejak 21 Oktober 2026).
 - [ ] Skenario kritis PRD 9.2 nomor 1-10 lulus (`traceability.md` bagian 5.2); nomor 8 (restore + ledger) dibuktikan
       pada drill restore gladi, nomor 9 (konfigurasi belum disahkan) oleh gerbang `golive:check` mode enforce di job
       rilis (bagian 2.3).
@@ -137,7 +137,10 @@ Satu butir tidak memenuhi target = go-live ditunda (PRD 8.4).
 
 ### 2.4 Gerbang transport dan header (N-07; `production-init.md` 1.2)
 
-Dijalankan PI dari luar VPS setelah langkah 1-5 inisialisasi; lampirkan keluaran lengkap **[bukti]**:
+Dijalankan PI dari luar VPS setelah langkah 1-5 inisialisasi; lampirkan keluaran lengkap **[bukti]**. Pemeriksaan
+HTTPS dan WSS di bawah boleh dari jaringan mana pun selama `curl` memverifikasi sertifikat (tanpa `-k`). Bila DNS lokal
+masih menyimpan record lama, tambahkan `--resolve <host>:443:<IP VPS>`. Pemeriksaan port lain halnya: VPN atau proxy
+berbasis TUN dapat menerima koneksi ke port apa pun atas nama VPS, jadi pindai port dari jaringan lain.
 
 ```sh
 for u in https://kapdh.or.id/ https://www.kapdh.or.id/kebijakan-privasi https://admin.kapdh.or.id/ \
@@ -148,17 +151,35 @@ curl -si --max-time 5 --http1.1 -H "Connection: Upgrade" -H "Upgrade: websocket"
   -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" "https://api.kapdh.or.id/socket.io/?EIO=4&transport=websocket" | head -1
 ```
 
-Perintah ini diuji 14 Oktober 2026 hanya terhadap API lokal tanpa TLS (penyaring header dan cek WebSocket `101`);
-hasil pada host production/staging belum pernah diamati.
+Pemeriksaan port memakai deteksi layanan dan satu port kontrol yang pasti kosong (9999). Sebuah port dianggap terbuka
+hanya bila `nmap -sV` mengenali layanannya (nama dengan versi atau jawaban protokol, mis. `OpenSSH ...`). Tidak
+dihitung terbuka: status `tcpwrapped` yang sama dengan port kontrol (koneksi diterima lalu ditutup perangkat jaringan
+di jalur), dan nama bertanda `?` atau tanpa versi seperti `X11`/`http-alt?` (hanya ditebak dari nomor port). Pada
+jaringan yang menjawab semua port seperti itu, pemindaian dari luar tidak dapat membedakan port yang dipublikasikan
+dari port kosong, jadi yang menentukan adalah pemeriksaan di VPS:
+
+```sh
+# dari luar VPS
+nmap -Pn -sV -p 22,80,443,3000,3001,5432,6001,6002,6379,8000,8080,9999 <IP VPS>
+# di VPS (root): 5432/6379/3000/3001 tidak dipublikasikan ke host; 8000/6001/6002/8080 di-DROP DOCKER-USER untuk
+# <iface-publik> (production: ens3)
+ss -Htlnp | awk '{print $4, $6}' | sort -u
+docker ps --format '{{.Names}}  {{.Ports}}'
+iptables -S DOCKER-USER
+```
+
+Pertama dijalankan pada production 21 Oktober 2026, setelah domain dipindah ke VPS: semua butir lulus (keluaran dan
+catatan di `docs/qa/transport/2026-10/README.md`). Ulangi pada kandidat rilis sebelum go-live, lalu perbarui kolom
+Hasil dan isi Diperiksa.
 
 | Host | Target | Hasil | Diperiksa |
 | ---- | ------ | ----- | --------- |
-| `kapdh.or.id` | 200; `strict-transport-security` (max-age >= 31536000); CSP dengan `frame-ancestors 'none'`; `x-content-type-options: nosniff`; `referrer-policy: no-referrer` | | PI |
-| `www.kapdh.or.id` | 301, `location: https://kapdh.or.id/kebijakan-privasi` | | PI |
-| `admin.kapdh.or.id` | 200; `strict-transport-security`; CSP dengan `frame-ancestors 'none'` dan `connect-src` ke API; `x-frame-options: DENY`; `nosniff`; `referrer-policy: no-referrer` | | PI |
-| `api.kapdh.or.id` | 200; `strict-transport-security` (`HSTS_ENABLED=true`); `nosniff`; `referrer-policy: no-referrer` | | PI |
-| WSS `api.kapdh.or.id/socket.io/` | `HTTP/1.1 101 Switching Protocols` | | PI |
-| Port 5432/6379 dari luar | tertutup (`production-init.md` 1.1) | | PI |
+| `kapdh.or.id` | 200; `strict-transport-security` (max-age >= 31536000); CSP dengan `frame-ancestors 'none'`; `x-content-type-options: nosniff`; `referrer-policy: no-referrer` | lulus 21-10-2026 | PI |
+| `www.kapdh.or.id` | pengalihan permanen ke `https://kapdh.or.id/kebijakan-privasi`: `301` untuk GET (peramban); perintah di atas memakai `curl -sI` (HEAD) sehingga yang tampil `308` dengan `location` yang sama. `302`/`307` = gagal | lulus 21-10-2026 (GET `301`, HEAD `308`) | PI |
+| `admin.kapdh.or.id` | 200; `strict-transport-security`; CSP dengan `frame-ancestors 'none'` dan `connect-src` ke API; `x-frame-options: DENY`; `nosniff`; `referrer-policy: no-referrer` | lulus 21-10-2026 | PI |
+| `api.kapdh.or.id` | 200; `strict-transport-security` (max-age >= 31536000; dari proxy atau `HSTS_ENABLED=true`); `nosniff`; `referrer-policy: no-referrer` | lulus 21-10-2026 (HSTS dari proxy; `HSTS_ENABLED` tidak diperiksa) | PI |
+| WSS `api.kapdh.or.id/socket.io/` | `HTTP/1.1 101 Switching Protocols` | lulus 21-10-2026 | PI |
+| Port 5432/6379, panel Coolify (8000/6001/6002) dan 8080 dari luar | tidak ada layanan yang dikenali dari luar; di VPS tidak dipublikasikan ke host atau di-DROP `DOCKER-USER` (`production-init.md` 1.1) | lulus 21-10-2026 (pemeriksaan di VPS; pemindaian luar sebelum DROP 8080) | PI |
 
 ## 3. Urutan go-live (PRD 8.3)
 

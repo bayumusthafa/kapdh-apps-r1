@@ -48,9 +48,9 @@ tidak benar.
       **Tautan toko aplikasi** sudah diisi sehingga halaman `/unduh` menampilkan tombol toko (`production-init.md`
       butir 4.7). Pengumuman kepada alumni menunggu persetujuan toko. Bila baru satu toko yang menyetujui, ubah
       frasa "Android dan iOS" di Berita 1.
-- [ ] **Domain `kapdh.or.id` sudah mengarah ke situs baru** (`docs/legal/README.md`, Syarat sebelum terbit butir 1).
-      Bila belum, ganti setiap `https://kapdh.or.id/` di konten ini dengan `https://baru.kapdh.or.id/`, lalu
-      perbarui berita setelah domain dipindah. Perubahan berita yang sudah terbit langsung terlihat anggota.
+- [x] **Domain `kapdh.or.id` sudah mengarah ke situs baru** (`docs/legal/README.md`, Syarat sebelum terbit butir 1).
+      Terpenuhi 21 Oktober 2026 (`docs/qa/transport/2026-10/README.md`); konten memakai `https://kapdh.or.id/`.
+      `baru.kapdh.or.id` hanya dialihkan dan tidak dipakai di konten.
 - [ ] **Kelima halaman informasi sudah terbit** (Kebijakan Privasi, Ketentuan Layanan, Ketentuan Komunitas,
       Bantuan, Tentang KAPDH), karena berita menautkannya.
 - [ ] **Tujuan pembayaran resmi aktif** di **Verifikasi Pembayaran > tab Kelola Metode** (izin `settings.manage`):

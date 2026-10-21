@@ -265,6 +265,7 @@ if (dev) {
     for (const needle of [
       "node infra/scripts/validate-infra.mjs",
       "sh infra/scripts/release-job.test.sh",
+      "sh infra/scripts/staging-smoke.test.sh",
       "sh infra/backup/test/dry-run.sh",
       "sh infra/monitoring/test/dry-run.sh",
       "sh infra/scripts/smoke-static.sh web",

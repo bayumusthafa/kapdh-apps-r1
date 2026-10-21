@@ -102,7 +102,7 @@ terakhir.
 | 1.17 | SA | Cabut izin `payments.decide` dari AP saat AP membuka antrean | Request AP berikutnya ditolak 403 tanpa menunggu token habis (AC F16-3) | | | |
 | 1.18 | SA, SA2 | Pada staging dengan tepat dua Super Admin: keduanya saling menurunkan peran bersamaan (dua peramban) | Tepat satu berhasil; minimal satu Super Admin tersisa (AC F16-2, PRD 9.2) | | | |
 | 1.19 | SA | Detail anggota AG-A → reset sandi | Sesi AG-A dicabut, notifikasi keamanan, email kode + tautan `kapdh://app/forgot/otp?...`; pengurus tidak melihat sandi (AC F16-4) | | | |
-| 1.20 | PI | Jalankan blok gerbang transport `go-live.md` 2.4 dengan host staging (`staging.kapdh.or.id`, `staging-admin.kapdh.or.id`, `staging-api.kapdh.or.id`); pindai port 5432/6379 dari luar | Semua host HTTPS dengan header sesuai tabel 2.4 (CSP + `frame-ancestors 'none'`/`X-Frame-Options` di situs publik dan admin, HSTS setelah diaktifkan); WSS `101`; DB/Redis tertutup (N-07) | | | |
+| 1.20 | PI | Jalankan blok gerbang transport `go-live.md` 2.4 dengan host staging (`staging.kapdh.or.id`, `staging-admin.kapdh.or.id`, `staging-api.kapdh.or.id`); pindai port 5432/6379 dari luar dengan prosedur port 2.4 (`nmap -sV` + port kontrol 9999, lalu pemeriksaan di VPS) | Semua host HTTPS dengan header sesuai tabel 2.4 (CSP + `frame-ancestors 'none'`/`X-Frame-Options` di situs publik dan admin, HSTS setelah diaktifkan); WSS `101`; DB/Redis tertutup (N-07) | | | |
 
 ## U-02 Iuran (F-03, F-04, F-07)
 

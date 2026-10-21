@@ -846,7 +846,9 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
         body = EmptyState(
           icon: KapdhIcons.lockClockOutlined,
           title: 'Keanggotaan tidak aktif',
-          message: '${error.message} Perpanjang KTA untuk membuka kembali percakapan.',
+          message:
+              '${error.message} Percakapan adalah layanan untuk anggota aktif; hubungi pengurus atau perpanjang '
+              'keanggotaan organisasi.',
           actionLabel: 'Perpanjang KTA',
           onAction: () => context.push(AppRoutes.renewal),
         );
