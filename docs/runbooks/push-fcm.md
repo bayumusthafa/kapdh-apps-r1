@@ -41,7 +41,7 @@ Sudah dikerjakan pemilik:
 Belum tercatat (kerjakan lalu centang di sini):
 
 - [ ] Clipboard sudah dibersihkan dan berkas kunci yang diunduh sudah dihapus (bagian 4.1 langkah 6).
-- [ ] Pemeriksaan di VPS (4.2) dan penyalinan ke berkas env VPS (4.3).
+- [ ] Pemeriksaan di VPS (4.1a nama variabel, 4.2) dan penyalinan ke berkas env VPS (4.3).
 - [ ] `push-selftest` LULUS di kontainer API (bagian 5). Butuh image API yang memuat CLI.
 - [ ] Isi `C:\kapdh-secure\firebase-production.json` sudah diperiksa (6.1), lalu build aplikasi >= `1.0.0` dengan push
       aktif.
@@ -149,7 +149,7 @@ Aplikasi memakai **satu** kunci API untuk Android dan iOS (`PushConfig`).
 4. Klik 'Deploy' `kapdh-api`, tunggu sampai "New container is healthy." / "Rolling update completed.", lalu 'Deploy'
    `kapdh-worker`. Bila log menampilkan `... gagal start` (hanya nama variabel), perbaiki nilai di Normal view lalu
    deploy lagi. Kontainer lama tetap melayani selama itu.
-5. Jalankan 4.2, bagian 5, lalu 4.3.
+5. Jalankan 4.1a, 4.2, bagian 5, lalu 4.3.
 6. **Bersihkan PC** setelah nilai tersimpan di Coolify:
 
    ```powershell
@@ -162,6 +162,63 @@ Aplikasi memakai **satu** kunci API untuk Android dan iOS (`PushConfig`).
    Berkas kunci tidak perlu disimpan, karena kunci yang hilang cukup diganti dengan kunci baru (bagian 7). Bila
    organisasi tetap ingin menyimpan salinan, simpan hanya di password manager organisasi (D9).
 7. Opsional setelah 4.3 lulus: 'Lock' kedua variabel di kedua resource. Nilainya lalu tersembunyi permanen di UI.
+
+### 4.1a Pemeriksaan nama variabel saja
+
+Jalankan sebelum 4.2, juga kapan pun ragu variabel mana yang terpasang. Blok ini hanya membaca dan hanya mencetak
+**nama** variabel push di kontainer API dan worker production, ditambah penanda `(KOSONG)`, `HILANG` dan status
+`NODE_ENV`. Tidak ada nilai yang tampil, jadi aman ditempel utuh di shell root VPS. Bila resource Coolify tidak
+ditemukan, blok mencoba nama kontainer jalur Compose cadangan (`kapdh-production-<api|worker>-1`).
+
+```sh
+for r in api worker; do
+  c=$(docker ps --filter "label=coolify.resourceName=kapdh-$r" --filter "label=coolify.environmentName=production" --format '{{.Names}}' | head -n1)
+  [ -n "$c" ] || c=$(docker ps --format '{{.Names}}' | grep -x "kapdh-production-$r-1" || true)
+  if [ -z "$c" ]; then echo "kapdh-$r: BERHENTI, kontainer production tidak ditemukan"; continue; fi
+  echo "== kapdh-$r ($c)"
+  docker exec "$c" node -e 'const p=/^(NODE_ENV|FCM_[A-Z_]*|FIREBASE_[A-Z_]*|APNS_[A-Z_]*|GOOGLE_APPLICATION_CREDENTIALS)$/;const ks=Object.keys(process.env).filter(k=>p.test(k)).sort();for(const k of ks)console.log("  "+k+(String(process.env[k]).trim()?"":" (KOSONG)"));for(const k of ["FCM_PROJECT_ID","FCM_SERVICE_ACCOUNT_JSON"])if(!ks.includes(k))console.log("  HILANG: "+k);console.log("  NODE_ENV=production: "+(process.env.NODE_ENV==="production"?"ya":"TIDAK"))'
+done
+```
+
+Hasil yang diharapkan (baris di bawah header identik untuk kedua resource; di dalam kurung tercetak nama kontainer
+yang diperiksa):
+
+```
+== kapdh-api (<kontainer api>)
+  FCM_PROJECT_ID
+  FCM_SERVICE_ACCOUNT_JSON
+  NODE_ENV
+  NODE_ENV=production: ya
+== kapdh-worker (<kontainer worker>)
+  FCM_PROJECT_ID
+  FCM_SERVICE_ACCOUNT_JSON
+  NODE_ENV
+  NODE_ENV=production: ya
+```
+
+- `(KOSONG)` di belakang nama: variabel ada tetapi isinya kosong atau hanya spasi. `HILANG: ...`: variabel tidak sampai
+  ke kontainer (nama salah ketik, belum ditambahkan, atau 'Runtime' mati). Perbaiki di Normal view resource itu (4.1),
+  lalu deploy.
+- Nama lain (`FIREBASE_*`, `APNS_*`, `GOOGLE_APPLICATION_CREDENTIALS`) tidak dibaca server. Nilai `FIREBASE_*` hanya
+  untuk build aplikasi (bagian 6), dan kunci APNs hanya di Firebase (bagian 8). Hapus variabel itu dari resource di
+  Normal view, lalu deploy.
+- `NODE_ENV=production: TIDAK`: image API/worker sudah memasang `NODE_ENV=production`, jadi nilainya ditimpa variabel
+  `NODE_ENV` di resource. Penolakan start tanpa pasangan FCM (bagian 1) tidak berlaku selama itu. Hapus variabel itu
+  di Normal view, lalu deploy.
+- Bila nama di dalam kurung `kapdh-production-api-1`/`kapdh-production-worker-1`, yang diperiksa adalah kontainer
+  jalur Compose cadangan. Perbaikan di atas lalu dilakukan di `/etc/kapdh/production.env` dan kontainer dibuat ulang
+  (`compose-cadangan.md`), bukan di Coolify.
+- `BERHENTI`: kontainer tidak ditemukan. Lihat nama, label Coolify, dan image setiap kontainer yang berjalan (tanpa
+  nilai env):
+
+  ```sh
+  docker ps --format '{{.Names}}\t{{.Label "coolify.resourceName"}}\t{{.Label "coolify.environmentName"}}\t{{.Image}}'
+  ```
+
+  API dan worker production harus tampil dengan resource `kapdh-api`/`kapdh-worker`, lingkungan `production`, dan
+  image dari repositori `ghcr.io/<org>/kapdh-api`/`ghcr.io/<org>/kapdh-worker`. Tag image boleh `sha-<commit>`,
+  `vX.Y.Z` atau `production`; yang menentukan adalah repositorinya. Bila nama resource atau lingkungan berbeda,
+  sesuaikan filter di blok ini serta di 4.2 dan 4.3.
 
 ### 4.2 Pemeriksaan di VPS tanpa mencetak nilai
 
@@ -417,18 +474,51 @@ terdampak. Token akses yang sudah diterbitkan dari kunci itu kedaluwarsa paling 
 ## 8. iOS: kunci APNs (`.p8`) — nanti
 
 Push iOS butuh kunci APNs di proyek Firebase. Kunci itu dibuat setelah akun Apple Developer organisasi aktif
-(`docs/runbooks/app-store-submission.md`).
+(`docs/runbooks/app-store-submission.md`). Entitlement `aps-environment` sudah ada di repo
+(`kapdh-mobile/ios/Runner/Runner.entitlements`, bersama `applinks:kapdh.or.id`). Build iOS yang ditandatangani tim
+Apple organisasi diharapkan mendaftarkan token push setelah pengguna login, asalkan dibangun dengan
+`PUSH_ENABLED=true` dan nilai `FIREBASE_*` lengkap termasuk `FIREBASE_IOS_APP_ID` (bagian 6). Perilaku ini belum diuji
+di perangkat; buktikan di iPhone nyata (langkah 5, `production-init.md` 5.6).
+
+Bila token APNs belum tiba saat login (galat `apns-token-not-set`, umum pada izin pertama atau peluncuran dingin),
+aplikasi mencoba `getToken` lagi beberapa kali selama sekitar 30 detik dan tetap mendengarkan pembaruan token. Log
+debug-nya: `push: token APNs belum tersedia, dicoba lagi dalam N detik`, lalu
+`push: token APNs belum tersedia setelah N percobaan, menunggu pembaruan token` bila semua percobaan habis. Galat lain
+(mis. konfigurasi `FIREBASE_*` salah) tidak dicoba ulang dan dicatat dengan kodenya.
+
+**Urutan aman:** unggah `.p8` **lebih dulu** (langkah 1-2) ke proyek Firebase yang dipakai build itu
+(`FIREBASE_PROJECT_ID` build): `kapdh-prod` untuk build production, proyek Firebase staging untuk build staging yang
+dibagikan lewat TestFlight (ADR-016). Berkas `.p8` yang sama boleh diunggah ke kedua proyek. Baru setelah itu bagikan
+build iOS apa pun yang membawa entitlement itu, termasuk TestFlight. Tanpa kunci di proyek build itu, setiap
+pengiriman ke token iOS gagal dan tidak dicoba ulang. Notifikasi tetap ada di inbox, tetapi push iOS hilang dan alert
+penyedia push (`monitoring.md` monitor 10) dapat menyala.
 
 1. Apple Developer → 'Certificates, Identifiers & Profiles' → 'Keys' → '+'. Centang 'Apple Push Notifications service
    (APNs)', unduh berkas `AuthKey_<KEYID>.p8` (hanya bisa diunduh sekali), lalu catat Key ID dan Team ID.
 2. Firebase Console → Project settings → 'Cloud Messaging' → 'Apple app configuration' (aplikasi iOS
-   `id.or.kapdh.app`) → 'APNs Authentication Key' → 'Upload'. Isi berkas `.p8`, Key ID, dan Team ID.
+   `id.or.kapdh.app`) → 'APNs Authentication Key' → 'Upload'. Isi berkas `.p8`, Key ID, dan Team ID. Ulangi di proyek
+   Firebase staging bila build staging iOS akan dibagikan (urutan aman di atas).
 3. Aktifkan capability 'Push Notifications' pada App ID `id.or.kapdh.app` (`production-init.md` 5.4).
 4. Simpan `.p8` di password manager organisasi, lalu hapus dari folder unduhan (seperti 4.1 langkah 6).
-5. Uji di iPhone nyata dengan build production (5.3 dan `production-init.md` 5.6). Sebelum langkah ini selesai,
-   pengiriman ke token iOS gagal `THIRD_PARTY_AUTH_ERROR` dan tidak dicoba ulang. Android tidak terdampak.
+5. Uji di iPhone nyata dengan build production (5.3 dan `production-init.md` 5.6). Sebelum langkah 2 selesai, FCM
+   menolak pengiriman ke token iOS dengan `THIRD_PARTY_AUTH_ERROR` dan pengiriman itu tidak dicoba ulang. Android
+   tidak terdampak.
 
 Server tidak perlu diubah. Kunci APNs hanya ada di Firebase, tidak di Coolify.
+
+**Membedakan galat APNs dari galat akun layanan.** Penolakan APNs disimpan sebagai `error_class` `AUTH_ERROR`, kelas
+yang sama dengan kegagalan OAuth atau izin akun layanan (bagian 7). Bedanya terlihat dari platform token. Di web admin
+Notifikasi → Pengiriman, saring 'Kelas galat' `AUTH_ERROR` dan lihat kolom 'Kanal'. Bila hanya `Push (iOS)`, kunci
+APNs belum ada atau salah di Firebase (bagian ini). Bila `Push (Android)` juga ada, masalahnya kunci akun layanan
+(bagian 7, lalu `push-selftest` 5.2). Lewat SQL, tanpa token:
+
+```sh
+PG=$(docker ps --format '{{.Names}}' | grep -x 2ohiu7mobeihyqhthcqyix6o)        # kontainer PostgreSQL production
+docker exec "$PG" psql -U postgres -d kapdh -XAt -c "select t.platform, count(*) from app.notification_deliveries d join app.device_tokens t on t.id = d.device_token_id where d.channel = 'push' and d.error_class = 'AUTH_ERROR' and d.updated_at > now() - interval '24 hours' group by t.platform"   # hanya ios|<n> = kunci APNs
+```
+
+Bila tidak ada pengiriman Android dalam rentang itu, hasil "hanya iOS" belum cukup. `push-selftest` (5.2) yang LULUS
+membuktikan akun layanan sehat, sehingga `AUTH_ERROR` di iOS berasal dari kunci APNs.
 
 ## 9. Rollback dan gangguan
 
