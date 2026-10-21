@@ -151,9 +151,11 @@ KAPDH_WEB=kapdh.or.id KAPDH_ADMIN=admin.kapdh.or.id KAPDH_API=api.kapdh.or.id KA
   sh infra/scripts/staging-smoke.sh
 ```
 
-Skrip itu membuktikan TLS, WSS dan header. Port dibuktikan dengan prosedur `go-live.md` 2.4 (`nmap -sV` dengan port
-kontrol 9999 dari jaringan tanpa VPN, ditambah `ss`, `docker ps` dan `iptables -S DOCKER-USER` di VPS), karena `nc -z`
-di skrip menghitung koneksi yang diterima perangkat jaringan di jalur sebagai port terbuka.
+Skrip itu membuktikan TLS, WSS dan header. Port-nya hanya dinilai bila `<ip>:443` terjangkau dan port kontrol
+(`KAPDH_PORT_CONTROL`, bawaan 9999) tidak; bila salah satunya gagal, skrip mencetak `PERINGATAN` dan tidak menilai
+port (`KAPDH_REQUIRE_PORTS=true` membuatnya keluar 3). Bukti
+port yang menentukan tetap prosedur `go-live.md` 2.4 (`nmap -sV` dengan port kontrol 9999 dari jaringan tanpa VPN,
+ditambah `ss`, `docker ps` dan `iptables -S DOCKER-USER` di VPS).
 
 Periksa juga login admin + TOTP, pembayaran menunggu, dan kartu/verifikasi KTA (PRD 8.3 langkah 3 dalam skala kecil).
 Outbox yang tertunda selama gangguan dikirim ulang otomatis oleh worker (PRD 5.1); pantau umur outbox di `/healthz`.

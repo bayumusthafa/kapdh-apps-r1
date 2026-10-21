@@ -80,14 +80,16 @@ jobs:
         run: pnpm contracts:lint
       - name: Build
         run: pnpm build
-      # Compose/env/Dockerfile/Traefik (butuh @kapdh/config hasil build), uji kering job rilis, backup/restore dan
-      # pemeriksaan monitoring dengan alat palsu (PRD 5.5, 9.2 #8 dan #9; N-06; AC F14-6; temuan audit D2-03, D2-07, D3-07).
-      - name: Validasi statis infra dan uji kering job rilis, backup, monitoring
+      # Compose/env/Dockerfile/Traefik (butuh @kapdh/config hasil build), uji kering job rilis, penilaian port uji asap
+      # lingkungan, backup/restore dan pemeriksaan monitoring dengan alat palsu (PRD 5.5, 9.2 #8 dan #9; N-06; N-07;
+      # AC F14-6; temuan audit D2-03, D2-07, D3-07; go-live.md 2.4).
+      - name: Validasi statis infra dan uji kering job rilis, uji asap lingkungan, backup, monitoring
         run: |
           set -euo pipefail
           node infra/scripts/validate-infra.mjs
           for f in infra/scripts/*.sh infra/traefik/*.sh infra/backup/*.sh infra/monitoring/*.sh; do sh -n "$f"; done
           sh infra/scripts/release-job.test.sh
+          sh infra/scripts/staging-smoke.test.sh
           sh infra/backup/test/dry-run.sh
           sh infra/monitoring/test/dry-run.sh
       - name: Typecheck

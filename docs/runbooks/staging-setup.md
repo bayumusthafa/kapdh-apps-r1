@@ -81,7 +81,7 @@ Pemblokir yang **pasti** menggagalkan run pertama bila dilewati:
 | 6     | Resource aplikasi dan token API Coolify          | panel, PC         | HTTP → HTTPS 301/308; uji asap commit lulus dengan tag `sha-…`; dry-run URL deploy lulus; versi Coolify diketahui |
 | 7     | `known_hosts`, uji SSH dari PC, secrets GitHub   | VPS, PC           | penolakan silang lewat SSH; `gh secret list` memuat 8 nama                                                        |
 | 8     | Run "Deploy staging"                             | PC                | run hijau, status `kapdh/staging` = `success`                                                                     |
-| 9     | Pemeriksaan sesudah deploy                       | PC, VPS, peramban | `staging-smoke.sh` lulus; langkah lanjutan tercatat                                                               |
+| 9     | Pemeriksaan sesudah deploy                       | PC, VPS, peramban | `staging-smoke.sh` lulus tanpa `PERINGATAN` port (atau port dibuktikan dengan `go-live.md` 2.4); langkah lanjutan tercatat |
 
 ---
 
@@ -839,8 +839,11 @@ KAPDH_WEB=staging.kapdh.or.id KAPDH_ADMIN=staging-admin.kapdh.or.id KAPDH_API=st
 - `KAPDH_VPS_HOST` = IP **publik** (dengan IP tailnet pemeriksaan port tidak bermakna).
 - Tanpa `nc` (Git Bash bawaan) pemeriksaan port dilewati dengan `PERINGATAN`; jalankan dari mesin yang punya `nc`,
   atau pakai prosedur port `go-live.md` 2.4 (`nmap -Pn -sV` dengan port kontrol 9999). Skrip tidak memeriksa port 22.
-- `nc -z` menghitung setiap koneksi yang diterima sebagai port terbuka. Bila jaringan di jalur menerima koneksi ke
-  port apa pun (port kontrol 9999 ikut tersambung), `TERBUKA` dari skrip bukan bukti; ikuti prosedur `go-live.md` 2.4.
+- Port hanya dinilai bila dua pembanding terpenuhi: `KAPDH_VPS_HOST:443` terjangkau (host, `nc -z` dan jaringan
+  pemeriksa berfungsi) dan port kontrol `KAPDH_PORT_CONTROL` (bawaan 9999, harus tidak dipakai di VPS) tidak
+  terjangkau (jaringan atau VPN di jalur tidak menerima semua port). Bila salah satunya gagal, skrip mencetak
+  `PERINGATAN`, tidak menilai port, dan merujuk prosedur `go-live.md` 2.4. `KAPDH_REQUIRE_PORTS=true` membuat port yang
+  belum terbukti keluar 3; pakai untuk run bukti.
 - HSTS hanya baris `info` (`HSTS_ENABLED=false`, belum diwajibkan; `rilis-dan-gerbang-go-live.md` bagian 7).
 - SSL Labs untuk ketiga domain.
 
@@ -1008,4 +1011,6 @@ skrip Node tercetak sebagai anotasi `::error title=...::<pesan>`.
 | Pesan                                                                                     | Penyebab                                                                                | Perbaikan                                         |
 | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | `GAGAL  <domain> HTTP → 302 https://... (harus 301/308 ke https)`                         | pengalihan proxy tidak permanen (middleware Coolify `redirectscheme` tanpa `permanent`) | tahap 6.2a                                        |
-| `GAGAL  port 8000 TERBUKA di <ip-publik-vps> (harus tertutup firewall)` (juga 6001, 6002, 8080) | port yang dipublikasikan Docker melewati ufw; atau jaringan/VPN di jalur menerima semua port (port kontrol 9999 ikut tersambung, `go-live.md` 2.4) | firewall penyedia atau aturan `DOCKER-USER` (2.4) |
+| `GAGAL  port 8000 TERBUKA di <ip-publik-vps> (harus tertutup firewall)` (juga 6001, 6002, 8080) | port yang dipublikasikan Docker melewati ufw | firewall penyedia atau aturan `DOCKER-USER` (2.4) |
+| `PERINGATAN: port kontrol 9999 (tidak dipakai) ikut tersambung ...` | jaringan atau VPN di jalur menerima koneksi ke semua port | jalankan dari jaringan lain, atau buktikan port dengan prosedur `go-live.md` 2.4 |
+| `PERINGATAN: nc tidak dapat menjangkau <ip>:443 ...` | `KAPDH_VPS_HOST` salah, `nc` tanpa `-z`, atau jaringan pemeriksa memblokir keluar | perbaiki host atau `nc`, jalankan dari jaringan lain, atau prosedur `go-live.md` 2.4 |

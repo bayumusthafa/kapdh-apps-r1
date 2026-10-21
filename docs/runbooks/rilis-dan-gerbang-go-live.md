@@ -129,8 +129,10 @@ commit; log run adalah bukti. Langkah manual berikut dipakai bila jalur otomatis
      KAPDH_VPS_HOST=<ip-vps> sh kapdh-platform/infra/scripts/staging-smoke.sh
    ```
 
-   Hasil port dari skrip ini (`nc -z`) bukan bukti bila jaringan di jalur menerima koneksi ke port apa pun; port
-   dibuktikan dengan prosedur `go-live.md` 2.4.
+   Skrip menilai port hanya bila `<ip-vps>:443` terjangkau dan port kontrol (bawaan 9999) tidak. Bila salah satunya
+   gagal (host/`nc`/jaringan pemeriksa bermasalah, atau jaringan di jalur menerima koneksi ke port apa pun), port
+   tidak dinilai (`PERINGATAN`) dan dibuktikan dengan prosedur `go-live.md` 2.4. Untuk run bukti, pakai
+   `KAPDH_REQUIRE_PORTS=true` agar port yang belum terbukti keluar 3.
 
    Ditambah SSL Labs untuk ketiga domain, dan `docker exec <worker> wget -qO- http://127.0.0.1:3001/healthz` → `ok`.
 
@@ -514,8 +516,8 @@ dinamis (langkah 3) aktif. Pemeriksaan langkah 4 lulus, kecuali uji token `#t=` 
   terhadap PostgreSQL 17.
 - `run-release.sh` dengan nama host/jaringan PostgreSQL resource Coolify yang sebenarnya dan `docker login ghcr.io`.
 - TLS grade (SSL Labs), pengalihan HTTP→HTTPS, upgrade WSS `/socket.io/`, port 5432/6379/3000/3001/8000/8080
-  tertutup dari internet (`staging-smoke.sh` untuk TLS/WSS; port dengan prosedur `go-live.md` 2.4, karena `nc -z` di
-  skrip itu menghitung koneksi yang diterima perangkat jaringan sebagai port terbuka); HSTS dan pengalihan permanen
+  tertutup dari internet (`staging-smoke.sh` untuk TLS/WSS, dan untuk port bila kedua pembandingnya terpenuhi; selain
+  itu port dengan prosedur `go-live.md` 2.4); HSTS dan pengalihan permanen
   proxy Coolify (bagian 7; production sudah sejak 17 Oktober 2026, gerbang 2.4 production lulus 21 Oktober 2026).
 - Batas memori/CPU di bawah beban (N-01..N-04) dan heap Node (`--max-old-space-size`).
 - Web admin di peramban nyata dengan CSP production: login, TOTP, editor berita (TipTap tanpa `<style>` sisipan),

@@ -89,9 +89,10 @@ dipindah ke VPS. Gerbang tetap diulang pada kandidat rilis sebelum go-live.
 3. **Pemeriksaan port mentah menyesatkan.** Dari mesin build yang lalu lintasnya lewat VPN berbasis TUN, semua port
    (termasuk port acak) tampak terbuka tanpa jawaban layanan. Dari VPS lain, port yang tidak dipakai tampak
    `tcpwrapped`. `go-live.md` 2.4 sekarang mewajibkan `nmap -sV`, port kontrol 9999, dan pemeriksaan dari dalam VPS.
-   `infra/scripts/staging-smoke.sh` masih memeriksa port dengan `nc -z`, yang menganggap setiap koneksi yang
-   diterima sebagai port terbuka, sehingga pada jaringan seperti ini hasilnya positif palsu. Status: runbook
-   diperbarui; skrip menyusul.
+   `infra/scripts/staging-smoke.sh` dulu menilai port dengan `nc -z` saja, sehingga pada jaringan seperti ini
+   hasilnya positif palsu. Sekarang port hanya dinilai bila `<ip>:443` terjangkau dan port kontrol
+   (`KAPDH_PORT_CONTROL`, bawaan 9999) tidak; selain itu port tidak dinilai dan skrip merujuk prosedur 2.4
+   (`KAPDH_REQUIRE_PORTS=true` keluar 3; uji: `infra/scripts/staging-smoke.test.sh`). Status: ditutup.
 4. **Coolify "Redirect to non-www" memakai pengalihan sementara** (`302` untuk GET, `307` untuk HEAD/POST). Ini tidak memenuhi target pengalihan
    permanen, sehingga diganti berkas dinamis (`rilis-dan-gerbang-go-live.md` 7.1), dan domain resource dirampingkan.
    Status: ditutup.
