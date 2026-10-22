@@ -399,12 +399,12 @@ sudo docker run --rm -i --network coolify --env-file /etc/kapdh/production/relea
 
    Migrasi hanya menambah tabel, fungsi dan trigger, lalu mengisi daftar dari kolom lama; kolom lama,
    `alumni_professions` dan data lain tidak diubah. Migrasi lebih dahulu mengunci `alumni`, `alumni_professions` dan
-   `master_professions` (EXCLUSIVE) dengan batas tunggu 15 detik (`SET LOCAL lock_timeout`): job menunggu transaksi
+   `master_professions` (EXCLUSIVE) dengan batas tunggu 15 detik per tabel, paling lama sekitar 45 detik untuk ketiganya (`SET LOCAL lock_timeout`): job menunggu transaksi
    profil yang sedang berjalan selesai, lalu menahan simpan profil baru sampai job commit (beberapa detik; baca tetap
    berjalan). Ini mencegah deadlock antara job dan API lama. Bila kunci tidak diperoleh dalam 15 detik (ada transaksi
    lama yang menggantung), job gagal cepat: `[migrate] Gagal: 55P03 ...` lalu `[rilis] GAGAL: migrasi gagal; ...`.
    Seluruh transaksi migrasi dibatalkan, skema tetap 0008, API/worker lama berjalan seperti biasa, dan simpan profil
-   yang sempat tertahan (paling lama 15 detik) dilanjutkan. `roles.sql` dan sandi role yang sudah diterapkan job
+   yang sempat tertahan (paling lama sekitar 45 detik) dilanjutkan. `roles.sql` dan sandi role yang sudah diterapkan job
    bersifat idempoten. Ulangi langkah 1.3 dan 2 saat tulisan profil sepi. Transaksi yang terbuka lebih dari 15 detik
    dapat dihitung lebih dahulu sebagai superuser (`psql "$ADMIN_DATABASE_URL"`, karena role lain tidak melihat
    `xact_start` sesi milik role lain):

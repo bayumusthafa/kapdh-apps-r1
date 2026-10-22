@@ -472,7 +472,7 @@ Harapan job #1: `migrasi tercatat 9, journal image 11`, `pra-migrasi LULUS`, bar
 `Diterapkan: 2` dan `Total tercatat: 11`, `gerbang LULUS`, `selesai`.
 
 Durasi job memberi gambaran lamanya simpan profil tertahan di production: kunci EXCLUSIVE 0009 dipegang sampai
-transaksi migrasi commit, ditambah paling lama 15 detik menunggu kunci bila ada transaksi profil yang sedang
+transaksi migrasi commit, ditambah paling lama 15 detik per tabel (sekitar 45 detik untuk tiga tabel) menunggu kunci bila ada transaksi profil yang sedang
 berjalan. Database drill tidak memiliki penulis lain, jadi gladi tidak menguji konkurensi maupun jalur `55P03`
 (kunci tidak diperoleh dalam 15 detik). Jalur itu dibuktikan uji PostgreSQL 17
 `apps/api/test/pg/migrate-and-seed.pg.test.ts`: job gagal `55P03`, skema dan journal tetap 0008, simpan profil yang
@@ -829,7 +829,7 @@ Paket bukti tetap di `/root/bukti-gladi-0009/` (root 700); salinan ringkas tanpa
 - Isi `main` antara commit yang sekarang berjalan di production (dibaca di P.1) dan `MERGE_SHA` ditinjau: perubahan
   lain yang sudah ter-merge ikut terbit bersama rilis ini.
 - Jendela jam sepi, di luar 18:45 sampai 20:00 UTC. Simpan profil tertahan selama transaksi migrasi (durasi job gladi
-  sebagai gambaran) ditambah paling lama 15 detik menunggu kunci; baca tetap berjalan.
+  sebagai gambaran) ditambah paling lama 15 detik per tabel (sekitar 45 detik untuk tiga tabel) menunggu kunci; baca tetap berjalan.
 - Tidak ada `docker pull`/redeploy Coolify ke `sha-<MERGE_SHA>` sebelum P.6 lulus (aplikasi baru membutuhkan tabel
   baru).
 
@@ -984,7 +984,7 @@ curl -fsS https://kapdh.or.id/version.json | grep -q "$MERGE_SHA" && echo "PASS 
 | `run-release.sh` tidak ikut image rilis (Dockerfile.api hanya menyalin `release-job.sh`); VPS tidak punya checkout repo [A-2] | perintah runbook `sh kapdh-platform/infra/scripts/run-release.sh` tidak dapat dijalankan apa adanya | `docker run` setara dengan argumen skrip; saran: salin `run-release.sh` ke image (`/app/infra/scripts`) seperti skrip backup                                           |
 | `run-release.sh` hanya menerima `production\|staging`, nama kontainer tetap `kapdh-release-<env>`                             | tidak ada label "drill"                                                                             | `KAPDH_ENV=production` (gerbang dan aturan pengecualian identik) + nama `kapdh-drill-release`; jaringan/env file lewat `KAPDH_DOCKER_NETWORK`/`KAPDH_RELEASE_ENV_FILE` |
 | Jalur manual tidak membuat dump pra-migrasi (hanya `remote-migrate.sh`)                                                       | tanpa langkah tambahan tidak ada titik pulih tepat sebelum migrasi                                  | runbook rilis 5.5 langkah 1.3 dan P.3 memakai perintah dump `remote-migrate.sh`, dilatih di Blok 7A                                                                    |
-| 0009 menunggu kunci EXCLUSIVE paling lama 15 detik (`lock_timeout`), lalu gagal `55P03`                                       | job production dapat gagal bila ada transaksi profil yang menggantung                               | `transaksi_lama` di P.4 sebelum job; gagal = skema tetap 0008, ulangi saat sepi (P.5); jalur gagal dibuktikan uji PostgreSQL, bukan oleh gladi                         |
+| 0009 menunggu kunci EXCLUSIVE paling lama 15 detik per tabel, sekitar 45 detik untuk tiga tabel (`lock_timeout`), lalu gagal `55P03`                                       | job production dapat gagal bila ada transaksi profil yang menggantung                               | `transaksi_lama` di P.4 sebelum job; gagal = skema tetap 0008, ulangi saat sepi (P.5); jalur gagal dibuktikan uji PostgreSQL, bukan oleh gladi                         |
 | `restore.sh` selalu memulihkan berkas juga                                                                                    | disk dan salinan berkas production di host                                                          | `FILES_ROOT=/srv/kapdh/drill/files`, dimusnahkan                                                                                                                       |
 | `restore.sh` tanpa `--yes` memanggil `read`                                                                                   | rusak di terminal Coolify                                                                           | `--yes` + `</dev/null`                                                                                                                                                 |
 | `restore.sh` memuat `/etc/kapdh/backup.secrets.env` bawaan (berisi `PGPASSWORD` kapdh_backup)                                 | secret production yang tidak perlu ikut ke drill                                                    | `KAPDH_BACKUP_SECRETS` diarahkan ke salinan tersaring                                                                                                                  |
