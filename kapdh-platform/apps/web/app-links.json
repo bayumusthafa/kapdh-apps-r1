@@ -1,0 +1,12 @@
+{
+  "$comment": "Asosiasi situs dengan aplikasi KAPDH untuk tautan https://kapdh.or.id/app/... (Android App Links dan iOS Universal Links). Nilai publik, diubah lewat PR. scripts/write-app-links.mjs memvalidasinya setelah astro build (nilai tidak sah = build gagal) lalu menulis dist/.well-known/assetlinks.json dan dist/.well-known/apple-app-site-association. android.sha256_cert_fingerprints: SHA-256 dari Play Console > Setup > App integrity > App signing key certificate, heksadesimal huruf besar berpasangan dipisah titik dua (32 pasang); jangan pernah sidik kunci debug; tambahkan sidik upload key hanya bila build di luar Play juga harus terverifikasi. ios.app_id_prefix: Team ID Apple Developer (10 karakter huruf besar/angka, Membership details). Daftar kosong atau null = berkas platform itu tidak diterbitkan (404). paths: path tautan aplikasi, sama dengan intent-filter App Links di kapdh-mobile (android:path=\"/app\" dan android:pathPrefix=\"/app/\").",
+  "android": {
+    "package_name": "id.or.kapdh.app",
+    "sha256_cert_fingerprints": []
+  },
+  "ios": {
+    "app_id_prefix": null,
+    "bundle_id": "id.or.kapdh.app"
+  },
+  "paths": ["/app", "/app/*"]
+}

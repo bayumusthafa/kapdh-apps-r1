@@ -152,7 +152,12 @@ in_edge 'curl -fsS http://kapdh-production-api-1:3000/api/v1/health/ready' | tee
 grep -q '"status":"ok"' "$work/ready.json" || die "API belum siap"
 
 step "uji asap header web dan admin"
-in_edge 'sh /s/smoke-static.sh web http://kapdh-production-web-1:8080'
+# Kontainer curl tidak punya node maupun repo: ekspektasi berkas asosiasi tautan aplikasi dihitung di host (butuh node)
+# dari apps/web/app-links.json lalu diteruskan sebagai env, dan isi berkas yang diterbitkan hanya diperiksa bentuknya
+# (infra/scripts/smoke-static.sh). Isi persis diperiksa langkah uji asap sebelumnya di job compose-stack (host dengan
+# node, image yang sama).
+app_links_env="$(sh infra/scripts/smoke-static.sh app-links-env)"
+in_edge "$app_links_env sh /s/smoke-static.sh web http://kapdh-production-web-1:8080"
 in_edge 'sh /s/smoke-static.sh admin http://kapdh-production-admin-1:8080'
 
 step "nginx -t di kontainer berjalan (non-root)"

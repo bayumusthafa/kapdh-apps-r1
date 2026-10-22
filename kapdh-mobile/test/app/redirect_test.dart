@@ -479,6 +479,34 @@ void main() {
     });
   });
 
+  group('App Links/Universal Links: URI https lengkap seperti diteruskan mesin Flutter ke go_router', () {
+    const linkId = '0192f3a4-5b6c-7d8e-9f01-23456789abcd';
+
+    test('https://kapdh.or.id/app/<rute> dinormalkan ke rute internal lalu diperiksa matriks status', () {
+      final verified = authed('verified');
+      expect(go(verified, 'https://kapdh.or.id/app/payments/pay-1'), '/payments/pay-1');
+      expect(go(verified, '/payments/pay-1'), isNull);
+      expect(go(verified, 'https://www.kapdh.or.id/app'), '/');
+      expect(go(verified, '/'), '/home');
+    });
+
+    test('AC F16-4: tautan challenge OTP dari email dibuka anonim tanpa challenge di memori', () {
+      const anon = SessionState.anonymous();
+      final location = go(anon, 'https://kapdh.or.id/app/forgot/otp?challenge=$linkId');
+      expect(location, '/forgot/otp?challenge=$linkId');
+      expect(go(anon, location!), isNull);
+    });
+
+    test('host lain dengan path /app diarahkan ke splash; https://kapdh.or.id/kta/123 rute tak dikenal, bukan KTA', () {
+      final verified = authed('verified');
+      // Path /app dinormalkan lewat DeepLinks, termasuk pemeriksaan host.
+      expect(go(verified, 'https://evil.example/app/kta'), '/splash');
+      // /kta/123 bukan rute KTA (hanya /kta persis): rute tak dikenal yang jatuh ke rute awal status.
+      expect(routeGroupOf(Uri.parse('https://kapdh.or.id/kta/123').path), RouteGroup.unknown);
+      expect(go(verified, 'https://kapdh.or.id/kta/123'), '/home');
+    });
+  });
+
   group('sesi offline (snapshot /me)', () {
     test('memakai status snapshot dan tidak keluar ke login', () {
       final offline = SessionState.offlineLastKnown(meOf(status: 'verified'), syncedAt: testNow);

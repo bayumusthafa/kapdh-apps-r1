@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Push APNs (F-13, D10). Bawaan Xcode; ekspor App Store/TestFlight menjadikannya production (docs/BUILD.md). -->
+	<key>aps-environment</key>
+	<string>development</string>
+	<!-- Universal Links https://kapdh.or.id/app/<rute>, hanya domain apex; butuh apple-app-site-association di sana. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:kapdh.or.id</string>
+	</array>
+</dict>
+</plist>

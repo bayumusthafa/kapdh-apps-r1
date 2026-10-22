@@ -1,0 +1,44 @@
+---
+import StoreButtons from "../../components/StoreButtons.astro";
+import Base from "../../layouts/Base.astro";
+// Halaman cadangan tautan aplikasi: nginx melayani berkas ini untuk /app dan setiap /app/<rute> (infra/nginx-web.conf).
+// Bila aplikasi terpasang dan domain terverifikasi (apps/web/app-links.json), sistem operasi langsung membuka aplikasi
+// dan halaman ini tidak tampil. Tujuan tombol dihitung scripts/app-open.ts dari path dan query yang tersaring.
+---
+
+<Base title="Buka Aplikasi KAPDH" description="Tautan ini dibuka di aplikasi KAPDH untuk Android dan iOS." noindex>
+  <section data-surface="dark" class="bg-surface-dark text-text-on-dark">
+    <div class="mx-auto flex max-w-xl flex-col gap-2 px-4 py-8 sm:px-6">
+      <p class="text-sm font-semibold tracking-wide text-accent uppercase">Tautan aplikasi</p>
+      <h1 class="font-heading text-3xl font-bold">Buka di aplikasi KAPDH</h1>
+      <p class="text-sm text-green-100">Tautan ini menuju halaman di aplikasi KAPDH, bukan di situs.</p>
+    </div>
+  </section>
+  <div class="mx-auto flex max-w-xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <div class="card flex flex-col gap-4 p-5">
+      <p class="text-sm">
+        Bila aplikasi KAPDH sudah terpasang di ponsel ini, ketuk tombol di bawah untuk membukanya. Bila belum, pasang
+        dahulu dari Google Play atau App Store, lalu buka kembali tautan ini.
+      </p>
+      <a id="app-open" href="kapdh://app" class="btn-primary self-start">Buka di aplikasi KAPDH</a>
+    </div>
+    <section aria-labelledby="pasang-h" class="flex flex-col gap-3">
+      <h2 id="pasang-h" class="font-heading text-xl font-semibold text-green-950">Belum memasang aplikasinya?</h2>
+      <StoreButtons />
+    </section>
+    <p class="text-sm text-text-muted">
+      Persyaratan perangkat dan cara bergabung ada di <a href="/unduh" class="font-semibold text-primary underline">Unduh Aplikasi</a>.
+      Butuh bantuan? Buka <a href="/bantuan" class="font-semibold text-primary underline">Bantuan</a>.
+    </p>
+  </div>
+</Base>
+
+<script>
+  import { readApiBase } from "../../scripts/api";
+  import { mountAppOpen } from "../../scripts/app-open";
+  import { mountConfigConsumers } from "../../scripts/config-page";
+  import { byId } from "../../scripts/dom";
+
+  mountAppOpen(byId<HTMLAnchorElement>(document, "app-open"), location);
+  void mountConfigConsumers(document, readApiBase());
+</script>

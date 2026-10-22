@@ -95,7 +95,22 @@ flutter build appbundle --release --dart-define-from-file=<berkas gabungan produ
   di bawahnya ditolak API dengan 426 UPGRADE_REQUIRED (PRD 4.5). `pubspec.yaml` saat ini `1.0.0+1` (sama dengan
   `min_app_version` seed); naikkan `N` untuk setiap unggahan berikutnya.
 - Simpan `build/symbols/<versi>` bersama artefak rilis (di luar repo) untuk membaca stack trace.
-- App Links: `https://kapdh.or.id/.well-known/assetlinks.json` memuat SHA-256 kunci penandatanganan dari Play Console.
+- App Links (`https://kapdh.or.id/app` dan `/app/<rute>`, intent-filter `autoVerify` di `AndroidManifest.xml`, dijaga
+  `test/platform/app_links_config_test.dart`) baru terverifikasi setelah
+  `https://kapdh.or.id/.well-known/assetlinks.json` memuat SHA-256 **kunci penandatanganan aplikasi** Play App Signing
+  (Play Console > Setup > App integrity > App signing key certificate), bukan kunci unggah. Berkas itu diterbitkan
+  dari `kapdh-platform/apps/web/app-links.json` (`android.sha256_cert_fingerprints`); selama kosong berkas 404. Sidik
+  baru tampil setelah AAB pertama diunggah ke Play Console (jalur pengujian internal cukup), bukan sekadar setelah
+  aplikasi dibuat; AAB rilis itu butuh `android/key.properties` (bagian 3.1). Jangan menerbitkan nilai contoh.
+  Pemeriksaan di perangkat Android 12+ setelah memasang build dari Play:
+
+  ```bash
+  adb shell pm verify-app-links --re-verify id.or.kapdh.app
+  adb shell pm get-app-links id.or.kapdh.app   # kapdh.or.id harus berstatus verified
+  ```
+
+  Status selain `verified` berarti berkas tidak terjangkau atau sidiknya tidak cocok, dan tautan dibuka di peramban.
+  APK bertanda tangan kunci debug (bagian 3.4) tidak lolos verifikasi ini.
 - Ikon notifikasi monokrom dan ikon tema Android 13: lihat "Tindak lanjut rilis" di `README.md`.
 
 ### 3.3 APK debug di CI
@@ -123,15 +138,49 @@ tidak dapat dipasang di atasnya tanpa menghapus aplikasi lebih dulu (tanda tanga
 ## 4. iOS (macOS + Xcode)
 
 - Bundle identifier `id.or.kapdh.app`, iOS 15.0 (D7), akun Apple Developer Program atas nama organisasi dengan
-  D-U-N-S (D10). Team ID diatur di Xcode (Signing & Capabilities); sertifikat dan profil tidak di-commit.
-- Capability: Push Notifications (entitlement `aps-environment` production untuk Release), Background Modes >
-  Remote notifications (sudah ada di `Info.plist`), Associated Domains `applinks:kapdh.or.id` untuk Universal Links
-  dengan `apple-app-site-association` di kapdh.or.id. Berkas `Runner.entitlements` belum ada di repo dan dibuat saat
-  capability diaktifkan.
-- Kunci APNs (`.p8`) diunggah ke proyek Firebase lingkungan yang sesuai; kunci disimpan di password manager.
+  D-U-N-S (D10). Sertifikat dan profil tidak di-commit.
+- Entitlement ada di repo: `ios/Runner/Runner.entitlements`, dipasang lewat `CODE_SIGN_ENTITLEMENTS` di konfigurasi
+  Debug, Release dan Profile target Runner saja (dijaga `test/platform/app_links_config_test.dart`):
+  - `aps-environment` `development`, nilai bawaan Xcode saat capability Push Notifications ditambahkan. Ekspor App
+    Store/TestFlight menandatangani ulang dengan profil distribusi sehingga artefak berisi `production`. Jangan
+    mengubahnya menjadi `production` di repo: build pengembangan di iPhone gagal ditandatangani.
+  - Associated Domains `applinks:kapdh.or.id` untuk Universal Links `https://kapdh.or.id/app/<rute>`. Hanya domain
+    apex: `www.kapdh.or.id` dialihkan 301 ke apex sehingga tidak dapat diklaim. Tanpa domain staging dan tanpa
+    `?mode=developer`.
+  - Background Modes > Remote notifications sudah ada di `Info.plist`.
+- Memilih Team: buka `ios/Runner.xcworkspace` di Xcode, target Runner > Signing & Capabilities, aktifkan
+  "Automatically manage signing" lalu pilih Team organisasi. Xcode menulis `DEVELOPMENT_TEAM` (Team ID 10 karakter)
+  ke konfigurasi target Runner di `project.pbxproj`. Team ID bukan rahasia (ikut terbit di
+  `apple-app-site-association`) sehingga perubahan itu boleh di-commit; uji konfigurasi menolak nilai contoh. Kedua
+  capability tampil dari berkas entitlement di atas, dan signing otomatis mengaktifkannya pada App ID
+  `id.or.kapdh.app`.
+- Kunci APNs (`.p8`) WAJIB sudah diunggah ke proyek Firebase yang dipakai build itu (`FIREBASE_PROJECT_ID` di berkas
+  `--dart-define-from-file`, bagian 5) SEBELUM build yang membawa entitlement ini dibagikan: `kapdh-prod` untuk build
+  production, proyek Firebase staging untuk build staging yang dibagikan lewat TestFlight (ADR-016). Jalur TestFlight
+  dapat membawa build staging maupun production, jadi yang menentukan adalah proyek build, bukan jalur distribusinya.
+  Berkas `.p8` yang sama boleh diunggah ke kedua proyek (`../../docs/runbooks/push-fcm.md` bagian 8). Tanpa kunci itu
+  setiap kiriman ke token iOS ditolak FCM `THIRD_PARTY_AUTH_ERROR` (tercatat `AUTH_ERROR` di riwayat pengiriman web
+  admin) dan tidak dicoba ulang. Kunci disimpan di password manager.
+- Universal Links baru aktif setelah `https://kapdh.or.id/.well-known/apple-app-site-association` terbit. Berkas itu
+  diterbitkan dari `kapdh-platform/apps/web/app-links.json` begitu Team ID diketahui dan diisi di `ios.app_id_prefix`
+  (selama kosong berkas 404), dengan path yang sama dengan App Links Android (`/app` dan `/app/*`). iOS tidak
+  mengambil berkas langsung dari kapdh.or.id, tetapi dari CDN Apple saat aplikasi dipasang, dan salinan CDN
+  diperbarui berkala. Setelah berkas berubah, ulangi
+  `curl -fsS https://app-site-association.cdn-apple.com/a/v1/kapdh.or.id` sampai isinya sama dengan berkas yang terbit,
+  baru pasang ulang aplikasi untuk menguji (`../../docs/runbooks/app-store-submission.md` bagian 1, langkah 2 tautan
+  HTTPS).
 - Build: `flutter build ipa --release --dart-define-from-file=<berkas gabungan production> --obfuscate
   --split-debug-info=build/symbols/<versi>`, unggah lewat Xcode Organizer atau Transporter, uji lewat TestFlight
   (D16), rilis bertahap (phased release, PRD 8.3).
+- Periksa entitlement artefak setelah ekspor, sebelum diunggah:
+
+  ```bash
+  rm -rf /tmp/kapdh-ipa && unzip -q build/ios/ipa/*.ipa -d /tmp/kapdh-ipa
+  codesign -d --entitlements :- /tmp/kapdh-ipa/Payload/Runner.app
+  ```
+
+  Keluarannya wajib memuat `aps-environment` bernilai `production` dan `com.apple.developer.associated-domains` berisi
+  `applinks:kapdh.or.id`. Nilai `development` berarti IPA diekspor dengan profil pengembangan; jangan diunggah.
 - Isi kepatuhan ekspor (`ITSAppUsesNonExemptEncryption`) saat unggahan pertama: aplikasi hanya memakai enkripsi
   standar sistem (HTTPS); konfirmasi oleh pemilik produk.
 - Tidak ada runner macOS di CI saat ini; build iOS dilakukan di Mac tepercaya.

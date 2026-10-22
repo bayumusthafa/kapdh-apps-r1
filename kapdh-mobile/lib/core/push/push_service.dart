@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:firebase_core/firebase_core.dart' show FirebaseException;
 import 'package:flutter/foundation.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 
@@ -76,6 +77,11 @@ class PushRegistrationStore {
 ///   di perangkat ini (AC F13-5). Server juga menonaktifkannya pada POST /auth/logout.
 /// - Semua operasi pendaftaran berjalan berurutan, sehingga penghapusan token akun lama selesai sebelum token akun
 ///   baru didaftarkan.
+/// - iOS: token FCM baru tersedia setelah token APNs diterima, dan getToken/deleteToken gagal `apns-token-not-set`
+///   sebelum itu. Langganan onTokenRefresh dipasang di awal login (sebelum penghapusan token lama), lalu langkah
+///   login diulang di antrean yang sama dengan jeda bertambah ([apnsRetryDelays], total sekitar 30 detik) selama
+///   login yang sama masih berlaku; onTokenRefresh tidak terbit bila token FCM sudah tersimpan dari peluncuran
+///   sebelumnya.
 /// - Ketukan notifikasi menormalkan `route` lewat [DeepLinks] lalu membuka router; redirect memeriksa sesi dan
 ///   status sebelum objek dibuka (AC F13-3).
 class PushService {
@@ -91,6 +97,18 @@ class PushService {
        _openLocation = openLocation,
        _registrations = PushRegistrationStore(store);
 
+  /// Kode [FirebaseException] iOS saat token APNs belum diterima perangkat (getToken dan deleteToken).
+  static const apnsTokenNotSet = 'apns-token-not-set';
+
+  /// Jeda sebelum setiap percobaan ulang langkah login saat token APNs belum tersedia (total 30 detik). Setelah itu
+  /// token didaftarkan begitu tiba lewat onTokenRefresh, atau pada login/peluncuran berikutnya.
+  static const apnsRetryDelays = [
+    Duration(seconds: 2),
+    Duration(seconds: 4),
+    Duration(seconds: 8),
+    Duration(seconds: 16),
+  ];
+
   final PushPlatform _platform;
   final DeviceRegistrar _registerDevice;
   final AppInfo _info;
@@ -103,6 +121,15 @@ class PushService {
   bool _available = false;
   String? _userId;
   String? _registeredToken;
+
+  /// Nomor alur login/keluar; percobaan ulang APNs dari alur lama yang sudah masuk antrean diabaikan.
+  int _flow = 0;
+  Timer? _apnsRetry;
+  bool _permissionRequested = false;
+
+  /// Jumlah penghapusan token FCM yang berhasil; token dari onTokenRefresh yang terbit sebelum penghapusan berikutnya
+  /// sudah tidak berlaku dan tidak didaftarkan.
+  int _tokenDeletions = 0;
 
   /// Push aktif di perangkat ini.
   bool get available => _available;
@@ -131,37 +158,117 @@ class PushService {
 
   Future<void> _signIn(String userId) async {
     _userId = userId;
+    _newFlow();
     if (!await start()) return;
+    // Berlangganan sebelum langkah lain: di iOS token FCM baru terbit setelah token APNs diterima dan tiba lewat
+    // onTokenRefresh, termasuk saat penghapusan token lama di bawah gagal karena token APNs belum ada. Satu langganan
+    // dipakai semua login (tanpa pendengar ganda) dan dilepas saat keluar.
+    _tokenRefresh ??= _platform.onTokenRefresh.listen(_onTokenRefresh);
+    await _connect(userId, 0);
+  }
+
+  /// Langkah login yang dapat diulang untuk [userId]: hapus token yang masih terhubung dengan akun lain, minta izin
+  /// (sekali per login), lalu daftarkan token perangkat. [attempt] menghitung percobaan ulang karena token APNs belum
+  /// tersedia.
+  Future<void> _connect(String userId, int attempt) async {
+    if (_userId != userId) return;
     try {
       // Token yang masih terhubung dengan akun lain (berganti akun, atau logout sebelumnya belum tuntas) dihapus
-      // dulu agar FCM menerbitkan token baru untuk akun ini.
-      final previous = await _registrations.read();
-      if (previous != null && (previous.pendingUnregister || previous.userId != userId)) {
-        if (!await _deleteDeviceToken()) return;
+      // dulu agar FCM menerbitkan token baru untuk akun ini. Selama gagal, catatan tertunda dipertahankan dan token
+      // tidak didaftarkan.
+      if (_needsRelease(await _registrations.read(), userId)) {
+        try {
+          await _deleteDeviceToken();
+        } on Object catch (error) {
+          if (_isApnsTokenNotSet(error)) rethrow;
+          debugPrint('push: gagal menghapus token perangkat, dicoba lagi nanti (${_describe(error)})');
+          return;
+        }
       }
-      if (_userId != userId) return;
-      permission = await _platform.requestPermission();
+      if (!_permissionRequested) {
+        permission = await _platform.requestPermission();
+        _permissionRequested = true;
+      }
       if (permission == PushPermission.denied) return;
       final token = await _platform.getToken();
       if (token != null) await _register(userId, token);
-      await _tokenRefresh?.cancel();
-      _tokenRefresh = _platform.onTokenRefresh.listen(
-        (token) => unawaited(
-          _queue.run(() async {
-            final current = _userId;
-            if (current == null) return;
-            try {
-              await _register(current, token);
-            } on Object catch (error) {
-              debugPrint('push: pendaftaran ulang token gagal (${error.runtimeType})');
-            }
-          }),
-        ),
-      );
     } on Object catch (error) {
+      if (_isApnsTokenNotSet(error)) {
+        // iOS: token APNs belum diterima sesaat setelah aplikasi dibuka atau izin diberikan.
+        _retryWhenApnsReady(userId, attempt);
+        return;
+      }
       // Push gagal tidak boleh mengganggu sesi (AC F13-2); pendaftaran dicoba lagi pada login/peluncuran berikutnya.
-      debugPrint('push: pendaftaran perangkat gagal (${error.runtimeType})');
+      debugPrint('push: pendaftaran perangkat gagal (${_describe(error)})');
     }
+  }
+
+  /// Menjadwalkan ulang [_connect] di antrean yang sama setelah jeda [apnsRetryDelays] ke-[attempt], hanya selama
+  /// alur login ini masih berlaku (keluar atau login berikutnya membatalkannya).
+  void _retryWhenApnsReady(String userId, int attempt) {
+    _cancelApnsRetry();
+    if (attempt >= apnsRetryDelays.length) {
+      debugPrint('push: token APNs belum tersedia setelah ${attempt + 1} percobaan, menunggu pembaruan token');
+      return;
+    }
+    final delay = apnsRetryDelays[attempt];
+    debugPrint('push: token APNs belum tersedia, dicoba lagi dalam ${delay.inSeconds} detik');
+    final flow = _flow;
+    _apnsRetry = Timer(delay, () {
+      _apnsRetry = null;
+      unawaited(
+        _queue.run(() async {
+          if (flow == _flow) await _connect(userId, attempt + 1);
+        }),
+      );
+    });
+  }
+
+  /// Token dari FCM: rotasi token, atau di iOS token yang terbit setelah token APNs diterima.
+  void _onTokenRefresh(String token) {
+    final deletions = _tokenDeletions;
+    unawaited(
+      _queue.run(() async {
+        final userId = _userId;
+        if (userId == null) return;
+        try {
+          if (!_permissionRequested || _needsRelease(await _registrations.read(), userId)) {
+            // Langkah login belum tuntas (mis. penghapusan token akun lain gagal karena token APNs belum ada): token
+            // APNs kini tersedia, jadi langkah login diulang (hapus token lama lalu daftarkan token baru).
+            await _connect(userId, 0);
+            return;
+          }
+          // Token yang terbit sebelum penghapusan token perangkat sudah tidak berlaku.
+          if (permission == PushPermission.denied || deletions != _tokenDeletions) return;
+          await _register(userId, token);
+        } on Object catch (error) {
+          debugPrint('push: pendaftaran ulang token gagal (${_describe(error)})');
+        }
+      }),
+    );
+  }
+
+  /// Catatan pendaftaran milik akun lain, atau penghapusan token yang belum tuntas.
+  static bool _needsRelease(PushRegistration? record, String userId) =>
+      record != null && (record.pendingUnregister || record.userId != userId);
+
+  /// Hanya [FirebaseException] berkode [apnsTokenNotSet] yang berarti menunggu token APNs; galat lain tidak diulang.
+  static bool _isApnsTokenNotSet(Object error) => error is FirebaseException && error.code == apnsTokenNotSet;
+
+  /// Jenis dan kode galat untuk log (tanpa pesan platform).
+  static String _describe(Object error) =>
+      error is FirebaseException ? '${error.runtimeType} ${error.code}' : '${error.runtimeType}';
+
+  /// Memulai alur login/keluar baru: percobaan ulang APNs alur sebelumnya dibatalkan dan izin diminta lagi.
+  void _newFlow() {
+    _flow++;
+    _cancelApnsRetry();
+    _permissionRequested = false;
+  }
+
+  void _cancelApnsRetry() {
+    _apnsRetry?.cancel();
+    _apnsRetry = null;
   }
 
   /// Dipanggil setiap kali sesi berakhir: logout (termasuk saat offline), sesi dicabut, akun dibatasi, berganti akun,
@@ -173,6 +280,7 @@ class PushService {
     final wasSignedIn = _userId != null;
     _userId = null;
     _registeredToken = null;
+    _newFlow();
     await _tokenRefresh?.cancel();
     _tokenRefresh = null;
     // Build tanpa push tidak pernah mendaftarkan token; catatan dari build/peluncuran lain (bila ada) dipertahankan
@@ -192,7 +300,7 @@ class PushService {
     } on Object catch (error) {
       debugPrint('push: catatan pendaftaran gagal diperbarui (${error.runtimeType})');
     }
-    await _deleteDeviceToken();
+    await _deleteDeviceTokenOrDefer();
   }
 
   /// Mengulang penghapusan token yang tertunda (dipanggil saat aplikasi dibuka dan saat koneksi kembali). Bila akun
@@ -212,19 +320,24 @@ class PushService {
       await _signIn(current);
       return;
     }
-    await _deleteDeviceToken();
+    await _deleteDeviceTokenOrDefer();
   });
 
-  /// Menghapus token FCM perangkat lalu catatan pendaftarannya; hanya dipanggil saat push tersedia. false bila gagal
-  /// (catatan tertunda dipertahankan untuk dicoba lagi).
-  Future<bool> _deleteDeviceToken() async {
+  /// Menghapus token FCM perangkat lalu catatan pendaftarannya; hanya dipanggil saat push tersedia. Galat diteruskan
+  /// dan catatan tertunda dipertahankan untuk dicoba lagi.
+  Future<void> _deleteDeviceToken() async {
+    await _platform.deleteToken();
+    _tokenDeletions++;
+    await _registrations.clear();
+  }
+
+  /// [_deleteDeviceToken] tanpa sesi aktif: kegagalan (offline, token APNs belum ada) hanya dicatat; penghapusan
+  /// diulang saat aplikasi dibuka atau koneksi kembali.
+  Future<void> _deleteDeviceTokenOrDefer() async {
     try {
-      await _platform.deleteToken();
-      await _registrations.clear();
-      return true;
+      await _deleteDeviceToken();
     } on Object catch (error) {
-      debugPrint('push: gagal menghapus token perangkat, dicoba lagi nanti (${error.runtimeType})');
-      return false;
+      debugPrint('push: gagal menghapus token perangkat, dicoba lagi nanti (${_describe(error)})');
     }
   }
 
@@ -234,6 +347,8 @@ class PushService {
     await _registrations.write(PushRegistration(userId: userId));
     await _registerDevice(RegisterDeviceRequest(platform: _info.platform, token: token, appVersion: _info.version));
     _registeredToken = token;
+    // Token sudah terdaftar (termasuk lewat onTokenRefresh): percobaan ulang APNs tidak diperlukan lagi.
+    _cancelApnsRetry();
   }
 
   void _open(PushMessage message) => _openRoute(message.openRoute);
@@ -243,11 +358,17 @@ class PushService {
     if (location != null) _openLocation(location);
   }
 
+  /// Melepas langganan dan percobaan ulang APNs; aman dipanggil berulang.
   Future<void> dispose() async {
-    await _tokenRefresh?.cancel();
-    for (final subscription in _subscriptions) {
+    _flow++;
+    _cancelApnsRetry();
+    final refresh = _tokenRefresh;
+    _tokenRefresh = null;
+    final subscriptions = [..._subscriptions];
+    _subscriptions.clear();
+    await refresh?.cancel();
+    for (final subscription in subscriptions) {
       await subscription.cancel();
     }
-    _subscriptions.clear();
   }
 }
