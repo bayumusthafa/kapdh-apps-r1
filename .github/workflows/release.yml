@@ -93,6 +93,7 @@ jobs:
       - name: Siapkan Node.js
         uses: ./.github/actions/setup-platform
         with:
+          pnpm: "false"
           install: "false"
           cache: "false"
       # Bukti = run deploy-staging.yml sukses dari main untuk commit ini (bukan status commit bebas teks).
@@ -222,6 +223,7 @@ jobs:
       - name: Siapkan Node.js (skrip infra/ci tanpa dependensi)
         uses: ./.github/actions/setup-platform
         with:
+          pnpm: "false"
           install: "false"
           cache: "false"
       - name: Pasang crane
@@ -375,6 +377,7 @@ jobs:
       - name: Siapkan Node.js
         uses: ./.github/actions/setup-platform
         with:
+          pnpm: "false"
           install: "false"
           cache: "false"
       - name: Pasang crane

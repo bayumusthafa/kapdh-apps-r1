@@ -64,6 +64,17 @@ tanpa digest/versi patch, digest berbeda untuk tag yang sama, atau versi Node im
 (`.github/dependabot.yml`) mengusulkan pembaruan action dan digest/patch base image dengan jeda 14 hari; upgrade mayor
 (dan cabang minor nginx) diabaikan karena perlu ADR (PRD 7.1).
 
+Gangguan sesaat registry npm (HTTP 5xx, unduhan macet) dicoba ulang sebelum menggagalkan CI:
+
+- `setup-platform` memberi pemasang pnpm (`npm ci` lalu `pnpm self-update` di pnpm/action-setup) batas waktu 30 s
+  per permintaan dengan 4 percobaan ulang, dan `pnpm install` 5 percobaan ulang; job yang hanya menjalankan skrip
+  node memakai `pnpm: "false"` sehingga tidak bergantung pada registry npm sama sekali;
+- setiap `Dockerfile.*` memasang pnpm dengan `corepack install` sebelum `pnpm fetch`, hingga 5 percobaan
+  (masing-masing paling lama 120 s), dengan `npm_config_fetch_retries=5` dan `pnpm_config_fetch_retries=5`.
+
+Bila tetap gagal, tunggu registry pulih lalu jalankan ulang job yang gagal (`gh run rerun <id> --failed`); lockfile dan
+pin versi tidak perlu diubah.
+
 ### 2.1 Allowlist kerentanan
 
 `infra/ci/vuln-allowlist.json` adalah satu-satunya cara meloloskan temuan tinggi/kritis. Setiap entri wajib: `id`

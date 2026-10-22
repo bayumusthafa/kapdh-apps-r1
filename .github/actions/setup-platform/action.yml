@@ -4,6 +4,11 @@
 name: Siapkan kapdh-platform
 description: pnpm + Node.js terpin, cache store pnpm, dan pnpm install --frozen-lockfile.
 inputs:
+  pnpm:
+    description: >-
+      Pasang pnpm ("true"/"false"). Matikan untuk job yang hanya menjalankan skrip node tanpa dependensi, agar job itu
+      tidak bergantung pada registry npm; install dan cache memerlukan pnpm.
+    default: "true"
   install:
     description: Jalankan pnpm install --frozen-lockfile di kapdh-platform ("true"/"false").
     default: "true"
@@ -16,8 +21,24 @@ inputs:
 runs:
   using: composite
   steps:
+    # Pemasang pnpm memasang pnpm bootstrap lewat `npm ci`, lalu `pnpm self-update` ke versi packageManager; keduanya
+    # mengunduh dari registry npm. Batas waktu per permintaan 30 s dengan 4 percobaan ulang (bawaan npm 5 menit, 2 kali)
+    # agar unduhan yang macet dicoba ulang alih-alih menghabiskan batas waktu job. npm membaca `npm_config_*`, pnpm 11
+    # (bootstrap) hanya `pnpm_config_*`, jadi keduanya diisi. Tanpa audit/fund: POST audit npm tidak dicoba ulang.
     - name: Siapkan pnpm (packageManager kapdh-platform/package.json)
+      if: inputs.pnpm == 'true'
       uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      env:
+        npm_config_fetch_timeout: "30000"
+        npm_config_fetch_retries: "4"
+        npm_config_fetch_retry_mintimeout: "5000"
+        npm_config_fetch_retry_maxtimeout: "30000"
+        npm_config_audit: "false"
+        npm_config_fund: "false"
+        pnpm_config_fetch_timeout: "30000"
+        pnpm_config_fetch_retries: "4"
+        pnpm_config_fetch_retry_mintimeout: "5000"
+        pnpm_config_fetch_retry_maxtimeout: "30000"
       with:
         package_json_file: kapdh-platform/package.json
     - name: Siapkan Node.js ${{ inputs.node-version }}
@@ -33,4 +54,8 @@ runs:
       working-directory: kapdh-platform
       env:
         TURBO_TELEMETRY_DISABLED: "1"
+        # Unduhan paket dicoba ulang hingga 5 kali (bawaan pnpm 2) saat registry npm terganggu sesaat. pnpm 10 membaca
+        # `npm_config_*`; `pnpm_config_*` disiapkan untuk kenaikan ke pnpm 11.
+        npm_config_fetch_retries: "5"
+        pnpm_config_fetch_retries: "5"
       run: pnpm install --frozen-lockfile
