@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { components } from "@kapdh/contracts";
-import { alumniProfessions, alumniSkills, masterProfessions, masterSkills } from "@kapdh/database";
+import { alumniProfessionEntries, alumniSkills, masterProfessions, masterSkills } from "@kapdh/database";
 import { and, count, eq, or, type SQL, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { z } from "zod";
@@ -42,7 +42,7 @@ const MASTERS: Readonly<Record<MasterKind, MasterSpec>> = {
   professions: {
     table: masterProfessions,
     usage:
-      sql<number>`(select count(*) from ${alumniProfessions} where ${alumniProfessions.professionId} = ${masterProfessions.id})`.mapWith(
+      sql<number>`(select count(*) from ${alumniProfessionEntries} where ${alumniProfessionEntries.professionId} = ${masterProfessions.id})`.mapWith(
         Number,
       ),
     entityType: "master_profession",

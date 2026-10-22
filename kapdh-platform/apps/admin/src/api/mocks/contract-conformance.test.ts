@@ -11,7 +11,7 @@ import { MOCK_EVENT_IDS, MOCK_TICKET_QR } from "./events";
 import type { S } from "./http";
 import { matchMockRoute, mockFetch, mockRouteTable } from "./index";
 import { MOCK_INVITE_TOKEN, MOCK_EXPIRED_INVITE_TOKEN } from "./invitations";
-import { MOCK_MEMBER } from "./members";
+import { MOCK_MEMBER, mockMembers, professionId } from "./members";
 import { MOCK_REPORT_IDS } from "./moderation";
 import { MOCK_DELIVERY_IDS, MOCK_OUTBOX_IDS } from "./notifications";
 import { MOCK_PROOF_FILE_ID, mockPayments } from "./payments";
@@ -1251,9 +1251,14 @@ describe("tiruan anggota dan master (admin-members, admin-masters)", () => {
   });
 
   route("GET /admin/members/{userId}", async () => {
+    // Master nonaktif yang bukan profesi bertaut pertama (AC F10-4) ikut divalidasi di profession_entries.
+    mockMembers.useMaster(MOCK_MEMBER.hasan, professionId("Petani/Peternak/Nelayan"));
     for (const m of await members())
       expect((await call("GET", `/admin/members/${m.user_id}`)).status).toBe(200);
     expect((await call("GET", "/admin/members/0199e000-0000-7000-8000-00000000ffff")).status).toBe(404);
+    const hasan = await member(MOCK_MEMBER.hasan);
+    expect(hasan.profession_entries?.map((e) => e.label)).toEqual(hasan.professions);
+    expect(hasan.profession_entries?.map((e) => e.master?.active ?? null)).toEqual([true, null, false]);
   });
 
   route("PATCH /admin/members/{userId}", async () => {

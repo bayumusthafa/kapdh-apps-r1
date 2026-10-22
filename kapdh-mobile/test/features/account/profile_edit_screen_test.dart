@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kapdh_mobile/core/storage/token_store.dart';
+import 'package:kapdh_mobile/design/design.dart';
 import 'package:kapdh_mobile/features/account/avatar_image.dart';
 
 import '../../support/app_harness.dart';
@@ -20,11 +22,20 @@ void main() {
     Map<String, FakeHandler> extra = const {},
     AvatarPicker? picker,
     double textScale = 1,
+    TestClock? clock,
   }) async {
     final profile = me ?? meFullJson();
     final app = await pumpApp(
       tester,
-      tokens: savedTokens(),
+      // Token sesi masih berlaku menurut jam uji yang dipakai.
+      tokens: clock == null
+          ? savedTokens()
+          : StoredTokens(
+              accessToken: 'access-1',
+              accessExpiresAt: clock.now.add(const Duration(minutes: 10)),
+              refreshToken: 'refresh-1',
+            ),
+      clock: clock,
       textScale: textScale,
       overrides: [if (picker != null) avatarPickerProvider.overrideWithValue(picker)],
       handler: apiRoutes({
@@ -58,8 +69,65 @@ void main() {
     await settle(tester);
   }
 
+  /// Widget berkunci `<prefix><id draf>` ke-[index] (baris daftar berulang berkunci id stabil).
+  Finder keyed(String prefix, int index) => find
+      .byWidgetPredicate((w) => w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith(prefix))
+      .at(index);
+
+  Finder educationField(int index, String name) =>
+      find.descendant(of: keyed('profile-education-$name-', index), matching: find.byType(EditableText));
+
+  Finder educationDropdown(int index, String name) => keyed('profile-education-$name-', index);
+
+  Finder linkPlatform(int index) => keyed('profile-link-platform-', index);
+
+  Finder linkValue(int index) =>
+      find.descendant(of: keyed('profile-link-value-', index), matching: find.byType(EditableText));
+
+  Future<void> addLink(WidgetTester tester) async {
+    await scrollAndTap(tester, find.byKey(const ValueKey('profile-link-add')));
+    await settle(tester);
+  }
+
+  /// Memilih [label] dari dropdown; menu terbuka di lapisan atas sehingga item menu adalah kemunculan terakhir.
+  Future<void> chooseDropdown(WidgetTester tester, Finder dropdown, String label) async {
+    await scrollAndTap(tester, dropdown);
+    await settle(tester);
+    await tester.tap(find.text(label).last);
+    await settle(tester);
+  }
+
   List<RequestOptions> patches(AppHarness app) =>
       app.adapter.requests.where((r) => r.path == '/me/profile' && r.method == 'PATCH').toList();
+
+  /// 409 VERSION_CONFLICT dengan versi terbaru [current].
+  FakeResponse conflict(Map<String, Object?> current) =>
+      FakeResponse.json(409, errorJson('VERSION_CONFLICT', 'Data sudah diubah orang lain.', current: current));
+
+  /// Simpan yang ditolak 409, lalu "Pakai isian saya".
+  Future<void> saveAndKeepMine(WidgetTester tester) async {
+    await save(tester);
+    expect(find.text('Profil diubah di perangkat lain'), findsOneWidget);
+    await tester.tap(find.text('Pakai isian saya'));
+    await settle(tester);
+  }
+
+  /// Menambah profesi ketikan sendiri lewat lembar "Pilih profesi".
+  Future<void> addTypedProfession(WidgetTester tester, String label) async {
+    await scrollAndTap(tester, find.byKey(const ValueKey('profile-professions-picker')));
+    await settle(tester);
+    await tester.enterText(find.byKey(const ValueKey('master-search')), label);
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('profession-add-typed')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('master-done')));
+    await settle(tester);
+  }
+
+  /// Nilai pilihan dropdown Tahun Tamat pada Pendidikan ke-[index].
+  List<int?> yearChoices(WidgetTester tester, int index) => [
+    for (final item in tester.widget<KapdhDropdownField<int?>>(educationDropdown(index, 'year')).items) item.value,
+  ];
 
   testWidgets('F-10: formulir terisi dari GET /me; identitas keanggotaan hanya dibaca (AC F05-6)', (tester) async {
     final app = await openProfile(
@@ -86,12 +154,12 @@ void main() {
     final app = await openProfile(tester);
     await enter(tester, 'city', ' Dumai ');
     await enter(tester, 'bio', 'Pengajar bahasa Arab.');
-    await enter(tester, 'social_instagram', 'ahmad.uji');
     await save(tester);
     final requests = patches(app);
     expect(requests, hasLength(1));
     expect(headerOf(requests.single, 'If-Match'), '3');
-    expect(bodyOf(requests.single), {'city': 'Dumai', 'bio': 'Pengajar bahasa Arab.', 'social_instagram': 'ahmad.uji'});
+    // Field lama aplikasi 1.0.0 tidak pernah dikirim; daftar yang tidak diubah juga tidak.
+    expect(bodyOf(requests.single), {'city': 'Dumai', 'bio': 'Pengajar bahasa Arab.'});
     expect(find.text('Profil tersimpan.'), findsOneWidget);
     expect(app.location, '/account');
   });
@@ -111,14 +179,15 @@ void main() {
   testWidgets('validasi lokal: telepon dan media sosial mengikuti aturan kontrak (N-09)', (tester) async {
     final app = await openProfile(tester);
     await enter(tester, 'phone', 'nomor saya');
-    await enter(tester, 'social_x', 'javascript:alert(1)');
+    await addLink(tester);
+    await tester.enterText(linkValue(0), 'javascript:alert(1)');
     await save(tester);
     expect(patches(app), isEmpty);
     expect(find.text('Gunakan angka, boleh diawali + (mis. +62 812 3456 7890).'), findsOneWidget);
     expect(find.text('Isi nama pengguna atau tautan yang diawali https://'), findsOneWidget);
   });
 
-  testWidgets('galat server per field ditampilkan pada field terkait', (tester) async {
+  testWidgets('galat server bersarang (social_links.0.value) ditampilkan pada baris terkait', (tester) async {
     await openProfile(
       tester,
       patch: (_) => FakeResponse.json(
@@ -127,41 +196,187 @@ void main() {
           'VALIDATION_ERROR',
           'Periksa kembali isian yang ditandai.',
           fieldErrors: {
-            'social_linkedin': ['Tautan harus https.'],
+            'social_links.0.value': ['Tautan harus https.'],
           },
         ),
       ),
     );
-    await enter(tester, 'social_linkedin', 'https://www.linkedin.com/in/ahmad.uji');
+    await addLink(tester);
+    await tester.enterText(linkValue(0), 'https://www.linkedin.com/in/ahmad.uji');
     await save(tester);
     expect(find.text('Tautan harus https.'), findsOneWidget);
   });
 
-  testWidgets('AC F10-4: profesi nonaktif tampil sebagai label historis; pilihan baru hanya dari master aktif', (
+  testWidgets('v2: profesi lebih dari satu dari daftar master atau ketik sendiri; label historis dapat dilepas', (
     tester,
   ) async {
     final app = await openProfile(
       tester,
-      me: meFullJson(profession: masterJson('p-old', 'Penyuluh Lapangan', active: false)),
+      me: meFullJson(professions: ['Penyuluh Lapangan']),
       extra: {
         '/masters/professions': (_) => FakeResponse.json(200, {
           'items': [masterJson('p-1', 'Guru'), masterJson('p-2', 'Dokter')],
         }),
       },
     );
-    expect(find.text('Penyuluh Lapangan (tidak aktif)'), findsOneWidget);
-    await scrollAndTap(tester, find.byKey(const ValueKey('profile-profession')));
+    expect(find.text('Penyuluh Lapangan'), findsOneWidget);
+    await scrollAndTap(tester, find.byKey(const ValueKey('profile-professions-picker')));
     await settle(tester);
-    expect(find.text('Pilih profesi'), findsWidgets);
-    expect(find.text('Guru'), findsOneWidget);
-    expect(find.text('Dokter'), findsOneWidget);
-    // Master nonaktif tidak dapat dipilih baru dari daftar aktif.
-    expect(find.descendant(of: find.byType(BottomSheet), matching: find.text('Penyuluh Lapangan')), findsNothing);
-    await tester.tap(find.text('Guru'));
+    final sheet = find.byType(BottomSheet);
+    expect(find.descendant(of: sheet, matching: find.text('Pilih profesi')), findsOneWidget);
+    // Profesi terpasang di luar daftar master tampil tercentang; master aktif dapat dipilih lebih dari satu.
+    expect(find.descendant(of: sheet, matching: find.text('Penyuluh Lapangan')), findsOneWidget);
+    await tester.tap(find.descendant(of: sheet, matching: find.text('Guru')));
+    await tester.pump();
+    // Ketik sendiri: "Tambah …" hanya bila tidak sama dengan master atau pilihan yang ada.
+    await tester.enterText(find.byKey(const ValueKey('master-search')), 'guru');
+    await tester.pump();
+    expect(find.byKey(const ValueKey('profession-add-typed')), findsNothing);
+    await tester.enterText(find.byKey(const ValueKey('master-search')), '  Penulis Lepas ');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('profession-add-typed')));
+    await tester.pump();
+    expect(find.textContaining('Dipilih 3 dari maksimal 5'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('master-done')));
     await settle(tester);
-    expect(find.text('Guru'), findsOneWidget);
+    expect(find.bySemanticsLabel('Hapus profesi Penulis Lepas'), findsOneWidget);
+    // Cip seluruhnya menghapus: lepas profesi pertama.
+    await scrollAndTap(tester, find.bySemanticsLabel('Hapus profesi Penyuluh Lapangan'));
     await save(tester);
-    expect(bodyOf(patches(app).single), {'profession_id': 'p-1'});
+    expect(bodyOf(patches(app).single), {
+      'professions': ['Guru', 'Penulis Lepas'],
+    });
+  });
+
+  testWidgets('v2: maksimal 5 profesi; pilihan ke-6 dinonaktifkan', (tester) async {
+    await openProfile(
+      tester,
+      me: meFullJson(professions: ['A', 'B', 'C', 'D', 'E']),
+      extra: {
+        '/masters/professions': (_) => FakeResponse.json(200, {
+          'items': [masterJson('p-1', 'Guru')],
+        }),
+      },
+    );
+    await scrollAndTap(tester, find.byKey(const ValueKey('profile-professions-picker')));
+    await settle(tester);
+    expect(find.textContaining('Maksimal 5 profesi'), findsOneWidget);
+    expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('master-p-1'))).onChanged, isNull);
+    await tester.enterText(find.byKey(const ValueKey('master-search')), 'Penulis');
+    await tester.pump();
+    expect(tester.widget<ListTile>(find.byKey(const ValueKey('profession-add-typed'))).enabled, isFalse);
+  });
+
+  testWidgets('v2: riwayat pendidikan berulang: tambah, isi strata dan tahun, hapus; baris kosong diabaikan', (
+    tester,
+  ) async {
+    final app = await openProfile(
+      tester,
+      me: meFullJson(
+        education: [educationEntryJson('Universitas Riau', major: 'Pendidikan Bahasa Arab', level: 's1', year: 2019)],
+      ),
+    );
+    expect(find.text('Pendidikan 1'), findsOneWidget);
+    expect(find.text('Universitas Riau'), findsOneWidget);
+    expect(find.text('S1'), findsOneWidget);
+    expect(find.text('2019'), findsOneWidget);
+    await scrollAndTap(tester, find.byKey(const ValueKey('profile-education-add')));
+    await settle(tester);
+    expect(find.text('Pendidikan 2'), findsOneWidget);
+    // Baris baru masih kosong: belum ada perubahan untuk disimpan.
+    await scrollTo(tester, find.byKey(const ValueKey('profile-save')));
+    expect(tester.widget<KapdhButton>(find.byKey(const ValueKey('profile-save'))).onPressed, isNull);
+
+    await scrollTo(tester, educationField(1, 'institution'));
+    await tester.enterText(educationField(1, 'institution'), 'UIN Sultan Syarif Kasim Riau');
+    await tester.enterText(educationField(1, 'major'), 'Pendidikan Agama Islam');
+    await chooseDropdown(tester, educationDropdown(1, 'level'), 'S2');
+    await chooseDropdown(tester, educationDropdown(1, 'year'), '2022');
+    // Tambah baris ketiga lalu hapus lagi (tombol hapus merah per baris).
+    await scrollAndTap(tester, find.byKey(const ValueKey('profile-education-add')));
+    await settle(tester);
+    await scrollAndTap(tester, find.byTooltip('Hapus Pendidikan 3'));
+    await settle(tester);
+    expect(find.text('Pendidikan 3'), findsNothing);
+    await save(tester);
+    expect(bodyOf(patches(app).single), {
+      'education': [
+        {'institution': 'Universitas Riau', 'major': 'Pendidikan Bahasa Arab', 'level': 's1', 'graduation_year': 2019},
+        {
+          'institution': 'UIN Sultan Syarif Kasim Riau',
+          'major': 'Pendidikan Agama Islam',
+          'level': 's2',
+          'graduation_year': 2022,
+        },
+      ],
+    });
+  });
+
+  testWidgets('v2: riwayat tanpa universitas/instansi ditandai; hapus semua riwayat mengirim []', (tester) async {
+    final app = await openProfile(tester, me: meFullJson(education: [educationEntryJson('Universitas Riau')]));
+    await scrollAndTap(tester, find.byKey(const ValueKey('profile-education-add')));
+    await settle(tester);
+    await scrollTo(tester, educationField(1, 'major'));
+    await tester.enterText(educationField(1, 'major'), 'Manajemen');
+    await save(tester);
+    expect(patches(app), isEmpty);
+    expect(find.text('Isi universitas/instansi atau hapus riwayat ini.'), findsOneWidget);
+    await scrollAndTap(tester, find.byTooltip('Hapus Pendidikan 2'));
+    await settle(tester);
+    await scrollAndTap(tester, find.byTooltip('Hapus Pendidikan 1'));
+    await settle(tester);
+    await save(tester);
+    expect(bodyOf(patches(app).single), {'education': <Object?>[]});
+  });
+
+  testWidgets('v2: media sosial dinamis: menu platform berlogo, nilai dinormalkan, maksimal 10 tautan', (tester) async {
+    final app = await openProfile(
+      tester,
+      me: meFullJson(
+        socialLinks: [
+          {'platform': 'instagram', 'value': 'fauzi.uji'},
+        ],
+      ),
+    );
+    expect(find.text('fauzi.uji'), findsOneWidget);
+    await addLink(tester);
+    // Tautan baru memakai platform pertama yang belum dipakai (TikTok); menu platform berisi sembilan pilihan.
+    expect(find.byTooltip('Hapus tautan TikTok'), findsOneWidget);
+    await scrollAndTap(tester, linkPlatform(1));
+    await settle(tester);
+    for (final label in [
+      'Instagram',
+      'TikTok',
+      'X (Twitter)',
+      'Facebook',
+      'LinkedIn',
+      'YouTube',
+      'Threads',
+      'Telegram',
+      'Situs web',
+    ]) {
+      expect(find.text(label), findsWidgets, reason: label);
+    }
+    await tester.tap(find.text('Situs web').last);
+    await settle(tester);
+    await tester.enterText(linkValue(1), 'kapdh');
+    await save(tester);
+    expect(patches(app), isEmpty);
+    expect(find.text('Isi tautan yang diawali https://'), findsOneWidget);
+    await tester.enterText(linkValue(1), 'https://contoh.test/fauzi');
+    await tester.pump();
+    for (var i = 2; i < 10; i++) {
+      await addLink(tester);
+      await tester.enterText(linkValue(i), 'https://contoh.test/akun$i');
+    }
+    expect(find.byKey(const ValueKey('profile-link-add')), findsNothing);
+    await save(tester);
+    final links = bodyOf(patches(app).single)['social_links']! as List<Object?>;
+    expect(links, hasLength(10));
+    expect(links.take(2), [
+      {'platform': 'instagram', 'value': 'fauzi.uji'},
+      {'platform': 'website', 'value': 'https://contoh.test/fauzi'},
+    ]);
   });
 
   testWidgets('AC F10-4: keahlian maksimal 10 dari master aktif; keahlian nonaktif dapat dilepas', (tester) async {
@@ -175,7 +390,7 @@ void main() {
       },
     );
     expect(find.text('Mengetik Cepat (tidak aktif)'), findsOneWidget);
-    await scrollAndTap(tester, find.byKey(const ValueKey('profile-skills')));
+    await scrollAndTap(tester, find.byKey(const ValueKey('profile-skills-picker')));
     await settle(tester);
     // Lepas keahlian historis, lalu pilih sampai batas.
     await tester.tap(find.text('Mengetik Cepat'));
@@ -246,7 +461,7 @@ void main() {
       patch: (options) {
         calls++;
         if (calls == 1) {
-          // Perangkat lain mengubah kota, Instagram dan keahlian.
+          // Perangkat lain mengubah kota, tautan Instagram, riwayat pendidikan dan keahlian.
           return FakeResponse.json(
             409,
             errorJson(
@@ -256,6 +471,7 @@ void main() {
                 version: '4',
                 city: 'Bangkinang',
                 instagram: 'ahmad.uji.baru',
+                education: [educationEntryJson('Universitas Perangkat Lain')],
                 skills: [masterJson('s-9', 'Public speaking')],
               ),
             ),
@@ -266,19 +482,22 @@ void main() {
     );
     // Pengguna hanya mengubah bio dan profesi.
     await enter(tester, 'bio', 'Bio baru saya');
-    await scrollAndTap(tester, find.byKey(const ValueKey('profile-profession')));
+    await scrollAndTap(tester, find.byKey(const ValueKey('profile-professions-picker')));
     await settle(tester);
     await tester.tap(find.text('Guru'));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('master-done')));
     await settle(tester);
     await save(tester);
     expect(find.text('Profil diubah di perangkat lain'), findsOneWidget);
     await tester.tap(find.text('Pakai isian saya'));
     await settle(tester);
 
-    // Formulir kini berbasis versi terbaru: kota, Instagram dan keahlian dari perangkat lain; bio dan profesi tetap
-    // isian sendiri.
+    // Formulir kini berbasis versi terbaru: kota, tautan, pendidikan dan keahlian dari perangkat lain; bio dan profesi
+    // tetap isian sendiri.
     expect(find.text('Bangkinang'), findsOneWidget);
     expect(find.text('ahmad.uji.baru'), findsOneWidget);
+    expect(find.text('Universitas Perangkat Lain'), findsOneWidget);
     expect(find.text('Public speaking'), findsOneWidget);
     expect(find.text('Bio baru saya'), findsOneWidget);
     expect(find.text('Guru'), findsOneWidget);
@@ -287,7 +506,262 @@ void main() {
     final requests = patches(app);
     expect(requests, hasLength(2));
     expect(headerOf(requests.last, 'If-Match'), '4');
-    expect(bodyOf(requests.last), {'bio': 'Bio baru saya', 'profession_id': 'p-1'});
+    expect(bodyOf(requests.last), {
+      'bio': 'Bio baru saya',
+      'professions': ['Guru'],
+    });
+  });
+
+  testWidgets('AC F15-4: "Pakai isian saya" menggabungkan daftar yang diubah di kedua sisi per entri; entri dari '
+      'perangkat lain tetap ada dan ubahan sendiri diterapkan', (tester) async {
+    var calls = 0;
+    final app = await openProfile(
+      tester,
+      me: meFullJson(
+        professions: ['Guru'],
+        education: [educationEntryJson('Universitas Riau', level: 's1', year: 2019)],
+        socialLinks: [
+          {'platform': 'instagram', 'value': 'fauzi.uji'},
+        ],
+      ),
+      extra: {
+        '/masters/professions': (_) => FakeResponse.json(200, {
+          'items': [masterJson('p-1', 'Guru'), masterJson('p-2', 'Dokter')],
+        }),
+      },
+      patch: (_) {
+        calls++;
+        if (calls == 1) {
+          // Pengurus menambah profesi, riwayat pendidikan dan tautan LinkedIn pada daftar yang sama.
+          return conflict(
+            meFullJson(
+              version: '4',
+              professions: ['Guru', 'Penyuluh Lapangan'],
+              education: [
+                educationEntryJson('Universitas Riau', level: 's1', year: 2019),
+                educationEntryJson('UIN Sultan Syarif Kasim Riau', level: 's2', year: 2022),
+              ],
+              socialLinks: [
+                {'platform': 'instagram', 'value': 'fauzi.uji'},
+                {'platform': 'linkedin', 'value': 'https://www.linkedin.com/in/fauzi'},
+              ],
+            ),
+          );
+        }
+        return FakeResponse.json(200, meFullJson(version: '5'));
+      },
+    );
+    // Pengguna mengubah nilai Instagram dan nama instansi, lalu menambah profesi.
+    await scrollTo(tester, linkValue(0));
+    await tester.enterText(linkValue(0), 'fauzi.baru');
+    await scrollTo(tester, educationField(0, 'institution'));
+    await tester.enterText(educationField(0, 'institution'), 'Universitas Riau Pekanbaru');
+    await tester.pump();
+    await addTypedProfession(tester, 'Penulis Lepas');
+    await saveAndKeepMine(tester);
+
+    // Entri tambahan pengurus tampil di samping ubahan sendiri; nilai lama yang diubah tidak kembali.
+    Finder text(String value) => find.text(value, skipOffstage: false);
+    expect(text('https://www.linkedin.com/in/fauzi'), findsOneWidget);
+    expect(text('fauzi.baru'), findsOneWidget);
+    expect(text('fauzi.uji'), findsNothing);
+    expect(text('UIN Sultan Syarif Kasim Riau'), findsOneWidget);
+    expect(text('Universitas Riau Pekanbaru'), findsOneWidget);
+    expect(text('Universitas Riau'), findsNothing);
+    expect(find.bySemanticsLabel('Hapus profesi Penyuluh Lapangan'), findsOneWidget);
+    expect(find.bySemanticsLabel('Hapus profesi Penulis Lepas'), findsOneWidget);
+
+    await save(tester);
+    final requests = patches(app);
+    expect(requests, hasLength(2));
+    expect(headerOf(requests.last, 'If-Match'), '4');
+    // Urutan versi terbaru dipertahankan; entri yang diubah atau ditambah pengguna menyusul di belakang.
+    expect(bodyOf(requests.last), {
+      'professions': ['Guru', 'Penyuluh Lapangan', 'Penulis Lepas'],
+      'education': [
+        {'institution': 'UIN Sultan Syarif Kasim Riau', 'major': null, 'level': 's2', 'graduation_year': 2022},
+        {'institution': 'Universitas Riau Pekanbaru', 'major': null, 'level': 's1', 'graduation_year': 2019},
+      ],
+      'social_links': [
+        {'platform': 'linkedin', 'value': 'https://www.linkedin.com/in/fauzi'},
+        {'platform': 'instagram', 'value': 'fauzi.baru'},
+      ],
+    });
+  });
+
+  testWidgets('AC F15-4: "Pakai isian saya" tetap menghapus entri yang dihapus pengguna walau daftarnya juga diubah '
+      'di perangkat lain', (tester) async {
+    var calls = 0;
+    final app = await openProfile(
+      tester,
+      me: meFullJson(
+        education: [
+          educationEntryJson('Universitas Riau', level: 's1', year: 2019),
+          educationEntryJson('Universitas Terbuka', level: 'd3', year: 2015),
+        ],
+        socialLinks: [
+          {'platform': 'instagram', 'value': 'fauzi.uji'},
+          {'platform': 'linkedin', 'value': 'https://www.linkedin.com/in/fauzi'},
+        ],
+      ),
+      patch: (_) {
+        calls++;
+        if (calls == 1) {
+          return conflict(
+            meFullJson(
+              version: '4',
+              education: [
+                educationEntryJson('Universitas Riau', level: 's1', year: 2019),
+                educationEntryJson('Universitas Terbuka', level: 'd3', year: 2015),
+                educationEntryJson('UIN Sultan Syarif Kasim Riau', level: 's2', year: 2022),
+              ],
+              socialLinks: [
+                {'platform': 'instagram', 'value': 'fauzi.uji'},
+                {'platform': 'linkedin', 'value': 'https://www.linkedin.com/in/fauzi'},
+                {'platform': 'telegram', 'value': 'fauzi_tg'},
+              ],
+            ),
+          );
+        }
+        return FakeResponse.json(200, meFullJson(version: '5'));
+      },
+    );
+    await scrollAndTap(tester, find.byTooltip('Hapus Pendidikan 2'));
+    await settle(tester);
+    await scrollAndTap(tester, find.byTooltip('Hapus tautan LinkedIn'));
+    await settle(tester);
+    await saveAndKeepMine(tester);
+
+    Finder text(String value) => find.text(value, skipOffstage: false);
+    expect(text('Universitas Terbuka'), findsNothing);
+    expect(text('https://www.linkedin.com/in/fauzi'), findsNothing);
+    expect(text('UIN Sultan Syarif Kasim Riau'), findsOneWidget);
+    expect(text('fauzi_tg'), findsOneWidget);
+
+    await save(tester);
+    expect(bodyOf(patches(app).last), {
+      'education': [
+        {'institution': 'Universitas Riau', 'major': null, 'level': 's1', 'graduation_year': 2019},
+        {'institution': 'UIN Sultan Syarif Kasim Riau', 'major': null, 'level': 's2', 'graduation_year': 2022},
+      ],
+      'social_links': [
+        {'platform': 'instagram', 'value': 'fauzi.uji'},
+        {'platform': 'telegram', 'value': 'fauzi_tg'},
+      ],
+    });
+  });
+
+  testWidgets('AC F15-4: gabungan yang melebihi batas ditandai, tidak dipotong; pengguna memilih yang dilepas', (
+    tester,
+  ) async {
+    final websites = [
+      for (var i = 1; i <= 9; i++) {'platform': 'website', 'value': 'https://contoh.test/akun$i'},
+    ];
+    var calls = 0;
+    final app = await openProfile(
+      tester,
+      me: meFullJson(professions: ['A', 'B', 'C', 'D'], socialLinks: websites),
+      extra: {
+        '/masters/professions': (_) => FakeResponse.json(200, {
+          'items': [masterJson('p-1', 'Guru')],
+        }),
+      },
+      patch: (_) {
+        calls++;
+        if (calls == 1) {
+          // Perangkat lain mengisi profesi dan tautan sampai batasnya.
+          return conflict(
+            meFullJson(
+              version: '4',
+              professions: ['A', 'B', 'C', 'D', 'Dokter'],
+              socialLinks: [
+                ...websites,
+                {'platform': 'telegram', 'value': 'kapdh.pengurus'},
+              ],
+            ),
+          );
+        }
+        return FakeResponse.json(200, meFullJson(version: '5'));
+      },
+    );
+    await addTypedProfession(tester, 'Penulis Lepas');
+    await addLink(tester);
+    await tester.enterText(linkValue(9), 'fauzi.saya');
+    await tester.pump();
+    await saveAndKeepMine(tester);
+
+    // Enam profesi dan sebelas tautan tetap ada; batasnya ditandai pada daftar masing-masing.
+    expect(find.bySemanticsLabel('Hapus profesi Dokter'), findsOneWidget);
+    expect(find.bySemanticsLabel('Hapus profesi Penulis Lepas'), findsOneWidget);
+    expect(find.text('Maksimal 5 profesi.', skipOffstage: false), findsOneWidget);
+    final linkRows = find.byWidgetPredicate(
+      (w) => w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('profile-link-value-'),
+      skipOffstage: false,
+    );
+    expect(linkRows, findsNWidgets(11));
+    expect(find.text('Maksimal 10 tautan.', skipOffstage: false), findsOneWidget);
+    expect(find.text('kapdh.pengurus', skipOffstage: false), findsOneWidget);
+    expect(find.text('fauzi.saya', skipOffstage: false), findsOneWidget);
+
+    // Simpan ditahan sampai pengguna melepas sendiri entri yang berlebih.
+    await save(tester);
+    expect(patches(app), hasLength(1));
+    await scrollAndTap(tester, find.bySemanticsLabel('Hapus profesi D'));
+    await settle(tester);
+    await scrollAndTap(tester, find.byTooltip('Hapus tautan Situs web', skipOffstage: false).first);
+    await settle(tester);
+    await save(tester);
+    expect(patches(app), hasLength(2));
+    final body = bodyOf(patches(app).last);
+    expect(body['professions'], ['A', 'B', 'C', 'Dokter', 'Penulis Lepas']);
+    final links = body['social_links']! as List<Object?>;
+    expect(links, hasLength(10));
+    expect(links.first, {'platform': 'website', 'value': 'https://contoh.test/akun2'});
+    expect(links.skip(8), [
+      {'platform': 'telegram', 'value': 'kapdh.pengurus'},
+      {'platform': 'instagram', 'value': 'fauzi.saya'},
+    ]);
+  });
+
+  testWidgets('Tahun Tamat dibatasi tahun berjalan WIB (Asia/Jakarta) seperti server, bukan tahun UTC perangkat', (
+    tester,
+  ) async {
+    // 31 Desember 17.00 UTC = 1 Januari 00.00 WIB: tahun 2027 sudah boleh dipilih, 2028 belum.
+    await openProfile(
+      tester,
+      clock: TestClock(DateTime.utc(2026, 12, 31, 17)),
+      me: meFullJson(education: [educationEntryJson('Universitas Riau')]),
+    );
+    await scrollTo(tester, educationDropdown(0, 'year'));
+    final choices = yearChoices(tester, 0);
+    expect(choices.take(3), [null, 2027, 2026]);
+    expect(choices, isNot(contains(2028)));
+    expect(choices.last, 1950);
+  });
+
+  testWidgets('tahun tamat tersimpan di luar rentang pilihan tetap tampil tanpa galat dan tidak ikut terkirim', (
+    tester,
+  ) async {
+    final app = await openProfile(
+      tester,
+      me: meFullJson(
+        education: [
+          educationEntryJson('Universitas Masa Depan', year: testNow.year + 1),
+          educationEntryJson('Sekolah Lama', year: 1949),
+        ],
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    await scrollTo(tester, educationDropdown(0, 'year'));
+    expect(find.text('${testNow.year + 1}'), findsOneWidget);
+    expect(yearChoices(tester, 0).take(3), [null, testNow.year + 1, testNow.year]);
+    await scrollTo(tester, educationDropdown(1, 'year'));
+    expect(find.text('1949'), findsOneWidget);
+    expect(yearChoices(tester, 1).last, 1949);
+    await enter(tester, 'bio', 'Bio baru');
+    await save(tester);
+    expect(tester.takeException(), isNull);
+    expect(bodyOf(patches(app).single), {'bio': 'Bio baru'});
   });
 
   testWidgets('PRD 4.5: konflik tanpa versi terbaru dan GET /me gagal menampilkan galat dengan coba lagi; isian utuh', (
@@ -453,10 +927,124 @@ void main() {
     expect(find.text('Pekanbaru'), findsOneWidget);
   });
 
-  testWidgets('N-11: teks 200 % tanpa meluap', (tester) async {
-    await openProfile(tester, textScale: 2);
+  testWidgets('N-13: tautan berplatform baru (belum dikenal) mengunci Media Sosial; simpan tidak menghapusnya', (
+    tester,
+  ) async {
+    final app = await openProfile(
+      tester,
+      me: meFullJson(
+        socialLinks: [
+          {'platform': 'instagram', 'value': 'fauzi.uji'},
+          {'platform': 'whatsapp', 'value': 'https://wa.me/6281200000001'},
+        ],
+      ),
+    );
+    await scrollTo(tester, find.textContaining('versi aplikasi yang lebih baru'));
+    expect(find.textContaining('versi aplikasi yang lebih baru'), findsOneWidget);
+    expect(find.byKey(const ValueKey('profile-link-add')), findsNothing);
+    // Formulir tidak dianggap berubah saat dibuka; perubahan lain tidak mengirim social_links.
+    await scrollTo(tester, find.byKey(const ValueKey('profile-save')));
+    expect(tester.widget<KapdhButton>(find.byKey(const ValueKey('profile-save'))).onPressed, isNull);
+    await enter(tester, 'bio', 'Bio baru');
+    await save(tester);
+    expect(bodyOf(patches(app).single), {'bio': 'Bio baru'});
+  });
+
+  testWidgets('galat server per profesi (professions.N) tampil pada field Profesi', (tester) async {
+    await openProfile(
+      tester,
+      me: meFullJson(professions: ['Guru']),
+      extra: {
+        '/masters/professions': (_) => FakeResponse.json(200, {
+          'items': [masterJson('p-1', 'Guru'), masterJson('p-2', 'Dokter')],
+        }),
+      },
+      patch: (_) => FakeResponse.json(
+        400,
+        errorJson(
+          'VALIDATION_ERROR',
+          'Periksa kembali isian yang ditandai.',
+          fieldErrors: {
+            'professions.1': ['Profesi tidak boleh memuat karakter kontrol'],
+          },
+        ),
+      ),
+    );
+    await scrollAndTap(tester, find.byKey(const ValueKey('profile-professions-picker')));
+    await settle(tester);
+    await tester.tap(find.text('Dokter'));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('master-done')));
+    await settle(tester);
+    await save(tester);
+    expect(find.text('Profesi tidak boleh memuat karakter kontrol'), findsOneWidget);
+  });
+
+  testWidgets('galat server baris tetap pada baris yang dikirim walau baris kosong di atasnya kemudian diisi', (
+    tester,
+  ) async {
+    await openProfile(
+      tester,
+      patch: (_) => FakeResponse.json(
+        400,
+        errorJson(
+          'VALIDATION_ERROR',
+          'Periksa kembali isian yang ditandai.',
+          fieldErrors: {
+            'education.0.institution': ['Nama institusi ditolak server.'],
+          },
+        ),
+      ),
+    );
+    // Pendidikan 1 dibiarkan kosong (tidak ikut terkirim), Pendidikan 2 diisi lalu disimpan.
+    await scrollAndTap(tester, find.byKey(const ValueKey('profile-education-add')));
+    await settle(tester);
+    await scrollAndTap(tester, find.byKey(const ValueKey('profile-education-add')));
+    await settle(tester);
+    await scrollTo(tester, educationField(1, 'institution'));
+    await tester.enterText(educationField(1, 'institution'), 'Universitas Uji');
+    await save(tester);
+    Finder errorIn(int row) => find.descendant(
+      of: keyed('profile-education-institution-', row),
+      matching: find.text('Nama institusi ditolak server.'),
+    );
+    expect(errorIn(1), findsOneWidget);
+    // Baris kosong di atasnya diisi: galat tetap di Pendidikan 2, tidak pindah ke Pendidikan 1.
+    await scrollTo(tester, educationField(0, 'institution'));
+    await tester.enterText(educationField(0, 'institution'), 'Universitas Lain');
+    await tester.pump();
+    expect(errorIn(0), findsNothing);
+    expect(errorIn(1), findsOneWidget);
+  });
+
+  Map<String, Object?> fullLists() => meFullJson(
+    professions: ['Guru', 'Penerjemah Lepas', 'Penulis Buku Anak'],
+    education: [
+      educationEntryJson('UIN Sultan Syarif Kasim Riau', major: 'Pendidikan Agama Islam', level: 's2', year: 2022),
+      educationEntryJson('Universitas Riau', major: 'Pendidikan Bahasa Arab', level: 's1', year: 2019),
+    ],
+    socialLinks: [
+      {'platform': 'instagram', 'value': 'fauzi.uji'},
+      {'platform': 'linkedin', 'value': 'https://www.linkedin.com/in/fauzi.uji'},
+    ],
+  );
+
+  testWidgets('N-11: teks 200 % tanpa meluap, termasuk daftar berulang', (tester) async {
+    await openProfile(tester, textScale: 2, me: fullLists());
+    expect(tester.takeException(), isNull);
+    await scrollTo(tester, find.byKey(const ValueKey('profile-link-add')));
     expect(tester.takeException(), isNull);
     await scrollTo(tester, find.byKey(const ValueKey('profile-save')));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tema gelap: kartu daftar berulang memakai palet gelap tanpa galat tata letak', (tester) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    await openProfile(tester, me: fullLists());
+    await scrollTo(tester, find.text('Riwayat Pendidikan'));
+    expect(Theme.of(tester.element(find.text('Riwayat Pendidikan'))).brightness, Brightness.dark);
+    await scrollTo(tester, find.byKey(const ValueKey('profile-link-add')));
     expect(tester.takeException(), isNull);
   });
 }

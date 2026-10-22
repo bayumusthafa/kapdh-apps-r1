@@ -30,14 +30,15 @@ paths:
 
         Pencarian `q` mencocokkan nama (tanpa membedakan huruf besar/kecil, sebagian kata). Filter angkatan, kelas,
         kota, profesi dan keahlian digabung dengan AND; profesi/keahlian memakai ID master terkontrol dari
-        GET /masters/{kind}. Master yang sudah nonaktif tetap dapat dipakai sebagai filter agar anggota dengan label
-        historis tetap dapat ditemukan (AC F10-4).
+        GET /masters/{kind}. Filter profesi cocok bila SALAH SATU profesi anggota tertaut master itu (profesi boleh
+        lebih dari satu; ketikan sendiri tidak tertaut master). Master yang sudah nonaktif tetap dapat dipakai
+        sebagai filter agar anggota dengan label historis tetap dapat ditemukan (AC F10-4).
 
         Paging keyset stabil tanpa duplikasi antarhalaman (AC F10-1): urutan `name_asc` = (nama, user_id),
         `cohort_desc` = (angkatan menurun, nama, user_id). `total` dihitung dengan filter yang sama. Bawaan 30,
         maksimum 100 per halaman. Request dibatasi laju untuk mencegah scraping (429 RATE_LIMITED).
 
-        Kartu hasil hanya memuat field kartu guideline p7 (avatar, nama, profesi, kota, lulusan terakhir, keahlian,
+        Kartu hasil hanya memuat field kartu guideline p7 (avatar, nama, profesi, kota, pendidikan teratas, keahlian,
         kode angkatan); kontak (email, telepon, sosial) tidak pernah ada di hasil pencarian (AC F10-2).
       x-kapdh-access: { audience: mobile, member_access: active }
       parameters:
@@ -104,9 +105,9 @@ paths:
         saat show_in_directory=false.
 
         Privasi (AC F10-2, N-15): `email` hanya dikirim bila show_email=true, `phone` hanya bila show_phone=true,
-        `social` hanya bila show_social=true. Bila flag mati, kuncinya tidak ada di payload. Data administratif
-        (nomor anggota, masa aktif, alasan suspend, kelas masuk/keluar) tidak pernah dikirim; pengurus berizin
-        membacanya lewat API admin yang diaudit.
+        `social` dan `social_links` hanya bila show_social=true. Bila flag mati, kuncinya tidak ada di payload. Data
+        administratif (nomor anggota, masa aktif, alasan suspend, kelas masuk/keluar) tidak pernah dikirim; pengurus
+        berizin membacanya lewat API admin yang diaudit.
 
         Master profesi/keahlian yang sudah dinonaktifkan tetap ditampilkan sebagai label historis dengan
         active=false (AC F10-4). `can_message` false bila salah satu pihak memblokir, atau profil milik sendiri;
@@ -158,9 +159,9 @@ components:
     DirectoryMember:
       type: object
       description: |
-        Kartu anggota di direktori (guideline p7): avatar, nama, profesi - kota, lulusan terakhir, chip keahlian,
+        Kartu anggota di direktori (guideline p7): avatar, nama, profesi - kota, pendidikan teratas, chip keahlian,
         kode angkatan. Tidak pernah memuat email, telepon, tautan sosial, nomor anggota, atau masa aktif (AC F10-2).
-      required: [user_id, full_name, cohort, cohort_code, skills]
+      required: [user_id, full_name, cohort, cohort_code, skills, professions, latest_education]
       additionalProperties: false
       properties:
         user_id: { type: string, format: uuid }
@@ -179,16 +180,53 @@ components:
           oneOf:
             - $ref: "#/components/schemas/NetworkMasterRef"
             - type: "null"
+          description: Deprecated (aplikasi 1.0.0); pakai `professions`. Profesi pertama yang tertaut master.
+        professions:
+          type: array
+          maxItems: 5
+          description: Profesi sesuai urutan pemilik (yang pertama = profesi utama); lihat ProfessionLabel (me.yaml).
+          items: { type: string, maxLength: 100 }
+        latest_education:
+          oneOf:
+            - $ref: "#/components/schemas/NetworkEducationEntry"
+            - type: "null"
+          description: Entri teratas riwayat pendidikan (terbaru); null bila kosong.
         last_education_institution:
           type: [string, "null"]
           maxLength: 120
-          description: Institusi pendidikan terakhir ("Lulusan Terakhir").
-        last_education_city: { type: [string, "null"], maxLength: 80 }
+          description: Deprecated (aplikasi 1.0.0); pakai `latest_education`. Institusi entri pendidikan teratas.
+        last_education_city:
+          type: [string, "null"]
+          maxLength: 80
+          description: Deprecated (aplikasi 1.0.0); kota lulusan terakhir dari aplikasi lama.
         skills:
           type: array
           maxItems: 10
           description: Keahlian (maksimal 10, urut label).
           items: { $ref: "#/components/schemas/NetworkMasterRef" }
+
+    NetworkEducationEntry:
+      type: object
+      description: Satu riwayat pendidikan (bentuk sama dengan EducationEntry di me.yaml), terbaru di atas.
+      required: [institution, major, level, graduation_year]
+      additionalProperties: false
+      properties:
+        institution: { type: string, maxLength: 120 }
+        major: { type: [string, "null"], maxLength: 120 }
+        level:
+          oneOf:
+            - $ref: "#/components/schemas/EducationLevel"
+            - type: "null"
+        graduation_year: { type: [integer, "null"], minimum: 1950, maximum: 2100 }
+
+    NetworkSocialLink:
+      type: object
+      description: Satu tautan sosial (bentuk sama dengan SocialLink di me.yaml).
+      required: [platform, value]
+      additionalProperties: false
+      properties:
+        platform: { $ref: "#/components/schemas/SocialPlatform" }
+        value: { type: string, maxLength: 200 }
 
     DirectoryPage:
       type: object
@@ -207,9 +245,10 @@ components:
     NetworkSocialLinks:
       type: object
       description: |
-        Tautan sosial; seluruh objek hanya dikirim bila show_social=true (AC F10-2). Batas panjang sama dengan aturan
-        tulis SocialHandle (me.yaml, maksimal 200 untuk keempat jaringan) agar nilai tersimpan yang sah selalu lolos
-        kontrak baca ini (N-13); ubah keduanya bersamaan.
+        Deprecated (aplikasi 1.0.0); pakai `social_links`. Tautan pertama per platform dari empat jaringan lama;
+        seluruh objek hanya dikirim bila show_social=true (AC F10-2). Batas panjang sama dengan aturan tulis
+        SocialHandle (me.yaml, maksimal 200) agar nilai tersimpan yang sah selalu lolos kontrak baca ini (N-13); ubah
+        keduanya bersamaan.
       required: [instagram, x, facebook, linkedin]
       additionalProperties: false
       properties:
@@ -221,10 +260,10 @@ components:
     NetworkMemberProfile:
       type: object
       description: |
-        Profil anggota untuk anggota lain (guideline p7: Angkatan, Lulusan Terakhir, Profesi, Skill, Nomor Telpon,
-        Tentang, Social Media, tombol Kirim Pesan). Kunci `email`, `phone` dan `social` hanya ada bila flag privasi
-        pemiliknya aktif; bila mati kuncinya tidak dikirim (AC F10-2). Nilainya dapat null bila pemilik mengaktifkan
-        flag tetapi belum mengisi datanya.
+        Profil anggota untuk anggota lain (guideline p7 + v2: Angkatan, Riwayat Pendidikan, Profesi, Keahlian, Nomor
+        Telpon, Tentang, Media Sosial, tombol Kirim Pesan). Kunci `email`, `phone`, `social` dan `social_links`
+        hanya ada bila flag privasi pemiliknya aktif; bila mati kuncinya tidak dikirim (AC F10-2). Nilainya dapat
+        null (atau [] untuk social_links) bila pemilik mengaktifkan flag tetapi belum mengisi datanya.
       required:
         [
           user_id,
@@ -233,6 +272,8 @@ components:
           cohort_code,
           graduation_year,
           skills,
+          professions,
+          education,
           is_me,
           is_blocked_by_me,
           can_message,
@@ -253,12 +294,29 @@ components:
           oneOf:
             - $ref: "#/components/schemas/NetworkMasterRef"
             - type: "null"
+          description: Deprecated (aplikasi 1.0.0); pakai `professions`. Profesi pertama yang tertaut master.
+        professions:
+          type: array
+          maxItems: 5
+          description: Profesi sesuai urutan pemilik (yang pertama = profesi utama).
+          items: { type: string, maxLength: 100 }
         skills:
           type: array
           maxItems: 10
           items: { $ref: "#/components/schemas/NetworkMasterRef" }
-        last_education_institution: { type: [string, "null"], maxLength: 120 }
-        last_education_city: { type: [string, "null"], maxLength: 80 }
+        education:
+          type: array
+          maxItems: 10
+          description: Riwayat pendidikan, terbaru di atas.
+          items: { $ref: "#/components/schemas/NetworkEducationEntry" }
+        last_education_institution:
+          type: [string, "null"]
+          maxLength: 120
+          description: Deprecated (aplikasi 1.0.0); pakai `education`. Institusi entri pendidikan teratas.
+        last_education_city:
+          type: [string, "null"]
+          maxLength: 80
+          description: Deprecated (aplikasi 1.0.0); kota lulusan terakhir dari aplikasi lama.
         bio: { type: [string, "null"], maxLength: 500, description: '"Tentang"; teks bebas pemilik profil.' }
         email:
           type: [string, "null"]
@@ -271,6 +329,13 @@ components:
             Hanya dikirim bila show_phone=true; bila false kunci ini tidak ada (AC F10-2). Batas panjang sama dengan
             aturan tulis ProfileUpdate.phone (me.yaml) dan koreksi pengurus (admin-members.yaml), maksimal 24.
         social: { $ref: "#/components/schemas/NetworkSocialLinks" }
+        social_links:
+          type: array
+          maxItems: 10
+          description: |
+            Tautan sosial sesuai urutan pemilik; hanya dikirim bila show_social=true, bila false kunci ini tidak ada
+            (AC F10-2).
+          items: { $ref: "#/components/schemas/NetworkSocialLink" }
         is_me: { type: boolean, description: True bila profil milik pemanggil (pratinjau tampilan publik). }
         is_blocked_by_me:
           type: boolean

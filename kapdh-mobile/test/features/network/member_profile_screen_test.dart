@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kapdh_api/kapdh_api.dart';
+import 'package:kapdh_mobile/core/ui/profile_lists.dart';
 import 'package:kapdh_mobile/features/chat/chat_realtime.dart';
 import 'package:kapdh_mobile/features/network/member_profile_screen.dart';
 
@@ -45,9 +47,11 @@ void main() {
       expect(find.text('Ahmad Islam'), findsOneWidget);
       expect(find.text('Angkatan'), findsOneWidget);
       expect(find.text('#KAPDH01 · Lulus 1997'), findsOneWidget);
-      // v2: Riwayat Pendidikan menampilkan institusi lalu kota di baris keterangan.
+      // v2: Riwayat Pendidikan menampilkan institusi lalu "Strata · Jurusan · Tamat tahun".
       expect(find.text('Universitas Indonesia'), findsOneWidget);
-      expect(find.text('Jakarta'), findsOneWidget);
+      expect(find.text('S1 · Pendidikan Matematika · Tamat 2018'), findsOneWidget);
+      // Kota lulusan lama (aplikasi 1.0.0) tidak lagi ditampilkan.
+      expect(find.text('Jakarta'), findsNothing);
       expect(find.text('Guru'), findsOneWidget);
       // AC F10-4: master nonaktif tetap tampil sebagai label historis.
       expect(find.text('Berhitung Cepat'), findsOneWidget);
@@ -66,12 +70,14 @@ void main() {
             profileJson(
               email: 'ahmad.islam@contoh.test',
               phone: '+62 812 0000 0001',
-              social: {
-                'instagram': '@ahmad.uji',
-                'x': 'ahmad.uji',
-                'facebook': null,
-                'linkedin': 'javascript:alert(1)',
-              },
+              socialLinks: [
+                {'platform': 'instagram', 'value': '@ahmad.uji'},
+                {'platform': 'tiktok', 'value': 'ahmad.tt'},
+                {'platform': 'linkedin', 'value': 'javascript:alert(1)'},
+                {'platform': 'website', 'value': 'https://contoh.test/ahmad'},
+                // Platform yang belum dikenal versi aplikasi ini dilewati (kompatibilitas maju).
+                {'platform': 'mastodon', 'value': 'ahmad'},
+              ],
             ),
           ),
         },
@@ -82,17 +88,58 @@ void main() {
       await tester.scrollUntilVisible(find.text('Media Sosial'), 200, scrollable: find.byType(Scrollable).first);
       expect(find.text('Media Sosial'), findsOneWidget);
       expect(find.bySemanticsLabel('Instagram: @ahmad.uji'), findsOneWidget);
-      expect(find.bySemanticsLabel('Facebook: null'), findsNothing);
+      expect(find.bySemanticsLabel('TikTok: ahmad.tt'), findsOneWidget);
+      expect(find.bySemanticsLabel('Situs web: https://contoh.test/ahmad'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('mastodon|Tautan: ahmad')), findsNothing);
 
       await scrollAndTap(tester, find.bySemanticsLabel('Instagram: @ahmad.uji'));
       await settle(tester);
       expect(app.launched.last, Uri.parse('https://instagram.com/ahmad.uji'));
-      // Nilai yang bukan nama pengguna/https tidak pernah dibuka.
-      expect(SocialNetwork.linkedin.linkFor('javascript:alert(1)'), isNull);
+      await scrollAndTap(tester, find.bySemanticsLabel('TikTok: ahmad.tt'));
+      await settle(tester);
+      expect(app.launched.last, Uri.parse('https://www.tiktok.com/@ahmad.tt'));
+      // Nilai yang bukan nama pengguna/https tidak pernah dibuka (baris tampil tanpa tautan).
+      final launches = app.launched.length;
+      await scrollAndTap(tester, find.bySemanticsLabel('LinkedIn: javascript:alert(1)'));
+      await settle(tester);
+      expect(app.launched, hasLength(launches));
+      expect(SocialPlatform.linkedin.linkFor('javascript:alert(1)'), isNull);
       expect(
-        SocialNetwork.linkedin.linkFor('https://www.linkedin.com/in/ahmad.uji'),
+        SocialPlatform.linkedin.linkFor('https://www.linkedin.com/in/ahmad.uji'),
         Uri.parse('https://www.linkedin.com/in/ahmad.uji'),
       );
+      // Situs web hanya URL; nama pengguna tidak dijadikan tautan.
+      expect(SocialPlatform.website.linkFor('ahmad'), isNull);
+      expect(SocialPlatform.telegram.linkFor('@ahmad_uji'), Uri.parse('https://t.me/ahmad_uji'));
+    });
+
+    testWidgets('v2: profesi lebih dari satu dan riwayat pendidikan berulang terbaru di atas', (tester) async {
+      await _openProfile(
+        tester,
+        routes: {
+          '/directory/user-2': (_) => FakeResponse.json(
+            200,
+            profileJson(
+              professions: ['Guru', 'Penerjemah Lepas'],
+              education: [
+                educationJson('UIN Sultan Syarif Kasim Riau', major: 'Pendidikan Agama Islam', level: 's2', year: 2022),
+                educationJson('Universitas Riau', level: 's1'),
+                educationJson('Ma\x27had Aly Contoh'),
+              ],
+            ),
+          ),
+        },
+      );
+      expect(find.text('Penerjemah Lepas'), findsOneWidget);
+      expect(find.text('Guru'), findsOneWidget);
+      final s2 = tester.getTopLeft(find.text('UIN Sultan Syarif Kasim Riau'));
+      final s1 = tester.getTopLeft(find.text('Universitas Riau'));
+      expect(s2.dy, lessThan(s1.dy));
+      expect(find.text('S2 · Pendidikan Agama Islam · Tamat 2022'), findsOneWidget);
+      expect(find.text('S1'), findsOneWidget);
+      // Entri tanpa strata/jurusan/tahun hanya menampilkan institusi.
+      expect(find.text('Ma\x27had Aly Contoh'), findsOneWidget);
+      expect(find.text('Media Sosial'), findsNothing);
     });
 
     testWidgets('F-10, N-11: ketuk nomor telpon membuka panggilan; tekan lama menyalin', (tester) async {
@@ -266,6 +313,10 @@ void main() {
               email: 'ahmad.islam@contoh.test',
               phone: '0812',
               social: {'instagram': 'ahmad.uji', 'x': null, 'facebook': null, 'linkedin': null},
+              professions: ['Guru', 'Penerjemah Lepas', 'Penulis Buku Anak'],
+              education: [
+                educationJson('UIN Sultan Syarif Kasim Riau', major: 'Pendidikan Agama Islam', level: 's2', year: 2022),
+              ],
             ),
           ),
         },

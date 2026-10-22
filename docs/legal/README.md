@@ -3,13 +3,14 @@
 Folder ini memuat naskah final lima halaman yang diterbitkan pemilik melalui editor web admin. Naskah mengacu pada
 UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP) dan disusun untuk memenuhi persyaratan Google Play
 dan Apple App Store. Setiap pernyataan tentang cara kerja aplikasi sudah dicocokkan dengan kode R1.0 per
-15 Oktober 2026.
+15 Oktober 2026, dan uraian data profil dengan profil berulang (migrasi 0009-0010) per 21 Oktober 2026.
 
-- **Tanggal berlaku:** setiap halaman memuat baris "Berlaku sejak ..." sendiri (Kebijakan Privasi 16 Oktober 2026,
-  Tentang 18 Oktober 2026, lainnya 15 Oktober 2026). Bila diterbitkan pada tanggal lain, ubah baris itu menjadi tanggal
-  terbit sebenarnya sebelum menekan Terbitkan.
+- **Tanggal berlaku:** setiap halaman memuat baris "Berlaku sejak ..." sendiri. Kebijakan Privasi, Ketentuan Layanan,
+  Ketentuan Komunitas, dan Bantuan adalah revisi profil berulang yang belum terbit; tanggalnya masih berupa penanda
+  `[tanggal terbit]` (lihat Revisi profil berulang di bawah). Tentang berlaku sejak 18 Oktober 2026; bila diterbitkan
+  pada tanggal lain, ubah baris itu menjadi tanggal terbit sebenarnya sebelum menekan Terbitkan.
 - **Pratinjau dan cara menyalin:** buka `pratinjau.html` di peramban. Halaman itu memuat kelima naskah, tombol
-  "Salin isi" per halaman, dan langkah penerbitan.
+  "Salin isi" per halaman, kolom tanggal terbit revisi, dan langkah penerbitan.
 
 ## Daftar halaman
 
@@ -46,6 +47,37 @@ dan tidak ada yang memuat penanda kerangka DRAF yang ditolak gerbang go-live.
   baru berbasis persetujuan), layar persetujuan ulang harus dibuat lebih dahulu.
 - Bila pengaturan berikut diubah di web admin, terbitkan ulang halaman yang menyebutnya: batas pembatalan tiket
   `self_cancel_days` (naskah menyebut H-3: Ketentuan Layanan bagian 6 dan Bantuan), serta kontak dukungan.
+
+## Revisi profil berulang (terbit bersama rilis aplikasi)
+
+Revisi ini menyesuaikan uraian data profil dengan profil berulang (`docs/runbooks/rilis-dan-gerbang-go-live.md`
+bagian 5.5, `kapdh-platform/packages/contracts/CHANGELOG.md`): profesi paling banyak 5 (dari master atau ketik sendiri;
+yang pertama menjadi profesi utama di KTA), riwayat pendidikan paling banyak 10 entri (institusi, jurusan, strata
+D3/S1/S2/S3/Lainnya, tahun tamat; kota tidak lagi diisi), dan paling banyak 10 tautan media sosial untuk sembilan
+platform yang hanya tampil ke sesama anggota bila Tampilkan media sosial (`show_social`) aktif.
+
+- **Bagian yang berubah:** Kebijakan Privasi 4.2, 4.3 (profesi utama di KTA), 7.1, dan 11.3; Ketentuan Layanan 11
+  (riwayat pendidikan); Ketentuan Komunitas 1 (riwayat pendidikan, profesi ketikan sendiri); Bantuan bagian Mengubah
+  profil, Profesi atau keahlian tidak ada dalam daftar, Data yang hanya dapat dikoreksi pengurus, Privasi profil, Apa
+  yang dapat dilihat anggota lain, Apa isi KTA digital, dan Data yang dihapus. Tentang tidak berubah.
+- **Kapan terbit:** pada hari build aplikasi mobile pertama yang memakai daftar baru dirilis ke pengguna, setelah API
+  dan web admin rilis 0009-0010 berjalan di production. Jangan lebih awal: aplikasi 1.0.0 hanya menampilkan satu
+  profesi, satu pendidikan, dan empat media sosial. Jangan ditunda: build baru mengumpulkan jurusan, strata, tahun
+  tamat, profesi ketikan sendiri, dan lima platform baru yang tidak disebut naskah sebelumnya.
+- **Umumkan lebih dahulu.** Revisi menambah jenis data profil opsional, dan Kebijakan Privasi bagian 19 menjanjikan
+  pengumuman melalui aplikasi dan situs sebelum perubahan seperti ini berlaku (misalnya berita singkat beberapa hari
+  sebelum rilis). Persetujuan ulang tidak diperlukan menurut aturan perubahan di atas: data baru bersifat opsional
+  dengan dasar persetujuan yang diberikan saat mengisinya, dan tujuan pemrosesan tidak berubah.
+- **Tanggal dan versi:** isi kolom Tanggal terbit revisi di `pratinjau.html` (Salin isi dan Pilih isi menolak selama
+  kosong), atau ganti `[tanggal terbit]` di editor sebelum menekan Terbitkan. Terbitkan keempat halaman pada hari yang
+  sama. Penerbitan menaikkan `privacy_version`, `terms_version`, dan
+  `community_version` secara otomatis, dan gerbang go-live `legal_pages` tetap harus lulus.
+- **Kota pendidikan lama:** Kebijakan Privasi 4.2 dan Bantuan menyebutnya karena `last_education_city` dari aplikasi
+  1.0.0 masih tersimpan di data production dan dikirim ke aplikasi lama selama masa transisi (dikosongkan saat
+  institusi pendidikan teratas berganti). Setelah field lama dihapus dari kontrak dan skema (bagian 5.5 langkah 7),
+  hapus kalimat tentang kota pendidikan lama dan versi aplikasi sebelumnya, lalu terbitkan ulang.
+- Naskah yang tayang sebelum revisi ini (Kebijakan Privasi 16 Oktober 2026, lainnya 15 Oktober 2026) tersimpan di
+  riwayat git folder ini dan di jejak audit `page.published`.
 
 ## Syarat sebelum terbit
 

@@ -1,5 +1,11 @@
-import { alumniProfessions, alumniSkills, masterProfessions, masterSkills } from "@kapdh/database";
-import { asc, eq, inArray } from "drizzle-orm";
+import {
+  alumniProfessionEntries,
+  alumniProfessions,
+  alumniSkills,
+  masterProfessions,
+  masterSkills,
+} from "@kapdh/database";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import type { DbOrTx, Tx } from "../../core/db/types.js";
 import { fieldError } from "../../core/errors/app-exception.js";
 
@@ -9,7 +15,52 @@ export interface MasterRef {
   active: boolean;
 }
 
-/** Profesi (maksimal satu) dan keahlian alumni dengan label historis, termasuk master nonaktif (AC F10-4). */
+/** Satu profesi beserta master tertautnya (kontrak AdminMemberProfessionEntry). */
+export interface ProfessionEntryRef {
+  label: string;
+  master: MasterRef | null;
+}
+
+/**
+ * Tautan master setiap label di `labels` (daftar `professions` alumni yang sama, urutan dan isinya dipertahankan),
+ * termasuk master nonaktif sebagai label historis (AC F10-4), untuk AdminMemberDetail.profession_entries. Label
+ * dipasangkan dengan baris pertama yang labelnya persis sama: itulah baris yang dipertahankan saat label ganda
+ * disatukan (loadProfessionLabels), sehingga entri selalu sejajar dengan `professions`. Label yang barisnya hilang
+ * di antara dua kueri (perubahan bersamaan) dikirim tanpa master.
+ */
+export async function loadProfessionEntries(
+  db: DbOrTx,
+  userId: string,
+  labels: readonly string[],
+): Promise<ProfessionEntryRef[]> {
+  if (labels.length === 0) return [];
+  const rows = await db
+    .select({
+      label: sql<string>`coalesce(${masterProfessions.label}, ${alumniProfessionEntries.label})`,
+      masterId: masterProfessions.id,
+      masterLabel: masterProfessions.label,
+      masterActive: masterProfessions.active,
+    })
+    .from(alumniProfessionEntries)
+    .leftJoin(masterProfessions, eq(masterProfessions.id, alumniProfessionEntries.professionId))
+    .where(eq(alumniProfessionEntries.alumniUserId, userId))
+    .orderBy(asc(alumniProfessionEntries.position));
+  return labels.map((label) => {
+    const row = rows.find((candidate) => candidate.label === label);
+    return {
+      label,
+      master:
+        row?.masterId && row.masterLabel !== null && row.masterActive !== null
+          ? { id: row.masterId, label: row.masterLabel, active: row.masterActive }
+          : null,
+    };
+  });
+}
+
+/**
+ * Profesi lama (alumni_professions: profesi pertama yang tertaut master, field kontrak lama `profession`) dan keahlian
+ * alumni dengan label historis, termasuk master nonaktif (AC F10-4). Daftar profesi lengkap ada di profile-lists.ts.
+ */
 export async function loadMemberMasters(
   db: DbOrTx,
   userId: string,
@@ -27,42 +78,6 @@ export async function loadMemberMasters(
     .where(eq(alumniSkills.alumniUserId, userId))
     .orderBy(asc(masterSkills.sortOrder), asc(masterSkills.label), asc(masterSkills.id));
   return { profession: profession ?? null, skills };
-}
-
-/**
- * Mengganti profesi (AC F10-4): pilihan BARU wajib master aktif; master nonaktif hanya boleh dipertahankan bila sudah
- * terpasang pada profil ini (label historis). Baris master dikunci FOR SHARE sehingga penonaktifan bersamaan
- * menunggu transaksi ini (tidak ada pemilihan baru atas master yang sudah dinonaktifkan). Mengembalikan true bila
- * berubah. `undefined` = tidak diubah, `null` = profesi dihapus.
- */
-export async function replaceProfession(
-  tx: Tx,
-  userId: string,
-  professionId: string | null | undefined,
-  now: Date,
-): Promise<boolean> {
-  if (professionId === undefined) return false;
-  const [current] = await tx
-    .select({ professionId: alumniProfessions.professionId })
-    .from(alumniProfessions)
-    .where(eq(alumniProfessions.alumniUserId, userId));
-  if ((current?.professionId ?? null) === professionId) return false;
-  if (professionId !== null) {
-    const [master] = await tx
-      .select({ active: masterProfessions.active })
-      .from(masterProfessions)
-      .where(eq(masterProfessions.id, professionId))
-      .for("share");
-    if (!master || !master.active)
-      throw fieldError(
-        "profession_id",
-        "Profesi tidak tersedia untuk dipilih. Pilih dari daftar profesi aktif.",
-      );
-  }
-  await tx.delete(alumniProfessions).where(eq(alumniProfessions.alumniUserId, userId));
-  if (professionId !== null)
-    await tx.insert(alumniProfessions).values({ alumniUserId: userId, professionId, createdAt: now });
-  return true;
 }
 
 /**

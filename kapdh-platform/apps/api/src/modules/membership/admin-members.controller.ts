@@ -20,6 +20,7 @@ import {
   adminMemberUpdateSchema,
   assertHasChange,
   assertKnownFields,
+  assertNoLegacyMix,
 } from "./profile-input.js";
 
 type AdminMemberPage = components["schemas"]["AdminMemberPage"];
@@ -112,6 +113,7 @@ export class AdminMembersController {
     const known = assertKnownFields(body, ADMIN_MEMBER_UPDATE_KEYS, { identityEditable: true });
     const input = validate(adminMemberUpdateSchema, known);
     assertHasChange(input, ["reason"]);
+    assertNoLegacyMix(input);
     return this.members.update(auth, userId, expectedVersion, input);
   }
 

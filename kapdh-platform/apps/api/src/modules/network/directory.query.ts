@@ -1,6 +1,7 @@
-import { alumni, alumniProfessions, alumniSkills, blocks, users } from "@kapdh/database";
+import { alumni, alumniSkills, blocks, users } from "@kapdh/database";
 import { and, count, eq, exists, gt, gte, isNull, lte, ne, notExists, type SQL, sql } from "drizzle-orm";
 import type { DbOrTx } from "../../core/db/types.js";
+import { hasProfession } from "../membership/profile-lists.js";
 
 /**
  * Kueri direktori anggota (F-10, PRD 3.10, ARCHITECTURE §3.5). Semua aturan tampil dihitung dari data canonical
@@ -90,21 +91,10 @@ function filterConditions(db: DbOrTx, filters: DirectoryFilters): SQL[] {
     conditions.push(lte(alumni.classIn, filters.classLevel), gte(alumni.classOut, filters.classLevel));
   // Kota cocok persis tanpa membedakan huruf besar/kecil (indeks alumni_city_idx pada lower(city)).
   if (filters.city !== undefined) conditions.push(sql`lower(${alumni.city}) = lower(${filters.city})`);
-  // Profesi/keahlian dari master terkontrol; master nonaktif tetap dapat difilter (label historis, AC F10-4).
+  // Profesi/keahlian dari master terkontrol; master nonaktif tetap dapat difilter (label historis, AC F10-4). Profesi
+  // boleh lebih dari satu: cocok bila salah satunya tertaut master ini.
   if (filters.professionId !== undefined)
-    conditions.push(
-      exists(
-        db
-          .select({ one: sql`1` })
-          .from(alumniProfessions)
-          .where(
-            and(
-              eq(alumniProfessions.alumniUserId, alumni.userId),
-              eq(alumniProfessions.professionId, filters.professionId),
-            ),
-          ),
-      ),
-    );
+    conditions.push(hasProfession(db, alumni.userId, filters.professionId));
   if (filters.skillId !== undefined)
     conditions.push(
       exists(

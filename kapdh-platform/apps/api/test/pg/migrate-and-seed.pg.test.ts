@@ -22,6 +22,8 @@ import {
   id,
   insertUser,
   type PgTestDatabase,
+  pgError,
+  sleep,
 } from "./support.js";
 
 /**
@@ -191,15 +193,186 @@ describe("PRD 5.5: job migrasi tunggal dengan advisory lock pada PostgreSQL 17",
     });
     const [tables] = await existing.sql<{ n: number }[]>`
       select count(*)::int as n from pg_tables where schemaname = 'app'`;
-    expect(tables!.n).toBe(40);
+    expect(tables!.n).toBe(43);
   });
 
-  it("skema hasil migrasi lengkap: 40 tabel (39 + otp_decoys 0007), sequence nomor anggota, trigger penjaga", async () => {
+  it("profil berulang 0009-0010 pada database sampai 0008: isi awal dari kolom lama, jembatan penulis lama, penanda API tidak bocor antar transaksi", async () => {
+    const existing = await createEmptyPgDatabase("upgrade_0010");
+    databases.push(existing);
+    const upTo0008 = migrationsUpTo("0008_qris_payment_method");
+    try {
+      await runMigrations({ url: existing.url, migrationsFolder: upTo0008.dir });
+    } finally {
+      rmSync(upTo0008.dir, { recursive: true, force: true });
+    }
+    // Data production sebelum rilis: profesi lama, lulusan terakhir, dan tiga kolom sosial.
+    const userId = await insertUser(existing.sql);
+    const master = id();
+    await existing.sql`insert into app.master_professions (id, label) values (${master}, 'Guru')`;
+    await existing.sql`
+      insert into app.alumni (user_id, full_name, gender, cohort, class_in, class_out, last_education_institution,
+        last_education_city, social_instagram, social_facebook, social_linkedin)
+      values (${userId}, 'Alumni Uji', 'male', 12, 1, 6, 'Universitas Contoh', 'Pekanbaru', 'ahmad.uji',
+        'ahmad.fb', 'https://www.linkedin.com/in/ahmad.uji')`;
+    await existing.sql`insert into app.alumni_professions (alumni_user_id, profession_id) values (${userId}, ${master})`;
+
+    expect((await runMigrations({ url: existing.url })).applied).toBe(
+      journal.entries.length - upTo0008.count,
+    );
+    const links = await existing.sql<{ platform: string; value: string }[]>`
+      select platform, value from app.alumni_social_links where alumni_user_id = ${userId} order by position`;
+    expect(links).toEqual([
+      { platform: "instagram", value: "ahmad.uji" },
+      { platform: "facebook", value: "ahmad.fb" },
+      { platform: "linkedin", value: "https://www.linkedin.com/in/ahmad.uji" },
+    ]);
+    const [education] = await existing.sql<{ institution: string }[]>`
+      select institution from app.alumni_education where alumni_user_id = ${userId}`;
+    expect(education).toEqual({ institution: "Universitas Contoh" });
+    const [profession] = await existing.sql<{ profession_id: string }[]>`
+      select profession_id from app.alumni_profession_entries where alumni_user_id = ${userId}`;
+    expect(profession).toEqual({ profession_id: master });
+
+    // Image API lama (rollback) menulis kolom lama tanpa penanda: jembatan menerapkannya ke daftar.
+    await existing.sql`update app.alumni set social_x = 'baru.x', social_facebook = null where user_id = ${userId}`;
+    // Transaksi API baru: penanda lokal transaksi membuat jembatan diam. Satu koneksi dipesan agar terbukti penanda
+    // tidak bocor ke transaksi berikutnya pada koneksi pool yang sama setelah commit.
+    const conn = await existing.sql.reserve();
+    try {
+      await conn`begin`;
+      await conn`select set_config('kapdh.profile_lists', 'api', true)`;
+      await conn`update app.alumni set social_linkedin = null where user_id = ${userId}`;
+      await conn`commit`;
+      await conn`update app.alumni set social_instagram = 'ganti.ig' where user_id = ${userId}`;
+    } finally {
+      conn.release();
+    }
+    const after = await existing.sql<{ platform: string; value: string }[]>`
+      select platform, value from app.alumni_social_links where alumni_user_id = ${userId} order by position`;
+    expect(after).toEqual([
+      { platform: "instagram", value: "ganti.ig" },
+      { platform: "linkedin", value: "https://www.linkedin.com/in/ahmad.uji" },
+      { platform: "x", value: "baru.x" },
+    ]);
+    // Proyeksi API: kolom lama dihitung ulang dari daftar.
+    await existing.sql.begin(async (tx) => {
+      await tx`select set_config('kapdh.profile_lists', 'api', true)`;
+      await tx`select app.alumni_project_legacy_profile(${userId}::uuid)`;
+    });
+    const [legacy] = await existing.sql<Record<string, string | null>[]>`
+      select social_instagram, social_x, social_facebook, social_linkedin, last_education_institution, last_education_city
+      from app.alumni where user_id = ${userId}`;
+    expect(legacy).toEqual({
+      social_instagram: "ganti.ig",
+      social_x: "baru.x",
+      social_facebook: null,
+      social_linkedin: "https://www.linkedin.com/in/ahmad.uji",
+      last_education_institution: "Universitas Contoh",
+      last_education_city: "Pekanbaru",
+    });
+  });
+
+  it("0009 dengan batas tunggu kunci 15 detik: transaksi lama yang menggantung membuat job gagal 55P03, tulisan profil di belakang antrean lanjut, skema tetap 0008, job dapat diulang", async () => {
+    const existing = await createEmptyPgDatabase("upgrade_0009_lock", 6);
+    databases.push(existing);
+    const upTo0008 = migrationsUpTo("0008_qris_payment_method");
+    try {
+      await runMigrations({ url: existing.url, migrationsFolder: upTo0008.dir });
+    } finally {
+      rmSync(upTo0008.dir, { recursive: true, force: true });
+    }
+    const hung = await insertUser(existing.sql);
+    const writer = await insertUser(existing.sql);
+    for (const userId of [hung, writer])
+      await existing.sql`
+        insert into app.alumni (user_id, full_name, gender, cohort, class_in, class_out)
+        values (${userId}, 'Alumni Uji', 'male', 12, 1, 6)`;
+    const lockWaiters = async () => {
+      const [row] = await existing.sql<{ job: number; total: number }[]>`
+        select count(*) filter (where application_name = 'kapdh-migrate')::int as job, count(*)::int as total
+        from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock'`;
+      return row!;
+    };
+    const waitFor = async (done: (w: { job: number; total: number }) => boolean) => {
+      const deadline = Date.now() + 10_000;
+      while (Date.now() < deadline) {
+        if (done(await lockWaiters())) return true;
+        await sleep(20);
+      }
+      return false;
+    };
+
+    // API lama: transaksi profil yang tidak pernah selesai memegang ROW EXCLUSIVE pada alumni.
+    const holder = await existing.sql.reserve();
+    try {
+      await holder`begin`;
+      await holder`update app.alumni set city = 'Pekanbaru' where user_id = ${hung}`;
+      const started = Date.now();
+      const job = runMigrations({ url: existing.url }).then(
+        () => ({ error: null as unknown, at: Date.now() }),
+        (error: unknown) => ({ error, at: Date.now() }),
+      );
+      expect(await waitFor((w) => w.job === 1), "job menunggu LOCK TABLE").toBe(true);
+      // Simpan profil anggota lain mengantre di belakang permintaan EXCLUSIVE job (bukan di belakang baris lama).
+      const write = existing.sql`update app.alumni set bio = 'Tulisan baru' where user_id = ${writer}`.then(
+        () => Date.now(),
+      );
+      expect(await waitFor((w) => w.total === 2), "tulisan profil tertahan di belakang job").toBe(true);
+
+      const outcome = await job;
+      expect(pgError(outcome.error).code).toBe("55P03");
+      expect(outcome.at - started).toBeGreaterThanOrEqual(14_500);
+      expect(outcome.at - started).toBeLessThan(45_000);
+      // Antrean lepas begitu job menyerah (bukan saat transaksi lama selesai; transaksi itu masih terbuka).
+      expect((await write) - started).toBeGreaterThanOrEqual(14_500);
+
+      // Seluruh transaksi migrasi dibatalkan: skema dan journal tetap 0008.
+      const [state] = await existing.sql<{ links: string | null; applied: number }[]>`
+        select to_regclass('app.alumni_social_links')::text as links,
+               (select count(*)::int from drizzle.__drizzle_migrations) as applied`;
+      expect(state).toEqual({ links: null, applied: upTo0008.count });
+    } finally {
+      await holder`rollback`.catch(() => {});
+      holder.release();
+    }
+    // Tiga statement pertama 0009 apa adanya: batas 15 detik hanya untuk LOCK TABLE, lalu kembali ke nilai bawaan
+    // untuk sisa transaksi, dan nilai sesi tidak berubah setelah transaksi selesai.
+    const [limit, lock, restore] = readFileSync(
+      join(MIGRATIONS_FOLDER, "0009_profile_lists.sql"),
+      "utf8",
+    ).split("--> statement-breakpoint");
+    const conn = await existing.sql.reserve();
+    const timeout = async () => (await conn<{ lock_timeout: string }[]>`show lock_timeout`)[0]!.lock_timeout;
+    try {
+      await conn`set lock_timeout = '7s'`;
+      await conn`begin`;
+      await conn.unsafe(limit!);
+      expect(await timeout()).toBe("15s");
+      await conn.unsafe(lock!);
+      await conn.unsafe(restore!);
+      expect(await timeout()).toBe("0");
+      await conn`rollback`;
+      expect(await timeout()).toBe("7s");
+    } finally {
+      await conn`rollback`.catch(() => {});
+      await conn`reset lock_timeout`.catch(() => {});
+      conn.release();
+    }
+    // Setelah transaksi lama selesai, job diulang dan menerapkan 0009-0010.
+    expect((await runMigrations({ url: existing.url })).applied).toBe(
+      journal.entries.length - upTo0008.count,
+    );
+    const [bio] = await existing.sql<{ bio: string | null }[]>`
+      select bio from app.alumni where user_id = ${writer}`;
+    expect(bio).toEqual({ bio: "Tulisan baru" });
+  }, 120_000);
+
+  it("skema hasil migrasi lengkap: 43 tabel (39 + otp_decoys 0007 + 3 daftar profil 0009), sequence nomor anggota, trigger penjaga", async () => {
     const tdb = await createPgTestDatabase("schema_shape");
     databases.push(tdb);
     const [tables] = await tdb.sql<{ n: number }[]>`
       select count(*)::int as n from pg_tables where schemaname = 'app'`;
-    expect(tables!.n).toBe(40);
+    expect(tables!.n).toBe(43);
     const [fee] = await tdb.sql<{ n: number }[]>`
       select count(*)::int as n from pg_tables where schemaname = 'app' and tablename = 'fee_settings'`;
     expect(fee!.n).toBe(0);
@@ -213,8 +386,15 @@ describe("PRD 5.5: job migrasi tunggal dengan advisory lock pada PostgreSQL 17",
       "admins_guard_last_super_admin",
       "admins_guard_truncate",
       "alumni_check_user_kind",
+      "alumni_education_limit",
       "alumni_guard_member_seq",
+      "alumni_legacy_profile_bridge",
+      "alumni_legacy_reproject",
+      "alumni_profession_entries_limit",
+      "alumni_professions_legacy_bridge",
+      "alumni_professions_legacy_reproject",
       "alumni_skills_limit",
+      "alumni_social_links_limit",
       "audit_logs_append_only",
       "audit_logs_no_truncate",
       "payment_events_append_only",

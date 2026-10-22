@@ -25,15 +25,18 @@ import {
   ACCOUNT_STATUS_LABEL,
   classLabel,
   EDUCATION_STATUS_LABEL,
+  educationMeta,
   GENDER_LABEL,
   PERIOD_KIND_LABEL,
   REASON_REDACTED_TEXT,
+  SOCIAL_PLATFORM_BASE,
+  SOCIAL_PLATFORM_LABEL,
 } from "./labels";
 import { lastMembersSearch } from "./listMemory";
 import { PasswordResetDialog, SuspendDialog, UnsuspendDialog } from "./MemberActionDialogs";
 import { MemberEditDialog } from "./MemberEditDialog";
 import { MembershipHistory } from "./MembershipHistory";
-import { type MemberDetail, useMemberDetail } from "./queries";
+import { type MemberDetail, professionEntries, useMemberDetail } from "./queries";
 import { RefreshFailedBanner } from "./RefreshFailedBanner";
 
 type S = components["schemas"];
@@ -335,13 +338,42 @@ function Section({
   );
 }
 
-/** Label master; master nonaktif tetap tampil sebagai label historis (AC F10-4). */
-function MasterLabel({ item }: { item: S["MasterItem"] }) {
+/**
+ * Profesi sesuai urutan anggota (pertama = profesi utama di KTA). Setiap profesi bertaut master nonaktif tetap tampil
+ * sebagai label historis dengan penanda per entri (AC F10-4, `profession_entries`).
+ */
+function ProfessionList({ member: m }: { member: MemberDetail }) {
+  const entries = professionEntries(m);
+  if (entries.length === 0) return "-";
   return (
-    <span className="inline-flex flex-wrap items-center gap-1.5">
-      {item.label}
-      {item.active === false ? <Badge tone="neutral">Master nonaktif</Badge> : null}
-    </span>
+    <ul aria-label="Profesi" className="flex flex-wrap gap-1.5">
+      {entries.map(({ label, master }, i) => (
+        <li key={`${i}-${label}`} className="inline-flex flex-wrap items-center gap-1.5">
+          <Badge tone={i === 0 ? "primary" : "neutral"}>
+            {i === 0 && entries.length > 1 ? `${label} (utama)` : label}
+          </Badge>
+          {master?.active === false ? <Badge tone="neutral">Master nonaktif</Badge> : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Riwayat pendidikan setelah pondok, terbaru di atas (urutan server). */
+function EducationList({ entries }: { entries: S["EducationEntry"][] }) {
+  if (entries.length === 0) return "-";
+  return (
+    <ol aria-label="Riwayat pendidikan" className="flex flex-col gap-2">
+      {entries.map((e, i) => {
+        const meta = educationMeta(e);
+        return (
+          <li key={`${i}-${e.institution}`} className="flex flex-col">
+            <span>{e.institution}</span>
+            {meta ? <span className="text-xs font-normal text-text-muted">{meta}</span> : null}
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -378,11 +410,8 @@ function ProfileCard({ member: m }: { member: MemberDetail }) {
             value: `${m.entry_year} - ${m.exit_year} (lulus angkatan ${m.graduation_year})`,
           },
           { label: "Kota domisili", value: m.city ?? "-" },
-          { label: "Profesi", value: m.profession ? <MasterLabel item={m.profession} /> : "-" },
-          {
-            label: "Pendidikan terakhir",
-            value: [m.last_education_institution, m.last_education_city].filter(Boolean).join(", ") || "-",
-          },
+          { label: "Profesi", wide: true, value: <ProfessionList member={m} /> },
+          { label: "Riwayat pendidikan", wide: true, value: <EducationList entries={m.education} /> },
           {
             label: "Keahlian",
             wide: true,
@@ -408,22 +437,11 @@ function ProfileCard({ member: m }: { member: MemberDetail }) {
   );
 }
 
-const SOCIAL: {
-  key: "social_instagram" | "social_x" | "social_facebook" | "social_linkedin";
-  label: string;
-  base: string;
-}[] = [
-  { key: "social_instagram", label: "Instagram", base: "https://www.instagram.com/" },
-  { key: "social_x", label: "X", base: "https://x.com/" },
-  { key: "social_facebook", label: "Facebook", base: "https://www.facebook.com/" },
-  { key: "social_linkedin", label: "LinkedIn", base: "https://www.linkedin.com/in/" },
-];
-
 /**
  * Tautan sosial aman (aturan SocialHandle): nama pengguna menjadi tautan ke domain platform, URL hanya bila
  * https. Nilai lain ditampilkan sebagai teks biasa (N-14).
  */
-export function socialHref(base: string, value: string): string | null {
+export function socialHref(base: string | null, value: string): string | null {
   if (value.startsWith("https://")) {
     try {
       return new URL(value).protocol === "https:" ? value : null;
@@ -431,7 +449,7 @@ export function socialHref(base: string, value: string): string | null {
       return null;
     }
   }
-  return /^@?[A-Za-z0-9._-]{1,100}$/.test(value)
+  return base !== null && /^@?[A-Za-z0-9._-]{1,100}$/.test(value)
     ? `${base}${encodeURIComponent(value.replace(/^@/, ""))}`
     : null;
 }
@@ -477,32 +495,34 @@ function ContactCard({ member: m }: { member: MemberDetail }) {
               </>
             ),
           },
-          ...SOCIAL.map((s) => {
-            const value = m[s.key];
-            const href = value ? socialHref(s.base, value) : null;
-            return {
-              label: s.label,
-              value: (
-                <>
-                  {value && href ? (
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`${s.label} ${value} (tab baru)`}
-                      className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
-                    >
-                      {value}
-                      <ExternalLink aria-hidden="true" className="size-3.5" />
-                    </a>
-                  ) : (
-                    (value ?? "-")
-                  )}
-                  {value ? <Visibility shown={m.privacy.show_social} /> : null}
-                </>
-              ),
-            };
-          }),
+          ...(m.social_links.length === 0
+            ? [{ label: "Media sosial", value: "-" }]
+            : m.social_links.map((link) => {
+                const label = SOCIAL_PLATFORM_LABEL[link.platform];
+                const href = socialHref(SOCIAL_PLATFORM_BASE[link.platform], link.value);
+                return {
+                  label,
+                  value: (
+                    <>
+                      {href ? (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`${label} ${link.value} (tab baru)`}
+                          className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
+                        >
+                          {link.value}
+                          <ExternalLink aria-hidden="true" className="size-3.5" />
+                        </a>
+                      ) : (
+                        link.value
+                      )}
+                      <Visibility shown={m.privacy.show_social} />
+                    </>
+                  ),
+                };
+              })),
           {
             label: "Direktori alumni",
             value: m.privacy.show_in_directory ? "Tampil di direktori" : "Tidak tampil di direktori",

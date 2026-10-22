@@ -9,16 +9,19 @@ import 'text_context_menu.dart';
 
 /// Label di atas field (guideline hal. 5: "Email", "Password", "Jenis Kelamin"). Teks label visual dikecualikan dari
 /// semantics dan dipasang sebagai label field, sehingga pembaca layar membacakan "Email, kolom teks" satu kali
-/// sementara tombol di dalam field (tampilkan sandi) tetap dapat dioperasikan terpisah (N-11).
+/// sementara tombol di dalam field (tampilkan sandi) tetap dapat dioperasikan terpisah (N-11). [visible] false
+/// menyembunyikan teks visual (mis. baris tautan yang sudah berlabel pemilih platform) tetapi label pembaca layar tetap.
 class _LabelAbove extends StatelessWidget {
-  const _LabelAbove({required this.label, required this.child, this.requiredMark = false});
+  const _LabelAbove({required this.label, required this.child, this.requiredMark = false, this.visible = true});
 
   final String label;
   final Widget child;
   final bool requiredMark;
+  final bool visible;
 
   @override
   Widget build(BuildContext context) {
+    if (!visible) return Semantics(label: requiredMark ? '$label, wajib' : label, child: child);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -73,6 +76,7 @@ class KapdhTextField extends StatefulWidget {
     this.minLines,
     this.requiredMark = false,
     this.focusNode,
+    this.labelVisible = true,
   });
 
   final String label;
@@ -105,6 +109,9 @@ class KapdhTextField extends StatefulWidget {
   final int? minLines;
   final bool requiredMark;
   final FocusNode? focusNode;
+
+  /// false: [label] hanya untuk pembaca layar (tanpa teks di atas field).
+  final bool labelVisible;
 
   @override
   State<KapdhTextField> createState() => _KapdhTextFieldState();
@@ -141,6 +148,7 @@ class _KapdhTextFieldState extends State<KapdhTextField> {
     return _LabelAbove(
       label: widget.label,
       requiredMark: widget.requiredMark,
+      visible: widget.labelVisible,
       child: TextFormField(
         controller: widget.controller,
         contextMenuBuilder: kapdhTextContextMenu,
@@ -193,6 +201,8 @@ class KapdhDropdownField<T> extends StatelessWidget {
     this.errorText,
     this.validator,
     this.requiredMark = false,
+    this.helperText,
+    this.labelVisible = true,
   });
 
   final String label;
@@ -203,12 +213,17 @@ class KapdhDropdownField<T> extends StatelessWidget {
   final String? errorText;
   final FormFieldValidator<T>? validator;
   final bool requiredMark;
+  final String? helperText;
+
+  /// false: [label] hanya untuk pembaca layar (tanpa teks di atas field).
+  final bool labelVisible;
 
   @override
   Widget build(BuildContext context) {
     return _LabelAbove(
       label: label,
       requiredMark: requiredMark,
+      visible: labelVisible,
       child: DropdownButtonFormField<T>(
         initialValue: value,
         items: items,
@@ -221,7 +236,7 @@ class KapdhDropdownField<T> extends StatelessWidget {
         borderRadius: BorderRadius.circular(KapdhRadius.md),
         elevation: 3,
         style: KapdhTheme.font(fontSize: KapdhFontSize.body, color: context.kc.text),
-        decoration: InputDecoration(hintText: hint, errorText: errorText),
+        decoration: InputDecoration(hintText: hint, errorText: errorText, helperText: helperText),
       ),
     );
   }

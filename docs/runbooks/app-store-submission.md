@@ -167,7 +167,7 @@ iklan, analitik pihak ketiga, atau pelacakan lintas aplikasi. NIK/Nomor KTP tida
 | Email | `users.email` | wajib | Contact Info → Email Address | Personal info → Email address | Login, OTP, notifikasi email; tampil di direktori hanya bila `show_email` |
 | Nomor telepon | `alumni.phone` | opsional | Contact Info → Phone Number | Personal info → Phone number | Tampil hanya bila `show_phone` |
 | Jenis kelamin, angkatan, kelas masuk/keluar | `alumni.gender`, `cohort`, `class_in`, `class_out` | wajib | Other Data (atau User Content → Other) | Personal info → Other info | Membentuk nomor anggota AA.SS.JK.N |
-| Kota, pendidikan terakhir, bio, media sosial, profesi, keahlian | `alumni.city`, `last_education_*`, `bio`, `social_*`, `alumni_professions`, `alumni_skills` | opsional | Other Data / Other User Content | Personal info → Other info | Kota diketik pengguna, bukan lokasi perangkat |
+| Kota, riwayat pendidikan, bio, media sosial, profesi, keahlian | `alumni.city`, `alumni_education` (institusi, jurusan, strata, tahun tamat), `bio`, `alumni_social_links` (sembilan platform), `alumni_profession_entries` (master atau ketikan sendiri), `alumni_skills`; kolom lama `last_education_*`, `social_*`, `alumni_professions` sebagai proyeksi | opsional | Other Data / Other User Content | Personal info → Other info | Kota diketik pengguna, bukan lokasi perangkat |
 | Foto profil | `files` purpose `avatar` | opsional | User Content → Photos or Videos | Photos and videos → Photos | EXIF dibuang dan gambar di-encode ulang di server |
 | Bukti transfer | `files` purpose `payment_proof` (gambar atau PDF) | wajib untuk membayar di aplikasi | Financial Info → Other Financial Info; User Content → Photos | Financial info → Other financial info; Photos; Files and docs | Privat; dilihat pengurus pembayaran; dihapus saat akun dihapus (D2) |
 | Riwayat iuran/tiket | `payments`, `payment_events`, `tickets` | otomatis | Purchases → Purchase History | Financial info → Purchase history | Pembayaran di luar aplikasi; catatan keuangan tersisa anonim setelah akun dihapus (D2) |
@@ -193,6 +193,10 @@ Jawaban umum:
   putuskan apakah kategori ini dideklarasikan dan catat alasannya.
 - Kebijakan privasi (`kebijakan-privasi`) wajib memuat daftar di atas, pemroses, retensi D2, cara penghapusan, dan
   kontak.
+- Build pertama yang memakai daftar profil berulang: revisi naskah legal dan Bantuan (`docs/legal/README.md`, Revisi
+  profil berulang) terbit pada hari build itu dirilis ke pengguna (`rilis-dan-gerbang-go-live.md` bagian 5.5
+  langkah 8). Baris profil di tabel tetap pada kategori formulir yang sama, jadi Data safety dan App Privacy tidak
+  perlu diubah untuk daftar baru.
 
 ## 5. Templat catatan reviewer
 

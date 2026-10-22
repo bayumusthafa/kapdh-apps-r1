@@ -5,11 +5,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { api } from "../../api/client";
 import { ApiError } from "../../api/errors";
 import { MOCK_CREDENTIALS, mockAuth } from "../../api/mocks";
-import { MOCK_MEMBER, memberRequests, mockMembers, skillId } from "../../api/mocks/members";
+import { MOCK_MEMBER, memberRequests, mockMembers, professionId, skillId } from "../../api/mocks/members";
 import { findToast, renderApp, signIn, signInViaApi, type User } from "../../test/utils";
 import { latestCohort } from "./labels";
 import { forgetMembersSearch } from "./listMemory";
-import { isPreconditionFailure } from "./queries";
+import { inactiveProfessionLabels, isPreconditionFailure, professionEntries } from "./queries";
 
 /**
  * Manajemen Users di web admin (F-15, F-16, AC F05-6, F10-4, F12-3..F12-5, F15-1, F15-4, F16-4) terhadap server
@@ -349,12 +349,64 @@ describe("detail anggota (F-15, F-10; server tiruan)", () => {
     ).toBe(true);
   });
 
+  it("profil berulang: profesi jamak (utama pertama), riwayat pendidikan terbaru di atas dan tautan sosial per platform", async () => {
+    const user = userEvent.setup();
+    await open(user, `/members/${MOCK_MEMBER.hasan}`, "Hasan Basri");
+    const profile = screen.getByRole("region", { name: "Profil alumni" });
+    const professions = within(profile).getByRole("list", { name: "Profesi" });
+    expect(
+      within(professions)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent),
+    ).toEqual(["Wirausaha (utama)", "Konsultan UMKM"]);
+    const education = within(profile).getByRole("list", { name: "Riwayat pendidikan" });
+    const items = within(education).getAllByRole("listitem");
+    expect(items[0]).toHaveTextContent("Universitas Terbuka");
+    expect(items[0]).toHaveTextContent("S2 · Magister Manajemen · Tamat 2021");
+    expect(items[1]).toHaveTextContent("S1 · Manajemen · Tamat 2013");
+    // Kota lulusan lama (aplikasi 1.0.0) tidak ditampilkan lagi.
+    expect(profile).not.toHaveTextContent("Pekanbaru");
+    const contact = screen.getByRole("region", { name: "Kontak (administratif)" });
+    expect(within(contact).getByRole("link", { name: "TikTok hasan.konveksi (tab baru)" })).toHaveAttribute(
+      "href",
+      "https://www.tiktok.com/@hasan.konveksi",
+    );
+  });
+
   it("AC F10-4: profesi dan keahlian master nonaktif tampil sebagai label historis", async () => {
     const user = userEvent.setup();
     await open(user, `/members/${MOCK_MEMBER.hendra}`, "Hendra Gunawan");
     const profile = screen.getByRole("region", { name: "Profil alumni" });
     expect(within(profile).getByText("Petani/Peternak/Nelayan")).toBeInTheDocument();
     expect(within(profile).getByText("Master nonaktif")).toBeInTheDocument();
+  });
+
+  it("AC F10-4: penanda Master nonaktif per profesi, juga untuk master nonaktif yang bukan profesi bertaut pertama", async () => {
+    // Hasan: Wirausaha (master aktif, `profession`), Konsultan UMKM (ketikan sendiri), lalu master nonaktif terpasang.
+    mockMembers.useMaster(MOCK_MEMBER.hasan, professionId("Petani/Peternak/Nelayan"));
+    const user = userEvent.setup();
+    await open(user, `/members/${MOCK_MEMBER.hasan}`, "Hasan Basri");
+    const profile = screen.getByRole("region", { name: "Profil alumni" });
+    const items = within(within(profile).getByRole("list", { name: "Profesi" })).getAllByRole("listitem");
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent(/^Wirausaha \(utama\)$/);
+    expect(items[1]).toHaveTextContent(/^Konsultan UMKM$/);
+    expect(within(items[2]!).getByText("Petani/Peternak/Nelayan")).toBeInTheDocument();
+    expect(within(items[2]!).getByText("Master nonaktif")).toBeInTheDocument();
+  });
+
+  it("AC F10-4: API tanpa profession_entries hanya menandai profesi bertaut pertama (`profession`)", () => {
+    const hendra = { ...mockMembers.get(MOCK_MEMBER.hendra)! };
+    delete hendra.profession_entries;
+    expect(professionEntries(hendra)).toEqual([
+      { label: "Petani/Peternak/Nelayan", master: hendra.profession },
+    ]);
+    expect([...inactiveProfessionLabels(hendra)]).toEqual(["petani/peternak/nelayan"]);
+    mockMembers.useMaster(MOCK_MEMBER.hasan, professionId("Petani/Peternak/Nelayan"));
+    const hasan = { ...mockMembers.get(MOCK_MEMBER.hasan)! };
+    expect(inactiveProfessionLabels(hasan).has("petani/peternak/nelayan")).toBe(true);
+    delete hasan.profession_entries;
+    expect(professionEntries(hasan).map((e) => e.master?.label ?? null)).toEqual(["Wirausaha", null, null]);
   });
 
   it("PRD 2.3, AC F15-1: tanpa payments/events/moderation.read ringkasan disaring dan alasan suspend disembunyikan", async () => {
@@ -498,26 +550,101 @@ describe("ubah data dan koreksi identitas (AC F05-6, F15-4)", () => {
     await user.type(within(dialog).getByRole("textbox", { name: /Alasan perubahan/ }), "Cek data");
     await user.click(within(dialog).getByRole("button", { name: "Simpan perubahan" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Belum ada perubahan");
-    const x = within(dialog).getByRole("textbox", { name: "X" });
+    await user.click(within(dialog).getByRole("button", { name: "Tambah tautan" }));
+    await user.selectOptions(within(dialog).getByRole("combobox", { name: "Platform tautan 4" }), "X");
+    const x = within(dialog).getByRole("textbox", { name: "Tautan 4" });
     await user.type(x, "javascript:alert(1)");
     await user.click(within(dialog).getByRole("button", { name: "Simpan perubahan" }));
     await waitFor(() => expect(x).toHaveAttribute("aria-invalid", "true"));
     expect(x).toHaveAccessibleDescription(/https:\/\//);
+    // Situs web hanya menerima tautan https (aturan SocialLinkInput).
+    await user.selectOptions(
+      within(dialog).getByRole("combobox", { name: "Platform tautan 4" }),
+      "Situs web",
+    );
+    await user.clear(x);
+    await user.type(x, "kapdh");
+    await user.click(within(dialog).getByRole("button", { name: "Simpan perubahan" }));
+    await waitFor(() => expect(x).toHaveAccessibleDescription(/Situs web harus berupa tautan https/));
+    expect(patches()).toHaveLength(0);
+  });
+
+  it("profil berulang: tambah/hapus profesi, riwayat dan tautan; body hanya daftar yang berubah tanpa field lama", async () => {
+    const user = userEvent.setup();
+    const dialog = await openEdit(user, MOCK_MEMBER.hasan, "Hasan Basri");
+    await user.click(within(dialog).getByRole("button", { name: "Hapus profesi 2" }));
+    await user.click(within(dialog).getByRole("button", { name: "Tambah profesi" }));
+    await user.type(within(dialog).getByRole("combobox", { name: "Profesi 2" }), "dosen/peneliti");
+    await user.click(within(dialog).getByRole("button", { name: "Tambah riwayat" }));
+    const third = within(dialog).getByRole("group", { name: "Pendidikan 3" });
+    await user.type(
+      within(third).getByRole("textbox", { name: /Universitas\/instansi/ }),
+      "Politeknik Contoh",
+    );
+    await user.selectOptions(within(third).getByRole("combobox", { name: "Strata" }), "D3");
+    await user.type(within(third).getByRole("spinbutton", { name: /Tahun tamat/ }), "2010");
+    await user.click(within(dialog).getByRole("button", { name: "Hapus tautan 3" }));
+    // Baris kosong dari "Tambah tautan" diabaikan.
+    await user.click(within(dialog).getByRole("button", { name: "Tambah tautan" }));
+    await user.type(within(dialog).getByRole("textbox", { name: /Alasan perubahan/ }), "Pembaruan riwayat");
+    await user.click(within(dialog).getByRole("button", { name: "Simpan perubahan" }));
+
+    expect(await screen.findByText("Data Hasan Basri disimpan.")).toBeInTheDocument();
+    expect(patches()[0]?.body).toEqual({
+      reason: "Pembaruan riwayat",
+      professions: ["Wirausaha", "dosen/peneliti"],
+      education: [
+        {
+          institution: "Universitas Terbuka",
+          major: "Magister Manajemen",
+          level: "s2",
+          graduation_year: 2021,
+        },
+        { institution: "Universitas Riau", major: "Manajemen", level: "s1", graduation_year: 2013 },
+        { institution: "Politeknik Contoh", major: null, level: "d3", graduation_year: 2010 },
+      ],
+      social_links: [
+        { platform: "instagram", value: "hasan.uji" },
+        { platform: "linkedin", value: "https://www.linkedin.com/in/hasan-uji" },
+      ],
+    });
+    // Server tiruan menautkan label master tanpa beda huruf besar dan menurunkan field lama dari daftar.
+    const saved = mockMembers.get(MOCK_MEMBER.hasan)!;
+    expect(saved.professions).toEqual(["Wirausaha", "Dosen/Peneliti"]);
+    expect(saved).toMatchObject({
+      social_instagram: "hasan.uji",
+      last_education_institution: "Universitas Terbuka",
+    });
+  });
+
+  it("profil berulang: maksimal 5 profesi dan profesi ganda ditolak sebelum dikirim", async () => {
+    const user = userEvent.setup();
+    const dialog = await openEdit(user, MOCK_MEMBER.hasan, "Hasan Basri");
+    const add = within(dialog).getByRole("button", { name: "Tambah profesi" });
+    for (let i = 0; i < 3; i += 1) await user.click(add);
+    expect(add).toBeDisabled();
+    expect(within(dialog).getAllByRole("combobox", { name: /^Profesi \d$/ })).toHaveLength(5);
+    const third = within(dialog).getByRole("combobox", { name: "Profesi 3" });
+    await user.type(third, "konsultan umkm");
+    await user.type(within(dialog).getByRole("textbox", { name: /Alasan perubahan/ }), "Cek profesi");
+    await user.click(within(dialog).getByRole("button", { name: "Simpan perubahan" }));
+    await waitFor(() => expect(third).toHaveAttribute("aria-invalid", "true"));
+    expect(third).toHaveAccessibleDescription("Profesi ini sudah ada.");
     expect(patches()).toHaveLength(0);
   });
 
   it("AC F10-4: profesi/keahlian nonaktif hanya tersedia bila sudah dipakai anggota", async () => {
     const user = userEvent.setup();
     let dialog = await openEdit(user, MOCK_MEMBER.hendra, "Hendra Gunawan");
-    const profession = within(dialog).getByRole("combobox", { name: "Profesi" });
-    await waitFor(() =>
-      expect(
-        within(profession).getByRole("option", { name: "Petani/Peternak/Nelayan (nonaktif)" }),
-      ).toBeInTheDocument(),
+    // Label historis tetap di baris profesinya (isian bersaran = combobox) dan ditandai; saran hanya master aktif.
+    expect(within(dialog).getByRole("combobox", { name: "Profesi 1 (nonaktif)" })).toHaveValue(
+      "Petani/Peternak/Nelayan",
     );
-    expect(profession).toHaveDisplayValue("Petani/Peternak/Nelayan (nonaktif)");
-    // Master nonaktif lain tidak dapat dipilih baru.
-    expect(within(profession).queryByRole("option", { name: /Pensiunan/ })).toBeNull();
+    const suggestions = () =>
+      [...dialog.querySelectorAll("datalist option")].map((o) => o.getAttribute("value"));
+    await waitFor(() => expect(suggestions()).toContain("Guru"));
+    expect(suggestions()).not.toContain("Pensiunan");
+    expect(suggestions()).not.toContain("Petani/Peternak/Nelayan");
     expect(within(dialog).queryByRole("checkbox", { name: /Kuliner/ })).toBeNull();
     await user.click(within(dialog).getByRole("button", { name: "Batal" }));
     expect(screen.queryByRole("dialog", { name: "Ubah data anggota" })).toBeNull();
@@ -533,6 +660,59 @@ describe("ubah data dan koreksi identitas (AC F05-6, F15-4)", () => {
     );
     dialog = await screen.findByRole("dialog", { name: "Ubah data anggota" });
     expect(await within(dialog).findByRole("checkbox", { name: "Kuliner (nonaktif)" })).toBeChecked();
+  });
+
+  it("AC F10-4: setiap profesi bertaut master nonaktif ditandai (nonaktif) beserta peringatan penghapusan", async () => {
+    mockMembers.useMaster(MOCK_MEMBER.hasan, professionId("Petani/Peternak/Nelayan"));
+    const user = userEvent.setup();
+    const dialog = await openEdit(user, MOCK_MEMBER.hasan, "Hasan Basri");
+    // Profesi utama bermaster aktif dan ketikan sendiri tanpa penanda.
+    expect(within(dialog).getByRole("combobox", { name: "Profesi 1" })).toHaveValue("Wirausaha");
+    expect(within(dialog).getByRole("combobox", { name: "Profesi 2" })).toHaveValue("Konsultan UMKM");
+    const petani = within(dialog).getByRole("combobox", { name: "Profesi 3 (nonaktif)" });
+    expect(petani).toHaveValue("Petani/Peternak/Nelayan");
+    expect(petani).toHaveAccessibleDescription(/tidak dapat ditautkan lagi ke master/);
+    const remove = within(dialog).getByRole("button", { name: "Hapus profesi 3" });
+    expect(remove).toHaveAccessibleDescription(/tidak dapat ditautkan lagi ke master/);
+    // Isian yang diganti ke label lain tidak lagi bertaut master nonaktif itu.
+    await user.clear(petani);
+    await user.type(petani, "Petani Kopi");
+    expect(within(dialog).queryByRole("combobox", { name: /nonaktif/ })).toBeNull();
+    expect(within(dialog).queryByText(/tidak dapat ditautkan lagi/)).toBeNull();
+  });
+
+  it("N-11: baris pendidikan bernama per grup; menghapus baris memindah fokus ke baris berikutnya, sebelumnya, lalu Tambah", async () => {
+    const user = userEvent.setup();
+    const dialog = await openEdit(user, MOCK_MEMBER.hasan, "Hasan Basri");
+    const first = within(dialog).getByRole("group", { name: "Pendidikan 1" });
+    expect(within(first).getByRole("textbox", { name: /Universitas\/instansi/ })).toHaveValue(
+      "Universitas Terbuka",
+    );
+    const second = within(dialog).getByRole("group", { name: "Pendidikan 2" });
+    expect(within(second).getByRole("spinbutton", { name: /Tahun tamat/ })).toHaveValue(2013);
+
+    // Hapus baris pertama dengan keyboard: baris berikutnya bergeser ke posisi 1 dan tombol hapusnya difokus.
+    within(dialog).getByRole("button", { name: "Hapus riwayat pendidikan 1" }).focus();
+    await user.keyboard("{Enter}");
+    const remaining = within(dialog).getByRole("group", { name: "Pendidikan 1" });
+    expect(within(remaining).getByRole("textbox", { name: /Universitas\/instansi/ })).toHaveValue(
+      "Universitas Riau",
+    );
+    expect(within(dialog).getByRole("button", { name: "Hapus riwayat pendidikan 1" })).toHaveFocus();
+    // Baris terakhir dihapus: fokus ke tombol Tambah riwayat, bukan <body>.
+    await user.keyboard("{Enter}");
+    expect(within(dialog).queryByRole("group", { name: /^Pendidikan \d+$/ })).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Tambah riwayat" })).toHaveFocus();
+
+    // Profesi: baris terakhir dihapus memindah fokus ke tombol hapus baris sebelumnya.
+    within(dialog).getByRole("button", { name: "Hapus profesi 2" }).focus();
+    await user.keyboard("{Enter}");
+    expect(within(dialog).getByRole("button", { name: "Hapus profesi 1" })).toHaveFocus();
+    // Tautan: baris tengah dihapus memindah fokus ke baris berikutnya yang kini berada di posisinya.
+    within(dialog).getByRole("button", { name: "Hapus tautan 2" }).focus();
+    await user.keyboard("{Enter}");
+    expect(within(dialog).getAllByRole("textbox", { name: /^Tautan \d+$/ })).toHaveLength(2);
+    expect(within(dialog).getByRole("button", { name: "Hapus tautan 2" })).toHaveFocus();
   });
 
   it("AC F15-4: konflik versi → data terbaru dimuat, Simpan nonaktif sampai formulir dimuat ulang", async () => {
@@ -769,6 +949,27 @@ describe("batasi dan cabut pembatasan (PRD 4.2, AC F12-3..F12-5)", () => {
     expect(isPreconditionFailure(new ApiError({ code: "VERSION_CONFLICT", status: 409, message: "x" }))).toBe(
       false,
     );
+  });
+
+  it("server tiruan: field lama mengubah entri padanannya; field lama bersama penggantinya ditolak 400", async () => {
+    await signInViaApi();
+    const legacy = await api.PATCH("/admin/members/{userId}", {
+      params: { path: { userId: MOCK_MEMBER.hasan }, header: { "If-Match": "1" } },
+      body: {
+        reason: "Uji field lama",
+        social_instagram: "@baru.ig",
+        last_education_institution: "UT Pusat",
+      },
+    });
+    expect(legacy.response.status).toBe(200);
+    expect(legacy.data?.social_links[0]).toEqual({ platform: "instagram", value: "baru.ig" });
+    expect(legacy.data?.education[0]).toMatchObject({ institution: "UT Pusat", level: "s2" });
+    const mixed = await api.PATCH("/admin/members/{userId}", {
+      params: { path: { userId: MOCK_MEMBER.hasan }, header: { "If-Match": "2" } },
+      body: { reason: "Uji campur", social_links: [], social_x: null },
+    });
+    expect(mixed.response.status).toBe(400);
+    expect(mixed.error).toMatchObject({ field_errors: { social_x: [expect.any(String)] } });
   });
 
   it("PRD 2.3: tanpa moderation.resolve tombol batasi tidak tampil walau dapat mengubah data", async () => {

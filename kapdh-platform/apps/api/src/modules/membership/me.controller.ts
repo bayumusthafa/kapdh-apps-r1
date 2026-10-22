@@ -9,6 +9,7 @@ import { MemberProfileService } from "./member-profile.service.js";
 import {
   assertHasChange,
   assertKnownFields,
+  assertNoLegacyMix,
   PROFILE_UPDATE_KEYS,
   profileUpdateSchema,
 } from "./profile-input.js";
@@ -56,6 +57,7 @@ export class MeController {
     const known = assertKnownFields(body, PROFILE_UPDATE_KEYS, { identityEditable: false });
     const input = validate(profileUpdateSchema, known);
     assertHasChange(input);
+    assertNoLegacyMix(input);
     return this.profiles.updateProfile(auth, expectedVersion, input);
   }
 

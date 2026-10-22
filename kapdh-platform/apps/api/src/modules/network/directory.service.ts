@@ -27,6 +27,7 @@ import { BlockPolicy } from "../../core/policy/block.policy.js";
 import { RateLimitService } from "../../core/rate-limit/rate-limit.service.js";
 import { CLOCK, DB } from "../../core/tokens.js";
 import { queryInt, UUID_PATTERN, validateQuery } from "../../core/validation/validate.js";
+import { loadLatestEducation, loadProfessionLabels, loadProfileLists } from "../membership/profile-lists.js";
 import {
   type DirectoryFilters,
   type DirectoryPosition,
@@ -43,6 +44,7 @@ type DirectoryPage = components["schemas"]["DirectoryPage"];
 type DirectoryMember = components["schemas"]["DirectoryMember"];
 type NetworkMemberProfile = components["schemas"]["NetworkMemberProfile"];
 type NetworkMasterRef = components["schemas"]["NetworkMasterRef"];
+type NetworkEducationEntry = components["schemas"]["NetworkEducationEntry"];
 
 /**
  * Batas laju anti-scraping per anggota (kontrak searchDirectory/getMemberProfile 429; PRD 3.10 privasi, N-15).
@@ -135,6 +137,12 @@ interface MasterRefs {
   skills: Map<string, NetworkMasterRef[]>;
 }
 
+/** Daftar profil berulang untuk kartu direktori (profesi sesuai urutan pemilik, pendidikan teratas). */
+interface CardLists {
+  professions: Map<string, string[]>;
+  latestEducation: Map<string, NetworkEducationEntry>;
+}
+
 /**
  * Direktori dan profil anggota lain (F-10, PRD 3.10, ARCHITECTURE §3.5). Hanya-baca: tidak ada operasi yang mengubah
  * profil siapa pun (AC F10-5; profil sendiri diubah lewat PATCH /me/profile milik modul membership).
@@ -212,12 +220,14 @@ export class DirectoryService implements OnModuleInit {
         const [counted] = await directoryCountQuery(tx, { viewerId: auth.userId, filters, now });
         const hasMore = found.length > page.limit;
         const pageRows = hasMore ? found.slice(0, page.limit) : found;
-        const masters = await this.masterRefs(
-          tx,
-          pageRows.map((row) => row.userId),
-        );
+        const userIds = pageRows.map((row) => row.userId);
+        const masters = await this.masterRefs(tx, userIds);
+        const lists: CardLists = {
+          professions: await loadProfessionLabels(tx, userIds),
+          latestEducation: await loadLatestEducation(tx, userIds),
+        };
         const avatars = await this.avatarUrls(tx, pageRows, auth);
-        const items = pageRows.map((row) => this.toCard(row, masters, avatars));
+        const items = pageRows.map((row) => this.toCard(row, masters, lists, avatars));
         const last = pageRows[pageRows.length - 1];
         const position: DirectoryPosition | null =
           !hasMore || !last
@@ -235,7 +245,12 @@ export class DirectoryService implements OnModuleInit {
     );
   }
 
-  private toCard(row: CardRow, masters: MasterRefs, avatars: Map<string, string>): DirectoryMember {
+  private toCard(
+    row: CardRow,
+    masters: MasterRefs,
+    lists: CardLists,
+    avatars: Map<string, string>,
+  ): DirectoryMember {
     return {
       user_id: row.userId,
       full_name: row.fullName,
@@ -244,6 +259,8 @@ export class DirectoryService implements OnModuleInit {
       cohort_code: cohortCode(row.cohort),
       city: row.city,
       profession: masters.profession.get(row.userId) ?? null,
+      professions: lists.professions.get(row.userId) ?? [],
+      latest_education: lists.latestEducation.get(row.userId) ?? null,
       last_education_institution: row.lastEducationInstitution,
       last_education_city: row.lastEducationCity,
       skills: masters.skills.get(row.userId) ?? [],
@@ -298,6 +315,7 @@ export class DirectoryService implements OnModuleInit {
         if (!row) throw notFound("Profil anggota tidak ditemukan.");
 
         const masters = await this.masterRefs(tx, [row.userId]);
+        const lists = await loadProfileLists(tx, row.userId);
         const avatars = await this.avatarUrls(tx, [row], auth);
         const isBlockedByMe = isMe ? false : await this.blockedBy(tx, auth.userId, row.userId);
         // can_message: false bila salah satu pihak memblokir atau profil sendiri; alasan tidak dibedakan (AC F12-1).
@@ -316,7 +334,9 @@ export class DirectoryService implements OnModuleInit {
           graduation_year: COHORT_BASE_YEAR + row.cohort,
           city: row.city,
           profession: masters.profession.get(row.userId) ?? null,
+          professions: lists.professions,
           skills: masters.skills.get(row.userId) ?? [],
+          education: lists.education,
           last_education_institution: row.lastEducationInstitution,
           last_education_city: row.lastEducationCity,
           bio: row.bio,
@@ -328,13 +348,15 @@ export class DirectoryService implements OnModuleInit {
         // Field privat: kunci hanya ditambahkan bila flag pemilik aktif (AC F10-2, N-15).
         if (row.showEmail) profile.email = row.email;
         if (row.showPhone) profile.phone = row.phone;
-        if (row.showSocial)
+        if (row.showSocial) {
           profile.social = {
             instagram: row.socialInstagram,
             x: row.socialX,
             facebook: row.socialFacebook,
             linkedin: row.socialLinkedin,
           };
+          profile.social_links = lists.social_links;
+        }
         return profile;
       },
       { isolationLevel: "repeatable read", accessMode: "read only" },

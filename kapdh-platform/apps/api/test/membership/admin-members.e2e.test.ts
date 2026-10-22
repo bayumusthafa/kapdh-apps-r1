@@ -462,6 +462,99 @@ describe("PATCH /admin/members/{userId} (PRD 2.3, 3.5, AC F15-4)", () => {
     expect(badSkill.statusCode).toBe(400);
   });
 
+  it("profil berulang: pengurus mengganti profesi, pendidikan dan tautan; audit hanya nama field; daftar dan filter memakai profesi mana pun", async () => {
+    const member = await createAlumni(t, { status: "verified" });
+    const manager = await adminWith(t, ["members.read", "members.manage"]);
+    const before = await detailOf(manager.token, member.userId);
+    const profession = await seedMaster("profession");
+    const [master] = await t.db.select().from(masterProfessions).where(eq(masterProfessions.id, profession));
+    const res = await api().patch(
+      `/admin/members/${member.userId}`,
+      {
+        reason: "Koreksi riwayat sesuai permintaan anggota",
+        professions: ["Wiraswasta Kuliner", master!.label.toUpperCase()],
+        education: [
+          { institution: "Universitas Contoh", level: "s1", graduation_year: 2016 },
+          { institution: "Universitas Lanjut", major: "Manajemen", level: "s2", graduation_year: 2021 },
+        ],
+        social_links: [{ platform: "threads", value: "@rahasia.threads" }],
+      },
+      { token: manager.token, headers: { "if-match": before.version } },
+    );
+    expect(res.statusCode, res.body).toBe(200);
+    const updated = expectOperation("patch", "/admin/members/{userId}", res) as Detail;
+    expect(updated).toMatchObject({
+      professions: ["Wiraswasta Kuliner", master!.label],
+      profession: { id: profession },
+      profession_label: "Wiraswasta Kuliner",
+      education: [
+        { institution: "Universitas Lanjut", major: "Manajemen", level: "s2", graduation_year: 2021 },
+        { institution: "Universitas Contoh", major: null, level: "s1", graduation_year: 2016 },
+      ],
+      social_links: [{ platform: "threads", value: "rahasia.threads" }],
+      last_education_institution: "Universitas Lanjut",
+    });
+    const [audit] = await t.db
+      .select()
+      .from(auditLogs)
+      .where(and(eq(auditLogs.action, "member.updated"), eq(auditLogs.entityId, member.userId)));
+    expect(audit!.after).toMatchObject({
+      changed_contact_fields: ["professions", "education", "social_links"],
+    });
+    for (const secret of ["Wiraswasta", "Universitas Lanjut", "rahasia.threads"])
+      expect(JSON.stringify([audit!.before, audit!.after])).not.toContain(secret);
+
+    // Daftar pengurus: label profesi utama = profesi pertama; filter cocok dengan profesi kedua (bertaut master).
+    const list = await api().get("/admin/members", {
+      token: manager.token,
+      query: { profession_id: profession },
+    });
+    const page = expectOperation("get", "/admin/members", list) as { items: Record<string, unknown>[] };
+    expect(page.items.find((item) => item.user_id === member.userId)).toMatchObject({
+      profession_label: "Wiraswasta Kuliner",
+    });
+
+    const mixed = await api().patch(
+      `/admin/members/${member.userId}`,
+      { reason: "Campur field lama", social_links: [], social_linkedin: null },
+      { token: manager.token, headers: { "if-match": updated.version } },
+    );
+    expect(mixed.statusCode).toBe(400);
+    expect(mixed.json().field_errors).toHaveProperty("social_linkedin");
+  });
+
+  it("AC F10-4: profession_entries sejajar dengan professions dan menandai SETIAP master nonaktif, bukan hanya profesi bertaut pertama", async () => {
+    const member = await createAlumni(t, { status: "verified" });
+    const manager = await adminWith(t, ["members.read", "members.manage"]);
+    const first = await seedMaster("profession");
+    const second = await seedMaster("profession");
+    const labelOf = async (id: string) =>
+      (await t.db.select().from(masterProfessions).where(eq(masterProfessions.id, id)))[0]!.label;
+    const firstLabel = await labelOf(first);
+    const secondLabel = await labelOf(second);
+    const before = await detailOf(manager.token, member.userId);
+    expect(before.profession_entries).toEqual([]);
+    const res = await api().patch(
+      `/admin/members/${member.userId}`,
+      { reason: "Profesi jamak anggota", professions: [firstLabel, "Penulis Lepas", secondLabel] },
+      { token: manager.token, headers: { "if-match": before.version } },
+    );
+    expect(res.statusCode, res.body).toBe(200);
+    // Master kedua dinonaktifkan setelah terpasang: tetap tertaut sebagai label historis.
+    await t.db.update(masterProfessions).set({ active: false }).where(eq(masterProfessions.id, second));
+
+    const detail = await detailOf(manager.token, member.userId);
+    expect(detail.profession).toEqual({ id: first, label: firstLabel, active: true });
+    expect(detail.profession_entries).toEqual([
+      { label: firstLabel, master: { id: first, label: firstLabel, active: true } },
+      { label: "Penulis Lepas", master: null },
+      { label: secondLabel, master: { id: second, label: secondLabel, active: false } },
+    ]);
+    expect((detail.profession_entries as { label: string }[]).map((e) => e.label)).toEqual(
+      detail.professions,
+    );
+  });
+
   it("AC F15-4: versi lama → 409 dengan current tersaring; validasi alasan/field; tertaut sendiri 403; deletion_pending 400; izin", async () => {
     const member = await createAlumni(t, { status: "suspended" });
     const manager = await adminWith(t, ["members.read", "members.manage"]);

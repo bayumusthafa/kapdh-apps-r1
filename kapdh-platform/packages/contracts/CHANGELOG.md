@@ -6,6 +6,52 @@ Setiap perubahan kontrak yang dapat memutus klien yang masih didukung dicatat di
 
 ## Belum dirilis
 
+### Profil berulang: profesi jamak, riwayat pendidikan, media sosial dinamis (redesain v2; aditif, tidak memutus)
+
+Menyelesaikan bagian Ubah Profil dan Profil Alumni v2 yang sebelumnya hanya berganti tampilan
+(`kapdh-mobile/mockup-html/REDESAIN.md`). Skema baru di me.yaml: `ProfessionLabel` (1..100), `EducationLevel`
+(`d3`, `s1`, `s2`, `s3`, `other`), `EducationEntry`, `EducationEntryInput`, `SocialPlatform` (`instagram`, `tiktok`,
+`x`, `facebook`, `linkedin`, `youtube`, `threads`, `telegram`, `website`), `SocialLink`, `SocialLinkInput`; di
+network.yaml `NetworkEducationEntry` dan `NetworkSocialLink` (additionalProperties false).
+
+- Respons (properti wajib baru): `Profile` dan `AdminMemberDetail` mendapat `professions` (maks. 5, urutan pemilik,
+  pertama = profesi utama), `education` (maks. 10, terbaru di atas: tahun tamat menurun, tanpa tahun di atas) dan
+  `social_links` (maks. 10). `NetworkMemberProfile` mendapat `professions` dan `education`; `social_links` hanya
+  dikirim bila show_social=true, sama dengan `social`. `DirectoryMember` mendapat `professions` dan
+  `latest_education` (entri teratas atau null).
+- Permintaan: `ProfileUpdate` dan `AdminMemberUpdate` menerima `professions`, `education` dan `social_links` sebagai
+  daftar pengganti utuh. Profesi yang sama dengan label master aktif (tanpa membedakan huruf besar/kecil) ditautkan ke
+  master; label lain disimpan sebagai ketikan sendiri. Situs web hanya URL https; tautan dengan platform + nilai sama
+  ditolak. Tahun tamat 1950 sampai tahun berjalan Asia/Jakarta. Galat per entri memakai path bertitik
+  (`education.0.institution`, `social_links.1.value`).
+- Filter `profession_id` (searchDirectory, adminListMembers) kini cocok bila SALAH SATU profesi anggota tertaut master
+  itu. `MemberCard.profession_label` dan `AdminMemberSummary.profession_label` = profesi pertama di daftar, termasuk
+  ketikan sendiri.
+- `AdminMemberDetail.profession_entries` (properti respons opsional baru, skema `AdminMemberProfessionEntry`
+  `{label, master: MasterItem | null}`): sejajar dan seurutan dengan `professions`, sehingga web admin menandai
+  SETIAP profesi bertaut master nonaktif (AC F10-4) di detail dan formulir ubah, bukan hanya profesi bertaut pertama
+  (`profession`). Server selalu mengirimnya; opsional agar web admin baru tetap berjalan terhadap image API
+  sebelumnya (tanpa penanda master).
+- Masa transisi aplikasi 1.0.0: field lama `profession`/`profession_id`, `last_education_institution`,
+  `last_education_city`, `social_instagram`/`social_x`/`social_facebook`/`social_linkedin` dan `social` tetap dibaca
+  dan ditulis, dan deskripsinya ditandai "Deprecated". Nilai bacanya adalah proyeksi daftar baru (profesi pertama yang
+  tertaut master, institusi entri teratas, tautan pertama per platform); tulisannya mengubah satu entri padanannya
+  (aturan rinci di updateMyProfile; profession_id/social_* yang tidak muat karena daftar sudah penuh = 400). Field
+  lama bersama penggantinya dalam satu body ditolak 400 pada field lama. Label profesi yang menjadi ganda karena master
+  diganti nama hanya dikirim sekali.
+
+`pnpm contracts:breaking -- --base-ref main` (oasdiff 1.32.1): 0 perubahan memutus dan 0 peringatan (hanya properti
+respons baru dan properti permintaan opsional baru), jadi `info.version` dan `x-kapdh-min-app-version` tidak
+dinaikkan. Klien lama: SDK Dart 1.0.0 mengabaikan properti baru dan tetap memakai
+field lama yang masih dikirim server; aplikasi lama melihat satu profesi, satu pendidikan dan empat jaringan sosial
+seperti sebelumnya. Field lama baru dapat dihapus (perubahan memutus, mayor naik bersama `x-kapdh-min-app-version`)
+setelah versi minimum aplikasi melewati build pertama yang memakai daftar baru. SDK Dart: model `EducationEntry`,
+`EducationEntryInput`, `SocialLink`, `SocialLinkInput`, `NetworkEducationEntry`, `NetworkSocialLink`, enum
+`EducationLevel` (`otherValue` untuk `other`) dan `SocialPlatform`, field `Profile.professions/education/socialLinks`,
+`ProfileUpdate.professions/education/socialLinks`, `DirectoryMember.professions/latestEducation`,
+`NetworkMemberProfile.professions/education/socialLinks` dan padanannya di model admin, ditambah model
+`AdminMemberProfessionEntry` dan field opsional `AdminMemberDetail.professionEntries`.
+
 ### Metode bayar QRIS dengan gambar QR (permintaan PO 2026-10-15, ADR-026; aditif, tidak memutus)
 
 - `PaymentMethodKind` (payments) dan `TicketPaymentMethodKind` (events) mendapat nilai `qris`: QRIS statis resmi

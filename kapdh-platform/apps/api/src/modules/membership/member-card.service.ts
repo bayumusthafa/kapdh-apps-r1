@@ -15,7 +15,7 @@ import {
   offlineValidUntil,
   renewalState,
 } from "./membership-view.js";
-import { loadMemberMasters } from "./profile-masters.js";
+import { loadProfessionLabels } from "./profile-lists.js";
 
 type MemberCard = components["schemas"]["MemberCard"];
 
@@ -42,7 +42,7 @@ export class MemberCardService {
     const status = await this.profiles.statusOf(auth);
     const syncedAt = this.clock.now();
     const statusLabel = cardStatusFor(status);
-    const masters = await loadMemberMasters(this.db, auth.userId);
+    const professions = (await loadProfessionLabels(this.db, [auth.userId])).get(auth.userId) ?? [];
     const open = await this.profiles.openPayments(auth.userId);
     const renewal = renewalState(profile.expiresAt, status, syncedAt);
     const { action, openPaymentId } = cardAction({
@@ -77,8 +77,8 @@ export class MemberCardService {
           }
         : null,
       expires_at: profile.expiresAt?.toISOString() ?? null,
-      // Label historis tetap tampil walau master dinonaktifkan (AC F10-4).
-      profession_label: masters.profession?.label ?? null,
+      // Profesi utama (pertama); label historis tetap tampil walau master dinonaktifkan (AC F10-4).
+      profession_label: professions[0] ?? null,
       // Kota saja, bukan alamat lengkap (disahkan v3.3).
       city: profile.city,
       // Suspended → null: URL privat tidak dapat dibuka penampil suspended (PRD 2.2, 5.4).
