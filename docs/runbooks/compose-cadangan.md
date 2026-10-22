@@ -121,7 +121,10 @@ docker compose --env-file /etc/kapdh/proxy.env -f infra/compose.proxy.yml up -d
 ```
 
 Traefik cadangan menerbitkan sertifikat Let's Encrypt baru (TLS-ALPN-01, port 443) ke volume `kapdh-edge-letsencrypt`
-dan merutekan `kapdh.or.id`/`www`, `admin.`, `api.` ke `kapdh-production-{web,admin,api}-1`. HSTS: `KAPDH_HSTS=true` di
+dan merutekan `kapdh.or.id`/`www`, `admin.`, `api.` ke `kapdh-production-{web,admin,api}-1`. `www` dialihkan permanen
+ke apex (`KAPDH_PRODUCTION_WWW_REDIRECT=true`, bawaan). Alamat sementara `baru.`/`admin-baru.`, yang di jalur Coolify
+dialihkan berkas dinamis (runbook rilis bagian 7.1), tidak dirutekan di sini, sehingga kehilangan sertifikat dan
+pengalihannya; `render-dynamic.sh` belum punya masukan untuk host tambahan. HSTS: `KAPDH_HSTS=true` di
 `proxy.env` hanya setelah seluruh subdomain siap HTTPS (runbook rilis bagian 7). Staging hanya ikut dirutekan bila
 `KAPDH_STAGING_DOMAIN_*` diisi dan stack staging dijalankan:
 
@@ -147,6 +150,12 @@ docker run --rm --network kapdh-edge \
 KAPDH_WEB=kapdh.or.id KAPDH_ADMIN=admin.kapdh.or.id KAPDH_API=api.kapdh.or.id KAPDH_VPS_HOST=<ip> \
   sh infra/scripts/staging-smoke.sh
 ```
+
+Skrip itu membuktikan TLS, WSS dan header. Port-nya hanya dinilai bila `<ip>:443` terjangkau dan port kontrol
+(`KAPDH_PORT_CONTROL`, bawaan 9999) tidak; bila salah satunya gagal, skrip mencetak `PERINGATAN` dan tidak menilai
+port (`KAPDH_REQUIRE_PORTS=true` membuatnya keluar 3). Bukti
+port yang menentukan tetap prosedur `go-live.md` 2.4 (`nmap -sV` dengan port kontrol 9999 dari jaringan tanpa VPN,
+ditambah `ss`, `docker ps` dan `iptables -S DOCKER-USER` di VPS).
 
 Periksa juga login admin + TOTP, pembayaran menunggu, dan kartu/verifikasi KTA (PRD 8.3 langkah 3 dalam skala kecil).
 Outbox yang tertunda selama gangguan dikirim ulang otomatis oleh worker (PRD 5.1); pantau umur outbox di `/healthz`.

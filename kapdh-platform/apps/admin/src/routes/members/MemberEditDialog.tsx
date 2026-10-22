@@ -2,8 +2,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { components } from "@kapdh/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus, RefreshCw, Trash2, TriangleAlert } from "lucide-react";
-import { useId, useRef, useState } from "react";
-import { FormProvider, useFieldArray, useForm } from "react-hook-form";
+import { useEffect, useId, useRef, useState } from "react";
+import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { api } from "../../api/client";
 import { useApiMutation } from "../../api/query";
@@ -26,6 +26,7 @@ import {
 import { usePreconditionHandler } from "./MemberActionDialogs";
 import type { MemberNotice } from "./MemberDetailPage";
 import {
+  inactiveProfessionLabels,
   type MemberDetail,
   memberFromConflict,
   memberKeys,
@@ -204,6 +205,7 @@ export function valuesFrom(m: MemberDetail): MemberEditValues {
 const NULLABLE_TEXT = ["city", "phone"] as const;
 
 type ListValues = Pick<MemberEditValues, "professions" | "education" | "social_links">;
+type ListName = keyof ListValues;
 
 /** Baris yang benar-benar terisi; baris kosong dari tombol "Tambah" diabaikan. */
 export function filledRows(values: ListValues): ListValues {
@@ -307,6 +309,87 @@ function masterChoices(
   return out;
 }
 
+/**
+ * Satu baris profesi. Penanda master nonaktif dihitung dari isian baris ini saja (useWatch per baris, bukan seluruh
+ * formulir dirender ulang per ketikan) dan dibandingkan tanpa beda huruf besar/kecil seperti penautan server: master
+ * nonaktif tetap tertaut hanya selama sudah terpasang (AC F10-4).
+ */
+function ProfessionRow({
+  index,
+  inactiveLabels,
+  suggestionsId,
+  warningId,
+  removeId,
+  onRemove,
+}: {
+  index: number;
+  inactiveLabels: ReadonlySet<string>;
+  suggestionsId: string;
+  warningId: string;
+  removeId: string;
+  onRemove: () => void;
+}) {
+  const value = useWatch<MemberEditValues, `professions.${number}.label`>({
+    name: `professions.${index}.label`,
+  });
+  const inactive = inactiveLabels.has((value ?? "").trim().toLowerCase());
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-end gap-2">
+        <FormField<MemberEditValues, `professions.${number}.label`>
+          name={`professions.${index}.label`}
+          label={
+            <>
+              Profesi {index + 1}
+              {inactive ? (
+                <>
+                  {" "}
+                  <span className="font-normal text-text-muted">(nonaktif)</span>
+                </>
+              ) : null}
+            </>
+          }
+          className="flex-1"
+        >
+          {(field, a11y) => (
+            <Input
+              {...field}
+              {...a11y}
+              aria-describedby={
+                [a11y["aria-describedby"], inactive ? warningId : undefined].filter(Boolean).join(" ") ||
+                undefined
+              }
+              list={suggestionsId}
+              maxLength={100}
+              autoComplete="off"
+            />
+          )}
+        </FormField>
+        <IconButton
+          id={removeId}
+          label={`Hapus profesi ${index + 1}`}
+          icon={<Trash2 aria-hidden="true" />}
+          tone="danger"
+          aria-describedby={inactive ? warningId : undefined}
+          onClick={onRemove}
+        />
+      </div>
+      {inactive ? (
+        <p
+          id={warningId}
+          className="flex items-start gap-1.5 rounded-md bg-warning-bg px-3 py-2 text-xs text-warning"
+        >
+          <TriangleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+          <span>
+            Master nonaktif: bila baris ini dihapus lalu disimpan, profesi ini tidak dapat ditautkan lagi ke
+            master dan anggota keluar dari filter profesi itu.
+          </span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 interface SaveVars {
   body: Update;
   version: string;
@@ -318,7 +401,10 @@ interface SaveVars {
  * - Koreksi identitas meminta konfirmasi berisi nilai lama → baru; nomor baru selalu dari respons server.
  * - 409 VERSION_CONFLICT: data terbaru dari server ditampilkan di halaman, formulir tidak menimpa diam-diam;
  *   tombol Simpan dinonaktifkan sampai admin memuat data terbaru ke formulir.
- * - Master nonaktif tidak dapat dipilih baru, tetapi pilihan lama tetap tampil (AC F10-4).
+ * - Master nonaktif tidak dapat dipilih baru, tetapi pilihan lama tetap tampil (AC F10-4). Setiap profesi bertaut
+ *   master nonaktif ditandai "(nonaktif)" dengan peringatan bahwa setelah dihapus ia tidak dapat ditautkan lagi.
+ * - Setiap baris pendidikan adalah grup bernama "Pendidikan n"; menghapus baris memindah fokus ke tombol hapus baris
+ *   berikutnya, lalu baris sebelumnya, lalu tombol Tambah, agar fokus keyboard tidak jatuh ke <body> (N-11).
  */
 export function MemberEditDialog({
   member,
@@ -347,6 +433,26 @@ export function MemberEditDialog({
   const educationRows = useFieldArray({ control: form.control, name: "education" });
   const socialRows = useFieldArray({ control: form.control, name: "social_links" });
   const suggestionsId = useId();
+  const listRows = { professions: professionRows, education: educationRows, social_links: socialRows };
+  const removeButtonId = (list: ListName, index: number) => `${formId}-${list}-hapus-${index}`;
+  const addButtonId = (list: ListName) => `${formId}-${list}-tambah`;
+  /** Tombol yang difokus setelah baris dihapus; diterapkan sesudah render (baris berikutnya sudah bergeser). */
+  const focusAfterRemove = useRef<{ list: ListName; index: number } | null>(null);
+
+  function removeRow(list: ListName, index: number) {
+    const remaining = listRows[list].fields.length - 1;
+    listRows[list].remove(index);
+    // Baris berikutnya bergeser ke `index`; tanpa baris berikutnya, baris sebelumnya; tanpa baris, tombol Tambah.
+    focusAfterRemove.current = { list, index: index < remaining ? index : index - 1 };
+  }
+
+  useEffect(() => {
+    const target = focusAfterRemove.current;
+    if (!target) return;
+    focusAfterRemove.current = null;
+    const id = target.index >= 0 ? removeButtonId(target.list, target.index) : addButtonId(target.list);
+    document.getElementById(id)?.focus();
+  });
 
   const save = useApiMutation<MemberDetail, SaveVars, MemberEditValues>({
     setError: form.setError,
@@ -413,6 +519,7 @@ export function MemberEditDialog({
 
   const errors = form.formState.errors;
   const selectedSkills = form.watch("skill_ids");
+  const inactiveProfessions = inactiveProfessionLabels(base);
   const professionSuggestions = (professions.data?.items ?? []).filter((i) => i.active).map((i) => i.label);
   const skillChoices = masterChoices(skills.data?.items, base.skills);
   const listError = (error: { message?: string; root?: { message?: string } } | undefined) =>
@@ -593,28 +700,21 @@ export function MemberEditDialog({
                 ))}
               </datalist>
               {professionRows.fields.map((row, i) => (
-                <div key={row.id} className="flex items-end gap-2">
-                  <FormField<MemberEditValues, `professions.${number}.label`>
-                    name={`professions.${i}.label`}
-                    label={`Profesi ${i + 1}`}
-                    className="flex-1"
-                  >
-                    {(field, a11y) => (
-                      <Input {...field} {...a11y} list={suggestionsId} maxLength={100} autoComplete="off" />
-                    )}
-                  </FormField>
-                  <IconButton
-                    label={`Hapus profesi ${i + 1}`}
-                    icon={<Trash2 aria-hidden="true" />}
-                    tone="danger"
-                    onClick={() => professionRows.remove(i)}
-                  />
-                </div>
+                <ProfessionRow
+                  key={row.id}
+                  index={i}
+                  inactiveLabels={inactiveProfessions}
+                  suggestionsId={suggestionsId}
+                  warningId={`${formId}-profesi-${i}-nonaktif`}
+                  removeId={removeButtonId("professions", i)}
+                  onRemove={() => removeRow("professions", i)}
+                />
               ))}
               {listError(errors.professions) ? (
                 <p className="text-xs font-medium text-danger">{listError(errors.professions)}</p>
               ) : null}
               <Button
+                id={addButtonId("professions")}
                 variant="outline"
                 size="sm"
                 className="self-start"
@@ -670,14 +770,23 @@ export function MemberEditDialog({
                 (tahun tamat menurun; tanpa tahun tamat di atas).
               </p>
               {educationRows.fields.map((row, i) => (
-                <div key={row.id} className="flex flex-col gap-3 rounded-md border border-divider p-3">
+                // Grup bernama per baris: isian berlabel sama ("Tahun tamat") dibacakan bersama "Pendidikan n".
+                <div
+                  key={row.id}
+                  role="group"
+                  aria-labelledby={`${formId}-pendidikan-${i}`}
+                  className="flex flex-col gap-3 rounded-md border border-divider p-3"
+                >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold">Pendidikan {i + 1}</span>
+                    <span id={`${formId}-pendidikan-${i}`} className="text-sm font-semibold">
+                      Pendidikan {i + 1}
+                    </span>
                     <IconButton
+                      id={removeButtonId("education", i)}
                       label={`Hapus riwayat pendidikan ${i + 1}`}
                       icon={<Trash2 aria-hidden="true" />}
                       tone="danger"
-                      onClick={() => educationRows.remove(i)}
+                      onClick={() => removeRow("education", i)}
                     />
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -733,6 +842,7 @@ export function MemberEditDialog({
                 <p className="text-xs font-medium text-danger">{listError(errors.education)}</p>
               ) : null}
               <Button
+                id={addButtonId("education")}
                 variant="outline"
                 size="sm"
                 className="self-start"
@@ -781,10 +891,11 @@ export function MemberEditDialog({
                   {(field, a11y) => <Input {...field} {...a11y} maxLength={200} autoComplete="off" />}
                 </FormField>
                 <IconButton
+                  id={removeButtonId("social_links", i)}
                   label={`Hapus tautan ${i + 1}`}
                   icon={<Trash2 aria-hidden="true" />}
                   tone="danger"
-                  onClick={() => socialRows.remove(i)}
+                  onClick={() => removeRow("social_links", i)}
                 />
               </div>
             ))}
@@ -792,6 +903,7 @@ export function MemberEditDialog({
               <p className="text-xs font-medium text-danger">{listError(errors.social_links)}</p>
             ) : null}
             <Button
+              id={addButtonId("social_links")}
               variant="outline"
               size="sm"
               className="self-start"

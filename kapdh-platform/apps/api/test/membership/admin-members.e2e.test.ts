@@ -523,6 +523,38 @@ describe("PATCH /admin/members/{userId} (PRD 2.3, 3.5, AC F15-4)", () => {
     expect(mixed.json().field_errors).toHaveProperty("social_linkedin");
   });
 
+  it("AC F10-4: profession_entries sejajar dengan professions dan menandai SETIAP master nonaktif, bukan hanya profesi bertaut pertama", async () => {
+    const member = await createAlumni(t, { status: "verified" });
+    const manager = await adminWith(t, ["members.read", "members.manage"]);
+    const first = await seedMaster("profession");
+    const second = await seedMaster("profession");
+    const labelOf = async (id: string) =>
+      (await t.db.select().from(masterProfessions).where(eq(masterProfessions.id, id)))[0]!.label;
+    const firstLabel = await labelOf(first);
+    const secondLabel = await labelOf(second);
+    const before = await detailOf(manager.token, member.userId);
+    expect(before.profession_entries).toEqual([]);
+    const res = await api().patch(
+      `/admin/members/${member.userId}`,
+      { reason: "Profesi jamak anggota", professions: [firstLabel, "Penulis Lepas", secondLabel] },
+      { token: manager.token, headers: { "if-match": before.version } },
+    );
+    expect(res.statusCode, res.body).toBe(200);
+    // Master kedua dinonaktifkan setelah terpasang: tetap tertaut sebagai label historis.
+    await t.db.update(masterProfessions).set({ active: false }).where(eq(masterProfessions.id, second));
+
+    const detail = await detailOf(manager.token, member.userId);
+    expect(detail.profession).toEqual({ id: first, label: firstLabel, active: true });
+    expect(detail.profession_entries).toEqual([
+      { label: firstLabel, master: { id: first, label: firstLabel, active: true } },
+      { label: "Penulis Lepas", master: null },
+      { label: secondLabel, master: { id: second, label: secondLabel, active: false } },
+    ]);
+    expect((detail.profession_entries as { label: string }[]).map((e) => e.label)).toEqual(
+      detail.professions,
+    );
+  });
+
   it("AC F15-4: versi lama → 409 dengan current tersaring; validasi alasan/field; tertaut sendiri 403; deletion_pending 400; izin", async () => {
     const member = await createAlumni(t, { status: "suspended" });
     const manager = await adminWith(t, ["members.read", "members.manage"]);

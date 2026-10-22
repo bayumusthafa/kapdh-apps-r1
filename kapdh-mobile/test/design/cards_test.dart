@@ -131,7 +131,7 @@ void main() {
     var paid = 0;
     final widget = StatusActionCard(
       status: StatusStyles.card(MemberCardStatus.inactive),
-      message: 'Selesaikan iuran pendaftaran untuk mengaktifkan KTA dan fitur alumni.',
+      message: 'Selesaikan iuran pendaftaran. KTA berlaku setelah pengurus memverifikasi iuran organisasi Anda.',
       actionLabel: 'Bayar',
       onAction: () => paid++,
     );

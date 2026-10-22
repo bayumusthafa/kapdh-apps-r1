@@ -1084,14 +1084,14 @@ void main() {
       final nav = find.byType(NavigationBar);
       await tester.tap(find.descendant(of: nav, matching: find.text('Jejaring')));
       await settle(tester);
-      expect(find.text('Jejaring terkunci'), findsOneWidget);
+      expect(find.text('Jejaring khusus anggota aktif'), findsOneWidget);
       expect(find.byKey(const ValueKey('locked-tab-tickets')), findsNothing);
       await tester.tap(find.text('Tutup'));
       await settle(tester);
 
       await tester.tap(find.descendant(of: nav, matching: find.text('Event')));
       await settle(tester);
-      expect(find.text('Event terkunci'), findsOneWidget);
+      expect(find.text('Event khusus anggota aktif'), findsOneWidget);
       expect(find.textContaining('Tiket yang sudah lunas tetap dapat dibuka di Tiket Saya.'), findsOneWidget);
       expect(find.textContaining('menu Akun'), findsNothing);
       await tester.tap(find.byKey(const ValueKey('locked-tab-tickets')));

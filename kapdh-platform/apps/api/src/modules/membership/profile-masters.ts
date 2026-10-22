@@ -1,5 +1,11 @@
-import { alumniProfessions, alumniSkills, masterProfessions, masterSkills } from "@kapdh/database";
-import { asc, eq, inArray } from "drizzle-orm";
+import {
+  alumniProfessionEntries,
+  alumniProfessions,
+  alumniSkills,
+  masterProfessions,
+  masterSkills,
+} from "@kapdh/database";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import type { DbOrTx, Tx } from "../../core/db/types.js";
 import { fieldError } from "../../core/errors/app-exception.js";
 
@@ -7,6 +13,48 @@ export interface MasterRef {
   id: string;
   label: string;
   active: boolean;
+}
+
+/** Satu profesi beserta master tertautnya (kontrak AdminMemberProfessionEntry). */
+export interface ProfessionEntryRef {
+  label: string;
+  master: MasterRef | null;
+}
+
+/**
+ * Tautan master setiap label di `labels` (daftar `professions` alumni yang sama, urutan dan isinya dipertahankan),
+ * termasuk master nonaktif sebagai label historis (AC F10-4), untuk AdminMemberDetail.profession_entries. Label
+ * dipasangkan dengan baris pertama yang labelnya persis sama: itulah baris yang dipertahankan saat label ganda
+ * disatukan (loadProfessionLabels), sehingga entri selalu sejajar dengan `professions`. Label yang barisnya hilang
+ * di antara dua kueri (perubahan bersamaan) dikirim tanpa master.
+ */
+export async function loadProfessionEntries(
+  db: DbOrTx,
+  userId: string,
+  labels: readonly string[],
+): Promise<ProfessionEntryRef[]> {
+  if (labels.length === 0) return [];
+  const rows = await db
+    .select({
+      label: sql<string>`coalesce(${masterProfessions.label}, ${alumniProfessionEntries.label})`,
+      masterId: masterProfessions.id,
+      masterLabel: masterProfessions.label,
+      masterActive: masterProfessions.active,
+    })
+    .from(alumniProfessionEntries)
+    .leftJoin(masterProfessions, eq(masterProfessions.id, alumniProfessionEntries.professionId))
+    .where(eq(alumniProfessionEntries.alumniUserId, userId))
+    .orderBy(asc(alumniProfessionEntries.position));
+  return labels.map((label) => {
+    const row = rows.find((candidate) => candidate.label === label);
+    return {
+      label,
+      master:
+        row?.masterId && row.masterLabel !== null && row.masterActive !== null
+          ? { id: row.masterId, label: row.masterLabel, active: row.masterActive }
+          : null,
+    };
+  });
 }
 
 /**

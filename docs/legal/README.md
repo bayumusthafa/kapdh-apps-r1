@@ -90,6 +90,14 @@ Butir berikut harus benar pada saat naskah diterbitkan. Bila belum, sebagian kal
    `/ketentuan-komunitas`, `/bantuan`, dan `/tentang` membuka halaman baru. Baru setelah itu isi URL hapus akun di
    Play Console. Bila naskah terpaksa terbit lebih dulu, pilih alamat sementara `baru.kapdh.or.id` di
    `pratinjau.html`, lalu terbitkan ulang dengan alamat kapdh.or.id setelah domain dipindah.
+
+   **Terpenuhi 21 Oktober 2026.** `kapdh.or.id` dan `admin.kapdh.or.id` dilayani VPS; `www` dan `baru` dialihkan
+   permanen ke `kapdh.or.id`, `admin-baru` ke `admin.kapdh.or.id`. Kedelapan halaman di atas membuka situs baru, dan
+   naskah yang terbit tidak menautkan `baru.kapdh.or.id` maupun situs lama (`docs/qa/transport/2026-10/README.md`).
+   Naskah yang berlaku diterbitkan 15-18 Oktober 2026, sebelum syarat ini terpenuhi. Tautannya sudah memakai
+   `https://kapdh.or.id/...`, jadi tidak perlu terbit ulang karena butir ini, tetapi sampai 21 Oktober tautan itu masih
+   menuju situs lama. Langkah berikutnya: isi URL hapus akun di Play Console dengan
+   `https://kapdh.or.id/delete-account`.
 2. **Bucket deletion ledger di luar VPS sudah dikonfigurasi** (`DELETION_LEDGER_S3_*`). Tanpa bucket ini worker
    production menolak berjalan dan penghapusan akun tertunda, sehingga janji "penghapusan selesai paling lambat 7 hari
    kalender" tidak terpenuhi.

@@ -16,11 +16,52 @@ Payments. Keputusan teknis: ADR-015 (fallback iOS), ADR-016 (konfigurasi build),
 | OS minimum | Android 8.0 (`minSdk = 26`), iOS 15.0 (D7) | Ada |
 | Signing Android | `android/key.properties` + keystore (tidak di-commit); aktifkan Play App Signing | Belum; tanpa berkas itu (atau kunci suntikan Android Studio) build AAB rilis (`bundle*Release`, `package*ReleaseBundle`, `sign*ReleaseBundle`) gagal dengan pesan yang merujuk `kapdh-mobile/docs/BUILD.md` 3.1, sedangkan APK rilis untuk uji internal tetap ditandatangani kunci debug |
 | Signing iOS | Sertifikat distribusi, provisioning profile App Store, tim Apple | Belum |
-| Push | Capability Push Notifications (`aps-environment`) + kunci APNs di Firebase production; `POST_NOTIFICATIONS` Android 13+ sudah dideklarasikan | Entitlement iOS belum ada |
-| Deep link | `kapdh://app/...` sudah; HTTPS `https://kapdh.or.id/app/...` butuh `assetlinks.json` dan `apple-app-site-association` di `/.well-known/` serta Associated Domains iOS | Belum: berkas tidak ada di `apps/web/public`, dan `infra/nginx-web.conf` menolak semua path berawalan titik (`location ~ /\.` → 404), sehingga verifikasi App Links/Universal Links gagal sampai nginx mengecualikan `/.well-known/` |
+| Push | Capability Push Notifications (`aps-environment`) + kunci APNs di proyek Firebase yang dipakai build; `POST_NOTIFICATIONS` Android 13+ sudah dideklarasikan | Sebagian (22 Oktober 2026): `kapdh-mobile/ios/Runner/Runner.entitlements` memuat `aps-environment` dan `applinks:kapdh.or.id`. Sisa: Team ID dipilih di Xcode (Signing & Capabilities → Team, tersimpan sebagai `DEVELOPMENT_TEAM`); kunci APNs `.p8` diunggah **sebelum** build iOS apa pun dibagikan, termasuk TestFlight, ke proyek Firebase yang dipakai build itu: `kapdh-prod` untuk build production, proyek Firebase staging untuk build staging di TestFlight (ADR-016); `.p8` yang sama boleh diunggah ke keduanya (`push-fcm.md` bagian 8) |
+| Deep link | `kapdh://app/...` sudah; HTTPS `https://kapdh.or.id/app/...` butuh `assetlinks.json` dan `apple-app-site-association` di `/.well-known/` serta Associated Domains iOS | Sebagian (22 Oktober 2026): intent-filter App Links Android (`autoVerify`, path `/app` dan awalan `/app/`) dan entitlement `applinks:kapdh.or.id` ada; `infra/nginx-web.conf` mengecualikan hanya dua path persis `/.well-known/assetlinks.json` dan `/.well-known/apple-app-site-association` dari penolakan path berawalan titik; build situs (`apps/web/scripts/write-app-links.mjs`) menulis kedua berkas dari `apps/web/app-links.json` hanya bila nilainya terisi (selain itu 404); halaman cadangan `/app` (`apps/web/src/pages/app/index.astro`). Sisa: sidik SHA-256 Play App Signing dan Team ID ke `app-links.json` lewat PR yang ditinjau, lalu verifikasi (di bawah tabel). Tautan dari server R1.0 tetap `kapdh://` (kontrak C2) |
 | Font | Poppins dibundel sebagai font aset (`kapdh-mobile/assets/fonts/poppins`, ARCHITECTURE §8.1); aplikasi tidak menghubungi server font pihak ketiga | Ada |
 | Konfigurasi build | `flutter build appbundle` / `flutter build ipa` dengan `--dart-define-from-file=<berkas production dari secret CI>` yang memuat `KAPDH_ENV=production`, `API_BASE_URL=https://api.kapdh.or.id/api/v1`, `PUSH_ENABLED=true` dan `FIREBASE_*` | `config/production.json` di repo sengaja kosong untuk Firebase |
 | Versi | `pubspec.yaml` `version: x.y.z+n`; `min_app_version` di web admin sama dengan versi rilis pertama | `1.0.0+1` saat ini (sama dengan `min_app_version` seed); naikkan `+n` setiap unggahan |
+
+Tautan HTTPS `https://kapdh.or.id/app/...` (baris Deep link). Sampai langkah di bawah selesai, tautan https membuka
+halaman cadangan `/app` di peramban (tombol "Buka di aplikasi KAPDH" ke `kapdh://app/...` dan tautan toko). Tautan yang
+dikirim server R1.0 tetap `kapdh://` (kontrak C2); tautan https baru dapat dipakai setelah domain terverifikasi.
+
+1. Ambil SHA-256 **App signing key certificate** di Play Console → Setup → App integrity (bukan kunci debug; sidik
+   upload key hanya bila build di luar Play juga harus terverifikasi) dan Team ID di Apple Developer → Membership
+   details. Isi `android.sha256_cert_fingerprints` dan `ios.app_id_prefix` di `kapdh-platform/apps/web/app-links.json`
+   lewat PR yang ditinjau. Format ada di `$comment` berkas itu; nilai tidak sah atau berbentuk contoh menggagalkan
+   build. Team ID yang sama dipilih di Xcode (baris Push).
+2. Uji asap `infra/scripts/smoke-static.sh web` berjalan di CI terhadap image yang baru dibangun (kedua berkas terbit
+   atau 404 sesuai `app-links.json`, dan keadaan terbit juga diuji dengan fixture
+   `infra/ci/test/fixtures/app-links.uji.json`), bukan terhadap situs live. Setelah web production di-deploy, periksa
+   situs live:
+
+   ```sh
+   curl -sI https://kapdh.or.id/.well-known/assetlinks.json              # sidik terisi: 200 dan content-type: application/json; masih kosong: 404
+   curl -sI https://kapdh.or.id/.well-known/apple-app-site-association   # Team ID terisi: 200 dan content-type: application/json; masih kosong: 404
+   ```
+
+   Kode 301/302 atau `text/html` berarti berkas tidak dilayani apa adanya, dan verifikasi Android/iOS gagal. Uji asap
+   yang sama juga dapat diarahkan ke situs live (skrip hanya menyambung URL dasar dengan path, jadi https didukung):
+   dari `kapdh-platform/` pada checkout tag yang di-deploy (ekspektasi dibaca dari `apps/web/app-links.json` checkout
+   itu; butuh curl dan node), jalankan `sh infra/scripts/smoke-static.sh web https://kapdh.or.id`. Skrip itu juga
+   mengirim satu `POST /` yang harus ditolak 405. Cara ini belum pernah dijalankan terhadap situs live; bila
+   pemeriksaan header lain gagal karena proxy di depan nginx, yang menentukan untuk langkah ini adalah baris
+   `/.well-known/...`. Lalu periksa salinan pihak Google dan Apple:
+
+   ```sh
+   curl -fsS 'https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://kapdh.or.id&relation=delegate_permission/common.handle_all_urls'   # statements memuat packageName id.or.kapdh.app dan sidik dari langkah 1
+   curl -fsS https://app-site-association.cdn-apple.com/a/v1/kapdh.or.id   # isi sama dengan https://kapdh.or.id/.well-known/apple-app-site-association
+   ```
+
+   Salinan CDN Apple diperbarui berkala, jadi perubahan baru bisa belum tampil di sana. Ulangi perintah kedua sampai
+   isinya sama sebelum menguji Universal Links di iPhone (pasang ulang aplikasi setelahnya).
+3. Di ponsel Android 12+ dengan aplikasi yang dipasang dari Play (jalur pengujian internal cukup):
+
+   ```sh
+   adb shell pm verify-app-links --re-verify id.or.kapdh.app
+   adb shell pm get-app-links id.or.kapdh.app   # kapdh.or.id: verified
+   ```
 
 Listing (keduanya):
 
@@ -50,38 +91,38 @@ Aturan teks (aplikasi, listing, catatan reviewer, tangkapan layar):
 - Risiko yang tersisa (D13): Apple 3.1.1 dapat menilai bahwa pembayaran membuka fitur di aplikasi. Rencana cadangan
   ada di bagian 6.
 
-**Status teks aplikasi: BELUM sesuai (pemblokir submit, pemilik: mobile).** Judul jenis pembayaran sudah memakai
-istilah iuran keanggotaan (`kapdh-mobile/lib/features/payments/payment_presentation.dart`), tetapi teks lain
-mengaitkan iuran/perpanjangan dengan "membuka" atau "mengaktifkan" fitur aplikasi, persis pemicu 3.1.1 yang hendak
-dihindari mitigasi D13 butir 1. Ditemukan 14 Oktober 2026 dengan pemeriksaan di bawah:
+**Status teks aplikasi: sesuai sejak 21 Oktober 2026 (teks disahkan PP).** Temuan 14 Oktober 2026 menunjukkan teks
+aplikasi mengaitkan iuran/perpanjangan dengan "membuka" atau "mengaktifkan" fitur aplikasi, persis pemicu 3.1.1 yang hendak
+dihindari mitigasi D13 butir 1. Semua teks itu kini ditulis sebagai status keanggotaan organisasi:
 
-| Berkas (`kapdh-mobile/lib/`) | Teks yang bermasalah |
-| ---------------------------- | -------------------- |
-| `app/app_shell.dart:55`, `:156` | label semantik "`<tab>`, terkunci" dan judul lembar "`<tab>` terkunci" |
-| `app/app_shell.dart:131` | "... hanya untuk anggota aktif. Perpanjang KTA untuk membuka kembali fitur ini." |
-| `features/kta/kta_presentation.dart:51`, `:54`, `:56` | "Seluruh fitur alumni aktif ..." |
-| `features/kta/kta_presentation.dart:70` | "Selesaikan iuran pendaftaran untuk mengaktifkan KTA dan fitur alumni." |
-| `features/kta/kta_presentation.dart:76-77` | "Perpanjang untuk mengaktifkan kembali KTA dan fitur alumni" |
-| `features/home/home_screen.dart:296` | "Perpanjang KTA untuk kembali membuka berita, event, jejaring dan chat" |
-| `features/home/shared/member_gate.dart:35` | "Perpanjang KTA untuk membukanya kembali" |
-| `features/chat/chat_room_screen.dart:842` | "Perpanjang KTA untuk membuka kembali percakapan" |
-| `features/account/widgets/account_section.dart:103` | label semantik "terkunci" pada menu akun |
+| Tempat (`kapdh-mobile/lib/`) | Teks lama | Teks sekarang |
+| ------------------------------ | --------- | ------------- |
+| `app/app_shell.dart` tooltip/semantik tab, `features/account/widgets/account_section.dart` semantik menu | "`<menu>`, terkunci" | "`<menu>`, khusus anggota aktif" |
+| `app/app_shell.dart` judul lembar | "`<tab>` terkunci" | "`<tab>` khusus anggota aktif" (sama dengan `MemberOnlyNotice`) |
+| `app/app_shell.dart`, `features/home/shared/member_gate.dart` (unverified) | "... terbuka setelah KTA aktif. Selesaikan iuran pendaftaran agar pengurus dapat memverifikasi keanggotaan Anda." | "... adalah layanan untuk anggota terverifikasi. Status keanggotaan diperbarui pengurus setelah iuran pendaftaran organisasi diverifikasi." |
+| `app/app_shell.dart`, `features/home/shared/member_gate.dart` (expired) | "... hanya untuk anggota aktif. Perpanjang KTA untuk membuka kembali fitur ini / membukanya kembali." | "... adalah layanan untuk anggota aktif. Masa keanggotaan Anda berakhir; hubungi pengurus atau perpanjang keanggotaan organisasi." |
+| `features/home/home_screen.dart` (unverified) | "Setelah KTA aktif, berita, event dan jejaring alumni terbuka di Beranda." | "Berita, event dan jejaring alumni adalah layanan untuk anggota terverifikasi." |
+| `features/home/home_screen.dart` (expired) | "Perpanjang KTA untuk kembali membuka berita, event, jejaring dan chat." | "Berita, event, jejaring dan chat adalah layanan untuk anggota aktif. Hubungi pengurus atau perpanjang keanggotaan organisasi." |
+| `features/chat/chat_room_screen.dart` | "Perpanjang KTA untuk membuka kembali percakapan." | "Percakapan adalah layanan untuk anggota aktif; hubungi pengurus atau perpanjang keanggotaan organisasi." |
+| `features/kta/kta_presentation.dart` (aktif) | "Seluruh fitur alumni aktif ..." | "Keanggotaan organisasi aktif ..." |
+| `features/kta/kta_presentation.dart` (tidak aktif) | "Selesaikan iuran pendaftaran untuk mengaktifkan KTA dan fitur alumni." | "Selesaikan iuran pendaftaran. KTA berlaku setelah pengurus memverifikasi iuran organisasi Anda." |
+| `features/kta/kta_presentation.dart` (expired) | "Masa aktif ... Perpanjang untuk mengaktifkan kembali KTA dan fitur alumni." | "Masa keanggotaan ... berakhir. Hubungi pengurus atau perpanjang keanggotaan organisasi." |
+| `features/kta/kta_screen.dart` judul daftar layanan | "Terbuka setelah KTA aktif" | "Layanan untuk anggota terverifikasi" |
 
-Arah perbaikan (disahkan PP sebelum diubah): tulis sebagai status keanggotaan, mis. "Layanan untuk anggota
-terverifikasi. Status keanggotaan diperbarui pengurus setelah iuran organisasi diverifikasi." dan "Masa keanggotaan
-berakhir. Hubungi pengurus atau perpanjang keanggotaan organisasi.", tanpa "terkunci", "membuka", atau "mengaktifkan
-fitur". Uji widget yang memeriksa teks ini ikut diperbarui.
+Ikon gembok pada tab dan lembar penjelasan tetap dipakai sebagai penanda visual; tinjau ulang bila reviewer mempersoalkannya.
+Uji widget yang memeriksa teks ini ikut diperbarui.
 
 Pemeriksaan sebelum setiap submit (dari root repo; hasil yang diharapkan: kosong, atau hanya baris yang sudah ditinjau
 PP dan dicatat bukan soal akses berbayar):
 
 ```sh
-grep -rniE "'[^']*(terkunci|membuka (kembali )?fitur|membuka kembali percakapan|membukanya kembali|kembali membuka|fitur alumni|mengaktifkan (kembali )?KTA|upgrade|premium|langganan)[^']*'" \
+grep -rniE "'[^']*(terkunci|terbuka setelah KTA|membuka (kembali )?fitur|membuka kembali percakapan|membukanya kembali|kembali membuka|fitur alumni|mengaktifkan (kembali )?KTA|upgrade|premium|langganan)[^']*'" \
   kapdh-mobile/lib --include='*.dart' | grep -vE '^[^:]+:[0-9]+:[[:space:]]*//'
 ```
 
-Pada 14 Oktober 2026 perintah ini mengembalikan 13 baris, tepat baris-baris pada tabel di atas. Pola ini hanya
-menangkap literal string berkutip tunggal; tinjau juga tangkapan layar toko dan teks listing secara manual.
+Pada 14 Oktober 2026 perintah ini (tanpa pola "terbuka setelah KTA") mengembalikan 13 baris; pada 21 Oktober 2026,
+setelah perbaikan, hasilnya kosong. Pola ini hanya menangkap literal string berkutip tunggal; tinjau juga tangkapan
+layar toko dan teks listing secara manual.
 
 Deskripsi listing (draf, Bahasa Indonesia; disahkan PP):
 

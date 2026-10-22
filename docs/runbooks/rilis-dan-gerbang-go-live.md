@@ -46,7 +46,8 @@ Lakukan untuk **staging dulu**, lalu production. Keduanya terpisah penuh (D12, P
 user DB, Redis, direktori berkas, secret, domain dan proyek FCM.
 
 1. **VPS dan firewall** (D7, D9): hanya 80/443 publik; SSH 22 dari IP tepercaya/VPN dengan key; panel Coolify di
-   subdomain sendiri dengan 2FA; port 8000/6001/6002 tidak dibuka langsung.
+   subdomain sendiri dengan 2FA; port 8000/6001/6002 dan 8080 (`coolify-proxy`) tidak dibuka langsung (DROP di
+   `DOCKER-USER`).
 2. **Direktori berkas** (PRD 5.4): `sudo install -d -o 1000 -g 1000 -m 750 /srv/kapdh/<lingkungan>/files`.
    Dipasang di `/data/files` pada resource API **dan** worker (mount direktori host yang sama). Dicadangkan restic harian.
 3. **Resource Coolify per lingkungan** (label menu dapat berbeda per versi Coolify; verifikasi saat gladi staging):
@@ -57,8 +58,9 @@ user DB, Redis, direktori berkas, secret, domain dan proyek FCM.
    - Aplikasi dari image registry: `kapdh-api` (domain `api.` / `staging-api.`, port 3000, healthcheck Coolify
      `/api/v1/health/ready`: 503 sampai deletion ledger diterapkan setelah restore, ADR-014, sehingga replika itu tidak
      menerima trafik; `HEALTHCHECK` image sendiri hanya liveness `/api/v1/health`), `kapdh-worker` (tanpa domain,
-     healthcheck `/healthz` port 3001), `kapdh-web` (domain
-     `kapdh.or.id` + `www` / `staging.`, port 8080), `kapdh-admin` (domain `admin.` / `staging-admin.`, port 8080).
+     healthcheck `/healthz` port 3001), `kapdh-web` (domain `kapdh.or.id` saja dengan Direction "Allow www &
+     non-www"; `www` dialihkan berkas dinamis bagian 7.1 / `staging.`, port 8080), `kapdh-admin` (domain `admin.` /
+     `staging-admin.`, port 8080).
    - Environment variable dari `infra/.env.<lingkungan>.example` bagian A (API) dan worker; `DATABASE_URL`/`REDIS_URL`
      ditulis lengkap per resource (bagian B): API memakai login `kapdh_app`, worker `kapdh_worker`. Worker TIDAK diberi
      `JWT_ACCESS_SECRET`, `OTP_HMAC_SECRET`, `TOTP_ENC_KEY`, `QR_SIGNING_KEYS` (PRD 5.1).
@@ -127,6 +129,11 @@ commit; log run adalah bukti. Langkah manual berikut dipakai bila jalur otomatis
      KAPDH_VPS_HOST=<ip-vps> sh kapdh-platform/infra/scripts/staging-smoke.sh
    ```
 
+   Skrip menilai port hanya bila `<ip-vps>:443` terjangkau dan port kontrol (bawaan 9999) tidak. Bila salah satunya
+   gagal (host/`nc`/jaringan pemeriksa bermasalah, atau jaringan di jalur menerima koneksi ke port apa pun), port
+   tidak dinilai (`PERINGATAN`) dan dibuktikan dengan prosedur `go-live.md` 2.4. Untuk run bukti, pakai
+   `KAPDH_REQUIRE_PORTS=true` agar port yang belum terbukti keluar 3.
+
    Ditambah SSL Labs untuk ketiga domain, dan `docker exec <worker> wget -qO- http://127.0.0.1:3001/healthz` → `ok`.
 
 ## 4. Inisialisasi production pertama (PRD 8.2) dan go-live (PRD 8.3)
@@ -194,7 +201,8 @@ Gladi seluruh bagian ini dijalankan lebih dahulu dari **database staging kosong*
    Pencocokan mandiri dilakukan dengan mengunduh gambar dari URL publik (pratinjau di web admin) lalu `sha256sum`.
 
 8. **Backup pertama** dibuat dan direstore ke lingkungan bersih (PRD 8.3 langkah 2).
-9. **Smoke production** (PRD 8.3 langkah 3) dengan akun uji, `staging-smoke.sh` terhadap domain production, lalu
+9. **Smoke production** (PRD 8.3 langkah 3) dengan akun uji, `staging-smoke.sh` terhadap domain production (port dengan
+   prosedur `go-live.md` 2.4), lalu
    lanjutkan review toko dan rilis bertahap (PRD 8.3 langkah 4-6, D16).
 
 ### Penyebab penolakan gerbang dan perbaikannya
@@ -312,30 +320,128 @@ job rilis production memakai pengecualian `report` dengan alasan dan penyetuju (
 
 Berlaku untuk rilis pertama yang memuat `0009_profile_lists` dan `0010_profile_lists_bridge` (profesi jamak, riwayat
 pendidikan, media sosial dinamis; kontrak aditif, `packages/contracts/CHANGELOG.md`). Gladi lebih dahulu di staging
-dengan salinan data production bila memungkinkan.
+dengan data **sintetis** yang bentuknya meniru production (PRD 5.3: data pribadi nyata tidak disalin ke staging):
+nilai lama `social_*` (termasuk string kosong dan nilai lebih dari 200 karakter), `last_education_institution`
+(termasuk lebih dari 120 karakter), satu baris `alumni_professions` per alumni, lalu sesudah migrasi satu anggota uji
+yang daftarnya diisi penuh lewat API baru untuk menguji penolakan tulisan lama (langkah 3). Gladi dengan data nyata
+**hanya** di lingkungan drill restore yang terisolasi (`docs/runbooks/backup-restore.md` 8.1), mengikuti
+`docs/runbooks/gladi-migrasi-profil-berulang.md`; salinan pulihan dimusnahkan sesudahnya.
 
-1. **Sebelum migrasi**: catat jumlah baris lama sebagai pembanding **[bukti]**:
+Kueri SQL di bawah dijalankan sebagai `kapdh_migrator` (baca saja) dari kontainer di jaringan database, misalnya
+setelah kueri disimpan di `hitung.sql`:
+
+```bash
+sudo docker run --rm -i --network coolify --env-file /etc/kapdh/production/release.env postgres:17.11-alpine3.24 \
+  sh -c 'psql "$MIGRATOR_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f -' < hitung.sql
+```
+
+1. **Sebelum migrasi** **[bukti]**:
+   1. Hitung nilai lama yang akan disalin isi awal 0010, dengan aturan yang sama dengan 0010: pendidikan bila
+      `last_education_institution` tidak kosong setelah `btrim` (disalin, dipotong 120 karakter); tautan bila panjang
+      nilainya 1 sampai 200 karakter (disalin apa adanya); profesi = setiap baris `alumni_professions` (paling banyak
+      satu per alumni, indeks unik `alumni_professions_alumni_user_id_key`):
+
+      ```sql
+      select count(*) filter (where btrim(coalesce(last_education_institution, '')) <> '') as pendidikan,
+             count(*) filter (where char_length(social_instagram) between 1 and 200)
+               + count(*) filter (where char_length(social_x) between 1 and 200)
+               + count(*) filter (where char_length(social_facebook) between 1 and 200)
+               + count(*) filter (where char_length(social_linkedin) between 1 and 200) as tautan,
+             (select count(*) from app.alumni_professions) as profesi
+      from app.alumni;
+      ```
+
+   2. Hitung nilai sosial lama yang **dilewati** isi awal (string kosong atau lebih dari 200 karakter). API lama
+      menolak keduanya, jadi nilainya hanya mungkin dari tulisan di luar API. Harus 0. Bila tidak, pemilik produk
+      memutuskan sebelum rilis: nilai itu tidak masuk daftar, dan kolom lamanya dikosongkan begitu tautan, pendidikan
+      atau profesi anggota itu disimpan lagi (proyeksi daftar ke kolom lama):
+
+      ```sql
+      select count(*) filter (where char_length(social_instagram) not between 1 and 200)
+               + count(*) filter (where char_length(social_x) not between 1 and 200)
+               + count(*) filter (where char_length(social_facebook) not between 1 and 200)
+               + count(*) filter (where char_length(social_linkedin) not between 1 and 200) as tautan_dilewati
+      from app.alumni;
+      ```
+
+   3. **Dump pra-migrasi** (jalur manual). `run-release.sh` tidak membuat dump; jalur otomatis membuatnya sendiri
+      (`remote-migrate.sh`, `KAPDH_BACKUP_DIR`; `docs/runbooks/ci-cd.md` bagian 5). Perintahnya sama dengan
+      `remote-migrate.sh`: `pg_dump` format custom database `kapdh` dari image PostgreSQL resource (versi klien = versi
+      server), lalu dibaca ulang `pg_restore --list`, ke direktori khusus root, dengan sha256:
+
+      ```bash
+      sudo -i   # blok ini sebagai root
+      umask 077; D=/var/backups/kapdh/premigrate-manual; install -d -m 700 "$D"
+      F="$D/kapdh-production-premigrate-$(date -u +%Y%m%dT%H%M%SZ).dump"
+      docker run --rm --network coolify --env-file /etc/kapdh/production/release.env postgres:17.11-alpine3.24 \
+        sh -c 'exec pg_dump --format=custom --compress=6 --dbname="$ADMIN_DATABASE_URL"' </dev/null > "$F.partial" \
+        && docker run --rm -i --network none postgres:17.11-alpine3.24 pg_restore --list < "$F.partial" > /dev/null \
+        && mv "$F.partial" "$F" && sha256sum "$F" | tee "$F.sha256"
+      ```
+
+      Tidak ada baris sha256 = dump gagal: hapus `$F.partial` dan jangan jalankan job. Catat nama berkas dan sha256 di
+      paket bukti. Dump memuat data pribadi (D2): mode 600, disimpan paling lama 7 hari seperti dump pra-migrasi
+      otomatis, lalu `shred -u`. Pemulihan dari dump ini mengikuti `docs/runbooks/ci-cd.md` bagian 9.
+
+2. **Job rilis production** seperti bagian 5 langkah 2 (mode `enforce`), dengan image `kapdh-release` rilis ini
+   **[bukti]**:
+
+   ```bash
+   sudo sh kapdh-platform/infra/scripts/run-release.sh production ghcr.io/<org>/kapdh-release:<tag-rilis-ini>   # enforce
+   ```
+
+   Jalur otomatis: mode gerbang dibaca dari `KAPDH_RELEASE_GATE*` di `/etc/kapdh/ci-migrate/production.env` (bawaan
+   `enforce`). Bila gerbang go-live production masih merah saat rilis ini, gerbang pra-migrasi menolak tanpa mengubah
+   skema (bagian 5.1). Rilis hanya boleh dilanjutkan lewat pengecualian terdokumentasi bagian 5.3: persetujuan
+   tertulis, alasan dan penyetuju (`RELEASE_GATE=report` dengan `RELEASE_GATE_REASON` dan `RELEASE_GATE_APPROVER` di
+   jalur manual; `KAPDH_RELEASE_GATE=report`, `KAPDH_RELEASE_GATE_REASON` dan `KAPDH_RELEASE_GATE_APPROVER` di berkas
+   itu pada jalur otomatis, lalu dihapus lagi sesudah job).
+
+   Migrasi hanya menambah tabel, fungsi dan trigger, lalu mengisi daftar dari kolom lama; kolom lama,
+   `alumni_professions` dan data lain tidak diubah. Migrasi lebih dahulu mengunci `alumni`, `alumni_professions` dan
+   `master_professions` (EXCLUSIVE) dengan batas tunggu 15 detik per tabel, paling lama sekitar 45 detik untuk ketiganya (`SET LOCAL lock_timeout`): job menunggu transaksi
+   profil yang sedang berjalan selesai, lalu menahan simpan profil baru sampai job commit (beberapa detik; baca tetap
+   berjalan). Ini mencegah deadlock antara job dan API lama. Bila kunci tidak diperoleh dalam 15 detik (ada transaksi
+   lama yang menggantung), job gagal cepat: `[migrate] Gagal: 55P03 ...` lalu `[rilis] GAGAL: migrasi gagal; ...`.
+   Seluruh transaksi migrasi dibatalkan, skema tetap 0008, API/worker lama berjalan seperti biasa, dan simpan profil
+   yang sempat tertahan (paling lama sekitar 45 detik) dilanjutkan. `roles.sql` dan sandi role yang sudah diterapkan job
+   bersifat idempoten. Ulangi langkah 1.3 dan 2 saat tulisan profil sepi. Transaksi yang terbuka lebih dari 15 detik
+   dapat dihitung lebih dahulu sebagai superuser (`psql "$ADMIN_DATABASE_URL"`, karena role lain tidak melihat
+   `xact_start` sesi milik role lain):
+
+   ```sql
+   select count(*) as transaksi_lama from pg_stat_activity
+   where datname = current_database() and backend_type = 'client backend' and pid <> pg_backend_pid()
+     and xact_start < now() - interval '15 seconds';
+   ```
+
+   Setelah job dan **sebelum** langkah 3, bandingkan isi awal dengan kolom lama dalam satu kueri (satu snapshot)
+   **[bukti]**. Setiap pasangan harus sama:
 
    ```sql
    select count(*) filter (where btrim(coalesce(last_education_institution, '')) <> '') as pendidikan,
-          count(*) filter (where social_instagram is not null) + count(*) filter (where social_x is not null)
-            + count(*) filter (where social_facebook is not null)
-            + count(*) filter (where social_linkedin is not null) as tautan,
-          (select count(*) from app.alumni_professions) as profesi
+          (select count(*) from app.alumni_education) as pendidikan_baru,
+          count(*) filter (where char_length(social_instagram) between 1 and 200)
+            + count(*) filter (where char_length(social_x) between 1 and 200)
+            + count(*) filter (where char_length(social_facebook) between 1 and 200)
+            + count(*) filter (where char_length(social_linkedin) between 1 and 200) as tautan,
+          (select count(*) from app.alumni_social_links) as tautan_baru,
+          (select count(*) from app.alumni_professions) as profesi,
+          (select count(*) from app.alumni_profession_entries) as profesi_baru
    from app.alumni;
    ```
 
-2. **Job rilis** dengan image `kapdh-release` baru (bagian 3 atau jalur otomatis). Migrasi hanya menambah tabel,
-   fungsi dan trigger, lalu mengisi daftar dari kolom lama; kolom lama, `alumni_professions` dan data lain tidak
-   diubah. Migrasi lebih dahulu mengunci `alumni`, `alumni_professions` dan `master_professions` (EXCLUSIVE): job
-   menunggu transaksi profil yang sedang berjalan selesai, lalu menahan simpan profil baru sampai job commit
-   (beberapa detik; baca tetap berjalan). Ini mencegah deadlock antara job dan API lama. Setelah job, ulangi hitungan
-   di atas terhadap tabel baru (`alumni_education`, `alumni_social_links`, `alumni_profession_entries`); angkanya
-   harus sama **[bukti]**.
+   Selama hanya API lama yang menulis, trigger jembatan menjaga setiap pasangan tetap sama. Pasangan yang berbeda
+   berarti isi awal atau jembatan salah: jangan redeploy; skema sudah naik, jadi pemilik produk memilih perbaikan maju
+   atau pembatalan darurat (langkah 6). Nilai `pendidikan`, `tautan` dan `profesi` sama dengan langkah 1.1 kecuali ada
+   simpan profil di antara keduanya. Setelah API baru berjalan (langkah 3), daftar boleh lebih panjang dari kolom lama
+   (profesi kedua, tautan platform baru), jadi perbandingan ini hanya berlaku sebelum redeploy.
+
 3. **Coolify**: redeploy `kapdh-api` → `kapdh-worker` → `kapdh-admin` → `kapdh-web`. Selama jendela antara migrasi dan
    redeploy, API lama tetap berjalan; tulisan profilnya diterapkan trigger jembatan ke daftar baru dan kolom lama
    diproyeksikan ulang saat commit, sehingga tidak ada yang hilang. Tulisan lama yang tidak muat karena daftar anggota
-   sudah penuh (10 tautan atau 5 profesi dari aplikasi baru) ditolak, bukan disimpan setengah. Aplikasi 1.0.0 yang sudah terpasang tetap bekerja dengan field lama (proyeksi daftar baru).
+   sudah penuh (10 tautan atau 5 profesi dari aplikasi baru) ditolak, bukan disimpan setengah. Aplikasi 1.0.0 yang
+   sudah terpasang tetap bekerja dengan field lama (proyeksi daftar baru).
 4. **Uji asap**: ubah profil akun uji lewat aplikasi lama (field lama) dan web admin baru (daftar baru), lalu buka
    `GET /me` dan profil di direktori: keduanya menampilkan perubahan yang sama.
 5. **Rollback image** (jalur biasa, bagian 6.1): aman tanpa membalik skema. Image lama membaca kolom lama yang selalu
@@ -347,8 +453,9 @@ dengan salinan data production bila memungkinkan.
    - Setelah build aplikasi mobile yang memakai daftar baru tersebar, JANGAN rollback API ke image sebelum 0009: build
      itu tidak dapat membaca profil tanpa ketiga daftar. Pakai perbaikan maju (mode maintenance bila perlu).
 6. **Pembatalan skema darurat** (hanya atas keputusan pemilik produk, misalnya migrasi ternyata merusak data): lakukan
-   rollback image lebih dahulu (langkah 5), dump database (`docs/runbooks/backup-restore.md`), lalu jalankan skrip
-   pembatalan dari image rilis baru sebagai `kapdh_migrator` dalam satu transaksi **[bukti]**:
+   rollback image lebih dahulu (langkah 5), buat dump baru dengan perintah langkah 1.3, lalu jalankan skrip pembatalan
+   dari image rilis baru sebagai `kapdh_migrator` dalam satu transaksi **[bukti]** (digladikan di
+   `docs/runbooks/gladi-migrasi-profil-berulang.md` Langkah 7):
 
    ```bash
    sudo docker run --rm --network coolify --env-file /etc/kapdh/production/release.env --entrypoint sh \
@@ -359,6 +466,9 @@ dengan salinan data production bila memungkinkan.
    Skrip menghapus tiga tabel baru beserta fungsi dan trigger 0010, lalu menghapus catatan journal 0009-0010 sehingga
    cek versi skema image lama lulus. Kolom lama tidak disentuh. Yang hilang permanen hanya isi tambahan pada langkah 5.
    Bila rilis ini dipasang lagi kelak, job rilis menerapkan ulang 0009-0010 dan mengisi daftar dari kolom lama.
+   Seperti 0009, skrip memasang `lock_timeout` 15 detik: bila kunci tabel profil tidak diperoleh, skrip gagal `55P03`
+   tanpa perubahan apa pun dan dapat diulang saat tulisan profil sepi.
+
 7. **Akhir masa transisi**: field lama baru dapat dihapus dari kontrak dan kolom lama dari skema (perubahan memutus,
    ADR baru) setelah `min_app_version` dinaikkan melewati build pertama yang memakai daftar baru dan build itu sudah
    tersebar di toko. Bersamaan dengan itu, hapus kalimat tentang kota pendidikan lama dari Kebijakan Privasi 4.2 dan
@@ -423,7 +533,8 @@ untuk ketiga domain:
 
 1. API: `HSTS_ENABLED=true` pada resource API production (helmet: `max-age=31536000; includeSubDomains`).
 2. Web dan admin (jalur Coolify): nginx di image tidak mengirim HSTS. Header dipasang **sekali per server Coolify**
-   lewat middleware entrypoint `https`, sekaligus dengan pengalihan HTTP → HTTPS permanen (301). Efeknya global:
+   lewat middleware entrypoint `https`, sekaligus dengan pengalihan HTTP → HTTPS permanen (301 untuk GET, 308 untuk
+   HEAD/POST). Efeknya global:
    setiap host HTTPS di proxy itu (web, admin, API, panel Coolify, staging di server yang sama) mendapat
    `Strict-Transport-Security: max-age=31536000`, tanpa `includeSubDomains`, jadi hanya berlaku untuk host yang persis
    sama. Label kontainer per resource tidak dipakai: selama label dapat diedit, Coolify mengunci perubahan domain,
@@ -486,6 +597,83 @@ untuk ketiga domain:
 4. Bukti **[bukti]**: staging dengan `KAPDH_EXPECT_HSTS=true` pada `staging-smoke.sh` bila HSTS staging memakai
    `includeSubDomains`; production dengan blok gerbang `go-live.md` 2.4.
 
+### 7.1 Pengalihan host lama ke alamat utama
+
+`www.kapdh.or.id` dan alamat sementara masa persiapan (`baru.kapdh.or.id` untuk situs, `admin-baru.kapdh.or.id`
+untuk admin) tidak melayani aplikasi. API hanya menerima satu origin situs (`PUBLIC_WEB_URL`) dan satu origin admin
+(`ADMIN_ORIGIN`), jadi halaman yang dibuka di host lain gagal CORS. Ketiganya dialihkan permanen ke alamat utama, dengan
+path dan query tetap utuh. Fragmen (token `#t=` QR KTA lama yang berisi `baru.kapdh.or.id`) dibawa peramban karena
+`location` tidak memuat fragmen. Perilaku ini standar peramban, tetapi perlu diuji sekali dengan QR yang sah (langkah 4).
+
+1. **Resource Coolify.** `kapdh-web` hanya memakai domain `https://kapdh.or.id` dengan Direction "Allow www &
+   non-www"; `kapdh-admin` hanya `https://admin.kapdh.or.id`. Jangan memakai Direction "Redirect to non-www": Coolify
+   memakai pengalihan sementara (`302` untuk GET, `307` untuk HEAD/POST).
+2. **API dan worker.** `PUBLIC_WEB_URL=https://kapdh.or.id` (API dan worker; dipakai juga untuk isi QR KTA) dan
+   `ADMIN_ORIGIN=https://admin.kapdh.or.id` (API), lalu Redeploy.
+3. **Berkas dinamis.** Servers → `localhost` → Proxy → 'Dynamic configurations', berkas `kapdh-pengalihan.yaml`:
+
+   ```yaml
+   http:
+     routers:
+       kapdh-alihkan-www:
+         rule: Host(`www.kapdh.or.id`)
+         entryPoints:
+           - https
+         service: noop@internal
+         middlewares:
+           - kapdh-alihkan-ke-apex
+         tls:
+           certResolver: letsencrypt
+       kapdh-alihkan-baru:
+         rule: Host(`baru.kapdh.or.id`)
+         entryPoints:
+           - https
+         service: noop@internal
+         middlewares:
+           - kapdh-alihkan-ke-apex
+         tls:
+           certResolver: letsencrypt
+       kapdh-alihkan-admin-baru:
+         rule: Host(`admin-baru.kapdh.or.id`)
+         entryPoints:
+           - https
+         service: noop@internal
+         middlewares:
+           - kapdh-alihkan-ke-admin
+         tls:
+           certResolver: letsencrypt
+     middlewares:
+       kapdh-alihkan-ke-apex:
+         redirectRegex:
+           regex: "^https://(www|baru)\\.kapdh\\.or\\.id/(.*)"
+           replacement: "https://kapdh.or.id/${2}"
+           permanent: true
+       kapdh-alihkan-ke-admin:
+         redirectRegex:
+           regex: "^https://admin-baru\\.kapdh\\.or\\.id/(.*)"
+           replacement: "https://admin.kapdh.or.id/${1}"
+           permanent: true
+   ```
+
+   Middleware HSTS entrypoint (bagian 7 langkah 2) ikut berlaku pada ketiga router ini. Jangan memakai 'Reset configuration'
+   atau 'Switch proxy' (lihat perilaku Coolify di atas).
+4. **Periksa.** Untuk GET, `https://www.kapdh.or.id/kebijakan-privasi?x=1` → `301 https://kapdh.or.id/kebijakan-privasi?x=1`,
+   `https://baru.kapdh.or.id/kta/<nomor>` → `301 https://kapdh.or.id/kta/<nomor>`, `https://admin-baru.kapdh.or.id/login`
+   → `301 https://admin.kapdh.or.id/login`; HEAD dan POST dijawab `308` dengan `location` yang sama. Ketiga host tetap
+   bersertifikat Let's Encrypt dan memuat `strict-transport-security`. CORS API hanya menerima `https://kapdh.or.id` dan
+   `https://admin.kapdh.or.id`. Sekali saja, buka QR KTA yang sah dengan alamat `baru.kapdh.or.id` di peramban; alamat
+   akhirnya harus `https://kapdh.or.id/kta/<nomor>#t=<token>` dengan status terkini.
+5. **Jalur Compose cadangan** (`compose-cadangan.md`) mengalihkan `www` ke apex secara bawaan
+   (`KAPDH_PRODUCTION_WWW_REDIRECT=true` di `infra/traefik/render-dynamic.sh`), tetapi tidak merutekan `baru` dan
+   `admin-baru`. Skrip itu belum punya masukan untuk host tambahan dan Traefik cadangan merender konfigurasinya saat
+   start (tanpa watch), jadi pengalihan keduanya memerlukan perubahan `render-dynamic.sh` yang diuji sebelum dipakai.
+   Tanpa perubahan itu, kedua alamat tidak tersedia selama jalur cadangan; hapus record DNS keduanya setelah masa
+   transisi.
+
+Status production: sejak 21 Oktober 2026 domain resource (langkah 1), variabel API dan worker (langkah 2), dan berkas
+dinamis (langkah 3) aktif. Pemeriksaan langkah 4 lulus, kecuali uji token `#t=` yang belum dilakukan (bukti:
+`docs/qa/transport/2026-10/README.md`).
+
 ## 8. Wajib dibuktikan pada staging nyata (belum dapat diuji di mesin build tanpa Docker)
 
 - Build semua image dan workflow `ci.yml` hijau (termasuk job "Stack Compose production"), lalu run pertama
@@ -493,9 +681,10 @@ untuk ketiga domain:
 - `psql` di image rilis menjalankan cek versi skema, `roles.sql` dan `role-passwords.sql` (`\getenv`, `\if`)
   terhadap PostgreSQL 17.
 - `run-release.sh` dengan nama host/jaringan PostgreSQL resource Coolify yang sebenarnya dan `docker login ghcr.io`.
-- TLS grade (SSL Labs), pengalihan HTTP→HTTPS, upgrade WSS `/socket.io/`, port 5432/6379/3000/3001/8000 tertutup dari
-  internet (`staging-smoke.sh`); HSTS dan pengalihan 301 proxy Coolify (bagian 7; production sudah sejak
-  17 Oktober 2026).
+- TLS grade (SSL Labs), pengalihan HTTP→HTTPS, upgrade WSS `/socket.io/`, port 5432/6379/3000/3001/8000/8080
+  tertutup dari internet (`staging-smoke.sh` untuk TLS/WSS, dan untuk port bila kedua pembandingnya terpenuhi; selain
+  itu port dengan prosedur `go-live.md` 2.4); HSTS dan pengalihan permanen
+  proxy Coolify (bagian 7; production sudah sejak 17 Oktober 2026, gerbang 2.4 production lulus 21 Oktober 2026).
 - Batas memori/CPU di bawah beban (N-01..N-04) dan heap Node (`--max-old-space-size`).
 - Web admin di peramban nyata dengan CSP production: login, TOTP, editor berita (TipTap tanpa `<style>` sisipan),
   pratinjau unggahan (`blob:`), QR TOTP (`data:`), pemindai check-in (kamera).

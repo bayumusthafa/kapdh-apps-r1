@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,6 +31,52 @@ final RegExp _rowErrorKey = RegExp(r'^(education|social_links)\.(\d+)(?:\.(\w+))
 /// Tahun tamat paling awal yang dapat dipilih (kontrak `EducationEntryInput.graduation_year` minimum).
 const int _firstGraduationYear = 1950;
 
+/// Selisih WIB (Asia/Jakarta, UTC+7, tanpa musim panas): server menilai tahun tamat terhadap tahun berjalan zona ini.
+const Duration _wibOffset = Duration(hours: 7);
+
+/// Bentuk pembanding satu riwayat pendidikan (urutan field kontrak EducationEntry).
+typedef _EducationKey = (String, String?, EducationLevel?, int?);
+
+/// Bentuk pembanding entri tersimpan, dinormalkan sama seperti isian ([_EducationDraft.key]).
+_EducationKey _educationKeyOf(EducationEntry entry) {
+  final major = entry.major?.trim() ?? '';
+  return (entry.institution.trim(), major.isEmpty ? null : major, entry.level, entry.graduationYear);
+}
+
+/// Penggabungan tiga arah satu daftar berulang untuk "Pakai isian saya" (AC F15-4): [latest] dikurangi entri yang
+/// dihapus pengguna terhadap [base], ditambah entri yang ia tambahkan; entri yang diubah dihitung sebagai hapus yang
+/// lama dan tambah yang baru. Entri dikenali lewat [key] (nilai utuhnya). Urutan [latest] dipertahankan dan tambahan
+/// disusulkan dalam urutan pengguna; tambahan yang sudah ada di [latest] menurut [sameAs] (aturan ganda server) tidak
+/// digandakan. Bila daftar itu tidak berubah di versi terbaru, isian pengguna dipakai apa adanya beserta urutannya.
+/// Batas jumlah sengaja tidak dipotong di sini: kelebihan ditandai validasi lokal sehingga pengguna sendiri yang
+/// memilih entri yang dilepas.
+List<T> _mergeList<T, K>({
+  required List<K> base,
+  required List<T> mine,
+  required List<T> latest,
+  required K Function(T item) key,
+  Object? Function(T item)? sameAs,
+}) {
+  if (listEquals([for (final item in latest) key(item)], base)) return mine;
+  // Entri dasar yang tidak ditemukan lagi di isian pengguna adalah yang ia hapus atau ubah.
+  final removed = [...base];
+  final added = [
+    for (final item in mine)
+      if (!removed.remove(key(item))) item,
+  ];
+  final merged = [
+    for (final item in latest)
+      if (!removed.remove(key(item))) item,
+  ];
+  final duplicateOf = sameAs ?? key;
+  final present = {for (final item in merged) duplicateOf(item)};
+  return [
+    ...merged,
+    for (final item in added)
+      if (!present.contains(duplicateOf(item))) item,
+  ];
+}
+
 /// Satu riwayat pendidikan yang sedang diisi ("Pendidikan n"). [id] stabil per baris agar field tidak bertukar isi
 /// saat baris lain dihapus.
 class _EducationDraft {
@@ -57,7 +104,7 @@ class _EducationDraft {
   bool get blank => institution.text.trim().isEmpty && major.text.trim().isEmpty && level == null && year == null;
 
   /// Bentuk pembanding (urutan field kontrak EducationEntry).
-  (String, String?, EducationLevel?, int?) get key {
+  _EducationKey get key {
     final m = major.text.trim();
     return (institution.text.trim(), m.isEmpty ? null : m, level, year);
   }
@@ -87,6 +134,12 @@ class _SocialDraft {
     final v = value.text.trim();
     return v.startsWith('@') ? v.substring(1) : v;
   }
+
+  /// Bentuk pembanding terhadap tautan tersimpan.
+  (SocialPlatform, String) get key => (platform, normalized);
+
+  /// Kunci tautan ganda menurut server: platform yang sama dengan nilai yang sama tanpa membedakan huruf besar.
+  String get duplicateKey => '${platform.name}:${normalized.toLowerCase()}';
 
   void dispose() => value.dispose();
 }
@@ -234,7 +287,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
   /// "Pakai isian saya" setelah 409 VERSION_CONFLICT (AC F15-4, PRD 4.5): hanya field yang benar-benar diubah
   /// pengguna terhadap versi yang ia buka diterapkan di atas [latest]. Field lain mengikuti versi terbaru, sehingga
-  /// simpan berikutnya (If-Match versi terbaru) tidak menimpa perubahan dari perangkat lain.
+  /// simpan berikutnya (If-Match versi terbaru) tidak menimpa perubahan dari perangkat lain atau pengurus. Daftar
+  /// berulang yang diubah di kedua sisi digabung per entri ([_mergeList]): entri yang ditambahkan atau diubah di tempat
+  /// lain tetap ada, entri yang dihapus pengguna tetap terhapus.
   void _rebase(Me latest) {
     final base = _me?.profile;
     if (base == null) {
@@ -254,14 +309,48 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final removeAvatar = _removeAvatar;
 
     _fill(latest);
+    final next = latest.profile;
     for (final (controller, text) in textEdits) {
       controller.text = text;
     }
-    if (professions != null) _professions = professions;
-    if (skills != null) _skills = skills;
-    // Baris isian sendiri dipertahankan (pengendali yang sama), menggantikan baris versi terbaru, kecuali daftar versi
-    // terbaru kini memuat nilai yang belum dikenal (daftar terkunci).
-    _replaceDrafts(education: _educationLocked ? null : education, links: _linksLocked ? null : links);
+    if (professions != null) {
+      _professions = _mergeList(
+        base: base.professions,
+        mine: professions,
+        latest: next.professions,
+        key: (label) => label,
+        sameAs: (label) => label.trim().toLowerCase(),
+      );
+    }
+    if (skills != null) {
+      _skills = _mergeList(
+        base: [for (final skill in base.skills) skill.id],
+        mine: skills,
+        latest: next.skills,
+        key: (skill) => skill.id,
+      );
+    }
+    // Baris isian sendiri dipertahankan (pengendali yang sama) di samping baris versi terbaru, kecuali daftar versi
+    // terbaru kini memuat nilai yang belum dikenal (daftar terkunci, ikut versi terbaru).
+    _replaceDrafts(
+      education: education == null || _educationLocked
+          ? null
+          : _mergeList(
+              base: [for (final entry in base.education) _educationKeyOf(entry)],
+              mine: education,
+              latest: _education,
+              key: (draft) => draft.key,
+            ),
+      links: links == null || _linksLocked
+          ? null
+          : _mergeList(
+              base: [for (final link in base.socialLinks) (link.platform, link.value)],
+              mine: links,
+              latest: _links,
+              key: (draft) => draft.key,
+              sameAs: (draft) => draft.duplicateKey,
+            ),
+    );
     _newAvatar = newAvatar;
     _uploadedAvatarId = uploadedAvatarId;
     _removeAvatar = removeAvatar;
@@ -296,8 +385,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final drafts = _filledEducation;
     if (drafts.length != base.length) return false;
     for (var i = 0; i < base.length; i++) {
-      final b = base[i];
-      if (drafts[i].key != (b.institution, b.major, b.level, b.graduationYear)) return false;
+      if (drafts[i].key != _educationKeyOf(base[i])) return false;
     }
     return true;
   }
@@ -307,7 +395,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final drafts = _filledLinks;
     if (drafts.length != base.length) return false;
     for (var i = 0; i < base.length; i++) {
-      if (drafts[i].platform != base[i].platform || drafts[i].normalized != base[i].value) return false;
+      if (drafts[i].key != (base[i].platform, base[i].value)) return false;
     }
     return true;
   }
@@ -343,6 +431,11 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       if (hasControlCharacter(label)) errors['professions'] = 'Profesi "$label" memuat karakter yang tidak diizinkan.';
     }
     final education = _filledEducation;
+    // Melebihi batas hanya mungkin setelah "Pakai isian saya" menggabungkan entri dari perangkat lain: ditandai, tidak
+    // dipotong, agar pengguna memilih sendiri yang dihapus.
+    if (education.length > maxEducationEntries) {
+      errors['education'] = 'Maksimal $maxEducationEntries riwayat pendidikan.';
+    }
     for (final (i, draft) in education.indexed) {
       final institution = draft.institution.text.trim();
       if (institution.isEmpty) {
@@ -352,12 +445,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       }
       if (draft.major.text.trim().length > 120) errors['education.$i.major'] = 'Maksimal 120 karakter.';
     }
+    final links = _filledLinks;
+    if (links.length > maxSocialLinks) errors['social_links'] = 'Maksimal $maxSocialLinks tautan.';
     final seen = <String>{};
-    for (final (i, draft) in _filledLinks.indexed) {
+    for (final (i, draft) in links.indexed) {
       final problem = draft.platform.problemOf(draft.value.text.trim());
       if (problem != null) {
         errors['social_links.$i.value'] = problem;
-      } else if (!seen.add('${draft.platform.name}:${draft.normalized.toLowerCase()}')) {
+      } else if (!seen.add(draft.duplicateKey)) {
         errors['social_links.$i.value'] = 'Tautan ini sudah ada.';
       }
     }
@@ -690,7 +785,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     String? fieldError(String key) => _fieldErrors[key]?.join(' ') ?? local[key];
     final profile = me.profile;
     final showAvatarUrl = _removeAvatar ? null : profile.avatarUrl;
-    final currentYear = ref.read(clockProvider)().year;
+    // Tahun berjalan menurut WIB seperti validasi server, bukan zona waktu perangkat.
+    final currentYear = ref.read(clockProvider)().toUtc().add(_wibOffset).year;
 
     Widget field(
       String key,
@@ -1020,7 +1116,7 @@ class _EducationItem extends StatelessWidget {
   final int number;
   final _EducationDraft draft;
 
-  /// Tahun tamat terakhir yang dapat dipilih (server menolak tahun setelah tahun berjalan).
+  /// Tahun tamat terakhir yang dapat dipilih (server menolak tahun setelah tahun berjalan WIB).
   final int currentYear;
   final bool enabled;
   final String? Function(String field) errorOf;
@@ -1030,6 +1126,7 @@ class _EducationItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.kc;
+    final year = draft.year;
     return Semantics(
       container: true,
       label: 'Pendidikan $number',
@@ -1111,13 +1208,18 @@ class _EducationItem extends StatelessWidget {
                     KapdhDropdownField<int?>(
                       key: ValueKey('profile-education-year-${draft.id}'),
                       label: 'Tahun Tamat',
-                      value: draft.year,
+                      value: year,
                       hint: 'Pilih tahun',
                       helperText: 'Tahun ijazah terbit.',
                       errorText: errorOf('graduation_year'),
                       items: [
                         const DropdownMenuItem(value: null, child: Text('Tidak diisi')),
-                        for (var year = currentYear; year >= _firstGraduationYear; year--)
+                        // Tahun tersimpan di luar rentang (jam perangkat melenceng, data lama) tetap menjadi pilihan:
+                        // nilai tanpa item tidak dapat ditampilkan dropdown.
+                        if (year != null && year > currentYear) DropdownMenuItem(value: year, child: Text('$year')),
+                        for (var choice = currentYear; choice >= _firstGraduationYear; choice--)
+                          DropdownMenuItem(value: choice, child: Text('$choice')),
+                        if (year != null && year < _firstGraduationYear)
                           DropdownMenuItem(value: year, child: Text('$year')),
                       ],
                       onChanged: enabled

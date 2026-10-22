@@ -26,14 +26,14 @@ class MemberOnlyNotice extends StatelessWidget {
     final current = status ?? EffectiveStatus.unknown;
     final (String message, String? actionLabel, String? route) = switch (current) {
       EffectiveStatus.unverified => (
-        '$feature terbuka setelah KTA aktif. Selesaikan iuran pendaftaran agar pengurus dapat memverifikasi '
-            'keanggotaan Anda.',
+        '$feature adalah layanan untuk anggota terverifikasi. Status keanggotaan diperbarui pengurus setelah '
+            'iuran pendaftaran organisasi diverifikasi.',
         'Bayar iuran',
         AppRoutes.onboardingFees,
       ),
       EffectiveStatus.expired => (
-        '$feature hanya untuk anggota aktif. Perpanjang KTA untuk membukanya kembali. Tiket yang sudah lunas tetap '
-            'dapat dibuka di Tiket Saya.',
+        '$feature adalah layanan untuk anggota aktif. Masa keanggotaan Anda berakhir; hubungi pengurus atau '
+            'perpanjang keanggotaan organisasi. Tiket yang sudah lunas tetap dapat dibuka di Tiket Saya.',
         'Perpanjang KTA',
         AppRoutes.renewal,
       ),

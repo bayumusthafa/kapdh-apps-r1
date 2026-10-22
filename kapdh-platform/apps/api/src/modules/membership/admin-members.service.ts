@@ -62,7 +62,7 @@ import {
   replaceProfessions,
   replaceSocialLinks,
 } from "./profile-lists.js";
-import { loadMemberMasters, replaceSkills } from "./profile-masters.js";
+import { loadMemberMasters, loadProfessionEntries, replaceSkills } from "./profile-masters.js";
 
 type AdminMemberDetail = components["schemas"]["AdminMemberDetail"];
 type AdminMemberPage = components["schemas"]["AdminMemberPage"];
@@ -561,6 +561,8 @@ export class AdminMembersService {
     );
     const masters = await loadMemberMasters(db, userId);
     const lists = await loadProfileLists(db, userId);
+    // Penanda master per profesi (AC F10-4): setiap profesi bertaut master nonaktif, bukan hanya `profession`.
+    const professionEntries = await loadProfessionEntries(db, userId, lists.professions);
     const [linked] = await db
       .select({
         adminId: admins.id,
@@ -615,6 +617,7 @@ export class AdminMembersService {
       },
       profession: masters.profession,
       professions: lists.professions,
+      profession_entries: professionEntries,
       education: lists.education,
       social_links: lists.social_links,
       skills: masters.skills,

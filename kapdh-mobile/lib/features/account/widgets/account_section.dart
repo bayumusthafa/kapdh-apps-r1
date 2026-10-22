@@ -177,7 +177,7 @@ class AccountMenuTile extends StatelessWidget {
       label,
       ?subtitle,
       if (badge != null) '$badge belum dibaca',
-      if (locked && !paused) 'terkunci',
+      if (locked && !paused) 'khusus anggota aktif',
     ].join(', ');
     return Semantics(
       button: true,

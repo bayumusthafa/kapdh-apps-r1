@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { sitemapXml } from "../pages/sitemap.xml";
 import { ORGANIZATION } from "./organization";
@@ -85,11 +87,29 @@ describe("halaman informasi (F-08, PRD 3.8)", () => {
     );
   });
 
-  it("sitemap hanya memuat halaman yang boleh diindeks (tanpa /kta dan /delete-account)", () => {
+  it("sitemap hanya memuat halaman yang boleh diindeks (tanpa /kta, /delete-account dan /app)", () => {
     const xml = sitemapXml(new URL("https://kapdh.or.id"));
     expect(xml).toContain("<loc>https://kapdh.or.id/kebijakan-privasi</loc>");
     expect(xml).toContain("<loc>https://kapdh.or.id/unduh</loc>");
     expect(xml).not.toContain("/kta");
     expect(xml).not.toContain("/delete-account");
+    expect(xml).not.toMatch(/\/app(\/|<)/);
+  });
+
+  const read = (path: string) => readFileSync(fileURLToPath(new URL(path, import.meta.url)), "utf8");
+
+  it("robots.txt menutup KTA dan hapus akun, tetapi tidak /app (aturan prefiks, noindex harus terbaca)", () => {
+    const disallowed = [...read("../../public/robots.txt").matchAll(/^Disallow: (\S+)$/gm)].map((m) => m[1]);
+    // Disallow adalah prefiks: "/app" ikut menutup /apply dan /apps, dan perayap yang dilarang tidak pernah membaca
+    // noindex halaman cadangan tautan aplikasi. /app cukup noindex (meta robots di bawah, header X-Robots-Tag di
+    // infra/nginx-web.conf yang diuji nginx-config.test.ts dan infra/scripts/smoke-static.sh).
+    expect(disallowed).toEqual(["/kta/", "/delete-account"]);
+  });
+
+  it("halaman cadangan /app memakai meta robots noindex dari Base.astro", () => {
+    expect(read("../pages/app/index.astro")).toMatch(/<Base\b[^>]*\snoindex\b[^>]*>/);
+    expect(read("../layouts/Base.astro")).toContain(
+      '{noindex ? <meta name="robots" content="noindex, nofollow" /> : <link rel="canonical" href={canonical} />}',
+    );
   });
 });

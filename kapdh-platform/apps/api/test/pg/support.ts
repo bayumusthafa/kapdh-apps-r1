@@ -36,22 +36,32 @@ export function createPgTestDatabase(label: string, poolSize = 12): Promise<PgTe
   return createDatabase(label, poolSize, true);
 }
 
-/** Membuat database KOSONG (tanpa migrasi), misalnya untuk menguji job migrasi itu sendiri. */
-export function createEmptyPgDatabase(label: string, poolSize = 4): Promise<PgTestDatabase> {
-  return createDatabase(label, poolSize, false);
+/**
+ * Membuat database KOSONG (tanpa migrasi), misalnya untuk menguji job migrasi itu sendiri. `createOptions` ditambahkan
+ * ke CREATE DATABASE, mis. locale lain dari template0 (cluster uji memakai --locale=C).
+ */
+export function createEmptyPgDatabase(
+  label: string,
+  poolSize = 4,
+  createOptions = "",
+): Promise<PgTestDatabase> {
+  return createDatabase(label, poolSize, false, createOptions);
 }
 
 async function createDatabase(
   label: string,
   poolSize: number,
   fromTemplate: boolean,
+  createOptions = "",
 ): Promise<PgTestDatabase> {
   const config = laneConfig();
   const name = `kapdh_t_${label.replace(/[^a-z0-9_]/g, "_")}_${randomBytes(4).toString("hex")}`;
   const admin = createDb(`${baseUrl(config)}/postgres`, { max: 1 }).sql;
   try {
     await admin.unsafe(
-      fromTemplate ? `create database "${name}" template "${config.template}"` : `create database "${name}"`,
+      fromTemplate
+        ? `create database "${name}" template "${config.template}"`
+        : `create database "${name}" ${createOptions}`.trimEnd(),
     );
   } finally {
     await admin.end({ timeout: 5 });

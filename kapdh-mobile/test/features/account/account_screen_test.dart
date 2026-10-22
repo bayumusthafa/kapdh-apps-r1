@@ -143,11 +143,11 @@ void main() {
 
   testWidgets('PRD 2.2: menu komunitas terkunci untuk KTA tidak aktif dan menjelaskan cara membukanya', (tester) async {
     final app = await openAccount(tester, status: 'unverified');
-    expect(find.bySemanticsLabel('Anggota diblokir, terkunci'), findsOneWidget);
-    expect(find.bySemanticsLabel('Tiket saya, terkunci'), findsOneWidget);
-    await scrollAndTap(tester, find.bySemanticsLabel('Anggota diblokir, terkunci'));
+    expect(find.bySemanticsLabel('Anggota diblokir, khusus anggota aktif'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tiket saya, khusus anggota aktif'), findsOneWidget);
+    await scrollAndTap(tester, find.bySemanticsLabel('Anggota diblokir, khusus anggota aktif'));
     await settle(tester);
-    expect(find.text('Anggota diblokir terkunci'), findsOneWidget);
+    expect(find.text('Anggota diblokir khusus anggota aktif'), findsOneWidget);
     expect(find.text('Bayar iuran'), findsOneWidget);
     expect(app.location, '/account');
   });
@@ -171,7 +171,7 @@ void main() {
     expect(find.bySemanticsLabel('Ganti password, Ditunda selama pemeliharaan'), findsOneWidget);
     expect(find.bySemanticsLabel('Hapus akun, Ditunda selama pemeliharaan'), findsOneWidget);
     // Menu yang memang ditolak status tetap dijelaskan lewat status.
-    expect(find.bySemanticsLabel('Anggota diblokir, terkunci'), findsOneWidget);
+    expect(find.bySemanticsLabel('Anggota diblokir, khusus anggota aktif'), findsOneWidget);
 
     await scrollAndTap(tester, find.byKey(const ValueKey('account-menu-/account/password')));
     await settle(tester);

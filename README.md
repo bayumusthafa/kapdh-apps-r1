@@ -28,10 +28,10 @@ KAPDHAPPS/                         satu repo selama build (ADR-001); kapdh-mobil
     ARCHITECTURE.md                kontrak rekayasa (mengikat untuk setiap kontributor)
     BUILD_PLAN.md                  fase build dan peta kepemilikan path
     adr/                           catatan keputusan arsitektur 001-024
-    runbooks/                      production-init, go-live (+ rollback), rilis-dan-gerbang-go-live, ci-cd,
-                                   compose-cadangan, backup-restore, restore-backup, monitoring, incident-response,
-                                   load-test, storage-migration, app-store-submission, alumni-account-disabled,
-                                   push-fcm
+    runbooks/                      production-init, go-live (+ rollback), rilis-dan-gerbang-go-live,
+                                   gladi-migrasi-profil-berulang, ci-cd, compose-cadangan, backup-restore,
+                                   restore-backup, monitoring, incident-response, load-test, storage-migration,
+                                   app-store-submission, alumni-account-disabled, push-fcm
     qa/                            traceability.md (bukti otomatis per AC/N/U), uat-checklist.md (UAT manual),
                                    device-matrix.md (D7), templat bukti restore-drills/, availability/, load/
     handoff/                       laporan serah terima per fase/irisan (fakta, keputusan, isu terbuka)
@@ -63,6 +63,7 @@ KAPDHAPPS/                         satu repo selama build (ADR-001); kapdh-mobil
 | Menjalankan dan mengembangkan platform | `kapdh-platform/README.md`, README per paket (`apps/worker`, `packages/{database,contracts,design-tokens}`) |
 | Menjalankan dan mengembangkan aplikasi | `kapdh-mobile/README.md` |
 | Inisialisasi production, go-live, rollback | `docs/runbooks/production-init.md`, `docs/runbooks/go-live.md`, `docs/runbooks/rilis-dan-gerbang-go-live.md` |
+| Gladi migrasi profil berulang (0009-0010) pada salinan pulihan production | `docs/runbooks/gladi-migrasi-profil-berulang.md` |
 | CI/CD, image, deploy staging/production, Compose cadangan | `docs/runbooks/ci-cd.md`, `docs/runbooks/compose-cadangan.md`, `kapdh-platform/infra/README.md` |
 | Backup, restore drill, monitoring, insiden, uji beban | `docs/runbooks/backup-restore.md`, `monitoring.md`, `incident-response.md`, `load-test.md`, `storage-migration.md` |
 | Restore backup tanpa menghidupkan akun terhapus; status akun `disabled` | `docs/runbooks/restore-backup.md`, `docs/runbooks/alumni-account-disabled.md` (Bahasa Inggris, dari hardening Fase D) |
@@ -192,7 +193,7 @@ Jalankan dari `kapdh-platform/` kecuali disebut lain.
 | `@kapdh/api` | `dev`, `build`, `start`, `test`, `test:pg`, `typecheck`, `lint`, `admin:bootstrap --email <e> --name "<n>"`, `golive:check [--preflight] [--json]` (gerbang go-live, ADR-023), `account:ledger-reapply --dir <folder> [--dir ...]`, `account:status -- --action <disable/enable/delete> --email <e> --reason "<r>" --approved-by "<n>"`, `loadtest:seed` (dataset sintetis staging; menolak production) (semua CLI menjalankan `dist/`, jadi build dulu) |
 | `@kapdh/worker` | `build`, `start`, `test`, `test:pg`, `typecheck`, `lint` |
 | `@kapdh/admin` | `dev`, `dev:mock`, `build` (butuh `VITE_API_BASE_URL` untuk production), `test`, `test:live` (klien admin terhadap API nyata yang dibangun lokal, D2-14), `typecheck`, `lint` |
-| Infra (tanpa Docker) | `node infra/scripts/validate-infra.mjs`, `node infra/ci/check-workflows.mjs`, `node --test 'infra/ci/test/*.test.mjs'`, `sh infra/scripts/release-job.test.sh`, `sh infra/backup/test/dry-run.sh`, `sh infra/monitoring/test/dry-run.sh` |
+| Infra (tanpa Docker) | `node infra/scripts/validate-infra.mjs`, `node infra/ci/check-workflows.mjs`, `node --test 'infra/ci/test/*.test.mjs'`, `sh infra/scripts/release-job.test.sh`, `sh infra/scripts/staging-smoke.test.sh`, `sh infra/backup/test/dry-run.sh`, `sh infra/monitoring/test/dry-run.sh` |
 | `@kapdh/web` | `dev`, `build` (env build `PUBLIC_API_URL`; gerbang CSP `scripts/assert-csp-safe.mjs`), `preview`, `test`, `typecheck`, `lint` |
 | `@kapdh/database` | `migrate`, `seed:reference`, `seed:dev`, `db:generate`, `db:generate:custom --name=<x>`, `db:check`, `test` (CLI butuh `DATABASE_URL` di environment) |
 | `kapdh-mobile` | `flutter pub get`, `flutter analyze`, `flutter test`, `flutter run --dart-define-from-file=config/<lingkungan>.json` (juga `flutter build appbundle` / `flutter build ipa`), `dart format --output=none --set-exit-if-changed lib test` |

@@ -8,6 +8,11 @@
 -- (termasuk ketikan sendiri), jurusan/strata/tahun tamat dan riwayat pendidikan selain entri teratas, serta tautan
 -- sosial selain tautan pertama Instagram/X/Facebook/LinkedIn. Kolom lama (social_*, last_education_*) dan
 -- alumni_professions tidak disentuh. Bila 0009-0010 diterapkan lagi kelak, daftar diisi ulang dari kolom lama.
+--
+-- Batas tunggu kunci: DROP TRIGGER pada app.alumni/app.alumni_professions meminta ACCESS EXCLUSIVE; selama antre,
+-- permintaan itu menahan baca dan tulis profil. Bila transaksi lama tidak selesai dalam 15 detik, skrip gagal (55P03)
+-- tanpa perubahan apa pun (satu transaksi) dan dapat diulang saat tulisan profil sepi.
+SET LOCAL lock_timeout = '15s';
 DROP TRIGGER IF EXISTS alumni_legacy_reproject ON app.alumni;
 DROP TRIGGER IF EXISTS alumni_professions_legacy_reproject ON app.alumni_professions;
 DROP TRIGGER IF EXISTS alumni_legacy_profile_bridge ON app.alumni;

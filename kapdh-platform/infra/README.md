@@ -32,9 +32,10 @@ Jalur cadangan saat panel Coolify tidak tersedia: **Compose cadangan** (`compose
 | `ci/`                                             | Skrip pendukung workflow `.github/workflows/` (katalog image `images.json`, forced command migrasi + gerbang `remote-migrate.sh`, deploy Coolify, uji asap, gerbang kerentanan); lihat `ci/README.md`. Job `compose-stack` di `ci.yml` menjalankan build semua image, dry-run entry, `nginx -t`, uji asap header dan stack Compose lengkap.                                                  |
 | `scripts/validate-infra.mjs`                      | Validasi statis tanpa Docker (YAML, digest, isolasi jaringan, env lengkap, least privilege, non-root).                                                                                                                                                                                                                                                                                       |
 | `scripts/release-job.test.sh`                     | Uji kering `release-job.sh` dengan shim psql/node (urutan, mode gerbang, kode keluar).                                                                                                                                                                                                                                                                                                       |
+| `scripts/staging-smoke.test.sh`                   | Uji kering `staging-smoke.sh` dengan shim curl/openssl/nc (penilaian port dengan pembanding 443 dan port kontrol, mode ketat).                                                                                                                                                                                                                                                               |
 | `scripts/smoke-static.sh`                         | Uji asap header/cache/fallback kontainer web dan admin.                                                                                                                                                                                                                                                                                                                                      |
 | `scripts/ci-stack-smoke.sh`                       | Stack Compose production lengkap di CI (job rilis nyata, healthcheck, gerbang, DB/Redis privat).                                                                                                                                                                                                                                                                                             |
-| `scripts/staging-smoke.sh`                        | Dari luar VPS: HTTPS/redirect, TLS >= 1.2, header, HSTS (`KAPDH_EXPECT_HSTS=true`), `/health/ready`, upgrade WSS, port DB/Redis tertutup.                                                                                                                                                                                                                                                    |
+| `scripts/staging-smoke.sh`                        | Dari luar VPS: HTTPS/redirect, TLS >= 1.2, header, HSTS (`KAPDH_EXPECT_HSTS=true`), `/health/ready`, upgrade WSS, port privat (5432, 6379, 3000, 3001, 8000, 6001, 6002, 8080) tertutup: dinilai hanya bila 443 terjangkau dan port kontrol `KAPDH_PORT_CONTROL` (bawaan 9999) tidak; `KAPDH_REQUIRE_PORTS=true` keluar 3 bila port belum terbukti.                                          |
 | `scripts/admin-csp.mjs`                           | Render CSP admin dan gerbang CSP hasil build admin.                                                                                                                                                                                                                                                                                                                                          |
 | `backup/`                                         | Backup harian terenkripsi (pg_dump + restic berkas, manifest), restore ke lingkungan bersih dan verifikasinya, uji kering `backup/test/dry-run.sh`; lihat `backup/README.md` dan `docs/runbooks/backup-restore.md` (N-06, AC F14-6).                                                                                                                                                         |
 | `monitoring/`                                     | Pemeriksaan host, aplikasi, worker dan backup untuk Uptime Kuma (role `kapdh_monitor`), probe realtime, uji kering `monitoring/test/dry-run.sh`; lihat `monitoring/README.md` dan `docs/runbooks/monitoring.md` (N-05, N-14).                                                                                                                                                                |
@@ -57,7 +58,7 @@ Push `main` yang lolos CI menerbitkan `ghcr.io/<org>/kapdh-<image>:sha-<commit 4
 `vX.Y.Z` yang disetujui gerbang rilis memberi tag versi pada **digest yang sama** (`crane tag`, `release.yml`), tanpa
 build ulang (PRD 5.5); promosi gagal dengan pesan jelas bila salah satu image `sha-<commit>` belum ada. Paket GHCR
 privat: VPS dan Coolify menarik image setelah `docker login ghcr.io` (token `read:packages`; runbook rilis bagian 2). Semua base image dipin digest
-(Node 24.21.0/Alpine 3.24, nginx 1.30.5, PostgreSQL 17.11, Redis 7.4.11, Traefik 3.7.13; PRD 7.1).
+(Node 24.21.0/Alpine 3.24, nginx 1.30.6, PostgreSQL 17.11, Redis 7.4.11, Traefik 3.7.13; PRD 7.1).
 
 ## Job rilis (PRD 5.5) dan gerbang go-live (PRD 9.2, 9.3)
 
@@ -108,7 +109,9 @@ kondisi, PostgreSQL 17), `apps/api/test/pg/critical-9-2.pg.test.ts` skenario 9, 
   api 1 GB (heap 768 MB), worker 768 MB (heap 512 MB), web/admin 64 MB, Traefik 256 MB. Staging lebih kecil. Angka awal;
   diukur ulang dengan uji beban N-01..N-04 (PRD 10.2).
 - Firewall VPS: hanya 80/443 publik; SSH 22 dari IP tepercaya/VPN dengan key; port panel Coolify (8000, 6001, 6002)
-  tidak dibuka langsung (panel di subdomain sendiri dengan 2FA). Periksa dengan `scripts/staging-smoke.sh`.
+  dan 8080 `coolify-proxy` tidak dibuka langsung (panel di subdomain sendiri dengan 2FA; DROP di `DOCKER-USER`).
+  Periksa TLS/WSS (dan port, bila kedua pembandingnya terpenuhi) dengan `scripts/staging-smoke.sh`; bukti port yang
+  menentukan: prosedur `docs/runbooks/go-live.md` 2.4.
 
 ## Verifikasi lokal tanpa Docker
 
@@ -116,6 +119,7 @@ kondisi, PostgreSQL 17), `apps/api/test/pg/critical-9-2.pg.test.ts` skenario 9, 
 pnpm install && pnpm --filter @kapdh/config build
 node infra/scripts/validate-infra.mjs          # compose/env/Dockerfile/Traefik
 sh infra/scripts/release-job.test.sh           # alur job rilis dengan shim
+sh infra/scripts/staging-smoke.test.sh         # penilaian port uji asap dengan shim
 pnpm --filter @kapdh/api test test/core/golive-gate.e2e.test.ts
 pnpm --filter @kapdh/api test:pg test/pg/golive-gate.pg.test.ts test/pg/release-job.pg.test.ts
 pnpm --filter @kapdh/admin test src/nginx-config.test.ts

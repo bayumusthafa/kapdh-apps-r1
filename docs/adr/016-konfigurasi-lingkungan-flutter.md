@@ -42,4 +42,5 @@ mudah tertukar dan cenderung ter-commit. Build rilis yang tanpa sengaja mengarah
 - `config/staging.json` dan `config/production.json` di repo memuat `PUSH_ENABLED=false` dan nilai Firebase kosong;
   CI wajib menyuntikkan nilai sebenarnya dari secret saat build rilis.
 - Android: rilis membutuhkan `android/key.properties` (tidak di-commit). iOS: entitlement Push Notifications dan
-  Associated Domains belum ada di proyek (lihat `kapdh-mobile/README.md` Tindak lanjut rilis).
+  Associated Domains ada di `ios/Runner/Runner.entitlements` sejak 22 Oktober 2026; Team (DEVELOPMENT_TEAM) dipilih di
+  Xcode saat akun Apple organisasi tersedia (lihat `kapdh-mobile/README.md` Tindak lanjut rilis).
