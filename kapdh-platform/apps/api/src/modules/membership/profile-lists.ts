@@ -7,9 +7,10 @@ import {
   masterProfessions,
 } from "@kapdh/database";
 import { type AnyColumn, and, asc, eq, exists, inArray, type SQL, sql } from "drizzle-orm";
+import { isUniqueViolation } from "../../core/db/errors.js";
 import { firstRow } from "../../core/db/rows.js";
 import type { DbOrTx, Tx } from "../../core/db/types.js";
-import { fieldError } from "../../core/errors/app-exception.js";
+import { type AppException, fieldError } from "../../core/errors/app-exception.js";
 import type { EducationEntryInput, SocialLinkInput } from "./profile-input.js";
 
 type EducationEntry = components["schemas"]["EducationEntry"];
@@ -142,11 +143,52 @@ interface ProfessionEntry {
   label: string | null;
 }
 
+/** Indeks unik daftar (migrasi 0009) yang dilanggar hanya oleh entri ganda dalam satu kiriman. */
+const PROFESSION_UNIQUE_KEYS = [
+  "alumni_profession_entries_label_key",
+  "alumni_profession_entries_profession_key",
+] as const;
+const SOCIAL_LINK_UNIQUE_KEYS = ["alumni_social_links_value_key"] as const;
+
+/**
+ * Menyisipkan daftar baru; pelanggaran indeks unik `constraints` menjadi 400 VALIDATION_ERROR dari `duplicate`, bukan
+ * 500. Validasi zod memeriksa ganda dengan toLowerCase() JavaScript, sedangkan indeks memakai lower() PostgreSQL yang
+ * mengikuti locale database; untuk sebagian huruf non-ASCII hasilnya berbeda (sigma akhir: 'ΑΣ' dan 'ασ' berbeda bagi
+ * JavaScript tetapi sama bagi locale UTF-8 production), jadi indeks tetap penentu akhir. Transaksi pemanggil batal.
+ */
+async function insertUnique(
+  insert: () => Promise<unknown>,
+  constraints: readonly string[],
+  duplicate: () => AppException,
+): Promise<void> {
+  try {
+    await insert();
+  } catch (error) {
+    if (constraints.some((constraint) => isUniqueViolation(error, constraint))) throw duplicate();
+    throw error;
+  }
+}
+
+/**
+ * Posisi tautan pertama yang sama dengan tautan sebelumnya bila huruf diperkecil per karakter tanpa konteks, seperti
+ * lower() PostgreSQL (tanpa aturan sigma akhir JavaScript); -1 bila tidak ditemukan.
+ */
+function duplicateLinkIndex(links: readonly SocialLinkInput[]): number {
+  const seen = new Set<string>();
+  return links.findIndex((link) => {
+    const key = `${link.platform}:${Array.from(link.value, (char) => char.toLowerCase()).join("")}`;
+    if (seen.has(key)) return true;
+    seen.add(key);
+    return false;
+  });
+}
+
 /**
  * Mengganti seluruh daftar profesi (maksimal 5, urutan dipertahankan). Label yang sama dengan master AKTIF (tanpa
  * membedakan huruf besar/kecil) ditautkan ke master itu; master nonaktif hanya tetap tertaut bila sudah terpasang
  * pada profil ini (label historis, AC F10-4); label lain disimpan sebagai ketikan sendiri. Baris master dikunci FOR
- * SHARE sehingga penonaktifan bersamaan menunggu transaksi ini. Mengembalikan true bila berubah.
+ * SHARE sehingga penonaktifan bersamaan menunggu transaksi ini. Label ganda menurut indeks basis data menjadi 400 pada
+ * `professions`. Mengembalikan true bila berubah.
  */
 export async function replaceProfessions(
   tx: Tx,
@@ -192,9 +234,16 @@ export async function replaceProfessions(
   if (same) return false;
   await tx.delete(alumniProfessionEntries).where(eq(alumniProfessionEntries.alumniUserId, userId));
   if (next.length > 0)
-    await tx
-      .insert(alumniProfessionEntries)
-      .values(next.map((entry, position) => ({ alumniUserId: userId, position, ...entry, createdAt: now })));
+    await insertUnique(
+      () =>
+        tx
+          .insert(alumniProfessionEntries)
+          .values(
+            next.map((entry, position) => ({ alumniUserId: userId, position, ...entry, createdAt: now })),
+          ),
+      PROFESSION_UNIQUE_KEYS,
+      () => fieldError("professions", "Profesi tidak boleh ganda"),
+    );
   return true;
 }
 
@@ -247,7 +296,11 @@ export async function replaceEducation(
   return true;
 }
 
-/** Mengganti seluruh tautan sosial (maksimal 10, urutan dipertahankan). Mengembalikan true bila berubah. */
+/**
+ * Mengganti seluruh tautan sosial (maksimal 10, urutan dipertahankan). Tautan ganda menurut indeks basis data menjadi
+ * 400 pada `social_links.<n>.value` (atau `social_links` bila posisinya tidak dapat ditentukan). Mengembalikan true
+ * bila berubah.
+ */
 export async function replaceSocialLinks(
   tx: Tx,
   userId: string,
@@ -268,14 +321,24 @@ export async function replaceSocialLinks(
   if (same) return false;
   await tx.delete(alumniSocialLinks).where(eq(alumniSocialLinks.alumniUserId, userId));
   if (links.length > 0)
-    await tx.insert(alumniSocialLinks).values(
-      links.map((link, position) => ({
-        alumniUserId: userId,
-        position,
-        platform: link.platform,
-        value: link.value,
-        createdAt: now,
-      })),
+    await insertUnique(
+      () =>
+        tx.insert(alumniSocialLinks).values(
+          links.map((link, position) => ({
+            alumniUserId: userId,
+            position,
+            platform: link.platform,
+            value: link.value,
+            createdAt: now,
+          })),
+        ),
+      SOCIAL_LINK_UNIQUE_KEYS,
+      () => {
+        const index = duplicateLinkIndex(links);
+        return index < 0
+          ? fieldError("social_links", "Tautan tidak boleh ganda")
+          : fieldError(`social_links.${index}.value`, "Tautan ini sudah ada");
+      },
     );
   return true;
 }

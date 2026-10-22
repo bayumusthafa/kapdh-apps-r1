@@ -77,6 +77,10 @@ const professionLabel = z
   .max(100, "Maksimal 100 karakter")
   .refine((value) => !CONTROL_CHAR.test(value), "Profesi tidak boleh memuat karakter kontrol");
 
+/**
+ * Ganda diperiksa dengan toLowerCase() JavaScript; indeks unik basis data (lower() PostgreSQL) tetap penentu akhir
+ * untuk huruf non-ASCII yang aturannya berbeda, dan pelanggarannya juga 400 (profile-lists.ts).
+ */
 const professions = z
   .array(professionLabel)
   .max(MAX_ALUMNI_PROFESSIONS, `Maksimal ${MAX_ALUMNI_PROFESSIONS} profesi`)
@@ -127,6 +131,7 @@ const socialLink = z
       ctx.addIssue({ code: "custom", path: ["value"], message: "Situs web harus berupa tautan https://" });
   });
 
+/** Ganda per platform tanpa membedakan huruf besar/kecil; penentu akhir sama dengan profesi (indeks basis data). */
 const socialLinks = z
   .array(socialLink)
   .max(MAX_ALUMNI_SOCIAL_LINKS, `Maksimal ${MAX_ALUMNI_SOCIAL_LINKS} tautan`)

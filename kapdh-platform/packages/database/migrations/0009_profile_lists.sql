@@ -1,8 +1,17 @@
+-- Batas tunggu kunci di bawah. Selama permintaan EXCLUSIVE mengantre, semua tulisan profil baru ikut tertahan di
+-- belakangnya; tanpa batas, satu transaksi lama yang menggantung menahan simpan profil tanpa akhir. Bila kunci tidak
+-- diperoleh dalam 15 detik, job gagal dengan 55P03 (lock_not_available): seluruh transaksi migrasi dibatalkan, skema
+-- tetap seperti sebelum 0009, dan job rilis dapat diulang. SET LOCAL hanya berlaku di transaksi job migrasi.
+SET LOCAL lock_timeout = '15s';--> statement-breakpoint
 -- Kunci lebih dahulu: API/worker lama tetap berjalan selama job rilis. Tanpa kunci ini, transaksi lama yang memegang
 -- baris alumni FOR UPDATE dan menunggu kunci tabel dari ADD FOREIGN KEY di bawah dapat deadlock dengan cek FK backfill
 -- 0010 (40P01). EXCLUSIVE menunggu transaksi yang sedang berjalan selesai lalu menahan tulisan baru sampai job commit;
 -- SELECT biasa tetap berjalan.
 LOCK TABLE "app"."alumni", "app"."alumni_professions", "app"."master_professions" IN EXCLUSIVE MODE;--> statement-breakpoint
+-- Kunci sudah dipegang sampai commit; batas tunggu kembali ke nilai bawaan agar tidak membatasi migrasi berikutnya yang
+-- diterapkan dalam transaksi yang sama. Statement 0009-0010 berikutnya hanya menyentuh tabel yang sudah dikunci atau
+-- tabel baru, jadi tidak menunggu kunci lain.
+SET LOCAL lock_timeout TO DEFAULT;--> statement-breakpoint
 CREATE TABLE "app"."alumni_education" (
 	"alumni_user_id" uuid NOT NULL,
 	"position" smallint NOT NULL,
