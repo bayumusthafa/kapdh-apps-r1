@@ -294,6 +294,7 @@ jobs:
       - name: Siapkan Node.js
         uses: ./.github/actions/setup-platform
         with:
+          pnpm: "false"
           install: "false"
           cache: "false"
       - name: Matriks dari infra/ci/images.json
@@ -322,6 +323,7 @@ jobs:
       - name: Siapkan Node.js (gerbang kerentanan tanpa dependensi)
         uses: ./.github/actions/setup-platform
         with:
+          pnpm: "false"
           install: "false"
           cache: "false"
       - name: Siapkan Buildx
@@ -384,6 +386,7 @@ jobs:
       - name: Siapkan Node.js (skrip uji asap tanpa dependensi)
         uses: ./.github/actions/setup-platform
         with:
+          pnpm: "false"
           install: "false"
           cache: "false"
       - name: Siapkan Buildx

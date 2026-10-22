@@ -16,6 +16,18 @@ ENV CI=true \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+# corepack mengunduh pnpm versi packageManager dari registry npm. Unduhan dipisah dari `pnpm fetch` dan dicoba ulang
+# (maks. 5 kali, tiap percobaan maks. 120 s, jeda 10-40 s) agar gangguan sesaat registry (HTTP 5xx, koneksi macet) tidak
+# menggagalkan build; pnpm sendiri mencoba ulang unduhan paket hingga 5 kali (bawaan 2). pnpm 10 membaca
+# `npm_config_*`, pnpm 11 hanya `pnpm_config_*`; keduanya diisi agar tetap berlaku saat packageManager naik versi.
+ENV npm_config_fetch_retries=5 \
+    pnpm_config_fetch_retries=5
+RUN for attempt in 1 2 3 4 5; do \
+      timeout 120 corepack install && exit 0; \
+      echo "corepack install gagal (percobaan ${attempt}/5)" >&2; \
+      if [ "$attempt" -lt 5 ]; then sleep $((attempt * 10)); fi; \
+    done; \
+    exit 1
 RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
     pnpm fetch --frozen-lockfile --store-dir /pnpm/store
 COPY . .
