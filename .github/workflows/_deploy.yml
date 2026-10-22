@@ -115,6 +115,7 @@ jobs:
       - name: Siapkan Node.js (skrip infra/ci tanpa dependensi)
         uses: ./.github/actions/setup-platform
         with:
+          pnpm: "false"
           install: "false"
           cache: "false"
 

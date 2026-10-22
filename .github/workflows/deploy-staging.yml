@@ -88,6 +88,7 @@ jobs:
       - name: Siapkan Node.js
         uses: ./.github/actions/setup-platform
         with:
+          pnpm: "false"
           install: "false"
           cache: "false"
       - name: Matriks image (api/worker sekali; web/admin varian staging dan production)
@@ -125,6 +126,7 @@ jobs:
       - name: Siapkan Node.js (gerbang kerentanan tanpa dependensi)
         uses: ./.github/actions/setup-platform
         with:
+          pnpm: "false"
           install: "false"
           cache: "false"
       - name: Pasang crane
