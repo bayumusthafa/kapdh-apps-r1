@@ -1,0 +1,562 @@
+{
+  "id": "b17",
+  "part": "bantuan",
+  "title": "Tanya Jawab dan Pemecahan Masalah",
+  "kicker": "Bantuan",
+  "summary": "Jawaban singkat atas pertanyaan yang paling sering diajukan, cara mengatasi kendala umum di aplikasi, arti pesan galat dan istilah, serta cara menghubungi bantuan resmi KAPDH.",
+  "icon": "ph-question",
+  "highlights": [
+    "Jawaban cepat seputar akun, iuran, KTA, event, dan Jejaring",
+    "Mengatasi kode OTP, gagal masuk, bukti ditolak, dan QR bermasalah",
+    "Arti layar Wajib Update, Pemeliharaan, Offline, dan pesan galat",
+    "Glosarium istilah yang dipakai di aplikasi dan web admin",
+    "Kontak bantuan resmi dan tanya jawab singkat untuk pengurus"
+  ],
+  "sections": [
+    {
+      "id": "b17-1",
+      "title": "Tanya jawab: akun, pendaftaran, dan profil",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Bab ini merangkum pertanyaan yang paling sering diajukan anggota dan pengurus. Jawaban lengkap untuk anggota juga tersedia di halaman **Bantuan** pada menu **Akun** dan di situs kapdh.or.id/bantuan. Langkah rinci setiap fitur ada di bab yang dirujuk."
+        },
+        {
+          "type": "faq",
+          "items": [
+            {
+              "q": "Siapa yang dapat mendaftar, dan apakah ada versi web untuk anggota?",
+              "a": "Alumni Pondok Pesantren Darel Hikmah yang berusia 18 tahun ke atas, dari angkatan 1 sampai angkatan terbaru, termasuk yang tidak menamatkan pendidikannya. Data pendataan lama tidak dipindahkan, jadi anggota lama pun mendaftar sendiri. Aplikasi anggota tersedia untuk Android 8.0 ke atas dan iOS 15 ke atas; tidak ada versi web untuk anggota. Lihat Bab 2."
+            },
+            {
+              "q": "Apakah KAPDH meminta NIK, nomor KTP, atau alamat rumah?",
+              "a": "Tidak. Pendaftaran hanya meminta nama lengkap, jenis kelamin, email, password, angkatan, serta kelas masuk dan kelas keluar. KAPDH tidak meminta NIK, nomor KTP, tanggal lahir, maupun alamat rumah. Kota domisili di profil cukup berupa nama kota."
+            },
+            {
+              "q": "Saya salah memasukkan email saat mendaftar. Bagaimana memperbaikinya?",
+              "a": "Selama akun belum terverifikasi, ketuk **Salah email? Ubah alamat email** di layar kode verifikasi, lalu masukkan email yang benar dan password akun Anda. Kode baru dikirim ke email yang benar. Setelah akun aktif, email belum dapat diubah, baik oleh Anda maupun oleh pengurus. Bila perlu memakai email lain, hubungi bantuan untuk membahas pilihannya, misalnya menghapus akun lalu mendaftar ulang."
+            },
+            {
+              "q": "Saya lupa password.",
+              "a": "Di halaman masuk, ketuk **Lupa Password**, masukkan email akun, lalu masukkan kode 6 digit dari email dan buat password baru. Demi keamanan, aplikasi tidak memberi tahu apakah sebuah email terdaftar. Setelah password diatur ulang, Anda keluar dari semua perangkat dan perlu masuk lagi dengan password baru. Lihat Bab 2."
+            },
+            {
+              "q": "Mengapa nama, angkatan, atau kelas saya tidak dapat diubah sendiri?",
+              "a": "Nama lengkap, jenis kelamin, angkatan, kelas masuk dan kelas keluar, serta nomor anggota dipakai untuk KTA, sehingga hanya pengurus yang dapat mengoreksinya. Hubungi bantuan dan jelaskan data yang keliru beserta data yang benar. Bila angkatan, kelas, atau jenis kelamin dikoreksi, bagian depan nomor anggota ikut menyesuaikan, sedangkan nomor urutnya tetap."
+            },
+            {
+              "q": "Profesi saya tidak ada di daftar. Apa yang harus dilakukan?",
+              "a": "Di lembar **Pilih profesi**, ketik profesi Anda di kolom pencarian, lalu ketuk baris **Tambah** yang muncul di bawahnya. Profesi ketikan sendiri tampil di profil, dan di KTA bila menjadi profesi utama, tetapi filter profesi di Jejaring hanya memakai daftar pengurus. Keahlian hanya dapat dipilih dari daftar; usulkan keahlian baru melalui kontak bantuan."
+            },
+            {
+              "q": "Bagian profesi kedua, riwayat pendidikan, atau media sosial tidak muncul.",
+              "a": "Bagian tersebut hanya tampil di versi aplikasi terbaru. Perbarui aplikasi KAPDH di Google Play atau App Store. Versi yang terpasang tertulis di bagian bawah halaman **Akun**. Batas isiannya: profesi 5, keahlian 10, riwayat pendidikan 10 entri, dan media sosial 10 tautan. Lihat Bab 8."
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Jaga keamanan akun",
+          "text": "Pengurus KAPDH tidak pernah meminta password atau kode verifikasi (OTP) Anda. Jangan berikan keduanya kepada siapa pun, termasuk kepada orang yang mengaku sebagai pengurus."
+        }
+      ]
+    },
+    {
+      "id": "b17-2",
+      "title": "Tanya jawab: iuran, KTA, dan event",
+      "blocks": [
+        {
+          "type": "faq",
+          "items": [
+            {
+              "q": "Iuran apa saja yang berlaku, dan berapa nominalnya?",
+              "a": "Ada dua iuran keanggotaan: iuran pendaftaran untuk anggota baru, yang mencakup registrasi alumni dan pembuatan KTA digital, dan iuran perpanjangan setiap tahun. Nominal ditetapkan pengurus dan selalu tampil di aplikasi sebelum Anda membayar. Perubahan nominal hanya berlaku untuk pembayaran baru. KTA fisik tidak termasuk iuran. Lihat Bab 3."
+            },
+            {
+              "q": "Bagaimana cara membayar? Apakah aplikasi menarik dana dari rekening saya?",
+              "a": "Tidak. Pembayaran dilakukan di luar aplikasi ke tujuan resmi yang tampil pada instruksi pembayaran: transfer bank, dompet digital, atau QRIS bila disediakan pengurus. Setelah membayar, unggah bukti berupa foto JPG, PNG, atau WebP maksimal 5 MB, atau PDF maksimal 10 MB, lalu ketuk **Kirim bukti pembayaran**. Jangan transfer ke rekening yang dikirim lewat pesan pribadi."
+            },
+            {
+              "q": "Berapa lama pembayaran saya diverifikasi?",
+              "a": "Pengurus mencocokkan bukti Anda dengan dana yang benar-benar masuk, bukan hanya melihat berkasnya. Bukti iuran yang belum diperiksa setelah 1 hari kerja, dan bukti tiket setelah 2 hari kerja atau saat check-in dibuka bila lebih dulu, ditandai agar segera ditindaklanjuti. Pada akhir pekan atau hari libur pemeriksaan bisa lebih lama. Hasilnya masuk ke kotak masuk **Notifikasi**, juga lewat push dan email sesuai preferensi Anda."
+            },
+            {
+              "q": "Kapan KTA saya aktif, dan berapa lama berlaku?",
+              "a": "KTA dibuat berstatus **KTA Tidak Aktif** setelah email terverifikasi, lalu menjadi **KTA Aktif** setelah pengurus memverifikasi iuran pendaftaran. Keanggotaan berlaku 12 bulan sejak tanggal verifikasi, bukan tanggal transfer. Sejak 30 hari sebelum berakhir, status menjadi **Segera Berakhir** dan perpanjangan dibuka. Tidak ada masa tenggang setelah tanggal berakhir. Lihat Bab 4."
+            },
+            {
+              "q": "Bila saya memperpanjang lebih awal, apakah sisa masa aktif hilang?",
+              "a": "Tidak. Bila perpanjangan diverifikasi sebelum KTA kedaluwarsa, masa baru 12 bulan dimulai dari tanggal berakhir yang lama. Bila KTA sudah kedaluwarsa, masa baru dihitung sejak iuran perpanjangan diverifikasi. Ketuk **Perpanjang** di tab **KTA** untuk memulai."
+            },
+            {
+              "q": "Apakah KTA dapat ditunjukkan tanpa internet?",
+              "a": "Dapat, paling lama 7 hari sejak sinkronisasi terakhir, dengan label **Offline** dan waktu sinkronisasi. Status terkini tetap diperiksa server saat QR dipindai. Sebelum ke acara di lokasi bersinyal lemah, buka tab **KTA** selagi online. Tiket event tidak tersimpan untuk dibuka tanpa internet, jadi buka **Detail Tiket** sebelum sinyal hilang."
+            },
+            {
+              "q": "Apa yang masih dapat saya lakukan bila keanggotaan berakhir?",
+              "a": "Anda tetap dapat masuk dan membuka KTA berlabel **KTA Kedaluwarsa**, riwayat pembayaran, tiket yang sudah lunas, kotak masuk notifikasi, dan pengaturan akun, serta mengajukan perpanjangan atau menghapus akun. Jejaring, pesan, dan pendaftaran event baru adalah layanan untuk anggota aktif; status keanggotaan Anda diperbarui pengurus setelah iuran perpanjangan diverifikasi. Lihat Bab 3."
+            },
+            {
+              "q": "Kapan check-in dibuka, dan bagaimana aturan refund tiket?",
+              "a": "Bila pengurus tidak menetapkan jadwal lain, check-in dibuka 2 jam sebelum acara dimulai dan ditutup saat acara selesai. Tiket berbayar yang Anda batalkan paling lambat H-3, yaitu 72 jam sebelum acara, mendapat refund penuh; setelah itu tanpa refund. Jadwal check-in dan batas refund yang berlaku tertera di detail tiket. Tiket yang buktinya masih diperiksa belum dapat dibatalkan sendiri. Refund ditransfer bendahara paling lambat 7 hari kerja. Bila event dibatalkan pengurus, peserta yang sudah membayar mendapat refund penuh. Lihat Bab 6."
+            },
+            {
+              "q": "Di mana tiket dan QR tiket saya?",
+              "a": "Buka **Akun** > **Tiket saya**, lalu pilih tiketnya untuk membuka **Detail Tiket**. QR tiket terbit setelah pembayaran lunas, atau langsung untuk event gratis. QR tiket berbeda dari QR di KTA, dan satu QR tiket hanya dapat dipindai satu kali, jadi jangan bagikan kepada orang lain. Lihat Bab 6."
+            },
+            {
+              "q": "Bagaimana pihak lain memeriksa KTA saya?",
+              "a": "Pemeriksa cukup memindai QR pada KTA Anda dengan kamera ponsel. QR membuka halaman verifikasi di situs KAPDH yang menampilkan status terkini tanpa perlu masuk. Email, nomor telepon, alamat, dan bukti pembayaran tidak pernah ditampilkan. Tunjukkan KTA langsung dari aplikasi, bukan dari tangkapan layar lama, karena QR diperbarui setiap kali KTA disinkronkan. Lihat Bab 4 dan Bab 16."
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Muncul pesan Iuran melalui pengurus?",
+          "text": "Artinya iuran keanggotaan untuk aplikasi di perangkat Anda diselesaikan melalui pengurus. Hubungi pengurus lewat kontak yang tercantum di layar tersebut. Status KTA diperbarui setelah pengurus memverifikasi pembayaran Anda."
+        }
+      ]
+    },
+    {
+      "id": "b17-3",
+      "title": "Tanya jawab: Jejaring, privasi, dan akun",
+      "blocks": [
+        {
+          "type": "faq",
+          "items": [
+            {
+              "q": "Siapa yang dapat melihat profil saya?",
+              "a": "Direktori Jejaring hanya dapat dibuka anggota dengan keanggotaan aktif, dan hanya menampilkan anggota aktif yang memilih tampil. Kartu direktori memuat nama, foto, angkatan, kota, profesi, keahlian, dan pendidikan teratas. Nomor telepon, email, dan media sosial baru terlihat bila Anda menyalakannya di **Akun** > **Privasi profil**. Jenis kelamin dan nomor anggota tidak ditampilkan."
+            },
+            {
+              "q": "Mengapa saya belum bisa membuka Jejaring atau mengirim pesan?",
+              "a": "Jejaring dan pesan adalah layanan bagi anggota yang keanggotaannya aktif. Bila KTA Anda belum aktif atau sudah kedaluwarsa, tab **Jejaring** tampil bergembok. Selesaikan iuran pendaftaran atau perpanjangan (Bab 3). Profil Anda juga baru muncul di direktori setelah keanggotaan aktif."
+            },
+            {
+              "q": "Apakah pengurus dapat membaca percakapan saya?",
+              "a": "Tidak. Web admin pengurus tidak menyediakan fitur untuk membaca percakapan anggota. Moderator hanya melihat pesan yang terlampir pada laporan, termasuk paling banyak lima pesan sebelumnya sebagai konteks. Pesan dikirim lewat koneksi terenkripsi, tetapi tidak memakai enkripsi end-to-end."
+            },
+            {
+              "q": "Bagaimana cara melaporkan atau memblokir anggota?",
+              "a": "Tekan lama sebuah pesan lalu pilih **Laporkan pesan**, atau buka profil anggota lalu pilih **Laporkan** atau **Blokir**. Laporan tidak dibuka kepada pihak yang dilaporkan; pantau statusnya di **Akun** > **Laporan saya**. Pengurus menargetkan laporan ancaman kekerasan atau keselamatan ditangani paling lambat 24 jam, dan laporan lain 2 hari kerja. Lihat Bab 7."
+            },
+            {
+              "q": "Akun saya dibatasi. Apa artinya?",
+              "a": "Pengurus membatasi akun Anda, misalnya setelah menangani laporan. Selama **Dibatasi**, KTA tidak dapat dipakai sebagai bukti keanggotaan, profil tidak tampil di direktori, dan pesan, pembayaran baru, serta tiket tidak dapat digunakan. Tanggal masa keanggotaan tidak berubah. Dari halaman pembatasan Anda dapat mengajukan banding; pengurus menargetkan tanggapan paling lambat 2 hari kerja. Lihat Bab 8."
+            },
+            {
+              "q": "Bagaimana cara menghapus akun dan data saya?",
+              "a": "Buka **Akun** > **Hapus akun**, atau tanpa aplikasi di kapdh.or.id/delete-account dengan kode verifikasi email. Penghapusan tidak dapat dibatalkan setelah dikonfirmasi dan selesai paling lambat 7 hari kalender. Catatan pembayaran, tiket, dan audit disimpan tanpa identitas. Tiket aktif hangus, jadi batalkan tiket dan tunggu refund selesai lebih dulu. Lihat Bab 8 dan Bab 16."
+            },
+            {
+              "q": "Ponsel saya hilang. Apa yang harus saya lakukan?",
+              "a": "Masuk dari ponsel lain, buka **Akun** > **Sesi perangkat**, lalu keluarkan perangkat yang hilang atau ketuk **Keluar dari semua perangkat**. Setelah itu segera ganti password lewat **Akun** > **Ganti password**. Bila tidak dapat masuk, gunakan **Lupa Password**; mengatur ulang password juga mengeluarkan semua perangkat."
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Data yang Anda sembunyikan di **Privasi profil** tidak dikirim ke perangkat anggota lain. Pengurus yang berwenang tetap dapat melihatnya untuk keperluan administrasi yang tercatat, misalnya verifikasi pembayaran atau penanganan laporan."
+        }
+      ]
+    },
+    {
+      "id": "b17-4",
+      "title": "Mengatasi masalah akun, pembayaran, dan KTA",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Cari gejala yang Anda alami pada tabel berikut, lalu ikuti kolom terakhir. Bila masalah tetap muncul setelah solusi dicoba, catat pesan yang tampil dan waktu kejadiannya, lalu hubungi bantuan (lihat subbab Menghubungi bantuan resmi)."
+        },
+        {
+          "type": "table",
+          "title": "Kode verifikasi dan masuk",
+          "columns": ["Gejala", "Kemungkinan penyebab", "Yang perlu dilakukan"],
+          "rows": [
+            ["Kode OTP tidak masuk ke email", "Email tersaring ke folder spam atau promosi, alamat email salah ketik, atau batas 5 kode per jam untuk email itu tercapai.", "Cari email dari noreply@kapdh.or.id di folder spam. Ketuk **Kirim ulang** setelah hitung mundur 60 detik. Bila emailnya salah, ketuk **Salah email? Ubah alamat email**."],
+            ["Kode OTP ditolak", "Kode sudah lewat 10 menit, sudah salah dimasukkan 5 kali, atau sudah diganti kode yang lebih baru.", "Minta kode baru dengan **Kirim ulang**, lalu pakai kode dari email yang paling akhir."],
+            ["Email atau password salah.", "Ejaan email keliru, huruf besar dan kecil pada password tidak sesuai, atau password baru saja diganti.", "Periksa ketikan, lalu coba lagi. Bila lupa, ketuk **Lupa Password**."],
+            ["Tombol **Masuk** berubah menjadi hitung mundur, misalnya Coba lagi dalam 4:59","Sudah 10 kali gagal masuk dalam 15 menit untuk email yang sama.", "Tunggu hitung mundur selesai. Sambil menunggu, Anda tetap dapat memakai **Lupa Password**."],
+            ["Setelah masuk, aplikasi meminta kode verifikasi", "Email akun belum diverifikasi.", "Masukkan kode terbaru dari email. Bila tidak ada, ketuk **Kirim ulang**."],
+            ["Layar **Status Akun** muncul dan Anda tidak dapat masuk", "Akun sedang dalam proses penghapusan, atau dinonaktifkan pengurus (**Akun tidak aktif**).", "Bila akun sedang dihapus, layar menampilkan nomor permintaan dan batas penyelesaiannya. Untuk akun yang dinonaktifkan, hubungi bantuan@kapdh.or.id dari alamat email akun Anda."],
+            ["Aplikasi tiba-tiba kembali ke halaman masuk", "Sesi berakhir, password diganti atau diatur ulang, atau perangkat ini dikeluarkan lewat **Sesi perangkat**.", "Masuk kembali. Bila Anda tidak merasa melakukannya, segera ganti password."]
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Pembayaran, KTA, dan tiket",
+          "columns": ["Gejala", "Kemungkinan penyebab", "Yang perlu dilakukan"],
+          "rows": [
+            ["Bukti iuran ditolak, status **Perlu Perbaikan**", "Dana belum ditemukan di rekening tujuan, nominal berbeda, atau bukti tidak terbaca.", "Baca **Catatan dari pengurus**, lalu ketuk **Unggah ulang bukti** pada pembayaran yang sama. Bila dana sudah dikirim, tidak perlu transfer ulang."],
+            ["Pembayaran tiket **Ditolak**", "Pengurus tidak dapat memverifikasi dana tiket. Penolakan tiket bersifat final.", "Reservasi dibatalkan dan kursi dilepas. Daftar ulang bila kuota masih ada. Bila yakin dana sudah masuk, hubungi bantuan."],
+            ["KTA masih **KTA Tidak Aktif**", "Iuran pendaftaran belum dibayar, bukti masih **Menunggu Verifikasi**, atau bukti perlu diperbaiki.", "Buka tab **KTA**, lalu ketuk **Bayar**, atau **Lanjutkan** untuk pembayaran yang sedang berjalan. Setelah ada notifikasi persetujuan, tarik layar KTA ke bawah untuk menyinkronkan."],
+            ["Tab KTA menampilkan **KTA belum tersimpan di perangkat ini** atau **Kartu offline perlu disinkronkan**", "Ponsel offline, sedangkan KTA belum pernah tersinkron di perangkat ini, sinkronisasi terakhir sudah lebih dari 7 hari, atau masa QR tersimpan sudah habis.", "Sambungkan internet, lalu ketuk **Sinkronkan**. Sebelum ke lokasi bersinyal lemah, buka tab KTA selagi online."],
+            ["KTA tidak menampilkan QR", "QR hanya tersedia untuk status **KTA Aktif** dan **Segera Berakhir**.", "Selesaikan iuran pendaftaran atau perpanjangan (Bab 3). Bila akun **Dibatasi**, baca halaman pembatasan."],
+            ["Pemeriksa melihat **QR tidak valid atau perlu diperbarui**", "QR berasal dari tangkapan layar lama, rusak, atau terbit sebelum nomor anggota dikoreksi.", "Buka KTA langsung di aplikasi dalam keadaan online agar QR diperbarui, lalu minta pemeriksa memindai ulang."],
+            ["Pemeriksa melihat **Tidak dapat memverifikasi**", "Layanan KAPDH tidak dapat dihubungi atau terlalu banyak pemeriksaan dalam waktu singkat. Bukan berarti Anda tidak terdaftar.", "Tunggu sebentar, lalu pemeriksa mengetuk **Coba lagi**."],
+            ["Kamera pemeriksa sulit membaca QR KTA", "Layar terlalu redup atau memantulkan cahaya.", "Naikkan kecerahan layar, ketuk kartu untuk tampilan layar penuh, lalu atur jarak ponsel."],
+            ["Tab KTA menampilkan **Jam perangkat tidak sesuai**", "Jam ponsel diatur manual dan lebih awal dari waktu sinkronisasi terakhir.", "Aktifkan tanggal dan jam otomatis di pengaturan ponsel, lalu sinkronkan KTA kembali."],
+            ["Petugas check-in menolak QR tiket", "Yang ditunjukkan QR KTA, tiket untuk event lain, check-in belum dibuka atau sudah ditutup, tiket belum lunas atau dibatalkan, tiket sudah dipakai, atau akun Anda sedang dibatasi.", "Buka **Akun** > **Tiket saya**, pilih tiketnya, lalu tunjukkan QR di **Detail Tiket**. Perhatikan jadwal check-in di detail event (Bab 6)."],
+            ["Kotak QRIS menampilkan **Gambar QRIS belum dapat dimuat**", "Koneksi terputus saat gambar QRIS dimuat.", "Periksa koneksi, lalu ketuk **Muat ulang** di kotak tersebut. Nama merchant dan NMID tetap dapat dibaca untuk dicocokkan."]
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b17-kta-belum-tersimpan.png", "caption": "KTA belum tersinkron di ponsel ini: sambungkan internet, lalu ketuk Sinkronkan" }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "text": "Bila koneksi terputus saat membayar atau mendaftar event, aplikasi menampilkan **Memeriksa status** untuk memastikan instruksi, bukti, atau reservasi Anda sudah tercatat. Jangan mentransfer sebelum status instruksi pasti, dan jangan mentransfer ulang untuk pembayaran yang sama."
+        }
+      ]
+    },
+    {
+      "id": "b17-5",
+      "title": "Mengatasi masalah aplikasi, notifikasi, dan koneksi",
+      "blocks": [
+        {
+          "type": "table",
+          "columns": ["Gejala", "Kemungkinan penyebab", "Yang perlu dilakukan"],
+          "rows": [
+            ["Muncul layar **Wajib Update**", "Versi aplikasi di bawah versi minimum, atau versi ini belum mengenali status akun Anda.", "Ketuk **Perbarui di Play Store** atau **Perbarui di App Store**. Setelah memperbarui, buka aplikasi lagi atau ketuk **Periksa lagi**."],
+            ["Muncul layar **Layanan sedang dalam pemeliharaan**", "Pengurus sedang memelihara layanan. Perubahan data ditunda sementara dan data Anda tetap aman.", "Ketuk **Coba lagi** setelah perkiraan selesai. Bila sudah masuk, ketuk **Lanjut dalam mode baca** atau **Tampilkan KTA**."],
+            ["Pita kuning **Offline** di bawah judul layar", "Ponsel tidak terhubung internet atau layanan KAPDH tidak terjangkau. Data yang tampil berasal dari sinkronisasi terakhir.", "Periksa data seluler atau Wi-Fi, lalu ketuk **Coba lagi** pada pita, atau **Sinkronkan** di tab KTA. Tunda pembayaran dan unggah bukti sampai koneksi pulih."],
+            ["Notifikasi push tidak muncul", "Izin notifikasi KAPDH ditolak di ponsel, kategori dimatikan di **Preferensi notifikasi**, atau push tidak tersedia di perangkat.", "Izinkan notifikasi KAPDH di pengaturan ponsel, lalu ketuk **Periksa lagi**. Semua notifikasi tetap tersimpan di kotak masuk **Notifikasi**."],
+            ["Email notifikasi tidak masuk", "Email tersaring ke spam atau promosi, atau kategori email dimatikan. Berita dan chat memang tidak dikirim lewat email.", "Periksa folder spam dan **Preferensi notifikasi**. Email kode verifikasi, keamanan, dan akun selalu dikirim."],
+            ["Muncul **Halaman tidak ditemukan**", "Tautan sudah lama atau tidak berlaku lagi, misalnya dari notifikasi atau pesan lama.", "Ketuk **Ke halaman utama**, lalu buka menu yang Anda perlukan."],
+            ["Muncul **Aplikasi belum dapat dijalankan**", "Versi aplikasi yang terpasang tidak disiapkan dengan benar, sehingga aplikasi berhenti untuk melindungi data Anda.", "Perbarui atau pasang ulang aplikasi KAPDH dari Google Play atau App Store. Bila tetap muncul, hubungi bantuan."]
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Layar **Wajib Update** muncul karena dua hal. Pertama, versi aplikasi Anda lebih lama daripada versi minimum yang ditetapkan pengurus; layar menyebut versi terpasang dan versi yang dibutuhkan. Kedua, akun Anda memiliki status yang belum dikenal versi aplikasi ini, sehingga aplikasi tidak menebak layanan yang sesuai dengan status Anda. Pada kedua keadaan, solusinya sama: perbarui aplikasi. Bila tombol toko aplikasi belum tersedia, layar meminta Anda menghubungi pengurus."
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b17-wajib-update.png", "caption": "Versi di bawah minimum: layar menyebut versi yang dibutuhkan" },
+            { "img": "mobile/b17-update-status-belum-dikenal.png", "caption": "Status akun belum dikenal versi ini: perbarui aplikasi" }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Saat pemeliharaan, anggota yang sudah masuk dapat memilih **Lanjut dalam mode baca** untuk membuka KTA, tiket, riwayat pembayaran, berita, dan kotak masuk. Selama itu pita **Pemeliharaan** tampil di bawah judul layar, dan perubahan data, misalnya mengirim bukti atau mendaftar event, ditunda sampai pemeliharaan selesai. Pita **Offline** bekerja serupa saat koneksi terputus: data terakhir tetap dapat dibaca."
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b17-pemeliharaan-mode-baca.png", "caption": "Pemeliharaan: Coba lagi, Lanjut dalam mode baca, atau Tampilkan KTA" },
+            { "img": "mobile/b17-kta-offline.png", "caption": "Pita Offline dengan waktu sinkron: KTA tersimpan tetap dapat ditunjukkan" }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Notifikasi tidak masuk?",
+          "text": "Buka **Akun** > **Preferensi notifikasi**. Kotak di bagian atas menjelaskan keadaan push di ponsel Anda, misalnya **Izin notifikasi ditolak** atau **Push tidak tersedia di perangkat ini**. Apa pun keadaannya, semua pemberitahuan tetap tersimpan di kotak masuk **Notifikasi**."
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b17-izin-notifikasi-ditolak.png", "caption": "Izin ditolak: izinkan di pengaturan ponsel, lalu ketuk Periksa lagi" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b17-6",
+      "title": "Pesan galat yang sering muncul dan artinya",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Pesan galat tampil sebagai bar singkat di bawah layar, kotak dialog, atau halaman penuh dengan tombol **Coba lagi**. Kata-katanya bisa sedikit berbeda dari tabel ini, tetapi artinya sama. Pesan khusus pendaftaran, kode verifikasi, dan masuk dijelaskan di Bab 2."
+        },
+        {
+          "type": "table",
+          "title": "Koneksi, sesi, dan akses",
+          "columns": ["Pesan atau judul", "Arti", "Yang perlu dilakukan"],
+          "rows": [
+            ["**Tidak ada koneksi**. Tidak dapat terhubung. Periksa koneksi internet lalu coba lagi.", "Ponsel tidak terhubung ke internet atau layanan KAPDH tidak terjangkau. Anda tidak dikeluarkan dari akun.", "Periksa koneksi, lalu ketuk **Coba lagi**."],
+            ["**Terjadi kesalahan**. Terjadi kesalahan. Coba lagi.", "Layanan KAPDH mengalami gangguan sementara.", "Ketuk **Coba lagi** beberapa saat kemudian. Bila berulang, catat **Kode bantuan** di bawah pesan."],
+            ["Terlalu banyak percobaan. Coba lagi nanti.", "Permintaan terlalu sering dalam waktu singkat. Pembatasan ini melindungi akun Anda.", "Tunggu sampai hitung mundur di layar selesai, lalu coba lagi."],
+            ["Layanan sedang dalam pemeliharaan.", "Perubahan data ditunda selama pemeliharaan.", "Coba lagi setelah pemeliharaan selesai. Data yang sudah ada tetap dapat dibaca."],
+            ["Versi aplikasi ini tidak lagi didukung, tampil di layar **Wajib Update**.", "Versi aplikasi di bawah versi minimum yang ditetapkan pengurus.", "Ketuk **Perbarui di Play Store** atau **Perbarui di App Store**, lalu buka aplikasi lagi."],
+            ["**Akses belum tersedia**. Fitur ini memerlukan KTA aktif.", "Layanan itu khusus anggota aktif, sedangkan KTA Anda belum aktif, sudah berakhir, atau statusnya baru berubah.", "Aplikasi memuat ulang status Anda dan mengarahkan ke langkah berikutnya, misalnya pembayaran iuran atau perpanjangan."],
+            ["Akun Anda sedang dibatasi.", "Pengurus membatasi akun Anda.", "Aplikasi membuka halaman pembatasan. Baca keterangan pengurus dan ajukan banding bila perlu (Bab 8)."],
+            ["**Akses ditolak**. Anda tidak memiliki izin untuk tindakan ini.", "Tindakan itu tidak diizinkan untuk akun Anda.", "Mencoba ulang tidak mengubah hasil. Hubungi bantuan bila menurut Anda ini keliru."],
+            ["**Konfirmasi identitas**. Masukkan password Anda untuk melanjutkan tindakan ini.","Tindakan sensitif, misalnya menghapus akun, memerlukan konfirmasi password.", "Masukkan password akun, lalu ketuk **Konfirmasi**."]
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Formulir, pembayaran, dan event",
+          "columns": ["Pesan atau judul", "Arti", "Yang perlu dilakukan"],
+          "rows": [
+            ["Periksa kembali isian yang ditandai.", "Ada isian yang kosong atau tidak sesuai aturan.", "Baca keterangan di bawah kolom yang ditandai, perbaiki, lalu kirim lagi."],
+            ["**Berkas tidak dapat diterima**", "Berkas terlalu besar, jenisnya tidak didukung, atau batas unggahan tercapai.", "Pakai foto JPG, PNG, atau WebP maksimal 5 MB. PDF maksimal 10 MB hanya untuk bukti pembayaran. Paling banyak 10 unggahan berhasil per jenis berkas dalam 24 jam."],
+            ["Status pembayaran sudah berubah. Data terbaru dimuat ulang.", "Pembayaran baru saja berubah, misalnya sudah diputuskan pengurus.", "Ketuk **Muat ulang** dan baca status terbaru sebelum melanjutkan."],
+            ["Data sudah diubah orang lain. Muat ulang untuk melihat versi terbaru.", "Data yang Anda buka sudah berubah sejak layar dibuka.", "Ketuk **Muat ulang**, periksa isinya, lalu ulangi perubahan Anda."],
+            ["Permintaan bertabrakan dengan permintaan sebelumnya.", "Permintaan yang sama terkirim dua kali, misalnya karena koneksi putus-sambung.", "Baca status terbaru. Jangan mengulang pembayaran sebelum statusnya jelas."],
+            ["**Kuota penuh**. Kuota event sudah penuh.", "Semua kursi sudah terisi atau sedang ditahan.", "Buka lagi nanti. Kursi dapat tersedia bila ada reservasi yang berakhir atau dibatalkan."],
+            ["**Reservasi berakhir**. Batas waktu reservasi sudah lewat.", "Bukti pembayaran tiket tidak dikirim sebelum batas waktu, sehingga kursi dilepas.", "Jangan transfer untuk reservasi itu. Daftar ulang bila kuota masih ada."],
+            ["**Sudah check-in**. Tiket ini sudah check-in.", "QR tiket sudah dipindai sebelumnya. Satu QR hanya dapat dipakai sekali.", "Bila Anda belum pernah check-in, temui petugas atau pengurus di lokasi."],
+            ["**Data tidak ditemukan**. Data tidak ditemukan atau sudah tidak tersedia.", "Data sudah dihapus, diarsipkan, atau tidak lagi dapat Anda buka.", "Kembali ke daftar sebelumnya. Mencoba ulang tidak mengubah hasil."],
+            ["Kode tidak berlaku. Minta kode baru.", "Kode verifikasi kedaluwarsa, percobaannya habis, atau sudah diganti kode baru.", "Ketuk **Kirim ulang**, lalu pakai kode terbaru."]
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b17-tidak-ada-koneksi.png", "caption": "Tidak ada koneksi: periksa internet, lalu ketuk Coba lagi" },
+            { "img": "mobile/b17-kode-bantuan.png", "caption": "Terjadi kesalahan: catat Kode bantuan di bawah tombol Coba lagi" }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Catat Kode bantuan",
+          "text": "Bila halaman galat menampilkan **Kode bantuan**, sertakan kode itu saat menghubungi bantuan. Kode ini membantu pengurus menelusuri kejadian yang Anda alami tanpa perlu meminta password atau data rahasia Anda."
+        }
+      ]
+    },
+    {
+      "id": "b17-7",
+      "title": "Glosarium istilah",
+      "blocks": [
+        {
+          "type": "table",
+          "title": "Keanggotaan dan pembayaran",
+          "columns": ["Istilah", "Arti"],
+          "rows": [
+            ["KTA digital", "Kartu Tanda Anggota di tab **KTA**, berisi identitas anggota, nomor anggota, masa berlaku, dan kode QR untuk verifikasi."],
+            ["Nomor anggota", "Nomor unik berformat AA.SS.JK.N: kode angkatan, status pendidikan, jenis kelamin, dan nomor urut. Tidak berubah saat perpanjangan dan tidak pernah diberikan kepada orang lain."],
+            ["Kode angkatan", "Penanda angkatan pada KTA, misalnya KAPDH 25."],
+            ["Status keanggotaan", "**KTA Tidak Aktif**, **KTA Aktif**, **Segera Berakhir**, **KTA Kedaluwarsa**, **Dibatasi**, atau **Nonaktif**. Artinya dijelaskan di Bab 1 dan Bab 4."],
+            ["Iuran pendaftaran", "Iuran sekali bagi anggota baru, mencakup registrasi alumni dan pembuatan KTA digital. KTA aktif setelah iuran ini diverifikasi pengurus."],
+            ["Iuran perpanjangan", "Iuran tahunan yang menambah masa keanggotaan 12 bulan. Dapat dibayar mulai 30 hari sebelum masa berakhir, juga setelah kedaluwarsa."],
+            ["Instruksi pembayaran", "Tagihan di aplikasi berisi nominal dan tujuan pembayaran resmi. Transfer hanya ke tujuan yang tertera pada instruksi."],
+            ["Bukti pembayaran", "Foto, tangkapan layar, atau PDF transfer yang Anda unggah agar pengurus dapat mencocokkan dana yang masuk."],
+            ["QRIS", "Kode QR pembayaran standar nasional yang dapat dipindai aplikasi bank atau dompet digital. QRIS KAPDH tidak memuat nominal, jadi Anda mengetik nominalnya sendiri."]
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Event dan tiket",
+          "columns": ["Istilah", "Arti"],
+          "rows": [
+            ["Tiket", "Bukti keikutsertaan Anda pada satu event, tersimpan di **Akun** > **Tiket saya**. Setiap anggota hanya dapat memiliki satu tiket aktif per event."],
+            ["QR tiket", "Kode di **Detail Tiket** yang dipindai petugas saat check-in. Berbeda dari QR KTA."],
+            ["Reservasi", "Kursi event berbayar yang ditahan sementara sampai bukti dikirim, paling lama 24 jam atau sampai pendaftaran ditutup. Batas tepatnya tampil di aplikasi."],
+            ["Check-in", "Pencatatan kehadiran di lokasi event dengan memindai QR tiket. Satu QR hanya dapat dipindai satu kali."],
+            ["Jadwal check-in", "Rentang waktu QR tiket dapat dipindai. Bila tidak diatur lain, dibuka 2 jam sebelum acara dimulai sampai acara selesai."],
+            ["Refund", "Pengembalian dana tiket yang ditransfer manual oleh bendahara, paling lambat 7 hari kerja."]
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Aplikasi, komunitas, dan keamanan",
+          "columns": ["Istilah", "Arti"],
+          "rows": [
+            ["OTP (kode verifikasi)", "Kode 6 digit sekali pakai yang dikirim ke email Anda dan berlaku 10 menit. Jangan berikan kepada siapa pun."],
+            ["Sinkronisasi", "Pembaruan data KTA dari layanan KAPDH. KTA yang sudah tersinkron dapat ditunjukkan tanpa internet sampai 7 hari."],
+            ["Offline", "Keadaan tanpa koneksi ke layanan KAPDH. Data yang tampil berasal dari sinkronisasi terakhir dan bukan bukti status saat ini."],
+            ["Kotak masuk Notifikasi", "Riwayat resmi pemberitahuan di aplikasi, dibuka dari Beranda atau **Akun** > **Notifikasi**. Selalu menyimpan semua notifikasi."],
+            ["Notifikasi push", "Pemberitahuan yang muncul di layar ponsel. Bersifat opsional dan diatur per kategori di **Preferensi notifikasi**."],
+            ["Jejaring", "Tab berisi direktori alumni, pesan langsung, dan pesan grup, khusus anggota yang keanggotaannya aktif."],
+            ["Direktori", "Daftar anggota aktif yang memilih tampil di Jejaring. Atur keikutsertaan Anda di **Privasi profil**."],
+            ["Dibatasi", "Status akun yang dibatasi pengurus. KTA, pesan, pembayaran baru, dan tiket tidak dapat dipakai, tetapi banding dapat diajukan."],
+            ["Nonaktif", "Akun yang dinonaktifkan pengurus karena alasan keamanan atau penyalahgunaan, sehingga tidak dapat dipakai masuk."],
+            ["Banding", "Keberatan yang Anda ajukan dari halaman pembatasan agar pengurus meninjau ulang pembatasan."],
+            ["Mode baca", "Keadaan selama pemeliharaan: data yang sudah ada tetap dapat dibuka, tetapi perubahan data ditunda."],
+            ["Kode bantuan", "Kode di bawah pesan galat aplikasi untuk disertakan saat menghubungi bantuan. Di web admin disebut **Kode referensi**."]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b17-8",
+      "title": "Menghubungi bantuan resmi",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Gunakan hanya kanal resmi berikut. Pertanyaan umum dijawab pada hari kerja. Permintaan terkait data pribadi, misalnya akses, salinan, atau koreksi data, ditanggapi sesuai jangka waktu dalam Kebijakan Privasi."
+        },
+        {
+          "type": "table",
+          "columns": ["Kanal", "Cara memakai"],
+          "rows": [
+            ["Email", "bantuan@kapdh.or.id. Bila memungkinkan, kirim dari alamat email yang terdaftar di akun Anda."],
+            ["WhatsApp pengurus", "Nomornya tercantum di kartu **Butuh bantuan?** atau **Hubungi pengurus** pada aplikasi dan di halaman Kontak situs kapdh.or.id. Bila nomor belum tercantum, gunakan email."],
+            ["Halaman Bantuan", "**Akun** > **Bantuan** di aplikasi, atau kapdh.or.id/bantuan."],
+            ["Hapus akun tanpa aplikasi", "kapdh.or.id/delete-account, dengan kode verifikasi yang dikirim ke email akun (Bab 16)."]
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Sertakan informasi ini agar cepat dibantu",
+          "items": [
+            "Email akun Anda dan ringkasan masalah.",
+            "Pesan yang tampil di layar, waktu kejadian, dan **Kode bantuan** bila ada. Tangkapan layar sangat membantu.",
+            "Jenis ponsel (Android atau iPhone) dan versi aplikasi yang tertulis di bagian bawah halaman **Akun**.",
+            "Untuk pembayaran: jenis pembayaran (iuran pendaftaran, perpanjangan, atau tiket), nominal, tanggal transfer, dan bank atau dompet digital asal.",
+            "Untuk event: nama event. Untuk penghapusan akun: nomor permintaan yang diawali DEL-.",
+            "Untuk koreksi data keanggotaan: data yang keliru dan data yang benar."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Jangan kirim data rahasia",
+          "text": "Jangan pernah mengirim password atau kode verifikasi (OTP), termasuk kepada orang yang mengaku sebagai pengurus. Untuk melindungi data Anda, pengurus dapat meminta Anda mengirim permintaan dari email akun sebagai bukti kepemilikan."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "text": "Bila Anda memerlukan pendampingan, atau mengajukan permintaan sebagai wali atau pendamping seorang anggota, hubungi bantuan lewat email atau WhatsApp. Pengurus akan membantu menyesuaikan cara penyampaian permintaan Anda."
+        }
+      ]
+    },
+    {
+      "id": "b17-9",
+      "title": "Tanya jawab singkat untuk pengurus",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Ringkasan pertanyaan yang sering diajukan pengurus pengguna web admin di admin.kapdh.or.id. Langkah lengkapnya ada di Bab 9 sampai Bab 15."
+        },
+        {
+          "type": "faq",
+          "items": [
+            {
+              "q": "Saya lupa sandi admin atau kehilangan ponsel autentikator.",
+              "a": "Web admin tidak memiliki fitur lupa sandi. Bila hanya ponsel autentikator yang hilang dan Anda masih ingat sandi serta menyimpan backup code, masuk seperti biasa lalu klik **Tidak bisa membuka autentikator? Pakai backup code**. Bila lupa sandi, atau backup code juga hilang, minta Super Admin menjalankan **Pulihkan akun (reset sandi & autentikator)** di **Manajemen Admin**; Anda menerima undangan ulang untuk membuat sandi, autentikator, dan backup code baru. Organisasi perlu menjaga minimal dua Super Admin aktif. Lihat Bab 9."
+            },
+            {
+              "q": "Kode autentikator saya selalu ditolak.",
+              "a": "Kode dihitung dari jam ponsel. Atur tanggal dan jam ponsel ke otomatis, tunggu kode berikutnya, lalu ketik ulang. Setiap kode hanya berlaku sekali. Setelah sandi diterima, kode harus dimasukkan dalam 5 menit; bila lewat, ulangi dari halaman masuk."
+            },
+            {
+              "q": "Menu yang dipakai rekan saya tidak muncul, atau tampil Akses ditolak.",
+              "a": "Menu mengikuti izin masing-masing akun. Lihat daftar izin Anda di **Akun saya**, lalu minta Super Admin menambahkan izin yang diperlukan. Perubahan izin langsung berlaku. Lihat Bab 9 dan Bab 15."
+            },
+            {
+              "q": "Mengapa saya diminta masuk ulang?",
+              "a": "Sesi berakhir setelah 30 menit tanpa aktivitas, dan paling lambat 12 jam setelah masuk. Dua menit sebelum batas tidak aktif, muncul dialog **Sesi akan berakhir**; klik **Tetap masuk** untuk melanjutkan. Simpan isian formulir sebelum meninggalkan komputer."
+            },
+            {
+              "q": "Anggota mengirim bukti transfer, tetapi dananya belum terlihat di rekening.",
+              "a": "Jangan setujui dulu. Bukti hanyalah petunjuk; setujui hanya setelah dana dengan nominal yang sama masuk di mutasi rekening tujuan. Periksa ulang beberapa saat kemudian. Bila dana tetap tidak masuk, tolak dengan alasan yang jelas. Untuk iuran, anggota dapat mengunggah ulang bukti tanpa transfer ulang; untuk tiket, penolakan bersifat final. Lihat Bab 10."
+            },
+            {
+              "q": "Anggota lupa password dan tidak menerima kode Lupa Password.",
+              "a": "Minta anggota memeriksa folder spam dan memastikan email yang diketik sama dengan email akun. Pengiriman kode dibatasi 5 kali per jam untuk setiap email. Super Admin dapat mengklik **Reset sandi** di halaman **Informasi Pengguna** anggota. Semua sesi anggota dicabut, kode pemulihan dikirim hanya ke email akun anggota, dan kode maupun sandi tidak pernah tampil di web admin. Lihat Bab 11."
+            },
+            {
+              "q": "Anggota ingin mengganti email atau menghapus datanya.",
+              "a": "Email akun yang sudah aktif belum dapat diubah, baik oleh anggota maupun pengurus. Bila anggota perlu memakai email lain, jelaskan pilihannya, misalnya menghapus akun lalu mendaftar ulang sebagai akun baru. Penghapusan diajukan anggota sendiri di aplikasi atau di kapdh.or.id/delete-account; web admin tidak menyediakan tombol hapus akun. Bila akun anggota dinonaktifkan atau ia tidak dapat memakai keduanya, minta ia mengirim permintaan dari email akunnya ke bantuan@kapdh.or.id agar ditindaklanjuti atas persetujuan Super Admin."
+            },
+            {
+              "q": "Anggota salah memilih angkatan atau kelas saat mendaftar.",
+              "a": "Buka halaman **Informasi Pengguna** anggota, klik **Ubah data**, perbaiki isiannya, isi **Alasan perubahan**, lalu konfirmasi dengan **Simpan koreksi**. Nomor anggota dihitung ulang dengan nomor urut tetap, dan anggota diberi tahu lewat notifikasi. Lihat Bab 11."
+            },
+            {
+              "q": "Petugas check-in melihat QR tidak dikenal atau Status belum diketahui.",
+              "a": "**QR tidak dikenal** biasanya berarti peserta menunjukkan QR KTA, bukan QR tiket; minta peserta membuka **Detail Tiket** di aplikasi. **Status belum diketahui** muncul saat koneksi terputus; tekan **Check-in** atau pindai ulang kode yang sama, karena sistem tidak mencatat check-in dua kali. Lihat Bab 13."
+            },
+            {
+              "q": "Kapan memakai mode pemeliharaan dan versi aplikasi minimum?",
+              "a": "Aktifkan **Mode pemeliharaan** di **Pengaturan** hanya selama perbaikan terjadwal, lengkap dengan pesan untuk pengguna dan perkiraan selesai; anggota tetap dapat membaca data, tetapi perubahan ditunda. Naikkan **Versi aplikasi minimum** hanya setelah versi baru tersedia di Google Play dan App Store, dan pastikan **Tautan toko aplikasi** sudah diisi. Lihat Bab 15."
+            },
+            {
+              "q": "Bagaimana melaporkan galat di web admin?",
+              "a": "Catat pesan galat, waktu kejadian, halaman yang sedang dibuka, dan **Kode referensi** yang tampil di bawah pesan, lalu teruskan ke Super Admin atau pengelola teknis. Jangan sertakan sandi, kode autentikator, atau backup code."
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "text": "Saat membantu anggota, cukup minta email akun dan ringkasan masalahnya. Pengurus tidak pernah meminta password atau kode verifikasi anggota. Kontak anggota yang terlihat di web admin hanya dipakai untuk urusan kepengurusan dan tidak boleh dibagikan ke pihak lain."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "docs/legal/bantuan.html",
+    "docs/qa/uat-checklist.md",
+    "kapdh-platform/packages/shared/src/errors.ts",
+    "kapdh-platform/packages/shared/src/status.ts",
+    "kapdh-platform/apps/web/src/lib/site.ts",
+    "kapdh-platform/apps/web/src/lib/organization.ts",
+    "kapdh-platform/apps/web/src/pages/kontak.astro",
+    "kapdh-platform/apps/web/src/scripts/kta-verify.ts",
+    "kapdh-platform/apps/api/src/modules/account/otp-policy.ts",
+    "kapdh-platform/apps/api/src/core/identity/otp-quota.ts",
+    "kapdh-platform/apps/api/src/core/identity/password-verifier.ts",
+    "kapdh-platform/apps/api/src/core/files/inspect.ts",
+    "kapdh-platform/apps/api/src/modules/payments/payment-rules.ts",
+    "kapdh-platform/packages/database/seeds/reference.ts",
+    "kapdh-platform/apps/admin/src/routes/events/CheckinPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/events/labels.ts",
+    "kapdh-platform/apps/admin/src/routes/settings/SettingsPage.tsx",
+    "kapdh-platform/apps/admin/src/components/ui/States.tsx",
+    "kapdh-mobile/lib/core/api/error_presenter.dart",
+    "kapdh-mobile/lib/core/ui/support_section.dart",
+    "kapdh-mobile/lib/core/ui/reauth_dialog.dart",
+    "kapdh-mobile/lib/design/states.dart",
+    "kapdh-mobile/lib/design/offline_banner.dart",
+    "kapdh-mobile/lib/design/support_contact_card.dart",
+    "kapdh-mobile/lib/features/system/maintenance_screen.dart",
+    "kapdh-mobile/lib/features/system/update_required_screen.dart",
+    "kapdh-mobile/lib/features/system/not_found_screen.dart",
+    "kapdh-mobile/lib/features/system/config_error_app.dart",
+    "kapdh-mobile/lib/features/kta/kta_presentation.dart",
+    "kapdh-mobile/lib/features/kta/kta_screen.dart",
+    "kapdh-mobile/lib/features/auth/login_screen.dart",
+    "kapdh-mobile/lib/features/auth/otp_challenge.dart",
+    "kapdh-mobile/lib/features/account/notification_preferences_screen.dart",
+    "kapdh-mobile/lib/features/account/sessions_screen.dart",
+    "kapdh-mobile/lib/features/account/account_screen.dart",
+    "kapdh-mobile/lib/features/payments/payment_detail_screen.dart",
+    "kapdh-mobile/lib/features/payments/payment_presentation.dart",
+    "kapdh-mobile/android/app/build.gradle.kts",
+    "kapdh-mobile/ios/Podfile",
+    "kapdh-mobile/mockup-html/auth/maintenance.html",
+    "kapdh-mobile/mockup-html/auth/update-required.html",
+    "kapdh-mobile/mockup-html/auth/not-found.html",
+    "kapdh-mobile/mockup-html/beranda/notification-open.html",
+    "kapdh-mobile/mockup-html/akun/notification-preferences.html",
+    "kapdh-mobile/mockup-html/kta/kta.html",
+    "kapdh-mobile/lib/design/kta_card.dart",
+    "kapdh-mobile/lib/design/qris_image_card.dart",
+    "kapdh-mobile/lib/design/status_badge.dart",
+    "kapdh-mobile/lib/core/ui/profile_lists.dart",
+    "kapdh-mobile/lib/app/app_shell.dart",
+    "kapdh-mobile/lib/app/redirect.dart",
+    "kapdh-mobile/lib/features/status/deletion_status_screen.dart",
+    "kapdh-mobile/lib/features/tickets/ticket_detail_screen.dart",
+    "kapdh-mobile/lib/features/tickets/tickets_screen.dart",
+    "kapdh-mobile/lib/features/payments/new_payment_screen.dart",
+    "kapdh-platform/apps/api/src/core/settings/keys.ts",
+    "kapdh-platform/apps/api/src/core/membership/access.ts",
+    "kapdh-platform/apps/api/src/core/files/purposes.ts",
+    "kapdh-platform/apps/api/src/core/files/files.service.ts",
+    "kapdh-platform/apps/api/src/core/identity/token.service.ts",
+    "kapdh-platform/apps/api/src/core/identity/session-issuer.ts",
+    "kapdh-platform/apps/api/src/modules/events/event-rules.ts",
+    "kapdh-platform/apps/api/src/modules/moderation/due-at.ts",
+    "kapdh-platform/apps/admin/src/routes/auth/MfaPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/admins/AdminDetailPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/members/MemberDetailPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/members/MemberActionDialogs.tsx",
+    "kapdh-platform/apps/admin/src/routes/members/MemberEditDialog.tsx",
+    "kapdh-platform/apps/admin/src/auth/useIdleTimeout.ts",
+    "docs/runbooks/alumni-account-disabled.md"
+  ]
+}

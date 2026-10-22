@@ -1,0 +1,556 @@
+{
+  "id": "b15",
+  "part": "pengurus",
+  "title": "Admin, Notifikasi, dan Pengaturan",
+  "kicker": "Web Admin Pengurus",
+  "summary": "Bab ini untuk Super Admin dan pengurus yang ditunjuk: mengundang dan mengelola akun admin, memantau notifikasi yang gagal terkirim, serta mengatur mode pemeliharaan, versi minimum aplikasi, kontak dukungan, dan instruksi iuran.",
+  "icon": "ph-gear-six",
+  "highlights": [
+    "Mengundang admin baru dari data alumni atau lewat email",
+    "Mengatur peran, izin, status, dan pemulihan akun admin",
+    "Memantau notifikasi gagal dan mengirim ulang dengan aman",
+    "Mengaktifkan mode pemeliharaan dan wajib update aplikasi",
+    "Mengatur kontak dukungan, tautan toko, dan instruksi iuran"
+  ],
+  "sections": [
+    {
+      "id": "b15-1",
+      "title": "Daftar admin dan izin yang diperlukan",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Bab ini membahas tiga menu di menu samping: **Manajemen Admin** (tepat di bawah **Manajemen Event & Tiket**), serta **Notifikasi** dan **Pengaturan** di bagian paling bawah. Setiap menu hanya tampil bagi admin yang memiliki izinnya. Cara masuk, autentikator, serta daftar lengkap peran dan izin dibahas di Bab 9."
+        },
+        {
+          "type": "table",
+          "title": "Menu di bab ini dan izinnya",
+          "columns": ["Menu", "Izin yang diperlukan", "Yang dapat dilakukan"],
+          "rows": [
+            ["**Manajemen Admin** > **Daftar Admin**", "Kelola admin dan izin (hanya Super Admin)", "Mengundang admin, mengubah peran, izin, dan status, serta memulihkan akun admin."],
+            ["**Notifikasi** > **Pengiriman**", "Kelola pengiriman notifikasi", "Memantau hasil pengiriman push dan email, mengirim ulang yang gagal, dan mengembalikan tugas latar ke antrean."],
+            ["**Pengaturan** > **Pengaturan Aplikasi**", "Kelola metode bayar dan pengaturan", "Mengatur mode pemeliharaan, versi minimum aplikasi, tautan toko, kontak dukungan, dan instruksi iuran."]
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Buka **Manajemen Admin** > **Daftar Admin**. Kartu di bagian atas menunjukkan jumlah admin beserta rinciannya, misalnya 2 aktif, 1 diundang, 2 nonaktif. Tabel **Daftar Admin** memuat **Nama Admin**, **Email**, **Role & Akses**, dan **Status**, 20 baris per halaman. Di bawah nama Anda sendiri tertulis Akun Anda."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b15-daftar-admin.png",
+          "caption": "Halaman Manajemen Admin: jumlah admin, pencarian, filter peran dan status, serta chip Role & Akses setiap admin."
+        },
+        {
+          "type": "steps",
+          "title": "Mencari admin",
+          "items": [
+            { "text": "Ketik nama atau email di kolom **Cari admin**." },
+            { "text": "Pilih **Peran** (**Super Admin** atau **Admin**) dan **Status** (**Aktif**, **Diundang**, atau **Nonaktif**) untuk mempersempit daftar." },
+            { "text": "Atur **Urutkan** menjadi **Nama A-Z**, **Terbaru dibuat**, atau **Login terakhir**." },
+            { "text": "Klik nama admin atau ikon di kolom **Kelola** untuk membuka halaman detailnya." }
+          ]
+        },
+        {
+          "type": "status",
+          "title": "Arti status admin",
+          "items": [
+            { "label": "Aktif", "tone": "success", "text": "Admin sudah membuat sandi dan mendaftarkan autentikator. Di bawahnya tertulis waktu login terakhir, atau Belum pernah login." },
+            { "label": "Diundang", "tone": "info", "text": "Undangan sudah dikirim tetapi belum diselesaikan. Tertulis Undangan s.d. batas waktunya, atau Undangan kedaluwarsa; kirim ulang bila sudah lewat." },
+            { "label": "Nonaktif", "tone": "neutral", "text": "Admin tidak dapat masuk. Tertulis sejak kapan akun dinonaktifkan." }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Chip pada kolom Role & Akses",
+          "items": [
+            "**USER**: admin ini tertaut ke akun alumni. Pembayaran dan laporan moderasi yang menyangkut akun alumninya sendiri ditangani pengurus lain untuk mencegah konflik kepentingan.",
+            "**Super Admin** atau **Admin**: peran akun.",
+            "**Semua akses** untuk Super Admin, atau nama kelompok izin untuk Admin, misalnya **Pembayaran**, **Konten**, dan **Event**."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b15-2",
+      "title": "Mengundang admin baru",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Setiap admin baru mendapat identitas login tersendiri yang terpisah dari akun alumni, dengan sandi dan autentikator sendiri. Ada dua cara mengundang: memilih alumni yang sudah terdaftar, atau mengundang lewat email bagi pengurus yang tidak memiliki akun alumni. Hanya Super Admin yang dapat mengundang."
+        },
+        {
+          "type": "steps",
+          "title": "Mengundang alumni menjadi admin",
+          "items": [
+            { "text": "Di halaman **Manajemen Admin**, klik **Delegasi User jadi Admin**." },
+            { "text": "Pada **Sumber undangan**, biarkan **Pilih alumni** terpilih, lalu cari alumni dengan nama, No. KTA, atau email." },
+            { "text": "Klik **Jadikan Admin** pada alumni yang dimaksud. Alumni yang tidak memenuhi syarat menampilkan alasan Tidak dapat dipilih." },
+            { "text": "Kosongkan **Nama tampilan admin** dan **Email login admin** untuk memakai nama dan email akun alumni, atau isi bila ingin berbeda. Tautan undangan dikirim ke email login ini." },
+            { "text": "Pilih **Peran**. Untuk **Admin**, centang hanya izin yang benar-benar diperlukan tugasnya." },
+            { "text": "Klik **Kirim undangan**." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b15-undang-pilih.png",
+          "caption": "Dialog Delegasi User jadi Admin: alumni yang memenuhi syarat memiliki tombol Jadikan Admin, yang lain menampilkan alasannya."
+        },
+        {
+          "type": "table",
+          "title": "Alasan alumni tidak dapat dipilih",
+          "columns": ["Keterangan di daftar", "Artinya"],
+          "rows": [
+            ["Sudah tertaut ke identitas admin", "Alumni ini sudah memiliki identitas admin, baik aktif, diundang, maupun nonaktif. Satu akun alumni hanya dapat ditautkan ke satu identitas admin."],
+            ["Akun belum terverifikasi atau dinonaktifkan", "Akun alumni belum aktif, misalnya email belum diverifikasi, atau sedang dalam proses penghapusan."],
+            ["Sedang dibatasi pengurus (suspend)", "Akun alumni sedang dibatasi. Cabut pembatasannya lebih dulu bila memang layak (Bab 11)."]
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b15-undang-izin.png",
+          "caption": "Formulir setelah alumni dipilih: nama dan email boleh dikosongkan, lalu tentukan peran dan centang izin per kelompok."
+        },
+        {
+          "type": "steps",
+          "title": "Mengundang lewat email (tanpa akun alumni)",
+          "items": [
+            { "text": "Klik **Delegasi User jadi Admin**, lalu pilih **Undang lewat email**." },
+            { "text": "Isi **Nama tampilan admin** (maksimal 120 karakter) dan **Email login admin**. Keduanya wajib diisi." },
+            { "text": "Pilih **Peran** dan izin, lalu klik **Kirim undangan**." }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Setelah terkirim, dialog menampilkan **Undangan dijadwalkan** beserta alamat tujuan dan batas berlakunya. Tautan undangan berlaku 72 jam, hanya dikirim lewat email, dan tidak pernah ditampilkan di layar. Klik **Lihat detail admin** untuk membuka detailnya atau **Undang admin lain** untuk mengundang lagi. Admin baru lalu mengaktifkan akunnya mengikuti Bab 9."
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Izin yang saling bergantung",
+          "text": "Mencentang **Putuskan pembayaran** otomatis ikut mencentang **Lihat pembayaran**, dan melepas **Lihat pembayaran** ikut melepas **Putuskan pembayaran**. Hal yang sama berlaku untuk **Kelola anggota** dengan **Lihat anggota**, **Putuskan laporan** dengan **Lihat laporan**, dan **Ekspor audit** dengan **Lihat audit**. **Kelola admin dan izin** tidak dapat dicentang; izin ini hanya milik Super Admin."
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Pilih Super Admin dengan hati-hati",
+          "text": "Peran **Super Admin** memiliki semua izin, termasuk mengelola admin lain. Berikan hanya kepada pengurus inti. Organisasi mensyaratkan minimal dua Super Admin aktif agar pengelolaan admin tidak bergantung pada satu orang."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Pesan yang mungkin muncul",
+          "text": "Email login ini sudah dipakai identitas admin lain: gunakan alamat lain atau buka admin yang sudah ada. Terlalu banyak perubahan admin dalam satu jam: setiap Super Admin dapat melakukan paling banyak 20 kali undangan, kirim ulang, dan pemulihan (dihitung bersama) per jam; coba lagi nanti."
+        }
+      ]
+    },
+    {
+      "id": "b15-3",
+      "title": "Mengubah peran, izin, dan status admin",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Halaman detail admin terdiri atas kartu **Identitas**, **Status & pemulihan**, dan **Peran & izin**. Kartu Identitas menampilkan akun alumni tertaut, status **Autentikator (TOTP)**, jumlah **Sesi aktif**, **Login terakhir**, **Diundang oleh**, **Aktif sejak**, dan **Versi izin** yang naik setiap kali peran, izin, atau status berubah."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b15-detail-admin.png",
+          "caption": "Detail admin: kartu Identitas serta Status & pemulihan di kiri, formulir Peran & izin di kanan."
+        },
+        {
+          "type": "steps",
+          "title": "Mengubah nama, peran, atau izin",
+          "items": [
+            { "text": "Di kartu **Peran & izin**, ubah **Nama tampilan**, pilih **Peran**, atau centang dan lepas izin." },
+            { "text": "Isi **Alasan perubahan (opsional)**, misalnya nomor surat keputusan pengurus. Alasan tercatat di audit; jangan menulis sandi atau kode." },
+            { "text": "Klik **Simpan perubahan**. Tombol ini baru aktif bila ada yang berubah. Klik **Batalkan perubahan** untuk mengembalikan isian." },
+            { "text": "Periksa ringkasan di dialog **Simpan perubahan izin?** (perubahan nama, peran lama dan baru, izin ditambah, izin dicabut), lalu klik **Simpan perubahan**." }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Perubahan berlaku pada tindakan berikutnya admin tersebut tanpa perlu keluar dan masuk lagi. Bila admin itu pernah aktif, ia juga menerima email pemberitahuan bahwa peran atau izinnya berubah."
+        },
+        {
+          "type": "steps",
+          "title": "Menonaktifkan admin",
+          "items": [
+            { "text": "Di kartu **Status & pemulihan**, klik **Nonaktifkan admin**. Untuk admin yang masih diundang, tombolnya bernama **Nonaktifkan (batalkan undangan)**." },
+            { "text": "Isi **Alasan (dicatat di audit)**, minimal 3 karakter, misalnya masa bakti kepengurusan berakhir." },
+            { "text": "Centang **Saya memahami admin ini langsung keluar dari semua perangkat.**, lalu klik **Nonaktifkan**." }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Admin yang dinonaktifkan langsung keluar dari semua perangkat dan tidak dapat masuk lagi; undangan yang belum dipakai ikut dibatalkan. Bila ia pernah aktif, ia menerima email pemberitahuan. Riwayat dan audit tetap tersimpan. Untuk mengizinkannya kembali, klik **Aktifkan kembali** lalu konfirmasi: ia dapat masuk dengan sandi dan autentikator lamanya. Bila sandi atau autentikator diduga bocor, gunakan pemulihan akun (subbab berikutnya)."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Aturan Super Admin aktif terakhir",
+          "text": "Sistem selalu menjaga paling tidak satu Super Admin aktif. Bila Anda satu-satunya Super Admin aktif, menurunkan peran atau menonaktifkan akun Anda sendiri ditolak dengan pesan Super Admin aktif terakhir tidak dapat diturunkan atau dinonaktifkan. Tetapkan Super Admin lain lebih dulu. Pada akun sendiri, kartu Peran & izin menampilkan catatan Ini akun Anda sendiri."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Bila data diubah pengurus lain",
+          "text": "Bila Super Admin lain mengubah admin yang sama lebih dulu, perubahan Anda tidak disimpan. Muncul pesan bahwa data sudah diubah pengurus lain dan tampilan dimuat ulang ke versi terbaru. Periksa lagi, lalu ulangi bila masih perlu."
+        }
+      ]
+    },
+    {
+      "id": "b15-4",
+      "title": "Undangan ulang, koreksi email, dan pemulihan akun",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Tombol di kartu **Status & pemulihan** menyesuaikan keadaan admin. Tabel berikut merangkum tombol yang tampil untuk setiap keadaan."
+        },
+        {
+          "type": "table",
+          "title": "Tombol di kartu Status & pemulihan",
+          "columns": ["Keadaan admin", "Tombol yang tersedia"],
+          "rows": [
+            ["Aktif", "**Pulihkan akun (reset sandi & autentikator)** dan **Nonaktifkan admin**. Pada akun Anda sendiri, tombol pemulihan tidak tampil."],
+            ["Diundang, belum pernah aktif", "**Kirim ulang undangan**, **Koreksi email login**, **Nonaktifkan (batalkan undangan)**, dan **Hapus identitas admin**."],
+            ["Diundang karena sedang dipulihkan", "**Kirim ulang undangan**, **Koreksi email login**, dan **Nonaktifkan (batalkan undangan)**."],
+            ["Nonaktif, pernah aktif", "**Aktifkan kembali** (bila autentikatornya masih terdaftar) dan **Pulihkan akun (reset sandi & autentikator)**."],
+            ["Nonaktif, belum pernah aktif", "**Kirim ulang undangan**, **Koreksi email login**, dan **Hapus identitas admin**."]
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Kirim ulang undangan, koreksi email login, dan pemulihan akun menyangkut kredensial. Karena itu sistem meminta **Konfirmasi identitas** (sandi dan kode autentikator Anda) sebelum menjalankannya (lihat Bab 9)."
+        },
+        {
+          "type": "steps",
+          "title": "Mengirim ulang undangan",
+          "items": [
+            { "text": "Klik **Kirim ulang undangan**, lalu klik **Kirim ulang undangan** di dialog." },
+            { "text": "Isi sandi dan kode autentikator Anda di dialog **Konfirmasi identitas**." },
+            { "text": "Tautan baru dikirim ke email login admin dan berlaku 72 jam. Tautan sebelumnya langsung tidak berlaku. Admin nonaktif yang belum pernah aktif kembali berstatus Diundang." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Mengoreksi email login (admin Diundang atau belum pernah aktif)",
+          "items": [
+            { "text": "Klik **Koreksi email login**, isi **Email login baru**, lalu klik **Simpan email**." },
+            { "text": "Konfirmasi identitas Anda. Bila admin berstatus Diundang, undangan baru langsung dikirim ke alamat baru dan tautan lama tidak berlaku. Bila berstatus Nonaktif, alamat baru dipakai saat undangan dikirim ulang." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Memulihkan akun admin yang kehilangan autentikator atau sandi",
+          "items": [
+            { "text": "Pastikan identitas admin tersebut di luar sistem lebih dulu, misalnya lewat telepon atau bertemu langsung." },
+            { "text": "Klik **Pulihkan akun (reset sandi & autentikator)**, lalu isi **Alasan pemulihan** (minimal 3 karakter), misalnya ponsel autentikator hilang." },
+            { "text": "Isi **Email login baru (opsional)** hanya bila admin kehilangan akses ke email lamanya. Pemberitahuan keamanan tetap dikirim ke alamat lama." },
+            { "text": "Centang **Saya sudah memverifikasi identitas admin ini di luar sistem.**, klik **Pulihkan akun**, lalu konfirmasi identitas Anda." }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Pemulihan mereset sandi dan autentikator, mencabut semua sesi, dan mengubah status admin menjadi Diundang. Undangan pemulihan berlaku 72 jam; admin wajib membuat sandi baru dan mendaftarkan autentikator lagi seperti aktivasi pertama. Pengurus tidak pernah melihat sandi atau kode rahasia admin lain."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Menghapus identitas admin",
+          "text": "**Hapus identitas admin** hanya tersedia untuk admin yang belum pernah aktif, misalnya undangan yang salah alamat. Ketik nama admin persis seperti tertulis untuk mengaktifkan tombol **Hapus identitas**. Email login dan tautan alumninya lalu bebas dipakai undangan baru. Admin yang pernah aktif tidak dapat dihapus; nonaktifkan saja."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Kehilangan autentikator milik sendiri",
+          "text": "Super Admin tidak dapat memulihkan akunnya sendiri dari halaman ini. Bila ponsel autentikator hilang, Anda masih dapat masuk dengan backup code (Bab 9), tetapi untuk mendaftarkan autentikator baru atau bila lupa sandi, minta Super Admin lain memulihkan akun Anda. Inilah alasan perlunya minimal dua Super Admin aktif."
+        }
+      ]
+    },
+    {
+      "id": "b15-5",
+      "title": "Memantau pengiriman notifikasi dan outbox",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Notifikasi ke anggota dikirim otomatis oleh sistem, misalnya hasil verifikasi pembayaran, masa keanggotaan, event, berita terbit, pesan chat, dan keamanan akun. Setiap notifikasi selalu masuk kotak masuk di aplikasi; push dan email dikirim tambahan sesuai kategori dan pilihan anggota. Menu **Notifikasi** dipakai untuk memantau hasil pengiriman itu dan menindaklanjuti yang gagal."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Tidak ada formulir pengumuman manual",
+          "text": "Web admin rilis 1.0 tidak memiliki formulir untuk menulis dan mengirim pengumuman bebas ke anggota. Untuk menyiarkan informasi, terbitkan berita di **Manajemen Konten** (Bab 12). Saat berita tampil, sistem mengirim satu notifikasi ke semua anggota aktif, dengan push sesuai pilihan anggota; berita tidak dikirim lewat email."
+        },
+        {
+          "type": "table",
+          "title": "Kanal pengiriman per kategori",
+          "columns": ["Kategori", "Push", "Email"],
+          "rows": [
+            ["Pembayaran, Keanggotaan, Event", "Sesuai pilihan anggota", "Sesuai pilihan anggota"],
+            ["Berita, Chat", "Sesuai pilihan anggota", "Tidak dikirim"],
+            ["Keamanan, Akun", "Selalu dikirim", "Selalu dikirim"]
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b15-pengiriman.png",
+          "caption": "Tab Pengiriman dengan filter status Gagal: kelas galat beserta artinya, jumlah percobaan, dan tombol Kirim ulang bila masih dapat ditindak."
+        },
+        {
+          "type": "status",
+          "title": "Status pengiriman",
+          "items": [
+            { "label": "Menunggu", "tone": "info", "text": "Dalam antrean atau menunggu percobaan berikutnya. Kolom Percobaan menampilkan jadwal Berikutnya." },
+            { "label": "Terkirim", "tone": "success", "text": "Sudah diterima layanan pengirim push atau email. Ini belum menjamin anggota sudah membacanya." },
+            { "label": "Gagal", "tone": "danger", "text": "Percobaan otomatis sudah habis (sampai 6 kali dengan jeda yang makin panjang), atau penyebabnya permanen." },
+            { "label": "Dibatalkan", "tone": "neutral", "text": "Sengaja tidak dikirim karena targetnya tidak lagi sah, misalnya anggota keluar dari perangkat itu atau mematikan kategori tersebut." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Menindaklanjuti pengiriman gagal",
+          "items": [
+            { "text": "Buka **Notifikasi** > **Pengiriman**, atau klik **Lihat pengiriman gagal** di kartu **Job gagal** pada Dashboard. Angka di menu Notifikasi menjumlahkan pengiriman gagal yang dapat dikirim ulang (7 hari terakhir) dan tugas outbox yang berhenti." },
+            { "text": "Pada filter **Status**, pilih **Gagal**. Pada filter **Dapat dikirim ulang**, pilih **Dapat dikirim ulang**. Lalu klik **Terapkan filter**. Bila dibuka dari Dashboard, filter ini sudah terpasang." },
+            { "text": "Baca kolom **Keterangan** untuk mengetahui penyebabnya (lihat tabel di bawah)." },
+            { "text": "Klik **Kirim ulang** pada baris, atau centang beberapa baris lalu klik **Kirim ulang terpilih** dan **Ya, kirim ulang**." },
+            { "text": "Baca hasilnya di atas tabel, misalnya jumlah pengiriman yang dijadwalkan ulang dan yang dilewati beserta alasannya." }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Kelas galat yang sering muncul",
+          "columns": ["Kelas galat", "Artinya", "Yang perlu dilakukan"],
+          "rows": [
+            ["UNREGISTERED, SENDER_ID_MISMATCH", "Layanan push menolak perangkat itu, misalnya aplikasinya sudah dihapus, sehingga perangkat dinonaktifkan.", "Tidak dapat dikirim ulang. Notifikasi tetap ada di kotak masuk; push berjalan lagi setelah anggota memasang ulang aplikasi dan masuk kembali."],
+            ["QUOTA_EXCEEDED, UNAVAILABLE, INTERNAL", "Layanan push sedang sibuk atau terganggu.", "Sistem mencoba ulang otomatis. Kirim ulang hanya bila statusnya sudah Gagal."],
+            ["bounce_hard", "Email ditolak permanen oleh server penerima, misalnya alamatnya tidak ada.", "Minta anggota memeriksa alamat emailnya. Kirim ulang ke alamat yang sama biasanya gagal lagi."],
+            ["bounce_soft, timeout", "Kotak surat penuh, server penerima sibuk, atau batas waktu pengiriman habis.", "Tunggu beberapa saat, lalu kirim ulang."],
+            ["token_revoked, token_reassigned", "Anggota sudah keluar dari perangkat itu, atau perangkat kini dipakai akun lain.", "Tidak perlu tindakan; notifikasi sengaja tidak dikirim ke perangkat itu."],
+            ["preference_disabled", "Anggota mematikan kategori atau kanal ini di aplikasi.", "Tidak perlu tindakan."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Menelusuri keluhan tidak menerima notifikasi",
+          "text": "Isi **Id akun penerima** dengan id akun anggota, yang terlihat di alamat halaman detail anggota setelah /members/. Setiap kirim ulang memberi satu percobaan tambahan, tidak menggandakan notifikasi di kotak masuk anggota, dan tercatat di audit. Isi notifikasi, alamat email, dan token perangkat tidak pernah ditampilkan. Daftar dimuat ulang otomatis setiap menit."
+        },
+        {
+          "type": "p",
+          "text": "Tab **Outbox** berisi tugas latar yang dicatat sistem setiap kali ada pekerjaan lanjutan, misalnya membuat notifikasi baru, mengirim email undangan admin, menyiapkan ekspor audit, memproses penghapusan akun, atau memberi tahu pembatalan event. Tugas ini dikerjakan otomatis di belakang layar. Secara bawaan tab ini hanya menampilkan tugas yang perlu perhatian, yaitu filter **Perlu tindakan (gagal dan berhenti)**. Dari Dashboard, klik **Lihat event outbox** di kartu **Job gagal**."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b15-outbox.png",
+          "caption": "Tab Outbox: tugas latar yang gagal atau berhenti, jumlah percobaan, galat terakhir, Request ID, dan tombol Kembalikan ke antrean."
+        },
+        {
+          "type": "status",
+          "title": "Status tugas outbox",
+          "items": [
+            { "label": "Menunggu", "tone": "info", "text": "Belum dikerjakan atau menunggu jadwal percobaan berikutnya." },
+            { "label": "Diteruskan", "tone": "success", "text": "Sudah selesai diteruskan ke proses berikutnya." },
+            { "label": "Gagal, dicoba ulang otomatis", "tone": "warning", "text": "Percobaan terakhir gagal dan sistem mencoba lagi dengan jeda. Umumnya tidak perlu tindakan." },
+            { "label": "Berhenti, perlu tindakan", "tone": "danger", "text": "Sudah gagal 10 kali. Sistem berhenti mencoba sampai pengurus mengembalikannya ke antrean." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Mengembalikan tugas ke antrean",
+          "items": [
+            { "text": "Baca kolom **Galat terakhir**. Bila penyebabnya gangguan sementara yang sudah pulih, lanjutkan. Bila belum jelas, salin **Request ID** dan teruskan ke pengelola teknis." },
+            { "text": "Klik **Kembalikan ke antrean** pada baris, atau centang beberapa baris lalu klik **Kembalikan terpilih ke antrean** dan **Ya, kembalikan**." },
+            { "text": "Tugas bertanda **Sedang diproses dispatcher** sedang dikerjakan sistem dan akan dilewati. Tunggu sampai selesai, lalu periksa lagi." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Aman diulang, tetapi jangan berulang-ulang",
+          "text": "Mengembalikan tugas ke antrean tidak menggandakan pembayaran, periode keanggotaan, nomor KTA, kursi event, maupun notifikasi. Bila tugas yang sama terus berhenti, jangan diulang terus; laporkan Request ID-nya ke pengelola teknis. Kirim ulang dan pengembalian dibatasi 20 permintaan per menit untuk setiap admin."
+        }
+      ]
+    },
+    {
+      "id": "b15-6",
+      "title": "Mode pemeliharaan dan versi minimum aplikasi",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Buka **Pengaturan** > **Pengaturan Aplikasi**. Setiap kartu disimpan terpisah dengan tombolnya sendiri dan tidak meminta konfirmasi identitas. Di bawah judul kartu tertulis versinya, kapan diubah, dan oleh siapa. Semua perubahan tercatat di audit (Bab 14) dan berlaku di server dalam beberapa detik."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b15-pengaturan.png",
+          "caption": "Halaman Pengaturan: Mode pemeliharaan, Versi aplikasi minimum, Tautan toko aplikasi, dan Kontak dukungan."
+        },
+        {
+          "type": "p",
+          "text": "**Mode pemeliharaan** dipakai saat ada pekerjaan perbaikan yang mengharuskan data tidak berubah sementara. Selama aktif, semua perubahan dari aplikasi anggota ditolak, termasuk masuk dan mendaftar, mengunggah bukti bayar, mengubah profil, mendaftar event, dan mengirim chat. Anggota yang sudah masuk masih dapat memilih **Lanjut dalam mode baca** (KTA, tiket, riwayat pembayaran, berita, kotak masuk) atau **Tampilkan KTA**. Situs kapdh.or.id menampilkan pemberitahuan pemeliharaan, sedangkan web admin tetap berjalan normal."
+        },
+        {
+          "type": "steps",
+          "title": "Mengaktifkan mode pemeliharaan",
+          "items": [
+            { "text": "Di kartu **Mode pemeliharaan**, aktifkan sakelar **Aktifkan mode pemeliharaan**." },
+            { "text": "Isi **Pesan untuk pengguna** (wajib, maksimal 500 karakter): perkiraan durasi, kapan mencoba lagi, dan kanal dukungan." },
+            { "text": "Bila sudah diketahui, isi **Perkiraan selesai (opsional)** dalam WIB. Waktunya harus di masa depan." },
+            { "text": "Klik **Simpan mode pemeliharaan**, periksa pesan di dialog **Aktifkan mode pemeliharaan?**, lalu klik **Aktifkan pemeliharaan**." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b15-pemeliharaan.png",
+          "caption": "Dialog konfirmasi menampilkan pesan yang akan dilihat anggota sebelum mode pemeliharaan diaktifkan."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Mode pemeliharaan tidak mati sendiri",
+          "text": "**Perkiraan selesai** hanya informasi bagi anggota. Mode pemeliharaan tetap aktif sampai Anda mematikan sakelar dan klik **Simpan mode pemeliharaan**. Periksa **Status saat ini**: **Pemeliharaan aktif** atau **Layanan normal**."
+        },
+        {
+          "type": "p",
+          "text": "Aplikasi anggota memeriksa pengaturan ini saat dibuka dan saat kembali dibuka setelah lebih dari 5 menit. Setiap perubahan yang ditolak juga langsung memunculkan layar pemeliharaan."
+        },
+        {
+          "type": "p",
+          "text": "**Versi aplikasi minimum** menentukan versi terendah aplikasi Android dan iOS yang masih boleh mengirim perubahan. Aplikasi di bawah versi ini menampilkan layar **Perbarui aplikasi KAPDH** bertanda **Wajib Update**, dengan tombol **Perbarui di Play Store** atau **Perbarui di App Store** yang membuka tautan dari kartu **Tautan toko aplikasi**."
+        },
+        {
+          "type": "steps",
+          "title": "Menaikkan versi minimum",
+          "items": [
+            { "text": "Pastikan versi baru sudah dapat diunduh di toko dan tautannya sudah terisi di kartu **Tautan toko aplikasi**." },
+            { "text": "Isi **Versi minimum Android** dan **Versi minimum iOS** dengan format tiga angka, misalnya 1.2.0." },
+            { "text": "Klik **Simpan versi minimum**." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b15-app-pemeliharaan.png", "caption": "Layar pemeliharaan di aplikasi anggota: pesan, perkiraan selesai, dan kontak bantuan." },
+            { "img": "mobile/b15-app-wajib-update.png", "caption": "Layar Perbarui aplikasi KAPDH saat versi aplikasi di bawah versi minimum." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Naikkan versi minimum hanya setelah versi baru tersedia",
+          "text": "Sistem menolak menaikkan versi minimum platform yang tautan tokonya masih kosong. Menaikkan versi sebelum versi baru dapat diunduh membuat anggota tidak dapat melakukan perubahan apa pun, termasuk membayar iuran, sampai mereka memperbarui aplikasi."
+        }
+      ]
+    },
+    {
+      "id": "b15-7",
+      "title": "Kontak, tautan toko, instruksi iuran, dan kebijakan",
+      "blocks": [
+        {
+          "type": "table",
+          "title": "Pengaturan lain dan dampaknya",
+          "columns": ["Kartu", "Isian", "Dampak"],
+          "rows": [
+            ["**Tautan toko aplikasi**", "**Google Play (Android)** diawali https://play.google.com/ dan **App Store (iOS)** diawali https://apps.apple.com/. Kosongkan untuk menghapus.", "Dipakai tombol di layar Wajib Update dan tombol unduh di situs kapdh.or.id. Bila kosong, tombol unduh di situs bertuliskan Segera tersedia."],
+            ["**Kontak dukungan**", "**Email dukungan** (wajib) dan **WhatsApp pengurus (opsional)** dalam format internasional, misalnya +6281234567890.", "Tampil di bagian bantuan dan Hubungi pengurus di aplikasi, layar pemeliharaan, layar Wajib Update, layar akun dibatasi, serta halaman kontak situs."],
+            ["**Instruksi bayar iuran per platform**", "Centang **Android** dan/atau **iOS** pada **Sembunyikan instruksi iuran di**, lalu isi **Catatan perubahan (opsional)**.", "Anggota di platform itu tidak melihat rekening tujuan dan tidak dapat mengunggah bukti iuran. Pembayaran tiket event tidak terpengaruh."]
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Isi kartu, lalu klik tombol simpan di kartu itu: **Simpan tautan toko**, **Simpan kontak dukungan**, atau **Simpan instruksi iuran**. Klik **Batalkan perubahan** untuk mengembalikan isian yang belum disimpan."
+        },
+        {
+          "type": "p",
+          "text": "**Instruksi bayar iuran per platform** adalah rencana cadangan bila peninjau toko aplikasi menolak alur pembayaran iuran di aplikasi. Saat disembunyikan, anggota di platform itu melihat pesan Iuran melalui pengurus beserta kontak dukungan. Pengurus lalu mencatat iuran mereka lewat **Catat iuran** di Verifikasi Pembayaran setelah dana dicocokkan dengan mutasi rekening (Bab 10)."
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Sebelum menyembunyikan instruksi iuran",
+          "text": "Pastikan ada pengurus yang dapat mencatat iuran, yaitu memiliki izin **Lihat pembayaran**, **Putuskan pembayaran**, **Lihat anggota**, serta **Kelola metode bayar dan pengaturan**. Tanpa pengurus itu, iuran anggota di platform tersebut tidak dapat dicatat, sehingga status keanggotaan mereka tidak dapat diperbarui."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Bila pengaturan diubah pengurus lain",
+          "text": "Bila pengurus lain menyimpan kartu yang sama lebih dulu, muncul peringatan bahwa pengaturan ini sudah diubah dan isian Anda belum disimpan. Tombol simpan dinonaktifkan. Klik **Muat versi terbaru**, periksa nilainya, lalu ulangi perubahan bila masih perlu."
+        },
+        {
+          "type": "table",
+          "title": "Kebijakan yang hanya dapat dibaca (kartu terakhir di halaman)",
+          "columns": ["Kebijakan", "Nilai"],
+          "rows": [
+            ["Periode keanggotaan", "12 bulan kalender per iuran"],
+            ["Status hampir habis", "30 hari sebelum masa aktif berakhir"],
+            ["Jendela perpanjangan", "30 hari sebelum berakhir"],
+            ["Tahan kursi reservasi", "24 jam"],
+            ["Check-in dibuka", "2 jam sebelum acara"],
+            ["Batal mandiri dengan refund penuh", "Sampai H-3"],
+            ["Eskalasi bukti tiket", "2 hari kerja"],
+            ["Panjang pesan chat", "4.000 karakter"],
+            ["Anggota grup chat", "Maksimal 100 orang"]
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Nilai kebijakan ini tidak dapat diubah dari web admin. Perubahannya memerlukan keputusan pengurus dan pembaruan sistem oleh pengelola teknis. Tarif iuran juga tidak diatur di halaman ini, melainkan di tab **Biaya Pembayaran** pada **Verifikasi Pembayaran** (Bab 10)."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Yang tidak ada di halaman Pengaturan",
+          "text": "Rilis 1.0 tidak memiliki sakelar untuk membuka atau menutup pendaftaran anggota; selama mode pemeliharaan aktif, pendaftaran ikut tertahan. Versi dokumen legal mengikuti penerbitan halaman di **Manajemen Konten** (Bab 12), sedangkan rekening dan QRIS diatur di tab **Kelola Metode** pada **Verifikasi Pembayaran** (Bab 10)."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "kapdh-platform/apps/admin/src/routes/admins/AdminsListPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/admins/InviteAdminDialog.tsx",
+    "kapdh-platform/apps/admin/src/routes/admins/AdminDetailPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/admins/shared.tsx",
+    "kapdh-platform/apps/admin/src/routes/notifications/NotificationsPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/settings/SettingsPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/dashboard/DashboardPage.tsx",
+    "kapdh-platform/apps/admin/src/nav.ts",
+    "kapdh-platform/apps/admin/src/components/ui/ConfirmDialog.tsx",
+    "kapdh-platform/apps/admin/src/api/mocks/admins.ts",
+    "kapdh-platform/apps/admin/src/api/mocks/notifications.ts",
+    "kapdh-platform/apps/admin/src/api/mocks/settings.ts",
+    "kapdh-platform/apps/api/src/modules/admin/admins.service.ts (INVITE_RATE_LIMIT 20/jam, penjaga Super Admin terakhir, pemulihan)",
+    "kapdh-platform/apps/api/src/core/identity/crypto.ts (ADMIN_INVITE_TTL_MS = 72 jam)",
+    "kapdh-platform/apps/api/src/modules/admin/permissions-catalog.ts",
+    "kapdh-platform/apps/api/src/modules/admin/settings.service.ts",
+    "kapdh-platform/apps/api/src/modules/admin/queue-rules.ts (FAILED_DELIVERY_WINDOW_MS = 7 hari)",
+    "kapdh-platform/apps/api/src/core/settings/keys.ts",
+    "kapdh-platform/apps/api/src/core/settings/settings.service.ts (cache 5 detik)",
+    "kapdh-platform/apps/api/src/core/http/request-gate.ts (pemeliharaan menolak perubahan, wajib update)",
+    "kapdh-platform/packages/database/seeds/reference.ts (nilai kebijakan dan kontak awal)",
+    "kapdh-platform/apps/api/src/modules/notifications/channel-policy.ts",
+    "kapdh-platform/apps/api/src/modules/notifications/delivery-policy.ts (DELIVERY_MAX_ATTEMPTS = 6)",
+    "kapdh-platform/apps/api/src/modules/notifications/delivery-predicates.ts",
+    "kapdh-platform/apps/api/src/modules/notifications/admin-notifications.service.ts (RETRY_RATE_LIMIT 20/menit)",
+    "kapdh-platform/apps/api/src/core/jobs/job-runner.ts (OUTBOX_MAX_ATTEMPTS = 10)",
+    "kapdh-platform/apps/api/src/modules/content/content-announce.service.ts",
+    "kapdh-mobile/lib/core/app_gate/app_gate.dart (pemeriksaan ulang 5 menit)",
+    "kapdh-mobile/lib/features/system/maintenance_screen.dart",
+    "kapdh-mobile/lib/features/system/update_required_screen.dart",
+    "kapdh-mobile/lib/features/payments/new_payment_screen.dart",
+    "kapdh-mobile/lib/app/redirect.dart (mode baca saat pemeliharaan, anonim diarahkan ke layar pemeliharaan)",
+    "kapdh-mobile/lib/features/payments/payment_presentation.dart (pesan Iuran melalui pengurus)",
+    "kapdh-platform/apps/admin/src/routes/payments/PaymentsPage.tsx (tab Kelola Metode, Biaya Pembayaran)",
+    "kapdh-platform/apps/admin/src/routes/payments/recordEligibility.ts",
+    "kapdh-platform/apps/admin/src/routes/account/AccountPage.tsx",
+    "kapdh-platform/apps/admin/src/components/ui/ReauthDialog.tsx",
+    "kapdh-platform/apps/api/src/modules/notifications/devices.service.ts (SENDER_ID_MISMATCH menonaktifkan token)",
+    "kapdh-platform/apps/web/src/scripts/config-page.ts (tombol toko Segera tersedia, banner pemeliharaan)",
+    "kapdh-mobile/mockup-html/auth/maintenance.html",
+    "kapdh-mobile/mockup-html/auth/update-required.html",
+    "docs/adr/008-penjaga-super-admin-terakhir.md",
+    "docs/adr/013-identitas-admin-undangan-dan-totp.md",
+    "docs/adr/025-reautentikasi-hanya-tindakan-kredensial.md",
+    "docs/handoff/phase-c/admin-governance.md",
+    "docs/handoff/phase-c/api-notifications.md",
+    "docs/reference/Guidelines_KAPDH_v1.0.txt (halaman 15)"
+  ]
+}

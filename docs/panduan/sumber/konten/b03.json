@@ -1,0 +1,423 @@
+{
+  "id": "b03",
+  "part": "anggota",
+  "title": "Iuran dan Pembayaran",
+  "kicker": "Aplikasi Anggota",
+  "summary": "Iuran keanggotaan KAPDH dibayar ke tujuan resmi organisasi yang tercantum di aplikasi, lalu diverifikasi pengurus. Bab ini memandu Anda membuat instruksi, membayar, mengunggah bukti, memantau status, hingga memperpanjang keanggotaan.",
+  "icon": "ph-receipt",
+  "highlights": [
+    "Jenis iuran, rincian tarif, dan masa aktif 12 bulan",
+    "Membayar lewat transfer bank, e-wallet, atau QRIS",
+    "Mengunggah bukti dan memahami status verifikasi",
+    "Mengirim ulang bukti yang ditolak tanpa transfer ulang",
+    "Memperpanjang keanggotaan dan menangani situasi khusus"
+  ],
+  "sections": [
+    {
+      "id": "b03-1",
+      "title": "Jenis iuran dan tarifnya",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Iuran KAPDH adalah iuran keanggotaan organisasi, bukan pembelian aplikasi atau fitur. Di aplikasi ada tiga jenis pembayaran: iuran pendaftaran, iuran perpanjangan, dan pembayaran tiket event berbayar. Ketiganya dibayar dengan cara yang sama, yaitu transfer ke tujuan resmi organisasi lalu mengunggah bukti untuk diverifikasi pengurus."
+        },
+        {
+          "type": "table",
+          "columns": ["Jenis", "Kapan dibayar", "Rincian"],
+          "rows": [
+            [
+              "Iuran pendaftaran",
+              "Sekali, setelah email terverifikasi dan KTA Anda dibuat dengan status **KTA Tidak Aktif**.",
+              "Terdiri atas **Register alumni baru** dan **Pembuatan KTA**. KTA aktif 12 bulan sejak iuran diverifikasi pengurus."
+            ],
+            [
+              "Iuran perpanjangan",
+              "Setiap tahun, mulai 30 hari sebelum masa aktif berakhir. Tetap dapat dibayar setelah KTA kedaluwarsa.",
+              "Satu baris **Perpanjangan KTA per tahun**. Menambah masa aktif 12 bulan."
+            ],
+            [
+              "Tiket event berbayar",
+              "Saat mendaftar event berbayar.",
+              "Harga ditetapkan per event. Langkah reservasi dan batas waktunya dibahas di Bab 6."
+            ]
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b03-biaya-kta.png", "caption": "Langkah Biaya KTA: rincian iuran pendaftaran, total, dan masa aktif" }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Tarif ditetapkan pengurus",
+          "text": "Nominal iuran diatur pengurus dan dapat berubah. Aplikasi selalu menampilkan rincian dan total sebelum Anda membayar. Nominal dikunci saat instruksi pembayaran dibuat, jadi perubahan tarif hanya berlaku untuk instruksi baru. KTA fisik tidak termasuk iuran. Nominal pada gambar di panduan ini hanya contoh."
+        }
+      ]
+    },
+    {
+      "id": "b03-2",
+      "title": "Membuat instruksi dan memilih tujuan pembayaran",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Pembayaran dilakukan di luar aplikasi, ke tujuan resmi organisasi yang tercantum pada instruksi pembayaran. Aplikasi tidak memproses kartu dan tidak menarik dana dari rekening Anda. Setiap jenis iuran hanya punya satu instruksi yang berjalan, jadi membuka pembayaran berulang kali tidak akan membuat tagihan ganda."
+        },
+        {
+          "type": "list",
+          "title": "Tempat memulai pembayaran",
+          "items": [
+            "Pendaftaran baru: pada langkah **Biaya KTA**, ketuk **Lanjut ke pembayaran**.",
+            "Tab **KTA**: ketuk **Bayar** untuk iuran pendaftaran, **Lanjutkan** untuk instruksi yang sedang berjalan, atau **Perpanjang** untuk iuran perpanjangan.",
+            "**Beranda** saat KTA belum aktif: ketuk **Selesaikan Iuran Pendaftaran**.",
+            "Bila instruksi sudah pernah dibuat, tombolnya menjadi **Lanjutkan pembayaran** dan membuka instruksi yang sama."
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Jenis tujuan pembayaran",
+          "columns": ["Jenis", "Yang tampil di aplikasi", "Cara membayar"],
+          "rows": [
+            ["Transfer bank", "Nama bank, nomor rekening, nama pemilik (a.n.), dan tombol **Salin**.", "Transfer dari aplikasi bank, internet banking, atau ATM ke nomor tersebut."],
+            ["E-wallet", "Nama e-wallet, nomor tujuan, nama pemilik, dan tombol **Salin**.", "Kirim dana dari aplikasi dompet digital Anda."],
+            ["QRIS", "Nama merchant, NMID, dan gambar kode QRIS. Tidak ada tombol Salin.", "Pindai kode dengan aplikasi bank atau e-wallet, lalu ketik nominalnya sendiri."]
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Menyiapkan instruksi",
+          "items": [
+            { "text": "Ketuk **Lanjut ke pembayaran**. Aplikasi menyiapkan instruksi dan langsung memilih tujuan pembayaran pertama yang aktif." },
+            { "text": "Periksa kotak **Transfer tepat sebesar**. Ketuk **Salin** di kotak itu untuk menyalin nominal." },
+            { "text": "Di bagian **Rekening tujuan**, ketuk tujuan lain bila ingin mengganti, misalnya e-wallet atau **QRIS**. Nominal tidak berubah." },
+            { "text": "Untuk bank atau e-wallet, ketuk **Salin** pada kartu tujuan untuk menyalin nomornya. Baca juga keterangan dari pengurus bila tampil di bawah kartu." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b03-instruksi-bank.png", "caption": "Instruksi bayar: nominal, rekening tujuan terpilih, dan pilihan tujuan lain" },
+            { "img": "mobile/b03-qris-penuh.png", "caption": "Tampilan QRIS layar penuh setelah mengetuk Perbesar QRIS" }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Membayar dengan QRIS",
+          "items": [
+            { "text": "Di **Rekening tujuan**, ketuk pilihan **QRIS**. Gambar kode QRIS, nama merchant, NMID, dan pengingat nominal tampil." },
+            { "text": "Ketuk gambar kode atau **Perbesar QRIS** untuk menampilkan kode selayar penuh. Ketuk **Tutup** untuk kembali." },
+            { "text": "Pindai kode dari ponsel lain, atau simpan tangkapan layar lalu pilih unggah QR dari galeri di aplikasi bank atau e-wallet Anda." },
+            { "text": "Ketik nominal persis seperti yang tertera, selesaikan pembayaran, lalu kembali ke aplikasi KAPDH untuk mengunggah bukti." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "QRIS tanpa nominal",
+          "text": "Kode QRIS organisasi tidak memuat nominal. Ketik nominal persis sama dengan yang tertera di aplikasi, tanpa dibulatkan, agar pengurus dapat mencocokkan dana Anda."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Bayar hanya ke tujuan di aplikasi",
+          "text": "Jangan transfer ke rekening yang dikirim lewat pesan pribadi. Tujuan pembayaran hanya dapat diganti sebelum bukti pertama dikirim. Bila muncul peringatan bahwa rekening tujuan sudah dinonaktifkan pengurus, pilih tujuan lain sebelum transfer. Bila muncul **Rekening tujuan belum tersedia**, hubungi pengurus."
+        }
+      ]
+    },
+    {
+      "id": "b03-3",
+      "title": "Mentransfer dan mengunggah bukti",
+      "blocks": [
+        {
+          "type": "steps",
+          "items": [
+            { "text": "Lakukan transfer sesuai nominal dan tujuan pada instruksi. Simpan bukti transfer atau ambil tangkapan layar dari aplikasi bank." },
+            { "text": "Kembali ke aplikasi KAPDH. Bila layar instruksi sudah tertutup, buka lagi lewat tab **KTA** lalu **Lanjutkan**, atau lewat **Akun** lalu **Riwayat pembayaran**." },
+            { "text": "Di bagian **Bukti transfer**, ketuk **Pilih bukti transfer**, lalu pilih **Ambil foto**, **Pilih dari galeri**, atau **Pilih PDF**." },
+            { "text": "Bila perlu, isi **Catatan untuk pengurus (opsional)**, misalnya nama pengirim atau bank asal. Catatan maksimal 200 karakter." },
+            { "text": "Ketuk **Kirim bukti pembayaran**. Tombol menampilkan persentase unggahan sampai selesai." },
+            { "text": "Layar berganti menjadi **Bukti pembayaran sedang diperiksa** dengan status **Menunggu Verifikasi**. Bukti Anda sudah diterima." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b03-pilih-bukti.png", "caption": "Pilihan sumber bukti: kamera, galeri, atau berkas PDF" }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Berkas bukti yang diterima",
+          "columns": ["Berkas", "Batas", "Catatan"],
+          "rows": [
+            ["Foto atau tangkapan layar (JPG, PNG, WebP)", "Maksimal 5 MB", "Foto dari kamera atau galeri dikecilkan otomatis. Data lokasi pada foto dihapus."],
+            ["PDF bukti transfer", "Maksimal 10 MB", "Pilih lewat **Pilih PDF**. Berkas yang isinya bukan PDF ditolak walaupun namanya berakhiran .pdf."],
+            ["Jumlah unggahan", "10 berkas per 24 jam", "Berlaku untuk unggahan bukti pembayaran dari akun Anda."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Agar cepat diverifikasi",
+          "text": "Pastikan nominal, tanggal, dan tujuan transfer terbaca jelas. Tangkapan layar dari aplikasi bank biasanya paling mudah dibaca. Bukti hanya dapat dilihat oleh Anda dan pengurus yang berwenang. Masa keanggotaan dihitung sejak verifikasi, bukan sejak tanggal transfer."
+        }
+      ]
+    },
+    {
+      "id": "b03-4",
+      "title": "Status pembayaran dan lama verifikasi",
+      "blocks": [
+        {
+          "type": "status",
+          "items": [
+            { "label": "Menunggu Pembayaran", "tone": "warning", "text": "Instruksi sudah dibuat, tetapi bukti belum dikirim. Transfer lalu unggah bukti." },
+            { "label": "Menunggu Verifikasi", "tone": "info", "text": "Bukti sudah terkirim dan sedang dicocokkan pengurus dengan dana yang masuk." },
+            { "label": "Perlu Perbaikan", "tone": "danger", "text": "Bukti iuran belum dapat diterima. Baca catatan pengurus lalu unggah ulang bukti pada pembayaran yang sama." },
+            { "label": "Lunas", "tone": "success", "text": "Dana sudah diverifikasi. Untuk iuran, KTA menjadi aktif atau masa aktifnya diperpanjang." },
+            { "label": "Dibatalkan", "tone": "neutral", "text": "Instruksi tidak berlaku lagi, dibatalkan oleh Anda, pengurus, atau sistem. Jangan transfer ke instruksi ini." },
+            { "label": "Ditolak", "tone": "danger", "text": "Khusus pembayaran tiket: penolakan bersifat final dan reservasi dibatalkan (Bab 6)." }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Pengurus mencocokkan bukti Anda dengan dana yang benar-benar masuk, bukan hanya melihat berkasnya. Verifikasi iuran biasanya selesai dalam 1 hari kerja (Senin sampai Jumat). Pemeriksaan bisa lebih lama pada akhir pekan, hari libur, atau bila dana perlu dicocokkan ulang. Hasilnya selalu masuk ke kotak masuk **Notifikasi**, misalnya **Iuran pendaftaran disetujui**, **Iuran perpanjangan disetujui**, atau **Bukti iuran perlu diperbaiki**. Pemberitahuan yang sama juga dikirim lewat notifikasi push dan email, kecuali Anda mematikannya di **Preferensi notifikasi** (Bab 8)."
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b03-menunggu-verifikasi.png", "caption": "Status Menunggu Verifikasi dengan tombol Ganti bukti dan Ke Beranda" }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Salah mengunggah bukti?",
+          "text": "Selama status masih **Menunggu Verifikasi**, ketuk **Ganti bukti**, pilih berkas pengganti, lalu ketuk **Kirim bukti pembayaran**. Bukti lama tetap tersimpan di riwayat untuk pengurus dan Anda tidak perlu transfer ulang."
+        },
+        {
+          "type": "p",
+          "text": "Halaman status diperbarui sendiri saat keputusan pengurus tiba atau saat Anda kembali ke aplikasi. Anda juga dapat menarik layar ke bawah untuk memuat ulang. Setelah iuran berstatus **Lunas**, ketuk **Lihat KTA** untuk membuka kartu Anda. Arti status kartu dijelaskan di Bab 4."
+        }
+      ]
+    },
+    {
+      "id": "b03-5",
+      "title": "Bukti ditolak dan cara mengirim ulang",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Bila pengurus belum dapat memverifikasi bukti iuran, status berubah menjadi **Perlu Perbaikan** dan Anda menerima notifikasi **Bukti iuran perlu diperbaiki**. Pembayaran Anda tetap yang sama. Anda tidak perlu membuat instruksi baru, dan tidak perlu transfer ulang bila dana sudah dikirim."
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b03-perlu-perbaikan.png", "caption": "Perlu Perbaikan: catatan pengurus dan tombol Unggah ulang bukti" }
+          ]
+        },
+        {
+          "type": "steps",
+          "items": [
+            { "text": "Buka notifikasinya, atau buka pembayaran dari **Akun** lalu **Riwayat pembayaran**." },
+            { "text": "Baca **Catatan dari pengurus**. Ketuk **Lihat bukti yang dikirim** untuk memeriksa berkas yang ditolak." },
+            { "text": "Ketuk **Unggah ulang bukti**. Catatan pengurus tetap tampil di atas layar unggah." },
+            { "text": "Ketuk **Pilih bukti transfer** dan pilih berkas yang lebih jelas atau yang sesuai catatan pengurus." },
+            { "text": "Ketuk **Kirim bukti pembayaran**. Status kembali menjadi **Menunggu Verifikasi**." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Yakin dana sudah masuk?",
+          "text": "Bila Anda yakin dana sudah masuk atau penolakan keliru, ketuk **Hubungi pengurus** di bawah layar. Sebutkan email akun, jenis pembayaran, nominal, dan tanggal transfer. Alasan penolakan sebelumnya tetap tercatat di bagian **Riwayat** pada detail pembayaran."
+        }
+      ]
+    },
+    {
+      "id": "b03-6",
+      "title": "Riwayat, detail, dan pembatalan instruksi",
+      "blocks": [
+        {
+          "type": "steps",
+          "title": "Membuka riwayat pembayaran",
+          "items": [
+            { "text": "Ketuk tab **Akun** di bilah navigasi bawah." },
+            { "text": "Di bagian **AKTIVITAS**, ketuk **Riwayat pembayaran**. Iuran dan tiket tampil berurutan dari yang terbaru, lengkap dengan nominal, tanggal, dan status." },
+            { "text": "Ketuk salah satu pembayaran untuk membuka detailnya. Gulir ke bawah untuk memuat pembayaran lama." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b03-riwayat.png", "caption": "Riwayat Pembayaran: iuran dan tiket beserta statusnya" },
+            { "img": "mobile/b03-lunas.png", "caption": "Detail iuran lunas: ringkasan, masa aktif, dan riwayat kejadian" }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Isi halaman detail",
+          "items": [
+            "Ringkasan: **Nominal**, **Rekening tujuan**, waktu bukti dikirim atau diverifikasi, dan **Masa aktif** untuk iuran yang lunas.",
+            "**Lihat bukti yang dikirim** untuk membuka bukti terakhir Anda.",
+            "**Riwayat**: urutan kejadian dari yang terbaru, misalnya **Instruksi iuran dibuat**, **Bukti transfer dikirim (bukti ke-1)**, dan **Dana diverifikasi pengurus**.",
+            "Tombol lanjutan sesuai status, misalnya **Lihat KTA** atau **Buat instruksi baru**.",
+            "Riwayat tetap dapat dibuka walaupun masa keanggotaan Anda sudah berakhir."
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Membatalkan instruksi iuran yang belum dibayar",
+          "items": [
+            { "text": "Buka instruksi iuran yang masih berstatus **Menunggu Pembayaran**." },
+            { "text": "Ketuk **Batalkan instruksi** di bawah bagian bukti transfer." },
+            { "text": "Pada dialog **Batalkan instruksi pembayaran?**, ketuk **Batalkan instruksi**. Ketuk **Kembali** bila tidak jadi." },
+            { "text": "Bila nanti ingin membayar, ketuk **Buat instruksi baru** pada detail instruksi yang dibatalkan." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "text": "Jangan transfer ke instruksi yang sudah dibatalkan. Instruksi yang buktinya sudah dikirim tidak dapat dibatalkan; tunggu keputusan pengurus atau hubungi pengurus. Pembayaran tiket tidak dibatalkan dari sini, melainkan dengan membatalkan reservasi atau tiketnya (Bab 6)."
+        }
+      ]
+    },
+    {
+      "id": "b03-7",
+      "title": "Memperpanjang keanggotaan",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Keanggotaan berlaku 12 bulan. Perpanjangan dibuka 30 hari sebelum masa aktif berakhir dan tetap dapat diajukan setelah KTA kedaluwarsa. Saat masa aktif tersisa 30 hari atau kurang, status KTA menjadi **Segera Berakhir** dan Anda menerima notifikasi **Masa KTA segera berakhir**. Tidak ada masa tenggang setelah tanggal berakhir, jadi sebaiknya perpanjang begitu jendela dibuka."
+        },
+        {
+          "type": "steps",
+          "items": [
+            { "text": "Buka tab **KTA**, lalu ketuk **Perpanjang**. Anda juga dapat mengetuk **Perpanjang** pada pengingat **Masa aktif KTA segera berakhir** di Beranda, atau **Perpanjang Keanggotaan** bila KTA sudah kedaluwarsa." },
+            { "text": "Di layar **Perpanjang KTA**, periksa **Masa keanggotaan** dan rincian **Iuran perpanjangan**." },
+            { "text": "Ketuk **Lanjut ke pembayaran**, lalu bayar dan unggah bukti seperti iuran pendaftaran." },
+            { "text": "Setelah iuran perpanjangan berstatus **Lunas**, tanggal berakhir yang baru tampil di layar ini dan tercatat di **Riwayat periode**." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b03-perpanjang.png", "caption": "Perpanjang KTA: masa keanggotaan, iuran, dan tombol pembayaran" }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Cara masa baru dihitung",
+          "columns": ["Keadaan saat iuran diverifikasi", "Masa baru 12 bulan dimulai dari"],
+          "rows": [
+            ["KTA belum kedaluwarsa", "Tanggal berakhir saat ini, sehingga sisa masa aktif tidak hilang."],
+            ["KTA sudah kedaluwarsa", "Tanggal iuran perpanjangan diverifikasi pengurus."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Tombol Perpanjang tidak aktif?",
+          "text": "Jendela perpanjangan belum dibuka. Aplikasi menampilkan tanggal pembukaannya, misalnya **Perpanjangan dibuka mulai** diikuti tanggal. Perpanjangan juga baru tersedia setelah iuran pendaftaran Anda diverifikasi. Bila iuran perpanjangan sedang berjalan, tombolnya menjadi **Lanjutkan** di tab KTA dan **Lanjutkan pembayaran** di layar **Perpanjang KTA**."
+        }
+      ]
+    },
+    {
+      "id": "b03-8",
+      "title": "Situasi khusus dan pengembalian dana",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Koneksi terputus saat membayar tidak membuat tagihan ganda. Bila koneksi putus ketika instruksi dibuat atau bukti dikirim, aplikasi menampilkan **Memeriksa status** dan lebih dahulu memastikan apakah permintaan sebelumnya sudah tercatat sebelum mencoba lagi."
+        },
+        {
+          "type": "list",
+          "items": [
+            "Saat membuat instruksi: bila status belum dapat dipastikan, jangan transfer dulu. Ketuk **Periksa status** setelah koneksi kembali.",
+            "Saat mengirim bukti: tombol berubah menjadi **Periksa status pengiriman**. Ketuk setelah koneksi kembali. Anda tidak perlu transfer ulang.",
+            "Bila unggahan terputus sebelum berkas terkirim, periksa koneksi lalu ketuk **Kirim bukti pembayaran** lagi."
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b03-status-belum-pasti.png", "caption": "Memeriksa status: jangan transfer sampai status instruksi pasti" },
+            { "img": "mobile/b03-melalui-pengurus.png", "caption": "Iuran melalui pengurus beserta kontak pengurus" }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Di jenis perangkat tertentu, misalnya iPhone, pengurus dapat mengatur agar iuran keanggotaan diselesaikan melalui pengurus. Bila pesan **Iuran melalui pengurus** tampil, aplikasi tidak menampilkan rekening tujuan dan tidak meminta unggah bukti untuk iuran. Hubungi pengurus lewat kontak di bagian **Hubungi pengurus**. Setelah pengurus memverifikasi dana Anda, status pembayaran dan KTA diperbarui otomatis. Pembayaran tiket event tidak terpengaruh."
+        },
+        {
+          "type": "list",
+          "title": "Keadaan lain yang mungkin Anda temui",
+          "items": [
+            "**Iuran belum dapat dibayar**: iuran pendaftaran Anda sudah lunas, perpanjangan menunggu iuran pendaftaran diverifikasi, atau jendela perpanjangan belum dibuka. Keterangan di layar menyebutkan alasannya.",
+            "**Gambar QRIS belum dapat dimuat**: periksa koneksi lalu ketuk **Muat ulang**, atau pilih tujuan pembayaran lain.",
+            "Akun yang sedang dibatasi pengurus tidak dapat membuat pembayaran baru maupun mengirim bukti, tetapi riwayat pembayaran tetap dapat dibuka. Pembatasan tidak mengubah tanggal masa keanggotaan Anda."
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Pembayaran yang sudah lunas tidak diubah. Bila ada kelebihan bayar atau perlu koreksi, pengurus mencatat penyesuaian terpisah yang tampil sebagai kartu **Pengembalian dana** atau **Koreksi keuangan** di detail pembayaran. Untuk pengembalian dana, Anda menerima notifikasi **Refund sedang diproses bendahara**."
+        },
+        {
+          "type": "steps",
+          "title": "Mengirim rekening tujuan pengembalian dana",
+          "items": [
+            { "text": "Buka detail pembayaran dari notifikasi atau dari **Riwayat pembayaran**." },
+            { "text": "Bila kartu **Pengembalian dana** menampilkan formulir rekening, isi **Bank atau e-wallet**, **Nomor rekening**, dan **Nama pemilik rekening**." },
+            { "text": "Ketuk **Kirim rekening tujuan**. Baris **Rekening tujuan** berubah menjadi **Sudah diterima**." },
+            { "text": "Pantau baris **Status** dan **Tenggat proses** sampai statusnya **Selesai**." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Tentang data rekening refund",
+          "text": "Refund ditransfer manual oleh bendahara dengan tenggat 7 hari kerja, yang tampil pada baris **Tenggat proses**. Data rekening hanya dipakai untuk refund, tidak ditampilkan kembali, dan dihapus setelah refund selesai. Bila ada yang salah, ketuk **Ganti rekening tujuan** selama refund masih diproses."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "kapdh-mobile/lib/features/onboarding/onboarding_fees_screen.dart",
+    "kapdh-mobile/lib/features/payments/new_payment_screen.dart",
+    "kapdh-mobile/lib/features/payments/payment_detail_screen.dart",
+    "kapdh-mobile/lib/features/payments/payment_presentation.dart (label status, riwayat, pesan Iuran melalui pengurus, jendela 30 hari)",
+    "kapdh-mobile/lib/features/payments/payments_screen.dart",
+    "kapdh-mobile/lib/features/payments/renewal_screen.dart (aturan masa baru)",
+    "kapdh-mobile/lib/features/payments/proof_file.dart (JPG/PNG/WebP 5 MB, PDF 10 MB, kompresi foto)",
+    "kapdh-mobile/lib/features/payments/proof_submission.dart (Memeriksa status, idempotensi)",
+    "kapdh-mobile/lib/features/payments/widgets/proof_upload_section.dart (sumber bukti, catatan maks 200)",
+    "kapdh-mobile/lib/features/payments/widgets/adjustment_card.dart (refund, rekening tujuan)",
+    "kapdh-mobile/lib/features/payments/widgets/payment_layout.dart",
+    "kapdh-mobile/lib/features/kta/kta_presentation.dart (tombol Bayar/Lanjutkan/Perpanjang)",
+    "kapdh-mobile/lib/features/home/home_screen.dart (Selesaikan Iuran Pendaftaran, Perpanjang Keanggotaan)",
+    "kapdh-mobile/lib/features/account/account_screen.dart (AKTIVITAS > Riwayat pembayaran)",
+    "kapdh-mobile/lib/design/status_badge.dart, kapdh-mobile/lib/app/theme/kapdh_tokens.dart (label badge)",
+    "kapdh-mobile/lib/design/qris_image_card.dart (Perbesar QRIS, petunjuk pindai)",
+    "kapdh-mobile/lib/design/amount_copy_box.dart (Transfer tepat sebesar)",
+    "kapdh-platform/apps/api/src/modules/payments/payment-rules.ts (label baris iuran, tahap, D13, review 1 hari kerja, refund 7 hari kerja)",
+    "kapdh-platform/apps/api/src/modules/payments/member-payments.service.ts (satu instruksi terbuka per jenis, kelayakan, batal sebelum bukti, catatan 200)",
+    "kapdh-platform/apps/api/src/modules/payments/payment-ledger.ts (judul notifikasi keputusan dan refund)",
+    "kapdh-platform/apps/api/src/modules/payments/admin-payments.service.ts (pengurus mencatat iuran, pembatalan oleh pengurus)",
+    "kapdh-platform/apps/api/src/modules/payments/admin-adjustments.service.ts (penyesuaian atas pembayaran lunas)",
+    "kapdh-platform/apps/api/src/modules/payments/business-days.ts (hari kerja Senin-Jumat)",
+    "kapdh-platform/apps/api/src/core/files/purposes.ts (5 MB, 10 MB, kuota 10 unggahan per 24 jam)",
+    "kapdh-platform/apps/api/src/core/files/inspect.ts (JPEG, PNG, WebP)",
+    "kapdh-platform/apps/api/src/core/membership/period.ts (12 bulan, renewal dari max(expires_at, approved_at))",
+    "kapdh-platform/apps/api/src/core/settings/keys.ts (fees, membership 12/30/30, payment_instructions)",
+    "docs/adr/006-biaya-di-app-settings.md (nominal disnapshot per instruksi)",
+    "docs/adr/026-metode-qris-dan-gambar-qr-publik.md (QRIS statis tanpa nominal)",
+    "docs/legal/bantuan.html (bagian Iuran dan pembayaran, Keanggotaan)",
+    "docs/konten/konten-peluncuran.md (Berita 3, gaya bahasa)",
+    "kapdh-mobile/mockup-html/auth/onboarding-fees.html #1, kta/payment-detail.html #1 #6 #7 #14 #19 #21, kta/payments.html #1, kta/renewal.html #1, kta/new-payment.html #4 #5 (nominal contoh diseragamkan: pendaftaran Rp150.000, perpanjangan Rp60.000; label baris perpanjangan disamakan dengan LINE_LABELS)",
+    "kapdh-platform/apps/api/src/modules/payments/member-payments.controller.ts (MemberAccess nonsuspended untuk membuat/mengubah pembayaran)",
+    "kapdh-platform/apps/api/src/modules/notifications/channel-policy.ts (push/email kategori payment sesuai preferensi)",
+    "kapdh-platform/apps/api/src/modules/membership/expiry-reminders.service.ts (notifikasi Masa KTA segera berakhir, jendela 30 hari)",
+    "kapdh-platform/apps/api/src/modules/membership/membership-view.ts (aksi kartu continue_payment untuk pendaftaran dan perpanjangan)",
+    "kapdh-mobile/lib/features/account/account_screen.dart (Preferensi notifikasi)",
+    "kapdh-mobile/lib/design/qris_image_card.dart (Gambar QRIS belum dapat dimuat, Muat ulang)"
+  ]
+}

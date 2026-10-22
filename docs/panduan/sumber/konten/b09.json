@@ -1,0 +1,508 @@
+{
+  "id": "b09",
+  "part": "pengurus",
+  "title": "Web Admin: Masuk, Dashboard, dan Peran",
+  "kicker": "Web Admin Pengurus",
+  "summary": "Bab ini memandu pengurus mengaktifkan akun admin dari undangan, masuk dengan sandi dan kode autentikator, membaca Dashboard, memahami peran dan izin, mengelola Akun saya, serta menjaga keamanan akun.",
+  "icon": "ph-desktop",
+  "highlights": [
+    "Mengaktifkan akun admin: sandi, autentikator, dan backup code",
+    "Masuk dua langkah dan memakai backup code bila perlu",
+    "Membaca menu samping, lencana antrean, dan Dashboard",
+    "Peran Super Admin dan Admin serta daftar izin yang ada",
+    "Akun saya, konfirmasi identitas, keluar, dan praktik keamanan"
+  ],
+  "sections": [
+    {
+      "id": "b09-1",
+      "title": "Mengenal web admin",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Web admin adalah ruang kerja pengurus KAPDH yang dibuka lewat peramban di alamat admin.kapdh.or.id. Di sini pengurus memverifikasi pembayaran iuran dan tiket, mengelola data alumni, berita, event, laporan moderasi, audit, notifikasi, dan pengaturan aplikasi. Setiap pengurus hanya melihat menu dan data yang sesuai izin yang diberikan Super Admin."
+        },
+        {
+          "type": "p",
+          "text": "Akun admin adalah akun tersendiri, terpisah dari akun alumni di aplikasi anggota. Akun alumni pribadi tidak dapat dipakai untuk masuk ke web admin. Bila Anda juga anggota KAPDH, sandi dan aplikasi autentikator untuk akun admin tetap dikelola terpisah dari akun alumni Anda."
+        },
+        {
+          "type": "list",
+          "title": "Yang perlu disiapkan",
+          "items": [
+            "Komputer atau laptop dengan peramban terbaru. Web admin juga dapat dibuka di ponsel; di layar sempit, menu samping dibuka lewat tombol **Menu** di kiri atas.",
+            "Akses ke kotak masuk email yang didaftarkan Super Admin sebagai email login admin Anda.",
+            "Ponsel dengan aplikasi autentikator, misalnya Google Authenticator, Microsoft Authenticator, atau Aegis.",
+            "Tempat aman untuk menyimpan 10 backup code, misalnya pengelola sandi atau kertas yang disimpan di laci berkunci."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Akun admin tidak dapat didaftarkan sendiri",
+          "text": "Super Admin membuat akun admin lewat menu **Manajemen Admin**, lalu sistem mengirim email undangan ke alamat Anda. Cara mengundang admin baru serta mengatur peran dan izinnya dibahas di Bab 15."
+        }
+      ]
+    },
+    {
+      "id": "b09-2",
+      "title": "Mengaktifkan akun admin dari undangan",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Undangan dikirim ke email Anda dengan subjek \"Undangan pengurus KAPDH Apps\". Tautannya hanya dapat dipakai sekali dan berlaku 72 jam; batas waktunya tertulis di email dan di halaman undangan. Aktivasi terdiri atas tiga tahap yang tampil di bagian atas halaman: **1. Buat sandi**, **2. Daftarkan autentikator**, dan **3. Simpan backup code**."
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Siapkan aplikasi autentikator sebelum membuka tautan",
+          "text": "Setelah sandi disimpan, Anda punya 30 menit untuk menyelesaikan tahap autentikator dan backup code. Waktu ini tidak dapat diperpanjang dan tautan undangan sudah terpakai. Bila waktu habis atau Anda memilih **Batalkan aktivasi**, Super Admin harus mengirim undangan ulang."
+        },
+        {
+          "type": "steps",
+          "title": "Tahap 1: Buat sandi",
+          "items": [
+            { "text": "Buka email undangan lalu klik tautannya. Pastikan tautan terbuka utuh, termasuk bagian setelah tanda #." },
+            { "text": "Periksa ringkasan undangan: nama Anda, **Email login** (sebagian disamarkan), **Peran**, **Diundang oleh**, **Berlaku sampai**, dan **Izin setelah aktif**." },
+            { "text": "Di bagian **Buat sandi admin**, isi **Sandi baru**. Sandi harus 8-72 byte (huruf, angka, dan simbol biasa masing-masing 1 byte; huruf beraksen dan emoji lebih dari 1 byte) dan memuat huruf besar, huruf kecil, angka, serta simbol. Syarat di bawah kolom bertanda centang saat terpenuhi." },
+            { "text": "Isi **Ulangi sandi baru** dengan sandi yang sama, lalu klik **Simpan sandi dan lanjutkan**." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b09-undangan.png",
+          "caption": "Halaman Undangan admin: ringkasan undangan dan formulir Buat sandi admin."
+        },
+        {
+          "type": "steps",
+          "title": "Tahap 2: Daftarkan autentikator",
+          "items": [
+            { "text": "Buka aplikasi autentikator di ponsel, pilih tambah akun, lalu pindai kode QR di layar. Akun baru muncul dengan nama penerbit KAPDH Admin." },
+            { "text": "Bila kode QR tidak dapat dipindai, klik **Salin secret** atau salin deretan huruf di bawah tulisan Tidak bisa memindai?, lalu tempel atau ketik di aplikasi autentikator sebagai akun berbasis waktu. Tombol **Buat kode QR baru** mengganti kode QR lama; bila memakainya, pindai ulang kode QR yang baru." },
+            { "text": "Ketik kode 6 digit yang tampil di aplikasi ke kolom **Kode autentikator**, lalu klik **Konfirmasi dan aktifkan akun**. Kode di aplikasi berganti setiap 30 detik." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b09-autentikator.png",
+          "caption": "Tahap Daftarkan autentikator: sisa waktu pendaftaran, kode QR, secret cadangan, dan kolom konfirmasi kode."
+        },
+        {
+          "type": "steps",
+          "title": "Tahap 3: Simpan backup code",
+          "items": [
+            { "text": "Simpan 10 backup code yang tampil dengan **Salin semua** atau **Unduh .txt**. Kode ini hanya ditampilkan sekali." },
+            { "text": "Centang **Saya sudah menyimpan backup code di tempat yang aman.**" },
+            { "text": "Klik **Masuk ke Dashboard**. Akun Anda sudah aktif sejak kode autentikator dikonfirmasi, dan email \"Akun pengurus Anda telah aktif\" dikirim ke alamat login Anda." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b09-backup-code.png",
+          "caption": "Sepuluh backup code tampil sekali; tombol Masuk ke Dashboard aktif setelah kotak pernyataan dicentang."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Jangan muat ulang atau menutup tab",
+          "text": "Selama tahap 2 dan 3, jangan memuat ulang halaman atau menutup tab. Peramban akan meminta konfirmasi karena data pendaftaran dan backup code hanya ada di halaman itu. Bila halaman tertutup di tahap 2, Anda memerlukan undangan ulang. Bila tertutup saat backup code tampil, akun sudah aktif: masuk seperti biasa, lalu buat ulang backup code di **Akun saya**."
+        },
+        {
+          "type": "table",
+          "title": "Pesan yang mungkin muncul saat aktivasi",
+          "columns": ["Pesan", "Artinya", "Yang perlu dilakukan"],
+          "rows": [
+            ["Tautan undangan tidak lengkap", "Bagian akhir tautan (setelah tanda #) hilang, misalnya terpotong saat disalin.", "Buka tautan langsung dari email. Bila tetap gagal, minta undangan ulang ke Super Admin."],
+            ["Undangan tidak berlaku", "Undangan sudah kedaluwarsa, sudah dipakai, atau dibatalkan.", "Minta undangan baru ke Super Admin."],
+            ["Kode salah. Sisa percobaan ...", "Kode yang diketik tidak cocok dengan kode QR yang dipindai, atau kodenya sudah berganti.", "Ketik kode terbaru dari aplikasi. Setelah 5 kali salah, tunggu 15 menit, selama masih dalam batas 30 menit pendaftaran."],
+            ["Waktu pendaftaran habis atau undangan tidak berlaku", "Sudah lebih dari 30 menit sejak sandi disimpan, atau undangan sudah diganti.", "Minta undangan ulang, lalu ulangi ketiga tahap."],
+            ["Aktivasi sudah selesai", "Akun sudah aktif, misalnya koneksi terputus tepat setelah konfirmasi kode.", "Klik **Masuk sekarang** lalu masuk seperti biasa. Bila backup code belum tersimpan, buat ulang di **Akun saya**."],
+            ["Anda sedang masuk sebagai ...", "Peramban ini masih masuk dengan akun admin lain.", "Klik **Keluar lalu lanjutkan undangan**. Ringkasan undangan langsung tampil dan Anda dapat melanjutkan tahap 1."]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b09-3",
+      "title": "Masuk dengan sandi dan kode autentikator",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Masuk ke web admin selalu terdiri atas dua langkah: email dan sandi, lalu kode dari aplikasi autentikator. Sebelum langkah kedua selesai, tidak ada halaman admin yang dapat dibuka."
+        },
+        {
+          "type": "steps",
+          "items": [
+            { "text": "Buka admin.kapdh.or.id di peramban. Halaman **Selamat Datang Kembali!** tampil." },
+            { "text": "Isi **Email** dengan email login admin dan **Kata sandi** dengan sandi admin, lalu klik **Masuk**." },
+            { "text": "Di halaman **Verifikasi dua langkah**, buka aplikasi autentikator, lalu ketik kode 6 digit untuk KAPDH Admin di kolom **Kode autentikator**." },
+            { "text": "Klik **Verifikasi**. Dashboard terbuka, atau halaman yang tadi ingin Anda buka bila Anda datang dari sebuah tautan web admin." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b09-login.png",
+          "caption": "Halaman masuk web admin. Gunakan email login admin, bukan akun alumni."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b09-mfa.png",
+          "caption": "Langkah kedua: kode 6 digit dari aplikasi autentikator, atau pilih memakai backup code."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Masukkan kode dalam 5 menit",
+          "text": "Setelah sandi diterima, kode autentikator harus dimasukkan dalam 5 menit. Bila lewat, muncul pesan \"Sesi masuk sudah kedaluwarsa. Mulai ulang dari halaman masuk.\" Klik **Kembali ke halaman masuk**, lalu ulangi dari awal."
+        },
+        {
+          "type": "steps",
+          "title": "Masuk memakai backup code",
+          "items": [
+            { "text": "Di halaman **Verifikasi dua langkah**, klik **Tidak bisa membuka autentikator? Pakai backup code**." },
+            { "text": "Ketik salah satu backup code di kolom **Backup code**. Kode terdiri atas 10 huruf atau angka, boleh dengan tanda hubung, misalnya ABCDE-FGH23." },
+            { "text": "Klik **Verifikasi**. Kode yang sudah dipakai langsung tidak berlaku. Untuk kembali memakai aplikasi, klik **Pakai kode autentikator**." }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Bila gagal masuk",
+          "columns": ["Pesan di layar", "Penyebab", "Yang perlu dilakukan"],
+          "rows": [
+            ["Email atau kata sandi salah.", "Email atau sandi keliru. Pesan yang sama juga tampil bila akun belum selesai diaktifkan atau sedang dinonaktifkan.", "Periksa ejaan dan tombol Caps Lock. Bila yakin benar, minta Super Admin memeriksa status akun Anda."],
+            ["Terlalu banyak percobaan masuk, disertai hitungan detik", "Sudah 10 kali gagal masuk dengan email itu dalam 15 menit (termasuk salah mengisi Sandi saat ini ketika ganti sandi), atau terlalu banyak gagal dari jaringan yang sama.", "Tunggu sesuai hitungan di layar, lalu masuk dengan sandi yang benar. Pesan ini menyebut lupa password, tetapi web admin tidak memiliki fitur itu; bila lupa sandi, hubungi Super Admin."],
+            ["Kode salah. Sisa percobaan ...", "Kode tidak cocok, sudah berganti, atau sudah pernah dipakai.", "Tunggu kode berikutnya di aplikasi lalu ketik ulang. Pastikan jam ponsel diatur otomatis."],
+            ["Kode salah. Batas percobaan tercapai; coba lagi dalam 15 menit.", "Lima kode salah (kode aplikasi atau backup code) dalam 15 menit. Percobaan berikutnya ditolak dengan pesan Terlalu banyak percobaan kode.", "Tunggu 15 menit atau sampai hitungan di layar habis, lalu masuk ulang dari halaman masuk."],
+            ["Sesi masuk sudah kedaluwarsa. Mulai ulang dari halaman masuk.", "Lebih dari 5 menit di langkah kode.", "Klik **Kembali ke halaman masuk**, lalu ulangi."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Jam ponsel menentukan kode",
+          "text": "Kode autentikator dihitung dari jam ponsel. Bila kode selalu ditolak, atur tanggal dan jam ponsel ke otomatis. Setiap kode hanya berlaku sekali, jadi bila Anda baru saja memakai sebuah kode, tunggu kode berikutnya muncul."
+        }
+      ]
+    },
+    {
+      "id": "b09-4",
+      "title": "Tata letak, menu, dan Dashboard",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Setelah masuk, layar terbagi dua: menu samping hijau tua dengan logo KAPDH di kiri dan area kerja di kanan. Di pojok kanan atas tertulis Masuk sebagai beserta nama dan peran Anda, sehingga Anda selalu tahu akun mana yang sedang dipakai. Kartu nama di bagian bawah menu memuat **Akun saya** dan **Keluar**. Menu yang tidak sesuai izin Anda tidak ditampilkan."
+        },
+        {
+          "type": "table",
+          "title": "Menu samping dan izin yang membukanya",
+          "columns": ["Menu", "Isi", "Tampil bila memiliki izin", "Bab"],
+          "rows": [
+            ["**Dashboard**", "Ringkasan pekerjaan sesuai izin", "Semua admin", "Bab 9"],
+            ["**Manajemen Konten**", "**Berita, Banner & Halaman**", "Kelola konten", "Bab 12"],
+            ["**Manajemen Event & Tiket**", "**Daftar Event** dan **Check-in Tiket**", "Kelola event dan tiket; Check-in tiket (hanya submenu Check-in Tiket)", "Bab 13"],
+            ["**Manajemen Admin**", "**Daftar Admin**", "Kelola admin dan izin (hanya Super Admin)", "Bab 15"],
+            ["**Manajemen Users**", "**Data Alumni** dan **Skill & Profesi**", "Lihat atau Kelola anggota; Kelola master profesi dan keahlian (untuk Skill & Profesi)", "Bab 11"],
+            ["**Verifikasi Pembayaran**", "Tab **Verifikasi Pembayaran** dan **Penyesuaian** (Lihat pembayaran), serta **Kelola Metode** dan **Biaya Pembayaran** (Kelola metode bayar dan pengaturan)", "Lihat pembayaran, atau Kelola metode bayar dan pengaturan", "Bab 10"],
+            ["**Moderasi**", "**Laporan Moderasi**", "Lihat laporan atau Putuskan laporan", "Bab 14"],
+            ["**Audit**", "Penelusuran dan ekspor catatan audit", "Lihat audit atau Ekspor audit", "Bab 14"],
+            ["**Notifikasi**", "**Pengiriman**", "Kelola pengiriman notifikasi", "Bab 15"],
+            ["**Pengaturan**", "**Pengaturan Aplikasi**", "Kelola metode bayar dan pengaturan", "Bab 15"]
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Lencana angka emas di menu",
+          "items": [
+            "**Verifikasi Pembayaran**: jumlah bukti pembayaran yang menunggu diputuskan.",
+            "**Moderasi**: jumlah laporan aktif, yaitu yang terbuka dan sedang ditinjau.",
+            "**Notifikasi**: jumlah pengiriman atau proses yang gagal dan dapat ditindaklanjuti, sama dengan bagian **Job gagal** di Dashboard.",
+            "Lencana hanya tampil bila angkanya lebih dari nol, diperbarui otomatis setiap menit, dan ditulis 99+ bila lebih dari 99."
+          ]
+        },
+        {
+          "type": "p",
+          "text": "**Dashboard** adalah halaman pertama setelah masuk. Isinya disusun sistem sesuai izin Anda: admin pembayaran hanya melihat bagian pembayaran, petugas check-in hanya melihat event mendatang. Keterangan di bawah judul menunjukkan kapan data terakhir diperbarui. Data dimuat ulang otomatis setiap 60 detik; klik **Muat ulang** untuk memperbaruinya saat itu juga."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b09-dashboard.png",
+          "caption": "Dashboard Super Admin: kartu ringkasan, Perlu tindakan, Event mendatang, dan lencana antrean di menu samping."
+        },
+        {
+          "type": "table",
+          "title": "Bagian Dashboard",
+          "columns": ["Bagian", "Isi", "Tampil bila memiliki izin"],
+          "rows": [
+            ["Kartu **Pengguna Aktif**", "Jumlah anggota aktif dari total alumni terdaftar.", "Lihat anggota"],
+            ["Kartu **Total Transaksi**", "Jumlah rupiah dan banyaknya pembayaran lunas.", "Lihat pembayaran"],
+            ["Kartu **Tiket Terjual**", "Total tiket terjual di semua event.", "Kelola event dan tiket"],
+            ["**Perlu tindakan**: Pembayaran", "Bukti menunggu verifikasi, yang lewat batas review, penyesuaian atau refund tertunda, dan instruksi menunggu transfer.", "Lihat pembayaran"],
+            ["**Perlu tindakan**: Moderasi", "Laporan aktif, laporan mendesak (target 24 jam), dan yang lewat target penanganan.", "Lihat laporan"],
+            ["**Perlu tindakan**: Job gagal", "Pengiriman notifikasi gagal dan proses latar yang berhenti atau gagal.", "Kelola pengiriman notifikasi"],
+            ["**Event mendatang**", "Event 30 hari ke depan dengan jumlah tiket terjual, ditahan, dan sudah check-in.", "Kelola event dan tiket, atau Check-in tiket"],
+            ["Tabel **Pengguna** dan **Penjualan Tiket**", "Alumni terdaftar terbaru dan penjualan tiket per event.", "Lihat anggota; Kelola event dan tiket"],
+            ["Tabel **Riwayat Transaksi**", "Pembayaran lunas terbaru, dapat dicari dengan nama atau nomor KTA.", "Lihat pembayaran"]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Angka merah berarti perlu segera ditangani",
+          "text": "Baris di **Perlu tindakan** yang bertanda ikon seru dan angka merah perlu ditangani lebih dahulu, misalnya pembayaran yang lewat batas review. Klik tautan di kartu, seperti **Lihat yang lewat batas** atau **Buka antrean verifikasi**, untuk langsung ke daftar kerjanya."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Bila Dashboard kosong atau gagal diperbarui",
+          "text": "Pesan \"Belum ada ringkasan untuk izin Anda\" berarti izin Anda tidak mencakup bagian mana pun di tabel di atas, misalnya admin konten, auditor, atau bendahara. Hal ini wajar; buka menu kerja Anda di menu samping, dan hubungi Super Admin hanya bila memerlukan akses lain. Bila muncul \"Gagal memperbarui dasbor\", data terakhir tetap ditampilkan; periksa koneksi lalu klik **Coba lagi**."
+        }
+      ]
+    },
+    {
+      "id": "b09-5",
+      "title": "Peran dan izin admin",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Web admin mengenal dua peran. Peran menentukan cakupan akun, sedangkan izin menentukan menu, data, dan tombol yang dapat dipakai. Sistem memeriksa izin pada setiap tindakan, jadi menu yang disembunyikan bukan satu-satunya pengaman."
+        },
+        {
+          "type": "status",
+          "title": "Dua peran admin",
+          "items": [
+            { "label": "Super Admin", "tone": "success", "text": "Memiliki seluruh 15 izin dan satu-satunya yang dapat mengundang admin, mengubah peran dan izin, serta memulihkan akun admin. Sistem menolak penurunan atau penonaktifan Super Admin aktif yang terakhir." },
+            { "label": "Admin", "tone": "info", "text": "Hanya memiliki izin yang dicentang Super Admin. Izin Kelola admin dan izin tidak dapat diberikan kepada peran ini." }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Daftar izin",
+          "columns": ["Izin", "Yang dapat dilakukan", "Catatan"],
+          "rows": [
+            ["Lihat pembayaran; Putuskan pembayaran", "Melihat antrean, detail, dan bukti pembayaran; memutuskan menyetujui atau menolak bukti, membatalkan, mencatat iuran, dan membuat penyesuaian.", "Putuskan pembayaran wajib disertai Lihat pembayaran."],
+            ["Lihat anggota; Kelola anggota", "Melihat daftar, detail, dan riwayat keanggotaan; mengubah data administratif anggota.", "Kelola anggota wajib disertai Lihat anggota."],
+            ["Kelola master profesi dan keahlian", "Menambah, mengubah, dan menonaktifkan daftar profesi dan keahlian.", "Membuka submenu Skill & Profesi."],
+            ["Kelola konten", "Mengelola berita, banner, halaman, dan kategori.", "-"],
+            ["Kelola event dan tiket", "Membuat, mengubah, dan membatalkan event serta melihat penjualan tiket.", "-"],
+            ["Check-in tiket", "Memindai dan mencatat check-in tiket di lokasi event.", "Cocok untuk petugas lapangan."],
+            ["Lihat laporan; Putuskan laporan", "Melihat antrean dan bukti laporan moderasi; mengklaim dan memutus laporan beserta banding.", "Putuskan laporan wajib disertai Lihat laporan."],
+            ["Lihat audit; Ekspor audit", "Menelusuri catatan audit; membuat dan mengunduh ekspor CSV.", "Ekspor audit wajib disertai Lihat audit."],
+            ["Kelola metode bayar dan pengaturan", "Mengelola metode bayar, biaya iuran, dan pengaturan aplikasi.", "Berdampak keuangan; berikan hanya kepada bendahara atau pengurus yang ditunjuk."],
+            ["Kelola pengiriman notifikasi", "Memantau dan mengirim ulang pengiriman notifikasi yang gagal.", "-"],
+            ["Kelola admin dan izin", "Mengundang admin, mengubah peran, izin, dan status, serta memulihkan akun admin.", "Hanya melekat pada Super Admin."]
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Di halaman **Akun saya**, izin ditulis sebagai kalimat. Misalnya, Lihat pembayaran tampil sebagai Melihat antrean dan bukti pembayaran, dan Check-in tiket tampil sebagai Melakukan check-in tiket."
+        },
+        {
+          "type": "list",
+          "title": "Contoh pembagian tugas pengurus",
+          "items": [
+            "Admin pembayaran: Lihat pembayaran dan Putuskan pembayaran.",
+            "Bendahara: Kelola metode bayar dan pengaturan, untuk nominal iuran dan rekening organisasi.",
+            "Admin konten: Kelola konten.",
+            "Admin event: Kelola event dan tiket serta Check-in tiket. Petugas check-in di lokasi cukup Check-in tiket.",
+            "Moderator: Lihat laporan, Putuskan laporan, dan Lihat anggota (diperlukan untuk menangguhkan anggota dari halaman detail anggota).",
+            "Auditor: Lihat audit dan Ekspor audit."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Bila izin Anda diubah",
+          "text": "Perubahan izin oleh Super Admin langsung berlaku. Dalam sekitar satu menit muncul pesan \"Izin akun Anda diperbarui oleh Super Admin. Menu disesuaikan.\" dan email pemberitahuan dikirim. Bila Anda membuka halaman tanpa izin, tampil Akses ditolak; hubungi Super Admin bila memerlukan akses tersebut."
+        }
+      ]
+    },
+    {
+      "id": "b09-6",
+      "title": "Akun saya dan konfirmasi identitas",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Klik **Akun saya** di kartu nama bagian bawah menu samping. Halaman ini berisi empat kartu: **Profil admin**, **Backup code**, **Ganti sandi**, dan **Perangkat yang masuk**."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b09-akun.png",
+          "caption": "Halaman Akun saya: profil dan izin efektif, sisa backup code, ganti sandi, dan daftar perangkat yang masuk."
+        },
+        {
+          "type": "list",
+          "title": "Isi kartu Profil admin",
+          "items": [
+            "**Nama**, **Email login admin**, dan **Peran** Anda.",
+            "**Tertaut ke akun alumni**: bila Ya, pembayaran milik akun alumni Anda sendiri harus diputus pengurus lain, bukan oleh Anda.",
+            "**Login sebelumnya**: waktu masuk sebelum sesi ini. Bila Anda tidak mengenalinya, ganti sandi, keluarkan perangkat asing, lalu hubungi Super Admin.",
+            "**Izin efektif** (beserta nomor versinya): daftar izin yang berlaku untuk akun Anda saat ini."
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Mengganti sandi",
+          "items": [
+            { "text": "Di kartu **Ganti sandi**, isi **Sandi saat ini**. Bila keliru, muncul pesan Sandi saat ini salah. dan percobaan itu ikut dihitung dalam batas gagal masuk." },
+            { "text": "Isi **Sandi baru** (8-72 byte, huruf besar, huruf kecil, angka, dan simbol, berbeda dari sandi saat ini), lalu isi **Ulangi sandi baru**." },
+            { "text": "Klik **Ganti sandi**. Sesi di perangkat lain langsung dicabut, perangkat ini tetap masuk, dan email pemberitahuan dikirim ke alamat login Anda." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Membuat ulang backup code",
+          "items": [
+            { "text": "Di kartu **Backup code**, lihat sisa kode Anda, misalnya Sisa 3 dari 10 backup code. Bila tinggal 3 atau kurang, muncul peringatan agar segera membuat ulang." },
+            { "text": "Klik **Buat ulang backup code**, centang **Saya memahami backup code lama tidak berlaku lagi.**, lalu klik **Buat kode baru**." },
+            { "text": "Di dialog **Konfirmasi identitas**, isi **Sandi** dan **Kode autentikator**, lalu klik **Konfirmasi**." },
+            { "text": "Simpan 10 kode baru dengan **Salin semua** atau **Unduh .txt**, centang pernyataan sudah menyimpan, lalu klik **Selesai**. Semua kode lama tidak berlaku lagi." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Mengeluarkan perangkat",
+          "items": [
+            { "text": "Di kartu **Perangkat yang masuk**, periksa daftar perangkat. Perangkat yang sedang Anda pakai bertanda **Perangkat ini**." },
+            { "text": "Klik **Keluarkan** pada perangkat yang tidak dikenal, centang pernyataan, lalu klik **Keluarkan perangkat**. Perangkat itu harus masuk ulang dengan sandi dan kode autentikator." },
+            { "text": "Untuk mengakhiri semua sesi sekaligus, klik **Keluar dari semua perangkat**, centang pernyataan, lalu klik **Keluar dari semua perangkat** di dialog. Perangkat ini pun ikut keluar dan Anda perlu masuk ulang." }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Dialog **Konfirmasi identitas** meminta sandi dan kode autentikator sekali lagi sebelum tindakan yang menyangkut akses masuk (sandi, autentikator, backup code, atau email login) dijalankan, walaupun Anda sudah masuk. Dialog ini muncul setiap kali Anda menjalankan tindakan berikut:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Membuat ulang backup code di **Akun saya**.",
+            "Mengirim ulang undangan, mengoreksi email login admin, dan memulihkan akun admin (khusus Super Admin, lihat Bab 15).",
+            "Mereset sandi anggota dari halaman detail anggota (khusus Super Admin, lihat Bab 11)."
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b09-reauth.png",
+          "caption": "Dialog Konfirmasi identitas sebelum membuat ulang backup code. Klik Batal bila tidak jadi; tidak ada yang berubah."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Perubahan lain tidak meminta konfirmasi identitas",
+          "text": "Dialog ini memerlukan kode 6 digit dari aplikasi autentikator; backup code tidak dapat dipakai di sini. Perubahan lain, seperti pengaturan, metode bayar, nominal iuran, dan izin admin, langsung tersimpan tanpa dialog ini. Perubahan itu dilindungi masuk dua langkah, izin, dan catatan audit, jadi jangan tinggalkan web admin dalam keadaan masuk tanpa pengawasan."
+        }
+      ]
+    },
+    {
+      "id": "b09-7",
+      "title": "Keluar, batas sesi, dan praktik keamanan",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Klik **Keluar** di kartu nama bagian bawah menu samping untuk mengakhiri sesi. Keluar di satu tab juga mengeluarkan tab web admin lain di peramban yang sama, sedangkan memuat ulang halaman tidak membuat Anda keluar. Bila server belum sempat mengonfirmasi, muncul peringatan agar Anda menutup peramban bila memakai komputer bersama."
+        },
+        {
+          "type": "status",
+          "title": "Kapan sesi berakhir otomatis",
+          "items": [
+            { "label": "Tidak aktif 30 menit", "tone": "warning", "text": "Dua menit sebelumnya muncul dialog **Sesi akan berakhir** dengan hitung mundur. Hanya **Tetap masuk** yang memperpanjang sesi; **Keluar sekarang** langsung mengakhirinya. Pembaruan otomatis Dashboard bukan aktivitas." },
+            { "label": "12 jam sejak masuk", "tone": "info", "text": "Walaupun terus aktif, Anda wajib masuk ulang dengan sandi dan kode autentikator paling lambat 12 jam setelah masuk." },
+            { "label": "Sandi diganti atau perangkat dikeluarkan", "tone": "neutral", "text": "Sesi di perangkat lain dicabut saat Anda mengganti sandi, mengeluarkan perangkat, atau memilih keluar dari semua perangkat." },
+            { "label": "Akun dinonaktifkan atau dipulihkan", "tone": "danger", "text": "Bila Super Admin menonaktifkan atau memulihkan akun Anda, semua sesi langsung berakhir." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Setelah sesi berakhir",
+          "text": "Halaman masuk menampilkan \"Sesi berakhir karena tidak ada aktivitas selama 30 menit. Silakan masuk kembali.\" atau \"Sesi berakhir. Silakan masuk kembali.\" Masuk lagi seperti biasa. Isian formulir yang belum disimpan tidak ikut tersimpan, jadi simpan pekerjaan sebelum meninggalkan komputer."
+        },
+        {
+          "type": "list",
+          "title": "Praktik keamanan untuk pengurus",
+          "items": [
+            "Pastikan alamat di peramban adalah admin.kapdh.or.id sebelum mengetik sandi. Waspadai tautan masuk palsu yang dikirim lewat pesan.",
+            "Pakai sandi khusus untuk akun admin, berbeda dari sandi akun alumni atau layanan lain, dan jangan membagikannya. Setiap pengurus memakai akunnya sendiri karena setiap tindakan tercatat atas nama akun di audit.",
+            "Pengurus KAPDH tidak pernah meminta sandi, kode autentikator, atau backup code Anda. Tolak setiap permintaan seperti itu.",
+            "Simpan backup code terpisah dari ponsel autentikator dan buat ulang bila tinggal sedikit.",
+            "Kunci layar komputer saat ditinggal. Di komputer bersama, selalu klik **Keluar** lalu tutup peramban.",
+            "Baca email pemberitahuan keamanan, misalnya saat sandi diubah, backup code dibuat ulang, atau izin diubah. Bila bukan Anda yang melakukannya, segera hubungi Super Admin.",
+            "Periksa **Login sebelumnya** dan **Perangkat yang masuk** di **Akun saya** secara berkala.",
+            "Pastikan selalu ada minimal dua Super Admin aktif agar dapat saling memulihkan akun."
+          ]
+        },
+        {
+          "type": "faq",
+          "items": [
+            {
+              "q": "Ponsel autentikator saya hilang atau rusak. Apa yang harus dilakukan?",
+              "a": "Masuk memakai backup code bila perlu menyelesaikan pekerjaan mendesak. Autentikator baru tidak dapat didaftarkan sendiri, jadi minta Super Admin menjalankan **Pulihkan akun (reset sandi & autentikator)**. Anda akan menerima email Pemulihan akun pengurus KAPDH Apps, lalu mengulang tahap buat sandi, daftarkan autentikator, dan simpan backup code. Bila berganti ponsel secara terencana, pindahkan akun di aplikasi autentikator sebelum ponsel lama direset."
+            },
+            {
+              "q": "Saya lupa sandi admin. Di mana tombol lupa sandi?",
+              "a": "Web admin tidak memiliki fitur lupa sandi. Hubungi Super Admin untuk memulihkan akun Anda. Sandi dan autentikator lama direset, semua sesi diakhiri, dan Anda menerima tautan baru lewat email untuk mengaktifkan akun kembali."
+            },
+            {
+              "q": "Mengapa menu yang dipakai rekan saya tidak muncul di akun saya?",
+              "a": "Menu mengikuti izin masing-masing akun. Lihat daftar izin Anda di **Akun saya**, lalu minta Super Admin menambahkan izin yang Anda perlukan."
+            },
+            {
+              "q": "Saya Super Admin dan kehilangan autentikator sekaligus semua backup code.",
+              "a": "Minta Super Admin lain memulihkan akun Anda lewat **Manajemen Admin**, karena Super Admin tidak dapat memulihkan akunnya sendiri. Karena itu organisasi perlu menjaga minimal dua Super Admin aktif."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "kapdh-platform/apps/admin/src/routes/auth/LoginPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/auth/MfaPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/auth/InvitePage.tsx",
+    "kapdh-platform/apps/admin/src/routes/auth/EnrollPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/auth/BackupCodesPanel.tsx",
+    "kapdh-platform/apps/admin/src/routes/auth/routes.tsx",
+    "kapdh-platform/apps/admin/src/routes/dashboard/DashboardPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/account/AccountPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/__root.tsx",
+    "kapdh-platform/apps/admin/src/routes/admins/AdminDetailPage.tsx (label Pulihkan akun)",
+    "kapdh-platform/apps/admin/src/nav.ts",
+    "kapdh-platform/apps/admin/src/auth/access.ts",
+    "kapdh-platform/apps/admin/src/auth/session.tsx (PROFILE_REFRESH_MS 60 detik, pesan logout)",
+    "kapdh-platform/apps/admin/src/auth/useIdleTimeout.ts",
+    "kapdh-platform/apps/admin/src/components/layout/AppShell.tsx (peringatan idle 2 menit)",
+    "kapdh-platform/apps/admin/src/components/layout/Sidebar.tsx",
+    "kapdh-platform/apps/admin/src/components/layout/AuthLayout.tsx",
+    "kapdh-platform/apps/admin/src/components/layout/usePendingPayments.ts",
+    "kapdh-platform/apps/admin/src/components/layout/useNavBadges.ts",
+    "kapdh-platform/apps/admin/src/components/ui/ReauthDialog.tsx",
+    "kapdh-platform/apps/admin/src/components/ui/PasswordRules.tsx",
+    "kapdh-platform/apps/admin/src/components/ui/States.tsx",
+    "kapdh-platform/apps/admin/src/lib/labels.ts",
+    "kapdh-platform/apps/api/src/modules/admin/permissions-catalog.ts",
+    "kapdh-platform/apps/api/src/modules/admin/dashboard.service.ts",
+    "kapdh-platform/apps/api/src/modules/admin/admin-mail.ts",
+    "kapdh-platform/apps/api/src/modules/admin-auth/admin-auth.shared.ts (5 kode salah per 15 menit, 10 backup code)",
+    "kapdh-platform/apps/api/src/modules/admin-auth/admin-auth.service.ts",
+    "kapdh-platform/apps/api/src/modules/admin-auth/admin-credentials.service.ts",
+    "kapdh-platform/apps/api/src/core/identity/crypto.ts (undangan 72 jam)",
+    "kapdh-platform/apps/api/src/core/identity/token.service.ts (token MFA 5 menit, pendaftaran 30 menit, reautentikasi 10 menit)",
+    "kapdh-platform/apps/api/src/core/identity/password-verifier.ts (10 gagal masuk per 15 menit, sandi maks 72 byte)",
+    "kapdh-platform/apps/api/src/core/identity/session-issuer.ts (sesi admin 12 jam)",
+    "kapdh-platform/apps/api/src/core/guards/auth.guard.ts (idle 30 menit)",
+    "kapdh-platform/packages/database/src/schema/identity.ts",
+    "docs/adr/008-penjaga-super-admin-terakhir.md",
+    "docs/adr/013-identitas-admin-undangan-dan-totp.md",
+    "docs/adr/025-reautentikasi-hanya-tindakan-kredensial.md",
+    "docs/handoff/phase-b-admin-foundation.md",
+    "docs/handoff/phase-c/admin-governance.md",
+    "docs/handoff/phase-c/api-admin-auth.md",
+    "docs/qa/uat-checklist.md (contoh peran pengurus, butir 1.13-1.16 dan 10.10)",
+    "kapdh-platform/packages/config/src/index.ts (ADMIN_ORIGIN https://admin.kapdh.or.id)",
+    "kapdh-platform/apps/admin/src/api/reauth.tsx dan api/query.ts (konfirmasi identitas tiap tindakan, token tidak disimpan)",
+    "kapdh-platform/apps/admin/src/routes/auth/onboarding.test.tsx (Keluar lalu lanjutkan undangan langsung melanjutkan)",
+    "kapdh-platform/apps/admin/src/routes/members/MemberDetailPage.tsx (Reset sandi hanya Super Admin)",
+    "kapdh-platform/packages/contracts/openapi/domains/admin-members.yaml (reset sandi anggota: role super_admin, reauth)",
+    "kapdh-platform/apps/admin/src/routes/payments/PaymentsPage.tsx (tab Verifikasi Pembayaran, Kelola Metode, Biaya Pembayaran, Penyesuaian)",
+    "kapdh-platform/apps/api/src/modules/admin-auth/admin-onboarding.service.ts (kode salah saat aktivasi, 5 per 15 menit)",
+    "kapdh-platform/apps/api/src/modules/admin/admins.service.ts (pemulihan: tidak dapat memulihkan diri sendiri)"
+  ]
+}

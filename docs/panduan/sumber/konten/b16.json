@@ -1,0 +1,455 @@
+{
+  "id": "b16",
+  "part": "publik",
+  "title": "Situs kapdh.or.id",
+  "kicker": "Situs Publik",
+  "summary": "Situs kapdh.or.id adalah wajah publik KAPDH yang dapat dibuka siapa saja tanpa akun. Bab ini menjelaskan setiap halamannya: unduh aplikasi, profil dan legalitas, dokumen legal, verifikasi KTA, hapus akun, dan kontak.",
+  "icon": "ph-globe",
+  "highlights": [
+    "Isi situs kapdh.or.id dan cara menjelajahinya dari ponsel",
+    "Mengunduh aplikasi resmi dan membaca dokumen legal",
+    "Arti hasil pemeriksaan KTA dari QR",
+    "Menghapus akun tanpa aplikasi dan memeriksa statusnya",
+    "Menghubungi pengurus dan mengatasi halaman yang gagal dimuat"
+  ],
+  "sections": [
+    {
+      "id": "b16-1",
+      "title": "Mengenal situs dan cara menjelajahinya",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Situs kapdh.or.id adalah situs resmi Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH). Siapa saja dapat membukanya tanpa akun: calon anggota yang ingin mengunduh aplikasi, anggota yang mencari bantuan atau ingin menghapus akun, panitia acara yang memeriksa KTA, dan masyarakat yang ingin mengenal organisasi."
+        },
+        {
+          "type": "p",
+          "text": "Kecuali penghapusan akun, layanan anggota tidak dijalankan di situs. Pendaftaran, iuran, KTA, event, jejaring, dan pesan hanya tersedia di aplikasi KAPDH untuk Android dan iOS; tidak ada versi web untuk anggota. Pengurus bekerja di web admin tersendiri (Bab 9 sampai Bab 15)."
+        },
+        {
+          "type": "table",
+          "title": "Halaman di situs kapdh.or.id",
+          "columns": ["Halaman", "Alamat", "Untuk apa"],
+          "rows": [
+            ["**Beranda**", "kapdh.or.id", "Ringkasan KAPDH Apps, fitur utama, tombol unduh, dan pintasan Layanan publik."],
+            ["**Unduh Aplikasi**", "kapdh.or.id/unduh", "Tautan resmi Google Play dan App Store, cara bergabung, dan persyaratan perangkat."],
+            ["**Tentang**", "kapdh.or.id/tentang", "Profil, visi dan misi, serta legalitas perkumpulan."],
+            ["**Bantuan**", "kapdh.or.id/bantuan", "Panduan singkat dan jawaban atas pertanyaan umum."],
+            ["**Kontak**", "kapdh.or.id/kontak", "Email bantuan, WhatsApp admin, dan alamat kedudukan."],
+            ["**Kebijakan Privasi**, **Ketentuan Layanan**, **Ketentuan Komunitas**", "kapdh.or.id/kebijakan-privasi, /ketentuan, /ketentuan-komunitas", "Dokumen legal yang berlaku untuk aplikasi dan situs."],
+            ["**Verifikasi KTA**", "kapdh.or.id/kta", "Hasil pemeriksaan saat QR pada KTA digital dipindai."],
+            ["**Hapus Akun**", "kapdh.or.id/delete-account", "Penghapusan akun tanpa aplikasi dan pemeriksaan status permintaan."],
+            ["Tautan aplikasi", "kapdh.or.id/app", "Halaman cadangan untuk membuka aplikasi KAPDH dari sebuah tautan."]
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "web/b16-layanan-publik.png",
+          "caption": "Bagian Layanan publik di Beranda: pintasan ke Verifikasi KTA, Bantuan, Hapus Akun, dan Kontak"
+        },
+        {
+          "type": "steps",
+          "title": "Membuka halaman dari ponsel",
+          "items": [
+            { "text": "Buka kapdh.or.id di peramban ponsel, misalnya Chrome atau Safari." },
+            { "text": "Ketuk **Menu** di kanan atas." },
+            { "text": "Pilih **Beranda**, **Tentang**, **Bantuan**, atau **Kontak**, atau ketuk **Unduh Aplikasi**." },
+            { "text": "Untuk halaman lain seperti dokumen legal, **Verifikasi KTA**, dan **Hapus Akun**, gulir ke bagian paling bawah halaman lalu ketuk tautannya." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "web/b16-beranda-ponsel-menu.png",
+          "caption": "Beranda di ponsel dengan Menu terbuka"
+        },
+        {
+          "type": "list",
+          "title": "Yang perlu diketahui",
+          "items": [
+            "Di layar lebar, menu tampil langsung di bagian atas. Halaman yang sedang dibuka diberi garis bawah.",
+            "Beranda berurutan: tombol **Unduh Aplikasi** dan **Tentang KAPDH**, **Tentang KAPDH Apps**, **Fitur Utama**, **Unduh Aplikasi KAPDH**, lalu **Layanan publik**.",
+            "Bagian bawah setiap halaman memuat identitas badan hukum (nama, nomor SK, alamat, email resmi) serta tautan ke dokumen legal, **Legalitas**, **Bantuan**, **Kontak**, **Verifikasi KTA**, dan **Hapus Akun**.",
+            "Ketuk logo KAPDH di kiri atas untuk kembali ke Beranda.",
+            "Halaman **Verifikasi KTA**, **Hapus Akun**, dan tautan aplikasi sengaja tidak dimunculkan di mesin pencari. Buka lewat tautan di bagian bawah situs atau ketik alamatnya langsung."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Situs tidak pernah meminta password",
+          "text": "Satu-satunya isian di situs adalah email akun dan kode verifikasi di halaman **Hapus Akun**. Pengurus KAPDH juga tidak pernah meminta password atau kode verifikasi Anda. Pastikan alamat di peramban adalah kapdh.or.id sebelum mengisi apa pun."
+        }
+      ]
+    },
+    {
+      "id": "b16-2",
+      "title": "Mengunduh aplikasi dan cara bergabung",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Halaman **Unduh Aplikasi** (kapdh.or.id/unduh) adalah sumber tautan resmi aplikasi KAPDH. Buka dari tombol **Unduh Aplikasi** di menu atas, atau dari tautan **Cara bergabung dan persyaratan perangkat** di Beranda. Tombol **Unduh Aplikasi** besar di bagian atas Beranda membawa Anda ke bagian **Unduh Aplikasi KAPDH** di Beranda itu sendiri, yang juga memuat tombol Google Play dan App Store."
+        },
+        {
+          "type": "steps",
+          "items": [
+            { "text": "Buka kapdh.or.id/unduh dari ponsel yang akan Anda pakai." },
+            { "text": "Ketuk **Google Play** di ponsel Android, atau **App Store** di iPhone. Toko aplikasi terbuka di halaman aplikasi KAPDH." },
+            { "text": "Pasang aplikasi, lalu buka." },
+            { "text": "Ikuti **Cara bergabung**: daftar dan verifikasi email, bayar iuran pendaftaran, lalu tunggu persetujuan pengurus. Rinciannya ada di Bab 2 dan Bab 3." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "web/b16-unduh.png",
+          "caption": "Halaman Unduh Aplikasi: tombol toko, empat langkah Cara bergabung, dan Persyaratan perangkat"
+        },
+        {
+          "type": "table",
+          "title": "Persyaratan perangkat",
+          "columns": ["Perangkat", "Syarat"],
+          "rows": [
+            ["Android", "8.0 ke atas"],
+            ["iPhone (iOS)", "15 ke atas"],
+            ["Koneksi", "Internet untuk mendaftar dan memperbarui KTA"]
+          ]
+        },
+        {
+          "type": "status",
+          "title": "Keterangan kecil pada tombol toko",
+          "items": [
+            { "label": "Unduh di Google Play / App Store", "tone": "success", "text": "Tautan resmi siap. Ketuk tombol untuk membuka toko aplikasi." },
+            { "label": "Memuat tautan…", "tone": "info", "text": "Situs sedang mengambil tautan terbaru. Tunggu sebentar." },
+            { "label": "Segera tersedia", "tone": "neutral", "text": "Pengurus belum memasang tautan untuk toko tersebut. Coba lagi lain waktu." },
+            { "label": "Tautan belum dapat dimuat", "tone": "warning", "text": "Koneksi bermasalah. Ketuk **Coba lagi** di bawah tombol toko." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Tautan toko diatur pengurus",
+          "text": "Tautan Google Play dan App Store diisi pengurus di **Pengaturan** web admin (Bab 15) dan langsung berlaku di situs. Unduh aplikasi KAPDH hanya dari tombol di situs resmi ini."
+        }
+      ]
+    },
+    {
+      "id": "b16-3",
+      "title": "Tentang KAPDH, legalitas, dan dokumen legal",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Halaman **Tentang** (kapdh.or.id/tentang) dibuka dengan bagian **Legalitas organisasi**: nama badan hukum, bentuk perkumpulan, SK pengesahan Menteri Hukum dan HAM Nomor AHU-0002732.AH.01.07.TAHUN 2023 tanggal 11 April 2023, akta pendirian Nomor 01 tanggal 27 Maret 2023, asas, kedudukan, kontak resmi, serta maksud dan tujuan, kegiatan, dan pengelolaan kekayaan menurut Anggaran Dasar. Tautan **Legalitas** di bagian bawah situs langsung menuju bagian ini."
+        },
+        {
+          "type": "shot",
+          "img": "web/b16-tentang-legalitas.png",
+          "caption": "Bagian Legalitas organisasi di halaman Tentang"
+        },
+        {
+          "type": "p",
+          "text": "Di bawahnya tampil profil yang diterbitkan pengurus: siapa kami, visi dan misi, cara bergabung, layanan KAPDH Apps, dan cara menghubungi pengurus. Visi KAPDH adalah menjadi wadah pemersatu yang solid, berintegritas, dan mandiri bagi seluruh alumni Pondok Pesantren Darel Hikmah, serta berkontribusi nyata bagi almamater, umat, dan bangsa."
+        },
+        {
+          "type": "table",
+          "title": "Halaman informasi dan dokumen legal",
+          "columns": ["Halaman", "Alamat", "Isi"],
+          "rows": [
+            ["**Kebijakan Privasi**", "/kebijakan-privasi", "Data yang dikumpulkan, penggunaannya, penyimpanannya, dan hak Anda atas data pribadi."],
+            ["**Ketentuan Layanan**", "/ketentuan", "Aturan akun, keanggotaan dan iuran, KTA, event dan tiket (termasuk pembatalan dan refund), pembatasan akun, serta penghapusan akun."],
+            ["**Ketentuan Komunitas**", "/ketentuan-komunitas", "Pedoman berinteraksi di profil, Jejaring, dan pesan."],
+            ["**Bantuan**", "/bantuan", "Tanya jawab dari mendaftar, KTA, iuran, event, pesan, notifikasi, sampai hapus akun."],
+            ["**Tentang KAPDH**", "/tentang", "Profil, visi dan misi, legalitas, dan layanan KAPDH Apps."]
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "web/b16-ketentuan-komunitas.png",
+          "caption": "Dokumen legal menampilkan label Dokumen legal, judul, nomor versi, dan tanggal terbit sebelum isinya"
+        },
+        {
+          "type": "list",
+          "title": "Membaca halaman ini",
+          "items": [
+            "Kebijakan Privasi, Ketentuan Layanan, dan Ketentuan Komunitas diberi label **Dokumen legal**. Bantuan dan Tentang diberi label **Informasi**.",
+            "Di bawah judul tampil versi dan tanggal terbit, misalnya Versi 2 · Diterbitkan 15 Oktober 2026. Yang tampil selalu versi terbaru yang berlaku.",
+            "Isi diterbitkan pengurus melalui web admin (Bab 12) dan langsung tampil tanpa perlu menunggu pembaruan situs.",
+            "Pendaftar baru menyetujui versi terbaru Kebijakan Privasi dan Ketentuan Layanan saat mendaftar di aplikasi.",
+            "Bila tampil **Belum diterbitkan**, pengurus belum menerbitkan halaman itu. Ketuk **Buka halaman Kontak** bila Anda perlu bertanya.",
+            "Bila tampil **Tidak dapat memuat halaman**, periksa koneksi Anda lalu ketuk **Coba lagi**."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b16-4",
+      "title": "Memeriksa KTA dari QR",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Halaman **Verifikasi KTA** dipakai pemeriksa, misalnya panitia acara atau mitra, untuk memastikan KTA seseorang sah dan aktif. Halaman ini terbuka otomatis saat QR pada KTA digital dipindai dengan kamera ponsel, dan pemeriksa tidak perlu aplikasi maupun akun. Status selalu dibaca langsung dari server KAPDH. Cara anggota menunjukkan QR dan data yang tampil pada setiap hasil dijelaskan di Bab 4."
+        },
+        {
+          "type": "steps",
+          "title": "Langkah pemeriksa",
+          "items": [
+            { "text": "Arahkan kamera ponsel ke QR pada KTA yang ditunjukkan dari aplikasi pemegang kartu." },
+            { "text": "Ketuk tautan kapdh.or.id/kta/... yang muncul. Halaman menampilkan **Memeriksa…**, lalu hasilnya." },
+            { "text": "Baca label hasil. Untuk **Aktif**, cocokkan nama dan foto di halaman dengan orang di depan Anda." },
+            { "text": "Perhatikan baris **Diperiksa** beserta tanggal dan jamnya. Hasil hanya berlaku pada saat pemeriksaan itu." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "web/b16-kta-ponsel.png",
+          "caption": "Hasil Aktif di ponsel pemeriksa: nama, angkatan, nomor anggota, masa berlaku, dan waktu pemeriksaan"
+        },
+        {
+          "type": "table",
+          "title": "Hasil dan tindakan pemeriksa",
+          "columns": ["Hasil", "Yang dilakukan pemeriksa"],
+          "rows": [
+            ["**Aktif**", "Keanggotaan berlaku. Cocokkan nama dan foto (bila ada) dengan orang di depan Anda. Bila cocok, kartu dapat diterima."],
+            ["**Aktif, segera berakhir**", "Masih berlaku, tetapi berakhir dalam 30 hari atau kurang; tanggal berakhirnya disebutkan. Perlakukan seperti **Aktif**."],
+            ["**Kedaluwarsa**", "Masa keanggotaan sudah berakhir; nama, angkatan, nomor anggota, dan tanggal berakhir tampil tanpa foto. Kartu belum dapat dipakai sampai perpanjangan diverifikasi pengurus (Bab 3)."],
+            ["**Tidak aktif**", "Keanggotaan tidak dapat digunakan saat ini, misalnya belum disetujui atau sedang dibatasi. Alasannya tidak ditampilkan. Arahkan pemegang kartu ke pengurus."],
+            ["**Tidak ditemukan**", "Nomor anggota pada QR tidak terdaftar, misalnya karena akunnya sudah dihapus. Kartu tidak dapat diterima."],
+            ["**QR tidak valid atau perlu diperbarui**", "Minta pemegang kartu membuka KTA dalam keadaan online, lalu pindai QR yang baru."],
+            ["**Tidak dapat memverifikasi**", "Server tidak terjangkau atau pemeriksaan terlalu sering. Ini bukan berarti anggota tidak terdaftar. Tunggu sebentar lalu ketuk **Coba lagi**."],
+            ["**Pindai QR pada KTA**", "Halaman dibuka langsung, bukan dari QR. Pindai QR dari kartu."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Privasi pemegang kartu",
+          "text": "Halaman ini tidak pernah menampilkan email, nomor telepon, alamat, atau alasan pembatasan akun. Nomor anggota saja tidak cukup untuk melihat data; pemeriksaan selalu memerlukan QR sah dari aplikasi. KTA offline di aplikasi maupun tangkapan layarnya bukan bukti status terkini."
+        }
+      ]
+    },
+    {
+      "id": "b16-5",
+      "title": "Menghapus akun tanpa aplikasi",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Halaman **Hapus Akun** (kapdh.or.id/delete-account) menerima permintaan penghapusan akun secara langsung, tanpa memasang aplikasi dan tanpa password. Kepemilikan akun dibuktikan dengan kode verifikasi yang dikirim ke email akun. Halaman ini cocok bila Anda sudah menghapus aplikasi, berganti ponsel, atau lupa password. Bila aplikasi masih terpasang, Anda juga dapat memakai **Akun** > **Hapus akun** (Bab 8)."
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Penghapusan tidak dapat dibatalkan",
+          "text": "Setelah Anda mengetuk **Hapus akun saya**, semua sesi di aplikasi langsung dikeluarkan dan akun tidak dapat dipakai lagi. KTA, riwayat keanggotaan, dan percakapan tidak dapat dipulihkan. Bila Anda memegang tiket event aktif atau sedang menunggu refund, selesaikan urusan itu lebih dahulu."
+        },
+        {
+          "type": "steps",
+          "title": "Langkah menghapus akun",
+          "items": [
+            { "text": "Buka kapdh.or.id/delete-account, atau ketuk **Hapus Akun** di bagian bawah situs." },
+            { "text": "Isi **Email akun** dengan email yang Anda pakai di aplikasi, lalu ketuk **Kirim kode verifikasi**." },
+            { "text": "Buka email Anda dan isi kode 6 digit pada kotak **Kode OTP**. Kode berlaku 10 menit; periksa juga folder spam." },
+            { "text": "Ketuk **Verifikasi**. Langkah **Konfirmasi penghapusan akun** menampilkan **Data yang dihapus**, **Data yang tetap ada dalam bentuk anonim**, **Penyimpanan setelah penghapusan**, dan peringatan khusus akun Anda bila ada." },
+            { "text": "Baca semuanya, lalu centang **Saya mengerti akun beserta data di atas dihapus permanen dan tidak dapat dibatalkan.**" },
+            { "text": "Ketuk **Hapus akun saya** sebelum hitung mundur 10 menit habis. Bila berubah pikiran, ketuk **Batal**; akun Anda tidak berubah." },
+            { "text": "Catat **Nomor permintaan** yang diawali DEL-. Email konfirmasi berisi nomor yang sama dikirim ke alamat akun." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "web/b16-hapus-akun-email.png",
+          "caption": "Langkah Email: isi Email akun. Di kanan, ringkasan yang terjadi saat akun dihapus"
+        },
+        {
+          "type": "shot",
+          "img": "web/b16-hapus-akun-kode.png",
+          "caption": "Langkah Verifikasi: kotak Kode OTP, sisa percobaan, masa berlaku kode, Kirim ulang kode, dan Salah email? Ubah alamat email"
+        },
+        {
+          "type": "list",
+          "title": "Bila kode tidak datang atau ditolak",
+          "items": [
+            "Demi melindungi pemilik email, halaman selalu menulis bahwa kode sudah dikirim bila email itu terdaftar. Bila kode tidak datang, periksa ejaan email dan folder spam.",
+            "**Kirim ulang kode** dapat diketuk setelah hitung mundur 60 detik selesai. Kode yang lama otomatis tidak berlaku.",
+            "Setiap kode dapat dicoba 5 kali; sisanya tampil di baris **Sisa percobaan**. Bila habis atau kode kedaluwarsa, minta kode baru.",
+            "Salah mengetik email? Ketuk **Salah email? Ubah alamat email**.",
+            "Bila terlalu sering mencoba, tombol tertahan sementara dan halaman menyebutkan lama waktu tunggunya."
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "web/b16-hapus-akun-konfirmasi.png",
+          "caption": "Bagian bawah langkah Konfirmasi: centang pernyataan, sisa waktu, lalu Hapus akun saya atau Batal"
+        },
+        {
+          "type": "shot",
+          "img": "web/b16-hapus-akun-selesai.png",
+          "caption": "Permintaan diterima: simpan nomor permintaan dan tanggal selesai paling lambat"
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Halaman tidak dapat dipakai?",
+          "text": "Bila halaman ini tidak dapat dibuka di perangkat Anda, kirim permintaan penghapusan dari alamat email akun ke bantuan@kapdh.or.id."
+        }
+      ]
+    },
+    {
+      "id": "b16-6",
+      "title": "Status penghapusan dan keadaan khusus",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Untuk memeriksa status, buka kembali halaman **Hapus Akun** dan ulangi langkah email serta kode verifikasi dengan email yang sama. Cara ini juga berlaku untuk permintaan yang diajukan dari aplikasi. Selama penghapusan berjalan, halaman menampilkan **Penghapusan sedang berjalan** beserta **Nomor permintaan**, **Status**, **Diajukan lewat**, tanggal diajukan, dan **Selesai paling lambat**. Tidak ada tindakan lain yang perlu Anda lakukan. Setelah penghapusan tuntas, alamat email Anda tidak lagi disimpan sehingga kode tidak dikirim lagi; email pemberitahuan selesai menjadi tanda akhirnya."
+        },
+        {
+          "type": "status",
+          "title": "Status permintaan penghapusan",
+          "items": [
+            { "label": "Menunggu diproses", "tone": "info", "text": "Permintaan sudah tercatat dan semua sesi sudah dikeluarkan." },
+            { "label": "Sedang diproses", "tone": "warning", "text": "Data sedang dihapus." },
+            { "label": "Sedang diproses ulang", "tone": "warning", "text": "Satu langkah sedang diulang otomatis. Anda tidak perlu mengajukan ulang." },
+            { "label": "Selesai", "tone": "neutral", "text": "Penghapusan tuntas, paling lambat 7 hari kalender sejak permintaan. Email pemberitahuan dikirim ke alamat akun; sesudah itu status tidak dapat diperiksa lagi di halaman ini." }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Peringatan yang mungkin muncul sebelum konfirmasi",
+          "items": [
+            "**Tiket aktif akan hangus**: bila berhak refund, batalkan tiket lewat aplikasi lebih dahulu, lalu hapus akun setelah refund selesai.",
+            "**Refund belum ditransfer**: sebaiknya tunggu refund selesai. Setelah akun dihapus, bendahara tidak dapat menghubungi Anda dan data rekening tujuan ikut terhapus.",
+            "**Pembayaran terbuka akan dibatalkan**: dana yang sudah ditransfer tidak otomatis kembali. Hubungi bendahara lewat bantuan sebelum menghapus akun.",
+            "**Grup chat yang Anda kelola sendiri**: peran admin dialihkan otomatis ke anggota aktif, atau grup ditutup bila tidak ada.",
+            "**Akun tertaut ke identitas pengurus**: identitas pengurus tidak ikut terhapus; pengalihan kewenangan pengurus dilakukan Super Admin."
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Keadaan khusus",
+          "columns": ["Keadaan", "Yang tampil dan yang perlu dilakukan"],
+          "rows": [
+            ["Pendaftaran belum pernah diverifikasi", "Judul dan tombol berubah menjadi **Batalkan pendaftaran dan hapus data**. Konfirmasi membatalkan pendaftaran; email dapat dipakai mendaftar lagi setelah permintaan selesai."],
+            ["Akun dinonaktifkan", "Tampil **Akun dinonaktifkan** dan **Hubungi bantuan KAPDH**. Penghapusan atau pemulihan diurus lewat kanal bantuan."],
+            ["Tiket, refund, atau pembayaran berubah saat Anda mengonfirmasi", "Halaman meminta Anda membaca rincian terbaru. Periksa lagi, centang, lalu konfirmasi ulang."],
+            ["Waktu konfirmasi 10 menit habis", "Bila konfirmasi ditolak, verifikasi email Anda lagi dari awal."],
+            ["Koneksi terputus saat mengetuk **Hapus akun saya**", "Ketuk tombol yang sama sekali lagi. Permintaan yang sama tidak akan dibuat dua kali."],
+            ["Layanan sedang dalam pemeliharaan", "Permintaan belum dapat diajukan. Ajukan lagi setelah pemeliharaan selesai."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Data yang tersisa",
+          "text": "Catatan pembayaran, tiket, riwayat keanggotaan, laporan moderasi, dan jejak audit hanya tersisa tanpa nama, email, telepon, atau foto. Backup harian berotasi 30 hari, dan data yang sudah dihapus tidak muncul kembali bila backup dipulihkan. Rinciannya ada di **Kebijakan Privasi**."
+        }
+      ]
+    },
+    {
+      "id": "b16-7",
+      "title": "Menghubungi pengurus",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Halaman **Kontak** (kapdh.or.id/kontak) memuat kanal bantuan resmi pengurus untuk pertanyaan akun, iuran, KTA, dan event. Email dan nomor WhatsApp bantuan diatur pengurus di **Pengaturan** web admin (Bab 15), jadi selalu pakai yang tampil di halaman ini. Sebelum menghubungi, coba cari jawabannya di halaman **Bantuan** atau di Bab 17 panduan ini."
+        },
+        {
+          "type": "shot",
+          "img": "web/b16-kontak.png",
+          "caption": "Halaman Kontak: email bantuan, WhatsApp admin, dan alamat kedudukan (nomor WhatsApp pada gambar hanya contoh)"
+        },
+        {
+          "type": "table",
+          "columns": ["Kanal", "Keterangan"],
+          "rows": [
+            ["**Email**", "bantuan@kapdh.or.id, dijawab pada hari kerja. Ketuk alamatnya untuk membuka aplikasi email."],
+            ["**WhatsApp admin**", "Nomor yang ditetapkan pengurus. Ketuk nomornya untuk membuka percakapan WhatsApp. Bila nomor belum tersedia, gunakan email bantuan."],
+            ["**Alamat kedudukan**", "Jalan Manyar Sakti, Kelurahan Simpang Baru, Kecamatan Binawidya, Kota Pekanbaru, Riau 28293, sesuai akta pendirian perkumpulan."]
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Agar dibantu lebih cepat",
+          "items": [
+            "Sebutkan email akun Anda.",
+            "Untuk pembayaran, sebutkan jenis pembayaran, nominal, dan tanggal transfer, atau nomor pembayaran bila ada.",
+            "Untuk penghapusan akun, sebutkan nomor permintaan yang diawali DEL-.",
+            "Untuk kendala teknis, catat pesan yang muncul dan waktu kejadiannya.",
+            "Bila tampil **Kontak terbaru belum dapat dimuat**, email bantuan di halaman tetap dapat dipakai. Ketuk **Coba lagi** untuk memuat nomor WhatsApp."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Jaga keamanan akun Anda",
+          "text": "Pengurus KAPDH tidak pernah meminta password, kode OTP, atau kode cadangan. Jangan bagikan kode tersebut kepada siapa pun, termasuk kepada orang yang mengaku sebagai pengurus."
+        }
+      ]
+    },
+    {
+      "id": "b16-8",
+      "title": "Pemeliharaan, tautan aplikasi, dan halaman 404",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Sesekali Anda mungkin menemui keadaan khusus di situs. Tabel berikut menjelaskan arti setiap keadaan dan apa yang perlu dilakukan."
+        },
+        {
+          "type": "table",
+          "columns": ["Keadaan", "Yang tampil", "Yang Anda lakukan"],
+          "rows": [
+            ["Layanan sedang dalam pemeliharaan", "Pita kuning **Pemeliharaan.** di bawah menu pada Beranda, Unduh Aplikasi, Kontak, dan Hapus Akun, dengan perkiraan waktu selesai bila ada.", "Pendaftaran, perubahan data, dan permintaan hapus akun ditunda sementara; verifikasi KTA tetap berjalan. Tunggu, lalu ketuk **Periksa lagi**."],
+            ["Tautan aplikasi dibuka di peramban", "Halaman **Buka di aplikasi KAPDH**.", "Ketuk **Buka di aplikasi KAPDH**. Bila aplikasi belum terpasang, pasang dari tombol toko di halaman itu, lalu buka tautannya lagi."],
+            ["Alamat tidak ada atau sudah dipindahkan", "**Halaman tidak ditemukan** dengan angka 404.", "Ketuk **Ke beranda** atau **Buka bantuan**. Bila berasal dari QR KTA, pindai ulang QR langsung dari aplikasi."],
+            ["Sebagian isi gagal dimuat", "Pesan seperti **Tidak dapat memuat halaman** atau **Tautan belum dapat dimuat**.", "Periksa koneksi internet, lalu ketuk **Coba lagi**."]
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "web/b16-404-ponsel.png",
+          "caption": "Halaman tidak ditemukan di ponsel, dengan tombol Ke beranda dan Buka bantuan"
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Tentang tautan kapdh.or.id/app",
+          "text": "Tautan yang diawali kapdh.or.id/app menuju halaman di dalam aplikasi KAPDH. Bila aplikasi sudah terpasang, ponsel biasanya langsung membuka aplikasi dan halaman cadangan ini tidak tampil."
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Bila masalah terus berulang, hubungi pengurus melalui halaman **Kontak** dengan menyebutkan alamat halaman, pesan yang muncul, dan waktu kejadiannya."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "kapdh-platform/apps/web/src/pages/index.astro",
+    "kapdh-platform/apps/web/src/pages/unduh.astro",
+    "kapdh-platform/apps/web/src/pages/kontak.astro",
+    "kapdh-platform/apps/web/src/pages/delete-account.astro",
+    "kapdh-platform/apps/web/src/pages/kta/index.astro",
+    "kapdh-platform/apps/web/src/pages/[slug].astro",
+    "kapdh-platform/apps/web/src/pages/404.astro",
+    "kapdh-platform/apps/web/src/pages/app/index.astro",
+    "kapdh-platform/apps/web/src/layouts/Base.astro (menu, footer, banner pemeliharaan, noindex)",
+    "kapdh-platform/apps/web/src/components/StoreButtons.astro",
+    "kapdh-platform/apps/web/src/components/OrganizationLegal.astro",
+    "kapdh-platform/apps/web/src/lib/site.ts (INFO_PAGES, MAIN_NAV, FOOTER_LINKS)",
+    "kapdh-platform/apps/web/src/lib/organization.ts (SK AHU-0002732.AH.01.07.TAHUN 2023, akta 01/27 Maret 2023, alamat)",
+    "kapdh-platform/apps/web/src/scripts/config-page.ts (Segera tersedia, Tautan belum dapat dimuat, Periksa lagi)",
+    "kapdh-platform/apps/web/src/scripts/info-page.ts (Versi n · Diterbitkan, Belum diterbitkan, Tidak dapat memuat halaman)",
+    "kapdh-platform/apps/web/src/scripts/kta-verify.ts dan kta-page.ts (label hasil verifikasi)",
+    "kapdh-platform/apps/web/src/scripts/delete-account.ts dan delete-account-page.ts (OTP 10 menit, kirim ulang 60 detik, 5 percobaan, konfirmasi 10 menit, label status)",
+    "kapdh-platform/apps/web/src/scripts/app-open.ts",
+    "kapdh-platform/apps/api/src/modules/auth/otp-challenge.service.ts (OTP_TTL_MS 10 menit, OTP_RESEND_MS 60 detik, OTP_MAX_ATTEMPTS 5)",
+    "kapdh-platform/apps/api/src/modules/account/deletion-policy.ts (DELETION_COMPLETION_DAYS 7, BACKUP_RETENTION_DAYS 30, nomor DEL-)",
+    "kapdh-platform/apps/api/src/modules/account/web-deletion.service.ts (deletion_token 10 menit)",
+    "kapdh-platform/apps/admin/src/routes/settings/SettingsPage.tsx (Tautan toko aplikasi, Kontak dukungan: Email dukungan dan WhatsApp pengurus, Mode pemeliharaan)",
+    "kapdh-platform/apps/api/src/core/membership/period.ts (EXPIRING_WINDOW_DAYS 30: Aktif, segera berakhir)",
+    "kapdh-platform/apps/api/src/modules/membership/kta-verify.service.ts (akun terhapus -> Tidak ditemukan; foto hanya untuk Aktif)",
+    "kapdh-platform/apps/api/src/modules/account/web-deletion.service.ts (status akun yang menerima kode: aktif, pendaftaran, sedang dihapus, dinonaktifkan)",
+    "kapdh-platform/apps/api/src/modules/account/deletion-policy.ts completedMail (alamat email tidak disimpan setelah email selesai terkirim)",
+    "kapdh-platform/apps/api/src/core/http/request-gate.ts (saat pemeliharaan hanya verifikasi KTA publik yang tetap diproses)",
+    "docs/qa/uat-checklist.md (U-03 3.4-3.10, U-09 9.2)",
+    "docs/legal/tentang.html (visi dan misi)",
+    "docs/legal/bantuan.html (Menghapus akun tanpa aplikasi, Hubungi kami, Kendala teknis)",
+    "docs/legal/README.md",
+    "docs/handoff/phase-c/public-web.md"
+  ]
+}

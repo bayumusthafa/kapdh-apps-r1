@@ -1,0 +1,442 @@
+{
+  "id": "b12",
+  "part": "pengurus",
+  "title": "Manajemen Konten",
+  "kicker": "Web Admin Pengurus",
+  "summary": "Menu **Manajemen Konten** dipakai pengurus untuk menyiapkan apa yang dibaca anggota di aplikasi dan publik di situs: berita, banner Beranda, kategori berita, serta halaman informasi dan legal yang berversi.",
+  "icon": "ph-article",
+  "highlights": [
+    "Menulis, menjadwalkan, dan mengarsipkan berita untuk anggota",
+    "Mengatur kategori berita tanpa merusak berita lama",
+    "Membuat banner Beranda dengan tujuan dan masa tayang",
+    "Menerbitkan versi baru halaman legal dan memahami dampaknya",
+    "Menyiapkan gambar sesuai ukuran dan aturan unggah"
+  ],
+  "sections": [
+    {
+      "id": "b12-1",
+      "title": "Mengenal menu Manajemen Konten",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Klik **Manajemen Konten** di menu samping. Menu ini hanya tampil bagi admin yang memiliki izin **Kelola konten** (lihat Bab 9 dan Bab 15). Halaman terbuka di tab **Berita**. Pindah tab dengan tombol di kanan atas: **Berita**, **Banner**, **Halaman**, dan **Kategori**. Tab yang sedang aktif ikut tersimpan di alamat halaman, sehingga tautannya dapat dibagikan ke sesama pengurus."
+        },
+        {
+          "type": "table",
+          "title": "Empat tab Manajemen Konten",
+          "columns": ["Tab", "Isinya", "Dilihat anggota di"],
+          "rows": [
+            ["**Berita**", "Feed informasi: draf, jadwal terbit, dan arsip berita.", "Beranda dan daftar Berita aplikasi, ditambah satu notifikasi saat berita tampil (lihat Bab 5)."],
+            ["**Banner**", "Gambar promosi dengan tujuan, masa tayang, dan urutan.", "Deretan banner di Beranda aplikasi."],
+            ["**Halaman**", "Halaman informasi dan legal yang berversi.", "Menu Akun aplikasi bagian Informasi dan situs kapdh.or.id."],
+            ["**Kategori**", "Kategori untuk mengelompokkan berita.", "Label kategori pada berita dan tab kategori di daftar Berita."]
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b12-berita.png",
+          "caption": "Tab Berita: daftar berita dengan gambar, kategori, status, dan tanggal publikasi"
+        },
+        {
+          "type": "list",
+          "title": "Menemukan berita dengan cepat",
+          "items": [
+            "**Cari berita**: ketik sebagian judul atau slug. Daftar menyesuaikan saat Anda mengetik.",
+            "**Status**: tampilkan hanya berita Draf, Terjadwal, Terbit, atau Diarsipkan.",
+            "**Kategori**: saring per kategori. Kategori yang sudah dinonaktifkan ditandai (nonaktif).",
+            "**Urutan**: Terakhir diubah (bawaan), Tanggal publikasi terbaru, Terakhir dibuat, atau Judul A-Z.",
+            "Kolom **Kelola**: ikon pensil membuka editor dan ikon tempat sampah menghapus berita. Ikon hapus hanya aktif untuk berita Draf dan Diarsipkan.",
+            "Setiap halaman tabel memuat 20 baris. Klik **Halaman berikutnya** untuk melihat sisanya."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Bukan di menu ini",
+          "text": "Event beserta kategori event dikelola di menu **Manajemen Event & Tiket** (Bab 13). Web admin tidak memiliki fitur kirim pengumuman massal tersendiri: menu **Notifikasi** (Bab 15) hanya memantau dan mengulang pengiriman. Pengumuman untuk semua anggota disampaikan lewat berita, yang otomatis mengirim satu notifikasi saat tampil."
+        }
+      ]
+    },
+    {
+      "id": "b12-2",
+      "title": "Menyiapkan kategori berita",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Kategori mengelompokkan berita, misalnya Pengumuman, Organisasi, dan Panduan. Pada awal pemakaian belum ada kategori sama sekali, dan berita hanya dapat memakai kategori yang aktif. Karena itu, buat kategori sebelum menulis berita. Buka tab **Kategori**, atau klik **Manajemen Kategori** di tab Berita."
+        },
+        {
+          "type": "steps",
+          "title": "Menambah kategori",
+          "items": [
+            { "text": "Klik **Tambah Kategori**." },
+            { "text": "Isi **Label** (maksimal 80 karakter), misalnya Pengumuman. Label inilah yang dilihat anggota." },
+            { "text": "Biarkan **Slug** kosong agar dibuat otomatis dari label, atau isi sendiri dengan huruf kecil, angka, dan tanda hubung." },
+            { "text": "Isi **Urutan tampil** dengan angka 0 sampai 32767. Angka kecil tampil lebih dahulu pada tab kategori di aplikasi. Beri jarak 10 (10, 20, 30) agar kategori baru mudah disisipkan." },
+            { "text": "Pastikan sakelar **Aktif** menyala, lalu klik **Tambah kategori**." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b12-kategori.png",
+          "caption": "Tab Kategori: kolom Dipakai menunjukkan jumlah berita yang memakai tiap kategori"
+        },
+        {
+          "type": "list",
+          "title": "Aturan kategori",
+          "items": [
+            "Kategori yang sudah dipakai berita tidak dapat dihapus, sehingga ikon hapusnya tidak aktif. Nonaktifkan saja bila kategori itu tidak ingin dipakai lagi.",
+            "Kategori nonaktif tidak muncul di pilihan berita baru dan tidak tampil sebagai tab di aplikasi. Berita lama yang memakainya tetap menampilkan labelnya.",
+            "Mengubah label lewat ikon pensil langsung mengubah tampilan pada semua berita yang memakai kategori itu.",
+            "Kategori yang sedang tidak dipakai berita (kolom Dipakai bertuliskan Belum dipakai) dapat dihapus permanen setelah Anda mencentang pernyataan di jendela konfirmasi."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b12-3",
+      "title": "Menulis dan menyunting berita",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Klik **Buat Konten Baru** di tab Berita untuk membuka halaman **Tambah Konten Baru**. Untuk mengubah berita yang sudah ada, klik judulnya atau ikon pensil; halaman **Edit Konten** terbuka dengan formulir yang sama. Berita baru selalu disimpan sebagai draf lebih dahulu, baru kemudian diterbitkan."
+        },
+        {
+          "type": "steps",
+          "title": "Membuat draf berita",
+          "items": [
+            { "text": "Isi **Judul konten** (wajib, maksimal 200 karakter)." },
+            { "text": "Biarkan **Slug tautan** kosong agar dibuat otomatis dari judul. Slug menjadi alamat berita di aplikasi, misalnya /news/kabar-alumni." },
+            { "text": "Isi **Ringkasan** bila perlu (maksimal 300 karakter). Ringkasan tampil di kartu berita di Beranda dan daftar Berita, dan menjadi isi notifikasi berita. Ringkasan tidak tampil di halaman detail, jadi isi berita harus lengkap tanpa ringkasan." },
+            { "text": "Tulis **Isi berita** (wajib) di editor. Bilah alatnya menyediakan huruf tebal, miring, subjudul dan sub-subjudul, daftar berpoin dan bernomor, kutipan, sisipkan dan hapus tautan, sisipkan gambar, serta urungkan dan ulangi." },
+            { "text": "Di kartu **Kategori & Gambar**, pilih **Kategori** (atau biarkan **Tanpa kategori**), lalu klik **Pilih gambar** atau tarik berkas ke kotaknya untuk mengunggah **Gambar cover**. Keduanya opsional. Cover dapat diganti dengan **Ganti gambar** atau dibuang dengan **Lepas gambar**." },
+            { "text": "Klik **Simpan draf**. Berita tersimpan sebagai draf dan belum terlihat anggota." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b12-editor.png",
+          "caption": "Editor berita: isi di kiri; kategori, gambar cover, tombol simpan, dan panel Status & Penerbitan di kanan"
+        },
+        {
+          "type": "list",
+          "title": "Yang perlu diketahui saat menyunting",
+          "items": [
+            "Tautan di isi berita hanya boleh diawali https:// atau mailto:. Di aplikasi, tautan https ditandai sebagai tautan luar dan anggota diminta konfirmasi **Buka tautan luar?** sebelum tautan dibuka.",
+            "Isi dibersihkan otomatis saat disimpan. Format di luar bilah alat, misalnya warna huruf atau tabel, dibuang, tetapi teksnya tetap.",
+            "Sisipkan gambar meminta **Alamat gambar** dan **Teks alternatif**. Hanya gambar yang diunggah di web admin KAPDH yang dipertahankan; gambar dari situs lain dibuang. Sebaiknya pakai **Gambar cover**.",
+            "Slug dapat diubah selama berita belum pernah tampil. Setelah pernah tampil, slug tidak dapat diubah lagi agar tautan di notifikasi dan banner tetap berlaku.",
+            "Untuk berita yang sudah tersimpan, tombol simpan bertuliskan **Simpan draf** (berita Draf) atau **Simpan perubahan** (status lain) dan baru aktif setelah ada perubahan."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Periksa dengan Pratinjau",
+          "text": "Klik **Pratinjau** di kanan atas untuk melihat perkiraan tampilan berita di aplikasi anggota: cover, kategori, tanggal, jumlah suka, judul, ringkasan, dan isi. Pratinjau memakai isian terkini, termasuk yang belum disimpan. Di aplikasi sendiri, ringkasan hanya tampil di kartu berita, tidak di halaman detail."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Berita yang sedang tampil",
+          "text": "Bila berita berstatus **Terbit**, perubahan yang Anda simpan langsung terlihat anggota. Notifikasi berita tidak dikirim ulang, jadi judul yang sudah terkirim dalam notifikasi tidak dapat diralat lewat notifikasi."
+        }
+      ]
+    },
+    {
+      "id": "b12-4",
+      "title": "Menerbitkan, menjadwalkan, dan mengarsipkan",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Penerbitan diatur di panel **Status & Penerbitan** di sisi kanan editor. Panel ini baru muncul setelah draf tersimpan. Selama masih ada perubahan yang belum disimpan atau gambar cover sedang diunggah, semua tombolnya ditahan dan panel menjelaskan alasannya."
+        },
+        {
+          "type": "status",
+          "title": "Status berita",
+          "items": [
+            { "label": "Draf", "tone": "neutral", "text": "Belum terlihat anggota. Dapat diterbitkan, dijadwalkan, diarsipkan, atau dihapus." },
+            { "label": "Terjadwal", "tone": "info", "text": "Tampil otomatis pada tanggal dan jam yang dipilih (WIB). Kolom Tgl Publikasi menampilkan jadwal lengkap dengan jamnya." },
+            { "label": "Terbit", "tone": "success", "text": "Tampil di Beranda dan daftar Berita aplikasi." },
+            { "label": "Diarsipkan", "tone": "warning", "text": "Disembunyikan dari aplikasi dan tidak akan diterbitkan lagi oleh jadwal lama." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Menerbitkan atau menjadwalkan berita",
+          "items": [
+            { "text": "Simpan semua perubahan di editor lebih dahulu." },
+            { "text": "Di **Waktu terbit**, pilih **Terbitkan sekarang** atau **Jadwalkan**." },
+            { "text": "Untuk jadwal, isi **Tanggal & jam terbit** dalam WIB. Waktunya harus di masa depan." },
+            { "text": "Klik **Terbitkan sekarang** atau **Jadwalkan terbit**, baca penjelasan di jendela konfirmasi, lalu klik tombol konfirmasinya." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Notifikasi berita hanya dikirim sekali",
+          "text": "Saat berita tampil, langsung maupun saat jadwal tiba, notifikasi dikirim sekali dalam sekitar satu menit ke semua anggota aktif (terverifikasi atau segera berakhir). Notifikasi ini tidak dapat ditarik atau diulang. Periksa judul, ringkasan, isi, dan tautan sebelum menerbitkan, dan beri jarak beberapa hari antarberita agar anggota tidak kebanjiran notifikasi."
+        },
+        {
+          "type": "p",
+          "text": "Judul notifikasi adalah judul berita dan isinya adalah Ringkasan. Bila Ringkasan kosong, isinya berbunyi \"Berita baru dari KAPDH. Ketuk untuk membaca.\" Notifikasi masuk ke kotak Notifikasi aplikasi dan dikirim sebagai push bila anggota mengizinkannya. Berita tidak dikirim lewat email (lihat Bab 5)."
+        },
+        {
+          "type": "table",
+          "title": "Tindakan lanjutan di panel Status & Penerbitan",
+          "columns": ["Status berita", "Tombol", "Akibatnya"],
+          "rows": [
+            ["Terjadwal", "**Simpan jadwal baru**, **Terbitkan sekarang**, **Batalkan jadwal**", "Mengubah jadwal, langsung menerbitkan, atau mengembalikan berita menjadi draf."],
+            ["Draf, Terjadwal, Terbit", "**Arsipkan**", "Berita hilang dari aplikasi dan jadwal yang belum tiba dibatalkan. Banner yang menunjuknya ditandai tujuan tidak tersedia."],
+            ["Diarsipkan", "**Pulihkan ke draf**", "Berita kembali menjadi draf dan tetap tersembunyi sampai diterbitkan lagi."],
+            ["Draf yang pernah tampil", "**Terbitkan ulang sekarang**", "Berita tampil lagi dengan tanggal publikasi aslinya. Penjadwalan ulang tidak tersedia dan notifikasi tidak dikirim lagi."],
+            ["Draf, Diarsipkan", "**Hapus berita**", "Berita beserta jumlah suka-nya dihapus permanen setelah Anda mencentang pernyataan di jendela konfirmasi."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Untuk menyembunyikan berita sementara, pilih **Arsipkan**, bukan hapus. Berita yang sedang terbit atau terjadwal harus diarsipkan dahulu sebelum dapat dihapus."
+        }
+      ]
+    },
+    {
+      "id": "b12-5",
+      "title": "Membuat banner Beranda",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Banner adalah gambar besar di Beranda aplikasi. Banner tampil selama sakelar **Aktif** menyala dan waktu sekarang berada di dalam masa tayangnya. Beranda memuat paling banyak 10 banner yang sedang tayang, diurutkan menurut **Urutan tampil**. Banner hanya tampil di Beranda anggota aktif, jadi banner ditujukan kepada anggota yang sudah bergabung."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b12-banner.png",
+          "caption": "Tab Banner: tujuan tertulis di bawah judul, kolom Kategori mengikuti berita atau event tujuan, lalu masa tayang, status, dan urutan"
+        },
+        {
+          "type": "steps",
+          "title": "Membuat banner",
+          "items": [
+            { "text": "Di tab **Banner**, klik **Buat Banner**." },
+            { "text": "Isi **Judul banner** (maksimal 120 karakter). Judul ini ditulis aplikasi di atas gambar dan dibacakan pembaca layar." },
+            { "text": "Klik **Pilih gambar** untuk mengunggah **Gambar banner** (wajib). Ikuti ukuran pada subbab aturan gambar di akhir bab ini." },
+            { "text": "Pilih **Tujuan saat banner diketuk**, lalu tentukan tujuannya sesuai tabel di bawah." },
+            { "text": "Isi **Mulai tayang** (wajib) dan **Selesai tayang** dalam WIB. Kosongkan Selesai tayang bila tanpa batas akhir; bila diisi, waktunya harus setelah Mulai tayang." },
+            { "text": "Isi **Urutan tampil** (angka kecil tampil lebih dahulu), pastikan **Aktif** menyala, lalu klik **Buat banner**." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b12-banner-dialog.png",
+          "caption": "Formulir Buat banner dengan tujuan Berita: ketik judul berita, lalu pilih dari daftar"
+        },
+        {
+          "type": "table",
+          "title": "Pilihan tujuan banner",
+          "columns": ["Tujuan", "Cara mengisi", "Tidak tersedia bila"],
+          "rows": [
+            ["**Tanpa tujuan**", "Tidak perlu diisi. Banner hanya menampilkan gambar dan tidak dapat diketuk.", "-"],
+            ["**Berita**", "Ketik judul di **Berita tujuan**, lalu pilih.", "Berita belum terbit, diarsipkan, atau dihapus."],
+            ["**Event**", "Ketik judul di **Event tujuan**, lalu pilih. Admin tanpa izin Kelola event dan tiket mengisi **ID event tujuan** yang diminta dari pengurus event.", "Event masih draf, dibatalkan, sudah selesai, atau dihapus."],
+            ["**Halaman**", "Ketik judul di **Halaman tujuan**, lalu pilih.", "Halaman belum pernah terbit atau dihapus."],
+            ["**Tautan luar**", "Isi alamat lengkap yang diawali https://. Anggota diminta konfirmasi **Buka tautan luar?** sebelum tautan dibuka di peramban.", "-"]
+          ]
+        },
+        {
+          "type": "status",
+          "title": "Status banner",
+          "items": [
+            { "label": "Tayang", "tone": "success", "text": "Aktif dan berada di dalam masa tayang; terlihat di Beranda." },
+            { "label": "Terjadwal", "tone": "info", "text": "Aktif, tetapi waktu Mulai tayang belum tiba." },
+            { "label": "Berakhir", "tone": "neutral", "text": "Waktu Selesai tayang sudah lewat." },
+            { "label": "Nonaktif", "tone": "neutral", "text": "Sakelar Aktif dimatikan; banner disembunyikan tanpa dihapus." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Tujuan tidak tersedia",
+          "text": "Banner yang tujuannya tidak lagi dapat dibuka tetap tayang, tetapi diberi tanda **Tujuan tidak tersedia** di tabel, dan anggota yang mengetuknya melihat pesan bahwa konten tujuan sudah tidak tersedia. Pilih tujuan lain atau nonaktifkan banner. Buat banner setelah berita atau event tujuannya terbit."
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Beri jarak 10 pada Urutan tampil (10, 20, 30) agar banner baru mudah disisipkan. Untuk menyembunyikan banner sementara, klik ikon pensil dan matikan **Aktif**. Menghapus banner bersifat permanen dan meminta Anda mencentang pernyataan."
+        }
+      ]
+    },
+    {
+      "id": "b12-6",
+      "title": "Mengelola halaman informasi dan legal",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Tab **Halaman** berisi lima halaman baku yang wajib ada, ditambah halaman informasi yang Anda buat sendiri. Setiap halaman punya dua salinan: **Versi tayang** yang dibaca publik, dan **Draf kerja** yang sedang Anda siapkan. Menyimpan draf tidak mengubah teks yang dibaca publik; teks itu baru berganti saat Anda menerbitkan versi baru."
+        },
+        {
+          "type": "table",
+          "title": "Lima halaman baku",
+          "columns": ["Halaman", "Jenis", "Alamat di situs"],
+          "rows": [
+            ["Kebijakan Privasi", "Legal", "kapdh.or.id/kebijakan-privasi"],
+            ["Ketentuan Layanan", "Legal", "kapdh.or.id/ketentuan"],
+            ["Ketentuan Komunitas", "Legal", "kapdh.or.id/ketentuan-komunitas"],
+            ["Bantuan", "Informasi", "kapdh.or.id/bantuan"],
+            ["Tentang KAPDH", "Informasi", "kapdh.or.id/tentang"]
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Kelima halaman itu juga dibuka anggota dari menu **Akun** di aplikasi, bagian Informasi, sedangkan Kebijakan Privasi dan Ketentuan Layanan ditautkan di layar pendaftaran. Halaman baku tidak dapat dihapus dan slugnya tidak dapat diubah. Di situs, halaman Tentang juga memuat bagian Legalitas organisasi yang tidak diubah dari menu ini."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b12-halaman.png",
+          "caption": "Tab Halaman: kolom Versi tayang dan Draf kerja menunjukkan halaman yang punya perubahan belum terbit"
+        },
+        {
+          "type": "status",
+          "title": "Keterangan kolom Draf kerja",
+          "items": [
+            { "label": "Sama dengan versi tayang", "tone": "success", "text": "Tidak ada perubahan yang menunggu terbit." },
+            { "label": "Ada perubahan belum terbit", "tone": "warning", "text": "Draf tersimpan berbeda dari versi tayang dan siap diterbitkan." },
+            { "label": "Draf belum pernah terbit", "tone": "info", "text": "Halaman belum pernah terbit, sehingga belum dapat dibaca publik." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Menerbitkan versi baru",
+          "items": [
+            { "text": "Klik judul halaman. Editor terbuka di bawah tabel dengan kartu **Versi tayang** di kiri dan **Draf kerja** di kanan." },
+            { "text": "Ubah **Judul** atau **Isi halaman** di Draf kerja, lalu klik **Simpan draf**." },
+            { "text": "Klik **Terbitkan versi baru**. Tombol ini aktif bila draf tersimpan berbeda dari versi tayang." },
+            { "text": "Baca penjelasan di jendela konfirmasi, isi **Catatan perubahan** bila perlu (dicatat di audit, tidak tampil publik), centang pernyataan, lalu klik tombol yang menyebut nomor versi barunya, misalnya **Terbitkan versi 3**." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b12-halaman-editor.png",
+          "caption": "Editor halaman: versi tayang di kiri tidak berubah sampai draf kerja di kanan diterbitkan"
+        },
+        {
+          "type": "shot",
+          "img": "admin/b12-terbit-versi.png",
+          "caption": "Konfirmasi terbit dokumen legal: versi naik dan teksnya menjadi acuan persetujuan pengguna"
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Dampak versi legal pada anggota",
+          "text": "Setiap penerbitan menaikkan nomor versi halaman. Untuk Kebijakan Privasi dan Ketentuan Layanan, versi terbaru menjadi acuan persetujuan pendaftar baru; bila versinya berubah saat seseorang sedang mendaftar, aplikasi memintanya membaca ulang dan mencentang kembali. Anggota yang sudah terdaftar tidak diminta menyetujui ulang, jadi umumkan perubahan penting lebih dahulu lewat berita."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "text": "Versi yang sudah terbit tidak dapat dibatalkan; perbaikan diterbitkan sebagai versi berikutnya. Pendaftaran anggota baru belum dapat dibuka sebelum Kebijakan Privasi dan Ketentuan Layanan pernah terbit."
+        },
+        {
+          "type": "list",
+          "title": "Halaman informasi tambahan",
+          "items": [
+            "Klik **Buat Halaman**, isi **Judul**, **Slug** (wajib), dan **Isi halaman**, lalu klik **Simpan draf**. Halaman baru selalu dimulai sebagai draf, lalu diterbitkan dengan langkah di atas.",
+            "Slug halaman tidak dapat diubah lagi setelah halaman pertama kali terbit.",
+            "Situs dan menu Akun aplikasi hanya memuat lima halaman baku. Anggota membuka halaman informasi tambahan melalui banner bertujuan **Halaman**.",
+            "Halaman tambahan dapat dihapus. Banner yang menunjuknya lalu ditandai tujuan tidak tersedia.",
+            "Bila pengaturan yang disebut naskah berubah, misalnya batas pembatalan tiket atau kontak dukungan, perbarui naskah halaman yang menyebutnya, lalu terbitkan versi baru."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b12-7",
+      "title": "Gambar, konflik, dan perubahan belum disimpan",
+      "blocks": [
+        {
+          "type": "table",
+          "title": "Ukuran gambar yang disarankan",
+          "columns": ["Pemakaian", "Ukuran file", "Tampilan di aplikasi"],
+          "rows": [
+            ["**Gambar cover** berita", "1600 x 900 px, JPG", "Rasio 16:9 di kartu dan detail berita, dipotong dari tengah. Beri jarak tepi 64 px."],
+            ["**Gambar banner**", "1760 x 800 px, JPG", "Tepat 2,2:1. Letakkan elemen penting di bagian atas (kira-kira 40-420 px dari atas); pita bawah dipakai aplikasi untuk judul banner."]
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Aturan unggah gambar",
+          "items": [
+            "Format JPG atau PNG, maksimal 5 MB per berkas. Usahakan di bawah 1 MB (JPG kualitas 80-85).",
+            "Ekstensi berkas harus sesuai format aslinya karena isi berkas ikut diperiksa. Batasnya 12.000 px per sisi dan 40 megapiksel.",
+            "Setiap admin dapat mengunggah paling banyak 10 gambar per jenis (cover berita atau gambar banner) dalam 24 jam.",
+            "Gambar yang diunggah tetapi tidak ikut tersimpan ke berita atau banner dalam 24 jam dihapus otomatis. Unggah gambar saat Anda langsung menyimpan kontennya.",
+            "Gambar konten bersifat publik. Jangan memuat KTA, nomor anggota, kode QR, atau wajah yang dapat dikenali tanpa izin yang bersangkutan.",
+            "Jangan menulis ulang judul di dalam gambar; cukup logo KAPDH atau satu kata kunci.",
+            "Selama gambar masih diunggah, tombol simpan dan terbit ditahan sampai unggahan selesai."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Bila pengurus lain menyunting bersamaan",
+          "text": "Bila berita, banner, kategori, atau halaman yang Anda buka sudah diubah pengurus lain, simpanan Anda ditolak dan muncul pemberitahuan berisi status terbaru serta tombol **Muat ulang versi terbaru**. Isian Anda belum hilang: salin dahulu bagian yang ingin dipertahankan, lalu muat ulang dan terapkan kembali perubahan Anda."
+        },
+        {
+          "type": "p",
+          "text": "Pemberitahuan serupa muncul bila status berubah dengan sendirinya, misalnya jadwal terbit tiba saat editor masih terbuka sehingga jadwal tidak dapat dibatalkan lagi. Selama pemberitahuan ini tampil, tombol simpan dan terbit ditahan sampai Anda memuat ulang."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Perubahan belum disimpan",
+          "text": "Di editor berita dan halaman, berpindah halaman, berganti tab, atau klik **Tutup editor** selagi ada perubahan memunculkan jendela **Tinggalkan tanpa menyimpan?**. Pilih **Tetap di sini** lalu simpan, atau **Tinggalkan** untuk membuang perubahan. Menutup atau memuat ulang tab peramban juga memicu peringatan. Formulir banner dan kategori langsung tertutup tanpa menyimpan bila Anda klik **Batal**."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "kapdh-platform/apps/admin/src/routes/content/ContentPages.tsx",
+    "kapdh-platform/apps/admin/src/routes/content/PostsTab.tsx",
+    "kapdh-platform/apps/admin/src/routes/content/PostEditorPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/content/PostPublishPanel.tsx",
+    "kapdh-platform/apps/admin/src/routes/content/PostPreview.tsx",
+    "kapdh-platform/apps/admin/src/routes/content/BannersTab.tsx",
+    "kapdh-platform/apps/admin/src/routes/content/BannerFormDialog.tsx",
+    "kapdh-platform/apps/admin/src/routes/content/BannerTargetField.tsx",
+    "kapdh-platform/apps/admin/src/routes/content/CategoriesTab.tsx",
+    "kapdh-platform/apps/admin/src/routes/content/PagesTab.tsx",
+    "kapdh-platform/apps/admin/src/routes/content/ContentImageField.tsx",
+    "kapdh-platform/apps/admin/src/routes/content/ConflictNotice.tsx",
+    "kapdh-platform/apps/admin/src/routes/content/useLeaveGuard.tsx",
+    "kapdh-platform/apps/admin/src/routes/content/labels.tsx",
+    "kapdh-platform/apps/admin/src/routes/content/contentApi.ts (CONTENT_PAGE_SIZE 20)",
+    "kapdh-platform/apps/admin/src/components/ui/RichTextEditorImpl.tsx",
+    "kapdh-platform/apps/admin/src/api/files.ts (JPG/PNG <= 5 MB)",
+    "kapdh-platform/apps/admin/src/nav.ts",
+    "kapdh-platform/apps/api/src/modules/content/posts.service.ts",
+    "kapdh-platform/apps/api/src/modules/content/content-announce.service.ts (setiap 60 detik, anggota verified/expiring)",
+    "kapdh-platform/apps/api/src/modules/content/banners.service.ts (HOME_BANNER_LIMIT 10)",
+    "kapdh-platform/apps/api/src/modules/content/pages.service.ts",
+    "kapdh-platform/apps/api/src/modules/content/content.util.ts (SYSTEM_PAGES)",
+    "kapdh-platform/apps/api/src/modules/content/html-sanitizer.ts",
+    "kapdh-platform/apps/api/src/modules/content/content-media.service.ts",
+    "kapdh-platform/apps/api/src/core/files/purposes.ts (kuota 10/24 jam, berkas sementara 24 jam)",
+    "kapdh-platform/apps/api/src/core/files/inspect.ts (12.000 px, 40 MP)",
+    "kapdh-platform/apps/api/src/modules/auth/auth.service.ts (persetujuan versi legal)",
+    "kapdh-mobile/lib/features/auth/register_screen.dart",
+    "kapdh-mobile/lib/features/account/account_screen.dart",
+    "kapdh-mobile/lib/features/home/shared/links.dart",
+    "kapdh-platform/apps/web/src/lib/site.ts (INFO_PAGES)",
+    "kapdh-platform/apps/web/src/pages/[slug].astro dan components/OrganizationLegal.astro (bagian Legalitas statis di /tentang)",
+    "kapdh-platform/apps/admin/src/routes/notifications/NotificationsPage.tsx (hanya pemantauan pengiriman, tanpa kirim massal)",
+    "kapdh-platform/apps/admin/src/components/layout/Sidebar.tsx",
+    "kapdh-platform/apps/api/src/modules/admin/permissions-catalog.ts (label izin Kelola konten, Kelola event dan tiket)",
+    "kapdh-platform/apps/api/src/modules/content/content.controller.ts (Beranda dan berita hanya anggota aktif)",
+    "kapdh-mobile/lib/features/news/widgets/post_card.dart (ringkasan hanya di kartu berita)",
+    "kapdh-mobile/lib/features/news/news_list_screen.dart (tab kategori)",
+    "kapdh-mobile/lib/features/home/widgets/banner_carousel.dart",
+    "docs/qa/uat-checklist.md (U-04 Konten)",
+    "docs/legal/bantuan.html (berita tanpa email, push per kategori)",
+    "docs/handoff/phase-c/admin-content.md",
+    "docs/konten/konten-peluncuran.md (aturan gambar, kategori, urutan penerbitan)",
+    "docs/legal/README.md (tidak ada persetujuan ulang anggota lama)"
+  ]
+}

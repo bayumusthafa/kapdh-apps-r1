@@ -1,0 +1,413 @@
+{
+  "id": "b06",
+  "part": "anggota",
+  "title": "Event dan Tiket",
+  "kicker": "Aplikasi Anggota",
+  "summary": "Bab ini memandu Anda dari menemukan acara alumni sampai hadir di lokasi: mendaftar event gratis atau berbayar, memantau tiket, menunjukkan QR saat check-in, serta membatalkan tiket dan memahami refund.",
+  "icon": "ph-ticket",
+  "highlights": [
+    "Mencari event serta membaca label pendaftaran dan kuota",
+    "Mendaftar event gratis dan event berbayar",
+    "Memantau tiket di Tiket Saya dan arti setiap status",
+    "Menunjukkan QR tiket saat check-in di lokasi acara",
+    "Membatalkan tiket, aturan refund H-3, dan bila event dibatalkan"
+  ],
+  "sections": [
+    {
+      "id": "b06-1",
+      "title": "Menemukan event",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Event adalah acara alumni yang diterbitkan pengurus, misalnya silaturahmi, kajian, atau workshop. Daftar event dan pendaftaran event baru adalah layanan bagi anggota yang keanggotaannya aktif. Bila KTA Anda belum aktif atau sudah kedaluwarsa, tab **Event** bertanda gembok dan menampilkan penjelasan **Event khusus anggota aktif**, tetapi tiket yang sudah lunas tetap dapat dibuka di **Tiket Saya** (status keanggotaan dijelaskan di Bab 4)."
+        },
+        {
+          "type": "steps",
+          "items": [
+            { "text": "Ketuk tab **Event** di bilah bawah aplikasi." },
+            { "text": "Untuk mencari, ketik nama acara atau nama lokasinya di kolom **Cari event…** Hasil diperbarui sendiri begitu Anda berhenti mengetik." },
+            { "text": "Ketuk salah satu kategori di bawah kolom pencarian. **Semua** menampilkan seluruh kategori; kategori lain dibuat oleh pengurus." },
+            { "text": "Pilih **Mendatang** untuk acara yang belum berakhir, atau **Lampau** untuk acara yang sudah lewat." },
+            { "text": "Ketuk kartu event untuk membuka **Detail Event**. Bila pencarian atau kategori tidak menemukan hasil, ketuk **Hapus filter** untuk mengembalikan daftar lengkap." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b06-daftar-event.png", "caption": "Daftar event dengan pencarian, kategori, dan pilihan Mendatang atau Lampau" }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Setiap kartu menampilkan sampul, kategori, nama acara, tanggal, dan lokasi. Di bagian bawah kartu ada label pendaftaran di kiri dan harga di kanan, berupa **Gratis** atau nominal rupiah. Bila Anda pernah mendaftar di event itu, kartu juga menampilkan status tiket Anda."
+        },
+        {
+          "type": "status",
+          "title": "Label pendaftaran di kartu dan detail event",
+          "items": [
+            { "label": "Pendaftaran Dibuka", "tone": "success", "text": "Anda dapat mendaftar sekarang selama kursi masih tersedia." },
+            { "label": "Pendaftaran Belum Dibuka", "tone": "info", "text": "Jadwal buka pendaftaran belum tiba. Tanggalnya tertulis di detail event." },
+            { "label": "Kuota Penuh", "tone": "warning", "text": "Semua kursi sudah terisi atau sedang ditahan. Kursi dapat tersedia lagi bila ada reservasi yang berakhir atau dibatalkan." },
+            { "label": "Pendaftaran Ditutup", "tone": "danger", "text": "Batas pendaftaran sudah lewat, pengurus menutup pendaftaran, atau acaranya sudah selesai." },
+            { "label": "Event Dibatalkan", "tone": "danger", "text": "Pengurus membatalkan acara ini dan seluruh QR tiketnya tidak berlaku." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Acara daring dan tatap muka",
+          "text": "Aplikasi tidak memakai label khusus untuk acara daring. Perhatikan baris lokasi: kartu event menampilkan nama tempat, sedangkan detail event menampilkan nama tempat beserta alamatnya. Untuk acara daring, baris lokasi berisi keterangan daring dari pengurus, misalnya nama platform pertemuan. Cara bergabung dijelaskan di deskripsi event atau diumumkan pengurus melalui berita."
+        }
+      ]
+    },
+    {
+      "id": "b06-2",
+      "title": "Membaca detail event",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Halaman **Detail Event** dibuka dengan sampul, kategori, label pendaftaran, nama, dan deskripsi acara, termasuk susunan acara bila pengurus menuliskannya. Gulir ke bawah untuk melihat kartu informasi. Semua jam ditampilkan dalam zona waktu acara, misalnya WIB."
+        },
+        {
+          "type": "table",
+          "title": "Isi kartu informasi event",
+          "columns": ["Baris", "Artinya"],
+          "rows": [
+            ["Jadwal", "Hari, tanggal, serta jam mulai dan selesai acara."],
+            ["Lokasi", "Nama tempat dan alamat. Bila pengurus menyediakan peta, ketuk **Buka peta lokasi (tautan luar)**, lalu **Buka** pada jendela konfirmasi untuk membuka peta di luar aplikasi."],
+            ["Kuota Peserta", "Ditulis sisa/total. Contoh 72/200 berarti masih ada 72 kursi dari 200. Kursi yang sedang ditahan reservasi berbayar ikut mengurangi sisa."],
+            ["Harga tiket", "**Gratis** atau nominal rupiah, untuk satu tiket atas nama Anda sendiri."],
+            ["Pendaftaran", "Rentang waktu Anda dapat mendaftar."],
+            ["Check-in", "Rentang waktu QR tiket dapat dipindai petugas di lokasi acara."]
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b06-detail-info.png", "caption": "Kartu informasi, aturan pembatalan, dan tombol Daftar Sekarang" }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Bila Anda sudah memiliki tiket di event itu, kartu **Tiket Anda** di bawah kartu informasi menampilkan statusnya; ketuk untuk membuka **Detail Tiket**. Berikutnya ada kotak **Pembatalan dan refund** yang merangkum aturan pembatalan event tersebut. Selama pendaftaran dibuka, event berbayar juga menampilkan berapa lama kursi ditahan setelah Anda mendaftar. Bagian **Peserta**, yang hanya terlihat oleh anggota aktif, berisi anggota yang tiketnya sudah terkonfirmasi dan memilih tampil di direktori alumni. Ketuk nama peserta untuk membuka profilnya, atau **Lihat peserta lainnya** untuk memuat lebih banyak."
+        },
+        {
+          "type": "table",
+          "title": "Tombol di bagian bawah Detail Event",
+          "columns": ["Yang tampil", "Artinya"],
+          "rows": [
+            ["**Daftar Sekarang**", "Pendaftaran dibuka dan Anda dapat mendaftar."],
+            ["**Lihat Tiket Saya**", "Anda sudah memiliki tiket aktif di event ini. Satu anggota hanya dapat memiliki satu tiket aktif per event."],
+            ["**Pendaftaran Belum Dibuka**", "Tombol belum dapat diketuk. Di atasnya tertulis kapan pendaftaran dibuka."],
+            ["**Kuota Penuh**", "Tombol belum dapat diketuk. Buka lagi nanti; kursi dapat tersedia kembali bila ada reservasi yang berakhir atau dibatalkan."],
+            ["**Pendaftaran Ditutup** atau **Event Dibatalkan**", "Pendaftaran tidak dapat dilakukan lagi."],
+            ["**Perpanjang KTA** atau **Bayar iuran**", "Keanggotaan Anda sudah kedaluwarsa atau belum aktif. Ketuk tombol itu untuk menyelesaikan iuran (lihat Bab 3)."],
+            ["Catatan pemeliharaan di atas tombol", "Layanan sedang dalam pemeliharaan sehingga pendaftaran ditunda. Coba lagi setelah layanan normal."]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b06-3",
+      "title": "Mendaftar event gratis atau berbayar",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Pendaftaran selalu dimulai dari tombol **Daftar Sekarang** di **Detail Event**. Setiap pendaftaran berlaku untuk satu orang, yaitu Anda sendiri. Tidak ada pemesanan untuk rombongan, keluarga, atau tamu; setiap anggota yang ingin hadir mendaftar dari akunnya sendiri."
+        },
+        {
+          "type": "steps",
+          "title": "Event gratis",
+          "items": [
+            { "text": "Buka event berharga **Gratis** yang berlabel **Pendaftaran Dibuka**, lalu ketuk **Daftar Sekarang**." },
+            { "text": "Periksa nama dan jadwal acara di jendela **Daftar event gratis?**, lalu ketuk **Daftar**. Ketuk **Batal** bila tidak jadi." },
+            { "text": "Tiket langsung terbit tanpa pembayaran. Aplikasi menampilkan pesan Pendaftaran berhasil dan membuka **Detail Tiket** yang sudah berisi QR." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Event berbayar",
+          "items": [
+            { "text": "Ketuk **Daftar Sekarang**. Layar **Konfirmasi Pendaftaran** terbuka." },
+            { "text": "Periksa **Nama Event**, **Peserta**, dan **Harga Tiket**." },
+            { "text": "Pilih satu tujuan pembayaran di **Metode Pembayaran**, misalnya transfer bank atau QRIS. Nomor rekening tujuan tampil setelah dipilih." },
+            { "text": "Periksa **Ringkasan** dan **Total Pembayaran**, lalu ketuk **Daftar dan Lanjut Bayar**. Tombol ini baru aktif setelah metode dipilih." },
+            { "text": "Aplikasi membuka halaman pembayaran dan menampilkan batas tahan kursi Anda. Transfer sesuai nominal, atau untuk QRIS pindai kodenya dan masukkan nominal persis, lalu unggah bukti sebelum batas waktu. Cara mengirim bukti dijelaskan di Bab 3." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b06-dialog-gratis.png", "caption": "Konfirmasi pendaftaran event gratis" },
+            { "img": "mobile/b06-ringkasan-berbayar.png", "caption": "Event berbayar: metode dipilih, ringkasan, dan batas tahan kursi" },
+            { "img": "mobile/b06-menunggu-pembayaran.png", "caption": "Tiket menunggu pembayaran dengan hitung mundur batas kirim bukti" }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Selama bukti belum dikirim, tiket berstatus **Menunggu Pembayaran**. **Detail Tiket** menampilkan hitung mundur **Selesaikan pembayaran dalam** dan **Batas kirim bukti**. Ketuk **Bayar Sekarang** untuk kembali ke halaman pembayaran kapan saja sebelum batas itu."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Kursi ditahan hanya sampai batas waktu",
+          "text": "Kursi ditahan paling lama 24 jam sejak Anda mendaftar, atau sampai pendaftaran ditutup bila itu lebih dahulu. Lamanya ditetapkan pengurus, jadi selalu ikuti batas yang tertulis di aplikasi. Reservasi tanpa bukti berakhir otomatis: tiket menjadi **Kedaluwarsa** dan kursinya dilepas. Jangan mentransfer untuk reservasi yang sudah kedaluwarsa."
+        },
+        {
+          "type": "list",
+          "title": "Setelah bukti pembayaran terkirim",
+          "items": [
+            "Tiket berubah menjadi **Menunggu Verifikasi**. Kursi tetap ditahan sampai pengurus memutuskan, walaupun pemeriksaan memakan waktu.",
+            "Pemeriksaan yang belum selesai dalam 2 hari kerja, atau saat check-in sudah akan dibuka, ditandai agar segera ditindaklanjuti pengurus.",
+            "Bila pembayaran dinyatakan lunas, tiket menjadi **Terkonfirmasi** dan QR tiket terbit.",
+            "Bila bukti ditolak, keputusan itu final untuk tiket: tiket dibatalkan dan kursi dilepas. Anda dapat mendaftar ulang bila kuota masih tersedia."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Harga berubah atau koneksi terputus",
+          "text": "Bila pengurus mengubah harga saat Anda sedang mendaftar, aplikasi menampilkan **Harga tiket berubah** dan tombol menjadi **Setuju Harga Baru dan Daftar**; Anda belum terdaftar sebelum menyetujuinya. Bila koneksi terputus, aplikasi memeriksa dulu apakah pendaftaran sudah tercatat, sehingga Anda tidak akan terdaftar dua kali."
+        }
+      ]
+    },
+    {
+      "id": "b06-4",
+      "title": "Tiket Saya dan arti status tiket",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Semua tiket Anda terkumpul di **Tiket Saya**. Buka dari ikon tiket di kanan atas layar **Event**, tombol **Tiket Saya** di Beranda, atau menu **Akun** lalu **Tiket saya**. Ketuk sebuah tiket untuk membuka **Detail Tiket**."
+        },
+        {
+          "type": "p",
+          "text": "Tab **Aktif** berisi tiket yang masih berlaku atau masih diproses untuk acara yang belum berakhir dan tidak dibatalkan, diurutkan dari acara terdekat. Tiket yang menunggu pembayaran menampilkan keterangan **Kirim bukti sebelum** beserta batas waktunya. Tab **Riwayat** berisi tiket yang kedaluwarsa atau dibatalkan, serta tiket untuk acara yang sudah selesai atau dibatalkan pengurus, diurutkan dari yang terakhir Anda daftarkan."
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b06-tiket-saya.png", "caption": "Tab Aktif: tiket terkonfirmasi, menunggu verifikasi, dan menunggu pembayaran" }
+          ]
+        },
+        {
+          "type": "status",
+          "title": "Arti status tiket",
+          "items": [
+            { "label": "Menunggu Pembayaran", "tone": "warning", "text": "Kursi ditahan. Kirim bukti pembayaran sebelum batas waktu." },
+            { "label": "Menunggu Verifikasi", "tone": "info", "text": "Bukti sudah terkirim dan sedang diperiksa pengurus. Kursi tetap ditahan." },
+            { "label": "Terkonfirmasi", "tone": "success", "text": "Tiket berlaku. QR untuk check-in tersedia di Detail Tiket." },
+            { "label": "Sudah Check-in", "tone": "success", "text": "QR sudah dipindai petugas dan Anda tercatat hadir." },
+            { "label": "Kedaluwarsa", "tone": "neutral", "text": "Bukti tidak dikirim sebelum batas waktu sehingga kursi dilepas. Daftar ulang bila kuota masih ada." },
+            { "label": "Dibatalkan", "tone": "neutral", "text": "Tiket dibatalkan oleh Anda, oleh pengurus, atau karena bukti ditolak. Bila ada label kedua berwarna merah bertuliskan Dibatalkan, acaranya yang dibatalkan pengurus." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Anggota yang KTA-nya sudah kedaluwarsa tetap dapat membuka dan memakai tiket **Terkonfirmasi**. Buka dari tombol **Tiket Saya** di Beranda, atau ketuk tab **Event** yang bergembok lalu **Lihat Tiket Saya**. Yang memerlukan keanggotaan aktif adalah pendaftaran event baru."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Batas sudah lewat tetapi status belum berubah",
+          "text": "Bila batas kirim bukti sudah lewat tetapi tiket masih tampil menunggu pembayaran, misalnya karena ponsel sempat tanpa sinyal, **Detail Tiket** menampilkan **Status reservasi belum terbaru**. Jangan mentransfer. Ketuk **Muat ulang** untuk melihat status terbaru."
+        }
+      ]
+    },
+    {
+      "id": "b06-5",
+      "title": "Check-in di lokasi dengan QR tiket",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "QR tiket hanya tersedia untuk tiket **Terkonfirmasi**: langsung setelah mendaftar event gratis, atau setelah pembayaran event berbayar dinyatakan lunas. Jendela check-in tertulis di detail event dan di detail tiket. Bila pengurus tidak menetapkan jadwal lain, check-in dibuka 2 jam sebelum acara dimulai dan ditutup saat acara selesai."
+        },
+        {
+          "type": "steps",
+          "items": [
+            { "text": "Sebelum berangkat, buka **Tiket Saya** lalu ketuk tiket acara tersebut." },
+            { "text": "Setibanya di meja registrasi dalam jendela check-in, tunjukkan QR di **Detail Tiket** kepada petugas." },
+            { "text": "Petugas memindai QR dan dapat mencocokkan nama, nomor anggota, dan foto Anda." },
+            { "text": "Setelah dipindai, tarik layar ke bawah untuk memuat ulang. Status tiket menjadi **Sudah Check-in** beserta waktu kehadiran Anda." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b06-qr-tiket.png", "caption": "QR tiket terkonfirmasi beserta jendela check-in" }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Yang perlu diperhatikan",
+          "items": [
+            "Satu QR hanya dapat dipindai sekali. Jangan membagikan QR tiket atau fotonya kepada orang lain.",
+            "Pemindaian sebelum jendela check-in dibuka atau sesudah ditutup akan ditolak.",
+            "Tiket yang masih **Menunggu Pembayaran** atau **Menunggu Verifikasi** belum dapat dipakai untuk check-in.",
+            "Tiket tidak dapat dipakai selama akun Anda dibatasi pengurus.",
+            "Untuk acara daring, ikuti petunjuk pengurus di deskripsi event atau berita; acara daring umumnya tidak memakai check-in dengan QR."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Siapkan koneksi internet",
+          "text": "Berbeda dengan KTA digital, tiket tidak disimpan untuk dibuka tanpa internet. Bila sinyal di lokasi lemah, buka **Detail Tiket** sebelum masuk antrean selagi sinyal masih baik, lalu biarkan layar itu tetap terbuka sampai QR dipindai."
+        }
+      ]
+    },
+    {
+      "id": "b06-6",
+      "title": "Membatalkan tiket dan refund",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Bila berhalangan hadir, batalkan tiket agar kursinya dapat dipakai anggota lain. Tombol pembatalan ada di bagian bawah **Detail Tiket**: **Batalkan Reservasi** untuk reservasi yang belum dikirimi bukti, atau **Batalkan Tiket** untuk tiket terkonfirmasi. Pembatalan hanya dapat dilakukan sebelum acara dimulai dan sebelum Anda check-in."
+        },
+        {
+          "type": "steps",
+          "items": [
+            { "text": "Buka **Detail Tiket**, lalu baca kotak **Aturan pembatalan** yang menyebutkan batas refund untuk tiket Anda." },
+            { "text": "Ketuk **Batalkan Tiket** atau **Batalkan Reservasi**." },
+            { "text": "Baca akibatnya di jendela konfirmasi, terutama apakah Anda mendapat refund." },
+            { "text": "Isi **Alasan (opsional)** bila perlu, lalu ketuk **Batalkan tiket** atau **Batalkan reservasi**. Ketuk **Kembali** bila tidak jadi." }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Aturan pembatalan mandiri",
+          "columns": ["Keadaan tiket", "Dapat dibatalkan sendiri?", "Refund"],
+          "rows": [
+            ["**Menunggu Pembayaran** (belum kirim bukti)", "Ya", "Tidak ada dana yang dikembalikan karena belum membayar. Instruksi pembayaran ikut dibatalkan; jangan transfer lagi."],
+            ["**Menunggu Verifikasi**", "Tidak, karena dana mungkin sudah ditransfer", "Tunggu keputusan pengurus atau hubungi pengurus."],
+            ["**Terkonfirmasi**, event berbayar, sampai batas H-3", "Ya", "Refund penuh."],
+            ["**Terkonfirmasi**, event berbayar, lewat H-3 sampai acara dimulai", "Ya", "Tanpa refund."],
+            ["**Terkonfirmasi**, event gratis", "Ya, sebelum acara dimulai", "Tidak ada refund. Kursi dilepas untuk anggota lain."],
+            ["**Sudah Check-in**, atau acara sudah dimulai", "Tidak", "Tidak berlaku."]
+          ]
+        },
+        {
+          "type": "p",
+          "text": "H-3 berarti tiga hari kalender sebelum acara, pada jam yang sama dengan jam mulai, dalam zona waktu acara. Contoh: acara yang dimulai Minggu pukul 08.00 WIB memiliki batas refund penuh Kamis pukul 08.00 WIB. Jumlah harinya ditetapkan pengurus dengan nilai bawaan 3 hari, dan batas yang berlaku selalu tertulis di kotak aturan serta di jendela konfirmasi."
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b06-dialog-batal-refund.png", "caption": "Konfirmasi pembatalan sebelum batas H-3: refund penuh" },
+            { "img": "mobile/b06-refund-diproses.png", "caption": "Tiket dibatalkan dengan refund yang sedang diproses" }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Refund tidak otomatis masuk rekening",
+          "text": "Refund ditransfer manual oleh bendahara paling lambat 7 hari kerja sejak pembatalan. Ketuk **Isi rekening tujuan refund** pada kartu **Refund**, lalu isi rekening Anda di halaman pembayaran (lihat Bab 3). Pantau statusnya di **Detail Tiket**, dari **Refund Diproses** sampai **Refund Selesai**."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "text": "Bila saat Anda membatalkan ternyata data tiket berubah, misalnya batas H-3 baru saja lewat, aplikasi menampilkan **Data tiket berubah** dan menampilkan keadaan terbaru. Baca kembali sebelum mencoba lagi. Setelah tiket dibatalkan, Anda dapat mendaftar ulang bila pendaftaran masih dibuka dan kuota tersedia."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Sebelum menghapus akun",
+          "text": "Tiket event yang masih aktif hangus bila akun dihapus, dan penghapusan tidak menunggu refund yang sedang berjalan. Bila Anda berhak atas refund, batalkan tiket lebih dahulu dan tunggu sampai refund berstatus **Refund Selesai**. Penghapusan akun dijelaskan di Bab 8."
+        }
+      ]
+    },
+    {
+      "id": "b06-7",
+      "title": "Bila event diubah atau dibatalkan pengurus",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Bila pengurus membatalkan acara, semua tiket acara itu ikut dibatalkan dan seluruh QR tidak berlaku. Anda menerima notifikasi pembatalan beserta alasannya, dan **Detail Tiket** maupun **Detail Event** menampilkan kotak **Event dibatalkan**. Peserta yang sudah membayar mendapat refund penuh yang diproses bendahara paling lambat 7 hari kerja. Bila bukti Anda masih diperiksa, refund diproses setelah pembayaran diverifikasi."
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b06-event-dibatalkan.png", "caption": "Tiket berlabel Dibatalkan dan label merah Dibatalkan untuk acara yang dibatalkan pengurus" }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Pemberitahuan lain tentang event yang Anda ikuti",
+          "items": [
+            "Perubahan jadwal atau lokasi: notifikasi Jadwal atau lokasi diperbarui. Buka tiket untuk melihat jadwal dan lokasi terbaru. Pengingat acara ikut menyesuaikan jadwal baru.",
+            "Pengingat 3 hari dan 1 hari sebelum acara untuk tiket **Terkonfirmasi**, agar Anda menyiapkan QR tiket.",
+            "Pengurus dapat membatalkan tiket Anda dengan alasan tertulis yang dikirim sebagai notifikasi. Untuk tiket berbayar yang sudah lunas, pengurus memutuskan refund per kasus; bila diberikan, refund penuh diproses bendahara.",
+            "Reservasi yang kedaluwarsa juga diberitahukan, sehingga Anda tahu kursinya sudah dilepas.",
+            "Semua pemberitahuan tersimpan di kotak masuk **Notifikasi**, termasuk bila push atau email kategori Event Anda matikan. Kotak masuk notifikasi dijelaskan di Bab 5."
+          ]
+        },
+        {
+          "type": "faq",
+          "items": [
+            {
+              "q": "Bisakah saya mendaftarkan istri, anak, atau teman?",
+              "a": "Tidak. Satu tiket hanya berlaku untuk anggota yang mendaftar. Anggota lain yang ingin hadir mendaftar dari akunnya masing-masing."
+            },
+            {
+              "q": "Mengapa nama saya tidak muncul di daftar Peserta?",
+              "a": "Daftar Peserta hanya menampilkan pemegang tiket **Terkonfirmasi** yang keanggotaannya aktif, akunnya tidak sedang dibatasi, dan memilih tampil di direktori alumni. Anggota yang saling memblokir juga tidak saling melihat di daftar ini. Tiket Anda tetap berlaku walaupun nama Anda tidak tampil. Pengaturan tampil di direktori dijelaskan di Bab 8."
+            },
+            {
+              "q": "Tiket saya Kedaluwarsa padahal saya sudah mentransfer. Apa yang harus dilakukan?",
+              "a": "Reservasi yang kedaluwarsa tidak dapat dihidupkan kembali dan buktinya tidak dapat dikirim lagi. Hubungi pengurus melalui kanal bantuan (lihat Bab 17) dengan menyertakan email akun, nama event, nominal, dan tanggal transfer. Bila kuota masih tersedia, Anda dapat mendaftar ulang."
+            },
+            {
+              "q": "Event yang saya cari tidak ada di daftar.",
+              "a": "Periksa pilihan **Mendatang** atau **Lampau** dan kategori yang aktif, lalu ketuk **Hapus filter**. Event yang masih berupa draf pengurus belum tampil di aplikasi."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "kapdh-mobile/lib/features/events/events_screen.dart",
+    "kapdh-mobile/lib/features/events/widgets/event_card.dart",
+    "kapdh-mobile/lib/features/events/event_format.dart",
+    "kapdh-mobile/lib/features/events/event_detail_screen.dart",
+    "kapdh-mobile/lib/features/events/reservation.dart",
+    "kapdh-mobile/lib/features/events/reservation_screen.dart",
+    "kapdh-mobile/lib/features/events/events_repository.dart",
+    "kapdh-mobile/lib/features/tickets/tickets_screen.dart",
+    "kapdh-mobile/lib/features/tickets/ticket_detail_screen.dart",
+    "kapdh-mobile/lib/features/tickets/widgets/hold_countdown.dart",
+    "kapdh-mobile/lib/design/status_badge.dart",
+    "kapdh-mobile/lib/app/theme/kapdh_tokens.dart",
+    "kapdh-mobile/lib/features/home/home_screen.dart",
+    "kapdh-mobile/lib/features/account/account_screen.dart",
+    "kapdh-mobile/lib/app/app_shell.dart",
+    "kapdh-mobile/lib/features/home/shared/member_gate.dart",
+    "kapdh-mobile/lib/features/home/shared/links.dart",
+    "kapdh-mobile/lib/features/events/events_controllers.dart",
+    "kapdh-platform/apps/api/src/modules/events/checkin.service.ts",
+    "kapdh-platform/apps/api/src/modules/events/event-views.ts",
+    "kapdh-platform/apps/api/src/modules/payments/payment-sql.ts",
+    "kapdh-platform/apps/api/src/modules/account/deletion-disclosure.service.ts",
+    "kapdh-platform/apps/api/src/modules/notifications/channel-policy.ts",
+    "docs/qa/uat-checklist.md",
+    "kapdh-platform/apps/api/src/modules/events/event-rules.ts",
+    "kapdh-platform/apps/api/src/modules/events/member-events.service.ts",
+    "kapdh-platform/apps/api/src/modules/events/reservations.service.ts",
+    "kapdh-platform/apps/api/src/modules/events/events-jobs.service.ts",
+    "kapdh-platform/apps/api/src/modules/events/admin-events.service.ts",
+    "kapdh-platform/apps/api/src/modules/events/ticket-payment.handler.ts",
+    "kapdh-platform/apps/api/src/modules/events/ticket-ledger.ts",
+    "kapdh-platform/apps/api/src/modules/payments/payment-rules.ts",
+    "kapdh-platform/apps/api/src/core/settings/keys.ts",
+    "kapdh-platform/packages/database/seeds/reference.ts",
+    "kapdh-platform/packages/database/src/schema/events.ts",
+    "docs/adr/017-token-qr-kta-dan-qr-tiket.md",
+    "docs/legal/bantuan.html",
+    "docs/konten/konten-peluncuran.md",
+    "kapdh-mobile/mockup-html/event/events.html",
+    "kapdh-mobile/mockup-html/event/event-detail.html",
+    "kapdh-mobile/mockup-html/event/reservation.html",
+    "kapdh-mobile/mockup-html/event/tickets.html",
+    "kapdh-mobile/mockup-html/event/ticket-detail.html"
+  ]
+}

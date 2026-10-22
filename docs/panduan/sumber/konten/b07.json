@@ -1,0 +1,548 @@
+{
+  "id": "b07",
+  "part": "anggota",
+  "title": "Jejaring dan Pesan",
+  "kicker": "Aplikasi Anggota",
+  "summary": "Bab ini memandu Anda menemukan sesama alumni di direktori, membaca profil mereka, bertukar pesan pribadi dan pesan grup, serta menjaga kenyamanan dengan fitur laporan dan blokir.",
+  "icon": "ph-users-three",
+  "highlights": [
+    "Mencari alumni dengan nama, angkatan, kelas, kota, profesi, keahlian",
+    "Membaca profil alumni sesuai pengaturan privasi pemiliknya",
+    "Mengirim, membalas, dan menghapus pesan pribadi maupun grup",
+    "Membuat grup, menjawab undangan, dan keluar dari grup",
+    "Melaporkan, memblokir, dan memantau status di Laporan saya"
+  ],
+  "sections": [
+    {
+      "id": "b07-1",
+      "title": "Mengenal tab Jejaring",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Tab **Jejaring** di bilah bawah adalah tempat Anda menemukan sesama alumni dan bercakap dengan mereka. Di bagian atas ada kotak pencarian **Cari relasi dengan alumni ...** dan tombol filter di sebelah kanannya. Di bawahnya ada tiga tab."
+        },
+        {
+          "type": "table",
+          "columns": ["Tab", "Isinya"],
+          "rows": [
+            ["**Jejaring**", "Direktori alumni aktif yang memilih tampil. Ketuk kartu alumni untuk membuka profilnya."],
+            ["**Pesan**", "Percakapan pribadi Anda dengan satu alumni, yang paling baru aktif di atas."],
+            ["**Pesan Grup**", "Grup yang Anda ikuti, tombol **Buat grup**, dan undangan grup yang menunggu jawaban."]
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b07-jejaring.png", "caption": "Tab Jejaring: kotak pencarian, tombol filter, dan kartu alumni" }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Titik kecil pada tab **Pesan** atau **Pesan Grup** menandakan ada percakapan yang belum dibaca atau undangan grup baru. Angka pada ikon **Jejaring** di bilah bawah adalah jumlah percakapan yang belum dibaca ditambah undangan grup yang menunggu jawaban."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Khusus anggota dengan keanggotaan aktif",
+          "text": "Jejaring, Pesan, dan Pesan Grup adalah layanan untuk anggota aktif, termasuk saat status KTA Anda **Segera Berakhir**. Bila keanggotaan belum aktif atau sudah berakhir, ikon **Jejaring** bergembok. Mengetuknya membuka penjelasan **Jejaring khusus anggota aktif** dengan tombol **Bayar iuran** atau **Perpanjang KTA** (lihat Bab 3)."
+        }
+      ]
+    },
+    {
+      "id": "b07-2",
+      "title": "Mencari alumni di direktori",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Direktori hanya menampilkan anggota yang keanggotaannya aktif, tidak sedang dibatasi pengurus, dan memilih tampil di direktori. Profil Anda sendiri tidak muncul di hasil pencarian Anda. Setiap kartu menampilkan nama, foto, profesi dan kota, pendidikan teratas (kampus dan strata), keahlian, serta kode angkatan, misalnya **#KAPDH12**. Nomor telepon dan email tidak pernah tampil di kartu."
+        },
+        {
+          "type": "steps",
+          "title": "Mencari dengan nama",
+          "items": [
+            { "text": "Ketuk kotak **Cari relasi dengan alumni ...** di bagian atas." },
+            { "text": "Ketik nama, minimal 2 huruf. Hasil diperbarui sendiri setelah Anda berhenti mengetik sejenak." },
+            { "text": "Bila mengetik beberapa kata, setiap kata harus ada pada nama, dan potongan kata juga cocok. Contoh: **ahmad fau** menemukan Ahmad Fauzi. Huruf besar dan kecil tidak dibedakan." },
+            { "text": "Ketuk ikon silang di kotak pencarian untuk menghapus kata kunci." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Menyaring dengan filter",
+          "items": [
+            { "text": "Ketuk tombol filter di sebelah kanan kotak pencarian. Lembar **Filter Alumni** terbuka." },
+            { "text": "Isi satu atau beberapa isian: **Angkatan**, **Kelas**, **Kota**, **Profesi**, atau **Keahlian**. Isian yang dibiarkan kosong atau **Semua** tidak menyaring apa pun." },
+            { "text": "Pilih urutan hasil di **Urutkan**: **Nama A–Z** atau **Angkatan terbaru**." },
+            { "text": "Ketuk **Terapkan**. Hasil hanya memuat alumni yang cocok dengan semua isian sekaligus, juga dengan kata kunci nama bila ada." }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Isian lembar Filter Alumni",
+          "columns": ["Isian", "Cara kerjanya"],
+          "rows": [
+            ["**Angkatan**", "Nomor angkatan 1 sampai 99, sama dengan angka pada kode angkatan. Contoh: 12 untuk #KAPDH12."],
+            ["**Kelas**", "Pilih **Kelas 1 (1 MTs)** sampai **Kelas 6 (3 Aliyah)**. Hasilnya alumni yang pernah duduk di kelas tersebut."],
+            ["**Kota**", "Kota domisili, ditulis lengkap. Huruf besar dan kecil tidak dibedakan, tetapi potongan nama kota tidak cocok."],
+            ["**Profesi**", "Dipilih dari daftar yang dikelola pengurus. Alumni cocok bila salah satu profesinya sama dengan pilihan Anda."],
+            ["**Keahlian**", "Dipilih dari daftar keahlian yang dikelola pengurus."],
+            ["**Urutkan**", "**Nama A–Z** (bawaan) atau **Angkatan terbaru**, yaitu nomor angkatan terbesar lebih dulu."]
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b07-filter-terisi.png", "caption": "Lembar Filter Alumni yang sudah diisi" },
+            { "img": "mobile/b07-filter-aktif.png", "caption": "Chip filter aktif dan jumlah alumni yang ditemukan" }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Setelah filter diterapkan, setiap isian tampil sebagai chip di atas daftar, beserta jumlah alumni yang ditemukan. Angka pada tombol filter menunjukkan berapa isian filter yang aktif; pilihan urutan tidak ikut dihitung. Ketuk silang pada chip untuk melepas satu filter. Untuk mengosongkan semuanya, buka lembar filter, ketuk **Atur ulang**, lalu ketuk **Terapkan**. Gulir ke bawah untuk memuat hasil berikutnya, atau ketuk **Muat lebih banyak**."
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Bila alumni tidak ditemukan",
+          "text": "Layar **Alumni tidak ditemukan** menyediakan tombol **Atur ulang filter** untuk mengosongkan filter dan kata kunci. Coba kurangi filter atau periksa ejaan kota. Profesi yang diketik sendiri oleh pemiliknya tidak ikut tersaring oleh filter **Profesi**, jadi cari orang tersebut dengan namanya."
+        }
+      ]
+    },
+    {
+      "id": "b07-3",
+      "title": "Melihat profil alumni",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Ketuk kartu alumni untuk membuka **Profil Alumni**. Isi profil bergantung pada data yang diisi pemiliknya dan pengaturan privasinya. Bagian yang kosong atau disembunyikan tidak ditampilkan sama sekali, dan data yang disembunyikan tidak dikirim ke ponsel Anda."
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b07-profil-penuh.png", "caption": "Profil alumni lengkap, termasuk kontak dan media sosial yang diizinkan" }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Bagian profil alumni",
+          "columns": ["Bagian", "Isinya", "Kapan tampil"],
+          "rows": [
+            ["Email dan kota", "Di bawah nama. Ketuk email untuk menulis email.", "Kota bila diisi. Email hanya bila pemilik menyalakan **Tampilkan email**."],
+            ["**Angkatan**", "Kode angkatan dan tahun lulus, misalnya #KAPDH12 · Lulus 2008.", "Selalu"],
+            ["**Riwayat Pendidikan**", "Semua pendidikan yang diisi, terbaru di atas: kampus atau instansi, strata, jurusan, dan tahun tamat.", "Bila diisi"],
+            ["**Profesi**", "Dapat lebih dari satu. Profesi pertama adalah profesi utama pemiliknya.", "Bila diisi"],
+            ["**Keahlian**", "Keahlian dari daftar yang dikelola pengurus.", "Bila diisi"],
+            ["**Nomor Telpon**", "Ketuk untuk menelepon, tekan lama untuk menyalin nomor.", "Hanya bila pemilik menyalakan **Tampilkan nomor telepon**"],
+            ["**Tentang**", "Perkenalan singkat dari pemilik profil.", "Bila diisi"],
+            ["**Media Sosial**", "Dapat lebih dari satu: Instagram, TikTok, X (Twitter), Facebook, LinkedIn, YouTube, Threads, Telegram, atau Situs web. Ketuk barisnya untuk membuka tautan.", "Hanya bila pemilik menyalakan **Tampilkan media sosial**"]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Profil tidak tersedia",
+          "text": "Keterangan **Profil tidak tersedia** muncul bila anggota tersebut tidak lagi aktif, memilih tidak tampil di direktori, atau membatasi Anda. Aplikasi sengaja tidak menyebutkan alasannya untuk melindungi privasi semua pihak."
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Bila profesi kedua, riwayat pendidikan lengkap, atau sebagian tautan media sosial seseorang belum terlihat, perbarui aplikasi KAPDH ke versi terbaru. Cara melihat pratinjau dan mengatur apa yang terlihat dari profil Anda sendiri dijelaskan di Bab 8."
+        }
+      ]
+    },
+    {
+      "id": "b07-4",
+      "title": "Memulai percakapan pribadi",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Pesan pribadi menghubungkan Anda dengan satu alumni. Setiap pasangan hanya memiliki satu percakapan, sehingga **Kirim Pesan** selalu membuka percakapan yang sama bila sudah pernah dimulai."
+        },
+        {
+          "type": "list",
+          "title": "Siapa yang dapat Anda kirimi pesan",
+          "items": [
+            "Anggota yang keanggotaannya aktif, sama seperti Anda.",
+            "Anggota yang tampil di direktori, karena percakapan baru dimulai dari profilnya. Profil anggota yang memilih tidak tampil tidak dapat dibuka, jadi percakapan baru dengannya tidak dapat dimulai.",
+            "Percakapan yang sudah ada sebelumnya tetap dapat dilanjutkan selama syarat lain di daftar ini terpenuhi.",
+            "Tidak ada blokir di antara Anda berdua, dari pihak mana pun."
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Memulai percakapan",
+          "items": [
+            { "text": "Buka profil alumni dari tab **Jejaring**." },
+            { "text": "Ketuk **Kirim Pesan** di bagian bawah profil. Percakapan terbuka." },
+            { "text": "Ketik di kolom **Tulis pesan…**, lalu ketuk tombol kirim di sebelah kanannya." },
+            { "text": "Setelah pesan pertama terkirim, percakapan muncul di tab **Pesan**. Buka lagi dari sana kapan saja. Percakapan yang belum berisi pesan tidak ditampilkan di daftar." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b07-profil-tertutup.png", "caption": "Kontak disembunyikan pemilik dan pesan langsung belum tersedia" }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Bila di bawah profil tertulis **Pesan langsung belum tersedia untuk anggota ini.**, Anda belum dapat memulai percakapan dengan anggota tersebut. Alasannya sengaja tidak ditampilkan."
+        },
+        {
+          "type": "p",
+          "text": "Di tab **Pesan**, setiap baris menampilkan nama, cuplikan pesan terakhir, dan waktunya. Angka dalam lingkaran adalah jumlah pesan yang belum dibaca. Ikon lonceng dicoret berarti percakapan dibisukan, dan ikon tanda seru merah berarti ada pesan Anda yang belum terkirim."
+        }
+      ]
+    },
+    {
+      "id": "b07-5",
+      "title": "Mengirim, membalas, dan menghapus pesan",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Di dalam percakapan, nama lawan bicara tertulis di atas beserta keterangan **Daring** bila ia sedang membuka aplikasi, atau **sedang mengetik…** saat ia menulis. Ketuk nama itu atau ikon info di kanan atas untuk membuka **Info Percakapan**. Untuk melihat pesan yang lebih lama, gulir ke atas atau ketuk **Muat pesan lama**."
+        },
+        {
+          "type": "list",
+          "title": "Yang dapat Anda kirim",
+          "items": [
+            "Teks hingga 4.000 karakter. Penghitung karakter muncul saat pesan mendekati batas itu.",
+            "Foto JPG atau PNG, maksimal 5 MB. Ketuk ikon gambar di kiri kolom tulis, lalu pilih **Kamera** atau **Galeri**. Teks yang sudah Anda ketik ikut terkirim sebagai keterangan foto.",
+            "Ketuk foto di percakapan untuk melihatnya layar penuh.",
+            "Balasan dan reaksi, melalui pesan yang ditekan lama. Lampiran lain seperti dokumen atau rekaman suara tidak tersedia."
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b07-percakapan.png", "caption": "Percakapan dengan foto, reaksi, balasan, dan status pesan" },
+            { "img": "mobile/b07-tindakan-sendiri.png", "caption": "Tekan lama pesan untuk reaksi, Balas, Salin teks, atau Hapus pesan" }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Membalas, memberi reaksi, atau menghapus",
+          "items": [
+            { "text": "Tekan lama pesan yang dimaksud. Lembar tindakan terbuka." },
+            { "text": "Ketuk salah satu dari enam reaksi di baris atas. Ketuk chip reaksi di bawah sebuah pesan untuk menambah atau membatalkan reaksi Anda." },
+            { "text": "Ketuk **Balas** untuk mengutip pesan itu di atas kolom tulis, atau **Salin teks** untuk menyalin isinya." },
+            { "text": "Pada pesan Anda sendiri, ketuk **Hapus pesan**, lalu **Hapus** pada dialog. Isinya hilang untuk semua peserta dan diganti keterangan **Pesan ini telah dihapus**." },
+            { "text": "Pada pesan orang lain, tersedia **Laporkan pesan** (lihat subbab Melaporkan dan memblokir)." }
+          ]
+        },
+        {
+          "type": "status",
+          "title": "Status pesan Anda",
+          "items": [
+            { "label": "Mengirim", "tone": "neutral", "text": "Pesan sedang dikirim." },
+            { "label": "Terkirim", "tone": "info", "text": "Pesan sudah terkirim, tetapi belum dibaca lawan bicara." },
+            { "label": "Dibaca", "tone": "success", "text": "Lawan bicara sudah membaca. Di grup tertulis misalnya **Dibaca 4**, artinya empat anggota lain sudah membaca." },
+            { "label": "Gagal terkirim", "tone": "danger", "text": "Ketuk pesan, lalu pilih **Kirim ulang** atau **Buang pesan**. Bila penyebabnya koneksi, aplikasi juga mencoba lagi sendiri setelah tersambung." },
+            { "label": "Ditahan", "tone": "warning", "text": "Keanggotaan Anda tidak aktif. Pesan dikirim setelah KTA diperpanjang." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "text": "Pesan yang belum terkirim, baik **Gagal terkirim** maupun **Ditahan**, hanya tersimpan di ponsel selama aplikasi berjalan. Bila aplikasi ditutup sepenuhnya atau Anda keluar dari akun, pesan itu hilang. Salin dulu teks yang penting."
+        }
+      ]
+    },
+    {
+      "id": "b07-6",
+      "title": "Membuat grup dan menjawab undangan",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Grup mempertemukan beberapa alumni dalam satu percakapan, misalnya teman seangkatan atau panitia acara. Satu grup berisi paling banyak 100 anggota, termasuk pembuatnya dan undangan yang belum dijawab."
+        },
+        {
+          "type": "steps",
+          "title": "Membuat grup",
+          "items": [
+            { "text": "Buka tab **Pesan Grup**, lalu ketuk **Buat grup**. Layar **Grup Baru** terbuka." },
+            { "text": "Bila perlu, ketuk lingkaran **Foto grup (opsional)** untuk memilih foto dari galeri." },
+            { "text": "Isi **Nama grup**. Isian ini wajib, maksimal 80 karakter." },
+            { "text": "Ketuk **Pilih alumni**. Centang alumni yang ingin diundang; ketik nama (minimal 2 huruf) di kotak pencarian untuk mempersempit daftar. Ketuk **Selesai**, yang menyebut jumlah pilihan Anda." },
+            { "text": "Ketuk **Buat grup**. Anda otomatis menjadi admin grup, dan percakapan grup terbuka." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b07-daftar-grup.png", "caption": "Tab Pesan Grup dengan tombol Buat grup dan Undangan" },
+            { "img": "mobile/b07-grup-baru.png", "caption": "Formulir Grup Baru dengan tiga alumni yang akan diundang" }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Hanya alumni aktif yang tampil di direktori yang muncul di daftar pilihan. Alumni yang Anda pilih menerima undangan, bukan langsung masuk grup. Bila sebagian undangan tidak terkirim, aplikasi menampilkan nama beserta alasannya, misalnya sudah menjadi anggota, sudah diundang, grup sudah penuh, atau tidak dapat diundang. Anda juga dapat mengundang setelah grup dibuat (lihat subbab berikutnya)."
+        },
+        {
+          "type": "steps",
+          "title": "Menjawab undangan grup",
+          "items": [
+            { "text": "Saat diundang, Anda menerima notifikasi **Undangan grup**. Di tab **Pesan Grup**, ketuk **Undangan grup**. Bila ada undangan baru, tombol itu menyebut jumlahnya, misalnya **Undangan (1)**." },
+            { "text": "Layar **Undangan Grup** menampilkan nama grup, jumlah anggota, dan siapa yang mengundang." },
+            { "text": "Ketuk **Terima** untuk bergabung. Percakapan grup langsung terbuka." },
+            { "text": "Bila tidak ingin bergabung, ketuk **Tolak**, lalu **Tolak** lagi pada dialog. Admin grup dapat mengundang Anda lagi di kemudian hari." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "text": "Anggota baru hanya dapat membaca pesan sejak ia bergabung. Di awal riwayat tertulis kapan Anda bergabung. Bila grup sudah penuh saat Anda menerima undangan, hubungi admin grup."
+        }
+      ]
+    },
+    {
+      "id": "b07-7",
+      "title": "Mengelola grup dan keluar dari grup",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Ketuk nama grup di bagian atas percakapan atau ikon info untuk membuka **Info Percakapan**. Setiap anggota dapat melihat daftar **Anggota**, menyalakan **Bisukan notifikasi**, membuka profil anggota lewat ikon titik tiga di sebelah namanya lalu **Lihat profil**, memilih **Laporkan grup**, dan **Keluar grup**."
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b07-info-grup-anggota.png", "caption": "Info Percakapan grup seperti dilihat anggota biasa" }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Tindakan khusus admin grup",
+          "columns": ["Tindakan", "Cara dan keterangan"],
+          "rows": [
+            ["Mengubah nama atau foto", "Ketuk **Ubah nama**, **Ubah foto**, atau **Hapus foto** di bawah nama grup. Perubahan berlaku untuk semua anggota."],
+            ["Mengundang alumni", "Ketuk **Undang** di sebelah judul **Anggota**, pilih alumni, lalu ketuk **Selesai**. Paling banyak 50 alumni sekali undang, selama kapasitas 100 anggota belum penuh."],
+            ["Membatalkan undangan", "Di bagian **Undangan tertunda**, ketuk **Batalkan** pada nama yang belum menjawab, lalu **Batalkan undangan** pada dialog."],
+            ["Mengatur admin", "Ketuk ikon titik tiga di sebelah nama, lalu **Jadikan admin** atau **Jadikan anggota biasa** (pada nama sendiri: berhenti menjadi admin). Grup boleh punya beberapa admin, minimal satu."],
+            ["Mengeluarkan anggota", "Ketuk ikon titik tiga, lalu **Keluarkan dari grup** dan **Keluarkan** pada dialog. Anggota itu tidak lagi dapat membaca riwayat atau mengirim pesan di grup."]
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Keluar dari grup",
+          "items": [
+            { "text": "Di **Info Percakapan**, ketuk **Keluar grup**." },
+            { "text": "Ketuk **Keluar** pada dialog **Keluar dari grup?**. Anda tidak lagi menerima pesan grup, dan riwayatnya tidak dapat dibuka lagi." },
+            { "text": "Bila Anda satu-satunya admin dan masih ada anggota lain, yang muncul adalah dialog **Pilih admin pengganti**. Pilih satu anggota, lalu ketuk **Keluar grup**." },
+            { "text": "Bila Anda anggota terakhir, grup ditutup dan undangan yang masih tertunda dibatalkan." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Cukup bisukan bila hanya terganggu notifikasi",
+          "text": "**Bisukan notifikasi** hanya menahan notifikasi push dari percakapan itu. Pesan tetap masuk dan dapat dibaca kapan saja. Menu yang sama tersedia di Info Percakapan pribadi."
+        }
+      ]
+    },
+    {
+      "id": "b07-8",
+      "title": "Melaporkan dan memblokir",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Laporkan konten atau perilaku yang melanggar Ketentuan Komunitas, misalnya spam, pelecehan, atau penipuan. Laporan ditinjau pengurus dan tidak dibuka kepada pihak yang dilaporkan. Cara pengurus menangani laporan dijelaskan di Bab 14."
+        },
+        {
+          "type": "table",
+          "title": "Tempat membuat laporan",
+          "columns": ["Yang dilaporkan", "Caranya"],
+          "rows": [
+            ["Pengguna", "Buka profilnya, ketuk ikon titik tiga di kanan atas, lalu **Laporkan**. Dari percakapan pribadi, buka **Info Percakapan**, lalu **Laporkan pengguna**."],
+            ["Pesan", "Tekan lama pesan orang lain, lalu **Laporkan pesan**. Hingga lima pesan tepat sebelumnya di percakapan itu ikut terlampir sebagai konteks. Pesan yang sudah dihapus tidak dapat dilaporkan."],
+            ["Grup", "Buka **Info Percakapan** grup, lalu **Laporkan grup**."]
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Mengisi lembar laporan",
+          "items": [
+            { "text": "Pilih satu **Kategori**: Spam, Pelecehan atau perundungan, Ujaran kebencian, Konten seksual, Ancaman kekerasan atau keselamatan, Penipuan, atau Lainnya." },
+            { "text": "Tulis **Penjelasan** bila perlu, maksimal 2.000 karakter. Untuk kategori **Lainnya**, penjelasan wajib diisi minimal 10 karakter." },
+            { "text": "Ketuk **Kirim laporan**. Muncul pesan **Laporan terkirim. Pengurus akan meninjaunya.** Ketuk **Lihat** untuk membuka Laporan Saya." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b07-lapor.png", "caption": "Lembar Laporkan pengguna dengan pilihan kategori" },
+            { "img": "mobile/b07-laporan-saya.png", "caption": "Laporan Saya: kategori, status, dan hasil setiap laporan" }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Target penanganan laporan",
+          "text": "Pengurus menargetkan laporan **Ancaman kekerasan atau keselamatan** ditangani paling lambat 24 jam, dan kategori lain paling lambat 2 hari kerja (Senin sampai Jumat). Dalam keadaan darurat, segera hubungi pihak berwenang."
+        },
+        {
+          "type": "p",
+          "text": "Pantau laporan di **Akun** > **Laporan saya**. Ketuk sebuah laporan untuk melihat rinciannya: objek yang dilaporkan, waktu kirim, target penanganan selama laporan belum diputus, penjelasan Anda, hasil, dan pesan pengurus bila ada. Bila laporan Anda untuk objek yang sama masih ditinjau, laporan baru tidak dibuat, cukup pantau yang sudah ada."
+        },
+        {
+          "type": "status",
+          "title": "Status laporan",
+          "items": [
+            { "label": "Menunggu tinjauan", "tone": "info", "text": "Laporan sudah diterima dan menunggu ditinjau pengurus." },
+            { "label": "Sedang ditinjau", "tone": "warning", "text": "Pengurus sedang memeriksa laporan Anda." },
+            { "label": "Selesai", "tone": "success", "text": "Pengurus sudah memutuskan dan mengambil tindakan. Rincian tindakan terhadap pihak lain tidak ditampilkan." },
+            { "label": "Ditutup", "tone": "neutral", "text": "Pengurus menilai tidak ada tindakan yang diperlukan." }
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Untuk memblokir anggota, buka profilnya, ketuk ikon titik tiga di kanan atas, lalu **Blokir**. Dari percakapan pribadi, buka **Info Percakapan**, lalu ketuk **Blokir** yang diikuti nama anggota itu. Konfirmasikan dengan **Blokir** pada dialog."
+        },
+        {
+          "type": "list",
+          "title": "Setelah Anda memblokir seseorang",
+          "items": [
+            "Anda berdua tidak dapat saling mengirim pesan langsung, reaksi di percakapan langsung, atau undangan grup. Undangan yang masih tertunda di antara Anda dibatalkan.",
+            "Profil Anda tidak lagi tampil baginya di direktori.",
+            "Riwayat pesan lama tetap tersimpan, dan anggota itu tidak diberi tahu.",
+            "Di percakapan pribadi dengannya, kolom tulis diganti keterangan bahwa Anda memblokirnya, dengan tombol **Buka blokir**.",
+            "Blokir tidak menyembunyikan pesan di grup yang sama-sama Anda ikuti. Di grup, gunakan bisukan, laporan, atau keluar grup."
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Membuka blokir",
+          "items": [
+            { "text": "Buka **Akun** > **Anggota diblokir**. Layar **Pengguna Diblokir** menampilkan nama dan tanggal blokir." },
+            { "text": "Ketuk **Buka blokir** pada nama yang dimaksud, lalu **Buka blokir** lagi pada dialog." },
+            { "text": "Anda juga dapat membuka blokir dari profil anggota itu atau dari percakapan pribadi dengannya." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "text": "Membuka blokir tidak memulihkan undangan grup yang sudah dibatalkan. Bila anggota itu juga memblokir Anda, kalian tetap tidak dapat saling mengirim pesan langsung."
+        }
+      ]
+    },
+    {
+      "id": "b07-9",
+      "title": "Privasi percakapan dan saat KTA tidak aktif",
+      "blocks": [
+        {
+          "type": "list",
+          "title": "Yang perlu Anda ketahui tentang privasi percakapan",
+          "items": [
+            "Pesan dikirim melalui koneksi terenkripsi, tetapi tidak memakai enkripsi ujung ke ujung (end-to-end).",
+            "Status **Daring**, keterangan sedang mengetik, dan status **Dibaca** terlihat oleh peserta percakapan dan saat ini tidak dapat dimatikan.",
+            "Notifikasi pesan baru tidak memuat isi pesan. Untuk percakapan pribadi, nama pengirim juga tidak disebut; untuk grup, yang disebut adalah nama grupnya.",
+            "Pengurus tidak dapat membaca percakapan anggota dari web admin. Moderator hanya melihat pesan yang terlampir pada laporan.",
+            "Foto yang Anda kirim hanya dapat dibuka peserta percakapan, dan data lokasi di dalam foto dihapus otomatis.",
+            "Pesan yang sudah dilaporkan sebelum Anda hapus tetap tersimpan sebagai bukti laporan.",
+            "Jaga amanah: minta izin sebelum membagikan kontak, foto, atau tangkapan layar percakapan anggota lain."
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Bila keanggotaan Anda berakhir saat sedang bercakap, kolom tulis diganti keterangan bahwa masa keanggotaan Anda tidak aktif, dengan tombol **Perpanjang KTA**. Pesan yang sempat Anda kirim berstatus **Ditahan** dan dikirim setelah KTA diperpanjang. Selama keanggotaan tidak aktif, tab **Jejaring** bergembok karena merupakan layanan untuk anggota aktif, dan profil Anda tidak tampil di direktori."
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b07-keanggotaan-berakhir.png", "caption": "Keanggotaan berakhir: pesan ditahan dan tombol Perpanjang KTA" }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "text": "Percakapan dan grup Anda tetap tersimpan dan dapat dilanjutkan begitu keanggotaan Anda kembali aktif setelah iuran perpanjangan diverifikasi pengurus (lihat Bab 3). **Laporan saya** tetap dapat dibuka selama keanggotaan tidak aktif, sedangkan **Anggota diblokir** khusus anggota aktif."
+        },
+        {
+          "type": "faq",
+          "items": [
+            {
+              "q": "Bagaimana menghapus percakapan pribadi dari daftar Pesan?",
+              "a": "Percakapan pribadi tidak dapat ditinggalkan atau dihapus dari daftar. Bila tidak ingin diganggu, nyalakan **Bisukan notifikasi** di **Info Percakapan**, atau blokir anggota tersebut."
+            },
+            {
+              "q": "Kolom tulis berganti menjadi keterangan dan pesan tidak dapat dikirim. Mengapa?",
+              "a": "Baca keterangannya. **Anda memblokir** diikuti nama berarti Anda memblokir lawan bicara; ketuk **Buka blokir** bila ingin bercakap lagi. **Grup ini sudah ditutup** berarti grup tidak menerima pesan baru, tetapi riwayatnya tetap dapat dibaca. **Anggota ini tidak dapat menerima pesan saat ini** berarti lawan bicara tidak dapat dihubungi; alasannya tidak ditampilkan."
+            },
+            {
+              "q": "Muncul layar Percakapan tidak tersedia.",
+              "a": "Anda bukan lagi anggota percakapan itu, misalnya karena sudah keluar atau dikeluarkan admin grup, sehingga riwayatnya tidak dapat dibuka. Ketuk **Ke Jejaring** untuk kembali."
+            },
+            {
+              "q": "Di atas percakapan tertulis Menyambungkan ulang.",
+              "a": "Koneksi internet sedang terputus. Pesan yang terlewat disinkronkan otomatis setelah ponsel tersambung kembali, dan pesan Anda yang gagal karena koneksi dicoba kirim lagi."
+            },
+            {
+              "q": "Muncul pesan bahwa saya terlalu banyak mengirim pesan, membuat grup, mengundang, atau melapor.",
+              "a": "Untuk mencegah penyalahgunaan ada batas wajar: 60 pesan per menit, 10 grup baru per jam, 30 kali mengirim undangan per jam, dan 10 laporan per jam. Pencarian di direktori dan pembukaan profil alumni juga dibatasi agar data alumni tidak dikumpulkan secara massal. Tunggu sebentar, lalu coba lagi."
+            },
+            {
+              "q": "Foto tidak dapat dikirim.",
+              "a": "Pastikan foto berformat JPG atau PNG dan ukurannya tidak lebih dari 5 MB. Setiap anggota dapat mengunggah paling banyak 10 foto percakapan dalam 24 jam, termasuk foto grup; bila batas ini tercapai, coba lagi nanti. Bila muncul keterangan izin, izinkan akses kamera atau galeri untuk aplikasi KAPDH di pengaturan ponsel."
+            },
+            {
+              "q": "Pesan saya ditolak karena memuat tautan berbahaya.",
+              "a": "Demi keamanan, pesan dan nama grup yang memuat tautan yang dapat menjalankan perintah tersembunyi, atau karakter tak kasatmata yang dapat menyamarkan teks, ditolak. Hapus bagian itu, lalu kirim ulang. Tautan situs biasa tetap dapat dikirim."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "kapdh-mobile/lib/features/network/network_screen.dart",
+    "kapdh-mobile/lib/features/network/directory_tab.dart",
+    "kapdh-mobile/lib/features/network/directory_filter.dart",
+    "kapdh-mobile/lib/features/network/directory_filter_sheet.dart",
+    "kapdh-mobile/lib/features/network/widgets/directory_member_card.dart",
+    "kapdh-mobile/lib/features/network/member_profile_screen.dart",
+    "kapdh-mobile/lib/features/network/moderation_actions.dart",
+    "kapdh-mobile/lib/features/network/report_sheet.dart",
+    "kapdh-mobile/lib/features/network/blocked_users_screen.dart",
+    "kapdh-mobile/lib/features/network/my_reports_screen.dart",
+    "kapdh-mobile/lib/features/chat/chat_list_view.dart",
+    "kapdh-mobile/lib/features/chat/chat_room_screen.dart",
+    "kapdh-mobile/lib/features/chat/chat_message_widgets.dart",
+    "kapdh-mobile/lib/features/chat/outgoing_message.dart",
+    "kapdh-mobile/lib/features/chat/chat_outbox.dart",
+    "kapdh-mobile/lib/features/chat/chat_image_picker.dart",
+    "kapdh-mobile/lib/features/chat/new_group_screen.dart",
+    "kapdh-mobile/lib/features/chat/member_picker.dart",
+    "kapdh-mobile/lib/features/chat/chat_invitations_screen.dart",
+    "kapdh-mobile/lib/features/chat/chat_info_screen.dart",
+    "kapdh-mobile/lib/features/account/account_screen.dart",
+    "kapdh-mobile/lib/features/account/privacy_settings_screen.dart",
+    "kapdh-mobile/lib/core/ui/profile_lists.dart",
+    "kapdh-mobile/lib/app/redirect.dart",
+    "kapdh-mobile/lib/app/app_shell.dart",
+    "kapdh-platform/apps/api/src/modules/network/directory.service.ts",
+    "kapdh-platform/apps/api/src/modules/network/directory.query.ts",
+    "kapdh-platform/apps/api/src/modules/membership/profile-lists.ts",
+    "kapdh-platform/apps/api/src/modules/chat/chat.constants.ts",
+    "kapdh-platform/apps/api/src/modules/chat/chat-rooms.service.ts",
+    "kapdh-platform/apps/api/src/modules/chat/chat-messages.service.ts",
+    "kapdh-platform/apps/api/src/modules/chat/chat.notifications.ts",
+    "kapdh-platform/apps/api/src/modules/moderation/reports.service.ts",
+    "kapdh-platform/apps/api/src/modules/moderation/due-at.ts",
+    "kapdh-platform/apps/api/src/modules/moderation/blocks.service.ts",
+    "kapdh-platform/apps/api/src/modules/moderation/admin-reports.service.ts",
+    "kapdh-platform/apps/api/src/core/files/purposes.ts",
+    "kapdh-platform/apps/api/src/core/files/files.service.ts",
+    "kapdh-platform/apps/api/src/core/files/inspect.ts",
+    "kapdh-platform/apps/api/src/core/membership/member-number.ts",
+    "kapdh-platform/apps/api/src/core/settings/keys.ts",
+    "kapdh-platform/apps/api/src/modules/chat/chat.queries.ts",
+    "kapdh-platform/apps/api/src/modules/chat/content-filter.ts",
+    "kapdh-platform/packages/contracts/dart/kapdh_api/lib/src/status_routes.dart",
+    "kapdh-mobile/lib/features/chat/chat_room_controller.dart",
+    "kapdh-mobile/lib/features/chat/chat_info_controller.dart",
+    "kapdh-mobile/lib/features/chat/chat_list_controller.dart",
+    "docs/handoff/phase-c/mobile-network-chat.md",
+    "docs/legal/bantuan.html",
+    "docs/legal/ketentuan-komunitas.html",
+    "kapdh-mobile/mockup-html/jejaring/"
+  ]
+}

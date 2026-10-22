@@ -1,0 +1,515 @@
+{
+  "id": "b08",
+  "part": "anggota",
+  "title": "Akun, Profil, dan Privasi",
+  "kicker": "Aplikasi Anggota",
+  "summary": "Tab Akun adalah pusat pengaturan pribadi Anda. Bab ini menjelaskan cara mengubah profil, mengatur privasi, menjaga keamanan akun, mengatur notifikasi, mengelola blokir dan laporan, menghapus akun, serta langkah bila akun dibatasi.",
+  "icon": "ph-user-gear",
+  "highlights": [
+    "Mengubah foto, kota, kontak, dan Tentang saya",
+    "Mengisi profesi, keahlian, riwayat pendidikan, dan media sosial",
+    "Mengatur data yang terlihat oleh anggota lain",
+    "Menjaga keamanan akun: password, sesi perangkat, dan keluar",
+    "Menghapus akun dan memahami data yang dihapus atau disimpan"
+  ],
+  "sections": [
+    {
+      "id": "b08-1",
+      "title": "Mengenal halaman Akun",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Ketuk **Akun** di navigasi bawah. Bagian atas menampilkan kartu ringkasan profil: foto, nama, email, angkatan dan kota, nomor anggota, status KTA, serta tanggal berlaku KTA. Di bawahnya, menu dikelompokkan menurut keperluan. Tombol **Keluar** dan nomor versi aplikasi ada di bagian paling bawah."
+        },
+        {
+          "type": "screens",
+          "items": [
+            {
+              "img": "mobile/b08-akun.png",
+              "caption": "Tab Akun: kartu ringkasan profil, lalu menu PROFIL dan AKTIVITAS"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Kelompok menu di halaman Akun",
+          "columns": ["Kelompok", "Menu", "Kegunaan"],
+          "rows": [
+            ["PROFIL", "**Ubah profil**, **Privasi profil**", "Mengubah foto, kota, kontak, profesi, keahlian, pendidikan, dan media sosial; mengatur data yang terlihat anggota lain."],
+            ["AKTIVITAS", "**Notifikasi**, **Riwayat pembayaran**, **Tiket saya**", "Kotak masuk resmi (Bab 5), riwayat iuran (Bab 3), dan tiket event (Bab 6)."],
+            ["KEAMANAN DAN NOTIFIKASI", "**Preferensi notifikasi**, **Sesi perangkat**, **Ganti password**", "Mengatur push dan email, melihat perangkat yang masuk ke akun Anda, dan mengganti password."],
+            ["KOMUNITAS", "**Anggota diblokir**, **Laporan saya**", "Mengelola daftar blokir dan memantau laporan yang Anda kirim."],
+            ["INFORMASI", "**Kebijakan privasi**, **Ketentuan layanan**, **Ketentuan komunitas**, **Bantuan**, **Tentang KAPDH**, **Lisensi sumber terbuka**", "Dokumen resmi dan informasi aplikasi."],
+            ["DATA AKUN", "**Hapus akun**", "Menghapus akun dan data pribadi Anda."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Menu bergembok atau ditunda",
+          "text": "Menu yang belum tersedia untuk status keanggotaan Anda tetap terlihat dengan gembok. Saat KTA belum aktif, **Tiket saya** dan **Anggota diblokir** bergembok; saat keanggotaan berakhir, hanya **Anggota diblokir** yang bergembok. Ketuk menu itu untuk membaca penjelasan. Saat pemeliharaan, **Ganti password** dan **Hapus akun** bertanda **Ditunda selama pemeliharaan** sampai pemeliharaan selesai."
+        }
+      ]
+    },
+    {
+      "id": "b08-2",
+      "title": "Mengubah foto, kota, dan kontak",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Buka **Akun** > **Ubah profil**. Layar **Ubah Profil** berisi foto, data keanggotaan yang hanya dapat dibaca, kota, nomor telepon, dan Tentang saya, lalu tiga kartu untuk profesi, pendidikan, dan media sosial (lihat subbab berikutnya). Semua isian ini tidak wajib; isilah sesuai kebutuhan Anda."
+        },
+        {
+          "type": "steps",
+          "title": "Mengubah profil dasar",
+          "items": [
+            { "text": "Ketuk **Akun** > **Ubah profil**." },
+            { "text": "Untuk mengganti foto, ketuk **Ganti foto**, lalu pilih **Ambil foto** atau **Pilih dari galeri**. Untuk melepas foto, ketuk **Hapus foto**." },
+            { "text": "Isi **Kota domisili**. Cukup nama kota, bukan alamat lengkap; kota ini tampil di KTA." },
+            { "text": "Isi **Nomor telepon**, misalnya +62 812 3456 7890." },
+            { "text": "Isi **Tentang saya**. Penghitung di bawah kolom menunjukkan jumlah karakter yang sudah dipakai." },
+            { "text": "Ketuk **Simpan profil**. Tombol ini baru aktif bila ada perubahan. Setelah pesan **Profil tersimpan.** muncul, Anda kembali ke halaman Akun." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            {
+              "img": "mobile/b08-ubah-profil.png",
+              "caption": "Ubah Profil: foto, DATA KEANGGOTAAN yang hanya dibaca, lalu Kota domisili"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Aturan isian dasar",
+          "columns": ["Isian", "Aturan"],
+          "rows": [
+            ["Foto profil", "JPG, PNG, atau WebP, maksimal 5 MB. Data lokasi pada foto dihapus otomatis."],
+            ["Kota domisili", "Maksimal 80 karakter. Setelah pernah diisi, kota tidak dapat dikosongkan lagi, tetapi dapat diganti."],
+            ["Nomor telepon", "Angka, spasi, atau tanda hubung, boleh diawali +, maksimal 24 karakter. Tersembunyi dari anggota lain kecuali Anda izinkan di Privasi profil."],
+            ["Tentang saya", "Maksimal 500 karakter."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Data yang hanya dapat dikoreksi pengurus",
+          "text": "**DATA KEANGGOTAAN** (nama lengkap, email, nomor anggota, angkatan dan tahun lulus, tahun masuk dan keluar) hanya ditampilkan. Data ini, juga jenis kelamin serta kelas masuk dan keluar, tidak dapat Anda ubah sendiri. Bila ada yang keliru, hubungi pengurus melalui kontak bantuan. Email belum dapat diubah setelah akun aktif; bila perlu memakai email lain, hubungi kontak bantuan."
+        },
+        {
+          "type": "list",
+          "title": "Pesan yang mungkin muncul saat menyimpan",
+          "items": [
+            "**Periksa kembali isian yang ditandai.** berarti ada isian yang belum sesuai aturan. Perbaiki kolom yang bertanda merah, lalu simpan lagi.",
+            "Dialog **Profil diubah di perangkat lain** muncul bila profil diubah di perangkat lain. Pilih **Muat terbaru** untuk membuang isian Anda, atau **Pakai isian saya** untuk menerapkan isian Anda di atasnya, lalu simpan.",
+            "Bila Anda menekan kembali sebelum menyimpan, dialog **Buang perubahan?** muncul. Pilih **Lanjut mengubah** untuk tetap di layar, atau **Buang** untuk keluar tanpa menyimpan.",
+            "Bila koneksi terputus saat menyimpan, isian Anda tidak hilang. Coba simpan lagi setelah koneksi pulih."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b08-3",
+      "title": "Profesi, keahlian, pendidikan, dan media sosial",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Di bawah **Tentang saya** ada tiga kartu: **Profesi & Keahlian**, **Riwayat Pendidikan**, dan **Media Sosial**. Setiap kartu dapat berisi lebih dari satu entri, dengan batas seperti pada tabel. Perubahan pada ketiga kartu ini baru tersimpan setelah Anda mengetuk **Simpan profil**."
+        },
+        {
+          "type": "table",
+          "title": "Batas profil berulang",
+          "columns": ["Bagian", "Batas", "Keterangan"],
+          "rows": [
+            ["Profesi", "Maksimal 5", "Dipilih dari daftar atau diketik sendiri (maksimal 100 karakter). Profesi pertama menjadi profesi utama dan tampil di KTA."],
+            ["Keahlian", "Maksimal 10", "Hanya dari daftar yang dikelola pengurus."],
+            ["Riwayat Pendidikan", "Maksimal 10 entri", "Universitas/Instansi wajib diisi pada setiap entri. Universitas/Instansi dan Jurusan/Program Studi masing-masing maksimal 120 karakter."],
+            ["Media Sosial", "Maksimal 10 tautan", "Nama pengguna atau tautan yang diawali https://, maksimal 200 karakter per tautan."]
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Memilih profesi dan keahlian",
+          "items": [
+            { "text": "Pada kartu **Profesi & Keahlian**, ketuk kotak **Pilih atau tambah…** di bawah **Profesi**. Lembar **Pilih profesi** terbuka." },
+            { "text": "Centang profesi dari daftar. Ketik di kolom **Cari atau ketik profesi** untuk menyaring daftar. Profesi yang pertama Anda pilih ditandai **Profesi utama**." },
+            { "text": "Bila profesi Anda tidak ada di daftar, ketik namanya, lalu ketuk baris **Tambah \"...\"** (berisi ketikan Anda) yang muncul tepat di bawah kolom pencarian." },
+            { "text": "Ketuk **Simpan pilihan**. Profesi tampil sebagai label bertanda silang; ketuk label itu untuk melepasnya." },
+            { "text": "Ketuk kotak di bawah **Keahlian** untuk membuka lembar **Pilih keahlian**. Centang keahlian Anda, lalu ketuk **Simpan pilihan**. Keterangan **Dipilih ... dari maksimal 10.** menunjukkan jumlah yang terpilih." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            {
+              "img": "mobile/b08-profil-profesi.png",
+              "caption": "Profesi dan keahlian tampil sebagai label yang dapat dilepas"
+            },
+            {
+              "img": "mobile/b08-profil-pendidikan.png",
+              "caption": "Setiap entri pendidikan: instansi, jurusan, strata, tahun tamat"
+            },
+            {
+              "img": "mobile/b08-profil-medsos.png",
+              "caption": "Media Sosial: pilih platform, lalu isi nama pengguna atau tautan"
+            }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Menambah riwayat pendidikan",
+          "items": [
+            { "text": "Pada kartu **Riwayat Pendidikan**, ketuk **Tambah Riwayat**. Setiap ketukan menambah satu kotak (**Pendidikan 1**, **Pendidikan 2**, dan seterusnya). Isilah pendidikan setelah pondok. Tombol ini hilang setelah ada 10 entri." },
+            { "text": "Isi **Universitas/Instansi** (wajib), lalu bila perlu **Jurusan/Program Studi**." },
+            { "text": "Pilih **Strata** (D3, S1, S2, S3, atau Lainnya) dan **Tahun Tamat**, yaitu tahun ijazah terbit, dari 1950 sampai tahun berjalan. Keduanya boleh **Tidak diisi**." },
+            { "text": "Untuk menghapus satu entri, ketuk ikon tempat sampah merah di samping judulnya. Kotak yang dibiarkan kosong seluruhnya diabaikan saat menyimpan." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Menambah media sosial",
+          "items": [
+            { "text": "Pada kartu **Media Sosial**, ketuk **Tambah tautan**. Baris baru otomatis memakai platform yang belum Anda pakai. Tombol ini hilang setelah ada 10 tautan." },
+            { "text": "Ketuk pemilih platform untuk memilih Instagram, TikTok, X (Twitter), Facebook, LinkedIn, YouTube, Threads, Telegram, atau Situs web." },
+            { "text": "Tempel tautan atau ketik nama pengguna, misalnya @kapdh. Untuk **Situs web**, isi tautan lengkap yang diawali https://." },
+            { "text": "Untuk menghapus tautan, ketuk ikon tempat sampah merah di sampingnya. Tautan yang sama tidak dapat dimasukkan dua kali; aplikasi menampilkan **Tautan ini sudah ada.**" }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Profesi atau keahlian tidak ada di daftar",
+          "text": "Profesi boleh Anda ketik sendiri. Bila ketikan sama dengan nama di daftar, pilihan dari daftar yang dipakai. Profesi ketikan sendiri tampil di profil, dan di KTA bila menjadi profesi utama, tetapi filter profesi di Jejaring hanya memakai daftar pengurus. Keahlian tidak dapat diketik sendiri; usulkan keahlian baru melalui kontak bantuan."
+        },
+        {
+          "type": "list",
+          "title": "Perlu diketahui",
+          "items": [
+            "Riwayat pendidikan disimpan berurutan dari tahun tamat terbaru. Entri tanpa Tahun Tamat berada paling atas.",
+            "Keahlian berlabel **(tidak aktif)** sudah dinonaktifkan pengurus. Anda dapat melepasnya, tetapi tidak dapat memilihnya kembali.",
+            "Bila sebuah kartu menampilkan keterangan bahwa isinya berasal dari versi aplikasi yang lebih baru, perbarui aplikasi KAPDH agar bagian itu dapat diubah.",
+            "Tautan media sosial tersembunyi dari anggota lain sampai Anda menyalakan **Tampilkan media sosial** di Privasi profil.",
+            "Pengurus dapat mengoreksi atau menghapus isi profil yang melanggar Ketentuan Komunitas, misalnya foto, Tentang saya, profesi ketikan sendiri, atau tautan. Setiap perubahan tercatat beserta alasannya."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b08-4",
+      "title": "Mengatur privasi profil",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Buka **Akun** > **Privasi profil** untuk mengatur apa yang terlihat oleh anggota lain. Setiap saklar tersimpan langsung begitu Anda menggesernya; tidak ada tombol simpan. Data yang Anda sembunyikan tidak dikirim ke perangkat anggota lain, bukan sekadar disamarkan di layar."
+        },
+        {
+          "type": "screens",
+          "items": [
+            {
+              "img": "mobile/b08-privasi.png",
+              "caption": "Privasi Profil dengan pengaturan bawaan"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Saklar privasi",
+          "columns": ["Saklar", "Bawaan", "Bila aktif"],
+          "rows": [
+            ["**Tampil di direktori Jejaring**", "Aktif", "Anggota aktif dapat menemukan nama, foto, angkatan, kota, profesi, keahlian, dan pendidikan teratas Anda. Bila dimatikan, profil tidak muncul di pencarian Jejaring maupun di daftar peserta event."],
+            ["**Tampilkan nomor telepon**", "Nonaktif", "Nomor telepon terlihat oleh anggota aktif di halaman profil Anda."],
+            ["**Tampilkan email**", "Nonaktif", "Alamat email akun terlihat oleh anggota aktif di halaman profil Anda."],
+            ["**Tampilkan media sosial**", "Nonaktif", "Semua tautan media sosial Anda terlihat oleh anggota aktif di profil Anda, termasuk TikTok, YouTube, Threads, Telegram, dan situs web, walau keterangan saklar hanya menyebut empat platform."]
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Yang perlu diketahui tentang tampilan profil",
+          "items": [
+            "Halaman profil Anda juga menampilkan tahun lulus, seluruh riwayat pendidikan, dan Tentang saya kepada anggota aktif yang membukanya.",
+            "Jenis kelamin dan nomor anggota tidak ditampilkan di direktori.",
+            "Dalam percakapan, peserta lain melihat nama dan foto Anda.",
+            "Pengurus yang berwenang tetap dapat melihat data Anda untuk keperluan administrasi yang tercatat, misalnya verifikasi pembayaran atau penanganan laporan."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Profil belum muncul di Jejaring?",
+          "text": "Direktori hanya menampilkan anggota dengan KTA aktif. Selama KTA belum aktif, profil Anda belum muncul di Jejaring apa pun pengaturannya, dan layar Privasi Profil menampilkan peringatan tentang hal ini. Bila nomor telepon belum diisi, saklar telepon diberi keterangan **Anda belum mengisi nomor telepon.**"
+        }
+      ]
+    },
+    {
+      "id": "b08-5",
+      "title": "Password, sesi perangkat, dan keluar",
+      "blocks": [
+        {
+          "type": "steps",
+          "title": "Mengganti password",
+          "items": [
+            { "text": "Buka **Akun** > **Ganti password**." },
+            { "text": "Isi **Password saat ini**." },
+            { "text": "Isi **Password baru**: 8 sampai 72 byte (huruf, angka, dan simbol biasa masing-masing 1 byte), dengan huruf besar, huruf kecil, angka, dan simbol. Tanda di bawah kolom berubah hijau saat setiap aturan terpenuhi." },
+            { "text": "Ketik ulang password baru di **Ulangi password baru**. Bila keduanya berbeda, muncul **Password baru tidak sama**. Setelah sama, ketuk **Simpan password**." },
+            { "text": "Pesan **Password diganti. Perangkat lain sudah dikeluarkan dari akun Anda.** muncul dan notifikasi keamanan akun dikirim. Ponsel yang sedang Anda pakai tetap masuk." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            {
+              "img": "mobile/b08-ganti-password.png",
+              "caption": "Ganti Password: aturan terpenuhi, tetapi konfirmasi belum sama"
+            },
+            {
+              "img": "mobile/b08-sesi.png",
+              "caption": "Sesi Perangkat: perangkat ini di atas, perangkat lain di bawahnya"
+            }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Melihat dan mengeluarkan perangkat",
+          "items": [
+            { "text": "Buka **Akun** > **Sesi perangkat**. Bagian **PERANGKAT INI** menampilkan ponsel yang sedang Anda pakai; tombol **Keluar** di situ mengeluarkan ponsel ini. **PERANGKAT LAIN** menampilkan perangkat lain beserta waktu terakhir aktif dan waktu masuk." },
+            { "text": "Ketuk **Keluarkan** pada perangkat yang tidak Anda kenali, lalu ketuk **Keluarkan** sekali lagi pada dialog. Perangkat itu harus masuk ulang, dan notifikasi push ke perangkat itu dihentikan." },
+            { "text": "Bila ponsel hilang atau ada perangkat yang mencurigakan, ketuk **Keluar dari semua perangkat**, lalu **Keluar semua**. Semua perangkat, termasuk ponsel ini, dikeluarkan." },
+            { "text": "Setelah itu, segera ganti password Anda." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Keluar dari aplikasi",
+          "items": [
+            { "text": "Gulir ke dasar halaman **Akun**, lalu ketuk **Keluar**." },
+            { "text": "Aplikasi menghapus data akun dan KTA tersimpan di ponsel ini, menghentikan notifikasi push ke ponsel ini, lalu membuka halaman masuk. Data di ponsel tetap dihapus walaupun ponsel sedang offline." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Lupa password saat ini?",
+          "text": "Ganti password memerlukan password lama. Bila Anda lupa (tautan **Lupa password saat ini?** di layar ini memberi petunjuk yang sama), keluar dari aplikasi, lalu pilih **Lupa Password** di halaman masuk (Bab 2). Bila terlalu banyak percobaan yang salah, tombol simpan berubah menjadi hitung mundur **Coba lagi dalam ...**; tunggu sampai hitungan selesai."
+        }
+      ]
+    },
+    {
+      "id": "b08-6",
+      "title": "Preferensi notifikasi, blokir, dan laporan",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Buka **Akun** > **Preferensi notifikasi** untuk memilih kategori yang dikirim sebagai push ke ponsel dan sebagai email. Setiap saklar tersimpan langsung. Mematikan sebuah kategori hanya menghentikan push atau email berikutnya; kotak masuk **Notifikasi** tetap menyimpan semuanya."
+        },
+        {
+          "type": "screens",
+          "items": [
+            {
+              "img": "mobile/b08-preferensi-notifikasi.png",
+              "caption": "Status izin push ponsel dan saklar push per kategori"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Kategori yang dapat diatur",
+          "columns": ["Kategori", "Push", "Email"],
+          "rows": [
+            ["Pembayaran", "Dapat diatur", "Dapat diatur"],
+            ["Masa KTA", "Dapat diatur", "Dapat diatur"],
+            ["Event", "Dapat diatur (pengingat H-3 dan H-1, perubahan, pembatalan)", "Dapat diatur"],
+            ["Berita", "Dapat diatur", "Tidak dikirim lewat email"],
+            ["Chat", "Dapat diatur; isi pesan tidak ditampilkan di layar kunci", "Tidak dikirim lewat email"],
+            ["Keamanan akun dan Akun", "**Selalu aktif**", "Selalu dikirim, termasuk kode OTP"]
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Kotak di atas halaman menunjukkan izin push ponsel",
+          "items": [
+            "**Notifikasi push aktif**: ponsel menerima push untuk kategori yang Anda nyalakan.",
+            "**Izinkan notifikasi push**: ketuk **Izinkan** untuk memberi izin.",
+            "**Izin notifikasi ditolak**: aktifkan izin notifikasi KAPDH di pengaturan ponsel (Aplikasi > KAPDH > Notifikasi), lalu ketuk **Periksa lagi**.",
+            "**Push tidak tersedia di perangkat ini**: semua pemberitahuan tetap dapat dibaca di kotak masuk.",
+            "Tautan **Buka kotak masuk** di bawah kotak izin selalu tersedia untuk membuka kotak masuk **Notifikasi**."
+          ]
+        },
+        {
+          "type": "p",
+          "text": "**Anggota diblokir** membuka layar **Pengguna Diblokir** berisi anggota yang Anda blokir dan tanggalnya. Ketuk **Buka blokir**, lalu konfirmasi, untuk membuka blokir. Memblokir dilakukan dari profil alumni atau info percakapan (Bab 7). Menu ini khusus anggota aktif."
+        },
+        {
+          "type": "p",
+          "text": "**Laporan saya** menampilkan laporan pengguna, pesan, atau grup yang Anda kirim, termasuk banding. Ketuk sebuah laporan untuk melihat **Rincian laporan**, hasil, dan pesan pengurus bila ada. Laporan tidak dibuka kepada pihak yang dilaporkan, dan rincian tindakan terhadap pihak lain tidak ditampilkan. Arti status **Menunggu tinjauan**, **Sedang ditinjau**, **Selesai**, dan **Ditutup** dijelaskan di Bab 7; banding yang ditolak juga berstatus **Ditutup**."
+        }
+      ]
+    },
+    {
+      "id": "b08-7",
+      "title": "Menghapus akun dari aplikasi",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Anda dapat menghapus akun KAPDH beserta data pribadi kapan saja, termasuk saat keanggotaan sudah berakhir atau akun sedang dibatasi. Bila Anda tidak dapat memakai aplikasi, ajukan penghapusan melalui halaman kapdh.or.id/delete-account dengan kode verifikasi email (Bab 16)."
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Tidak ada masa tenggang",
+          "text": "Penghapusan tidak dapat dibatalkan setelah dikonfirmasi. Anda langsung keluar dari semua perangkat dan akun tidak dapat dipakai lagi. KTA, riwayat keanggotaan, dan percakapan tidak dapat dipulihkan. Nomor anggota Anda tidak akan diberikan kepada orang lain."
+        },
+        {
+          "type": "steps",
+          "title": "Langkah menghapus akun",
+          "items": [
+            { "text": "Buka **Akun** > **Hapus akun**. Bila akun sedang dibatasi, ketuk **Hapus akun** di halaman pembatasan." },
+            { "text": "Baca bagian **DATA YANG DIHAPUS**, **DISIMPAN TANPA IDENTITAS**, dan **WAKTU DAN BACKUP**. Ketuk **Baca kebijakan privasi** bila perlu." },
+            { "text": "Bila muncul **Perhatikan sebelum menghapus**, baca peringatan tentang tiket, refund, pembayaran, grup, atau akun pengurus yang terhubung dengan akun Anda." },
+            { "text": "Centang **Saya memahami data yang dihapus dan yang disimpan tanpa identitas, dan ingin menghapus akun saya.** Bila ada peringatan, centang juga kotak kedua tentang tiket, refund, pembayaran, dan grup." },
+            { "text": "Ketuk **Hapus akun saya**. Pada dialog **Konfirmasi identitas**, masukkan password, lalu ketuk **Konfirmasi**. Konfirmasi ini berlaku 10 menit." },
+            { "text": "Layar **Status Akun** menampilkan nomor permintaan yang diawali DEL-. Ketuk **Salin nomor permintaan** dan simpan nomor itu untuk berkomunikasi dengan pengurus." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            {
+              "img": "mobile/b08-hapus-akun-konfirmasi.png",
+              "caption": "Bagian bawah Hapus Akun: waktu, backup, centang, dan tombol"
+            },
+            {
+              "img": "mobile/b08-status-penghapusan.png",
+              "caption": "Status Akun setelah permintaan: nomor DEL- dan batas selesai"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Data yang dihapus dan yang disimpan tanpa identitas",
+          "columns": ["Data", "Perlakuan"],
+          "rows": [
+            ["Email login dan password", "Dihapus; akun tidak dapat dipakai masuk lagi."],
+            ["Profil, termasuk profesi, keahlian, riwayat pendidikan, telepon, media sosial, dan pengaturan privasi", "Dihapus."],
+            ["Foto profil dan unggahan pribadi (gambar chat, foto grup yang Anda unggah)", "Dihapus dari penyimpanan."],
+            ["Berkas bukti transfer dan catatan transfer yang Anda tulis", "Dihapus."],
+            ["Isi pesan chat", "Diganti keterangan tanpa isi. Reaksi, tanda suka pada berita, dan daftar blokir dihapus."],
+            ["Sesi, token notifikasi perangkat, kotak masuk, dan preferensi notifikasi", "Dihapus."],
+            ["Catatan pembayaran dan tiket", "Disimpan tanpa identitas: jumlah, tanggal, status, dan nomor referensi. Tiket aktif hangus."],
+            ["Riwayat keanggotaan, laporan moderasi, dan jejak audit", "Disimpan tanpa nama, email, telepon, foto, nomor anggota, atau data identitas lain."]
+          ]
+        },
+        {
+          "type": "status",
+          "title": "Status permintaan penghapusan",
+          "items": [
+            { "label": "Permintaan Diterima", "tone": "info", "text": "Permintaan tercatat. Email berisi nomor permintaan dikirim ke alamat akun Anda." },
+            { "label": "Sedang Diproses", "tone": "warning", "text": "Data sedang dihapus. Akun tidak dapat dipakai masuk." },
+            { "label": "Sedang Diproses Ulang", "tone": "warning", "text": "Satu langkah sedang diulang otomatis. Anda tidak perlu mengajukan ulang." },
+            { "label": "Selesai", "tone": "neutral", "text": "Penghapusan selesai, paling lambat 7 hari kalender sejak permintaan. Email pemberitahuan dikirim." }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Sebelum dan sesudah menghapus",
+          "items": [
+            "Tiket event yang masih aktif hangus. Bila Anda berhak refund, batalkan tiket dan tunggu sampai refund selesai sebelum menghapus akun.",
+            "Penghapusan tidak menunggu refund yang sedang berjalan. Setelah akun dihapus, bendahara tidak dapat lagi menghubungi Anda dan data rekening tujuan refund ikut dihapus.",
+            "Pembayaran yang belum selesai dibatalkan. Bila Anda sudah mentransfer, hubungi bendahara lebih dahulu.",
+            "Bila Anda admin tunggal grup chat, kewenangan admin dialihkan otomatis kepada anggota aktif, atau grup ditutup.",
+            "Bila akun anggota Anda terhubung dengan akun pengurus, akun pengurus tidak ikut terhapus; pengalihan kewenangan pengurus dilakukan Super Admin.",
+            "Backup harian berotasi 30 hari. Data yang sudah dihapus tidak diaktifkan kembali bila backup dipulihkan.",
+            "Untuk melihat status, masuk dengan email dan password akun; layar **Status Akun** terbuka. Di sana Anda juga dapat mengisi **Email akun**, ketuk **Kirim kode verifikasi**, masukkan kode 6 digit, lalu **Periksa status**."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Lupa password atau ada perubahan",
+          "text": "Bila lupa password, gunakan **Lupa Password** lebih dulu (Bab 2) atau ajukan penghapusan lewat situs dengan kode verifikasi email (Bab 16). Bila tiket, refund, atau pembayaran Anda berubah saat Anda mengonfirmasi, aplikasi menampilkan **Ada perubahan**; baca kembali penjelasannya, lalu centang dan konfirmasi ulang."
+        }
+      ]
+    },
+    {
+      "id": "b08-8",
+      "title": "Bila akun dibatasi",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Bila pengurus membatasi akun Anda, aplikasi membuka halaman **Akun Anda sedang dibatasi** sebagai pengganti aplikasi utama. Selama dibatasi, KTA, pembayaran baru, tiket, dan fitur komunitas tidak dapat digunakan, dan profil Anda tidak tampil di direktori. Tanggal masa keanggotaan Anda tidak berubah. Setelah pembatasan dicabut, aplikasi kembali seperti biasa dan status KTA mengikuti tanggal berlakunya; bila masa keanggotaan sudah lewat selama dibatasi, perpanjang keanggotaan Anda (Bab 3)."
+        },
+        {
+          "type": "screens",
+          "items": [
+            {
+              "img": "mobile/b08-dibatasi.png",
+              "caption": "Halaman pembatasan: keterangan pengurus, kotak masuk, keamanan akun"
+            }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Yang tetap dapat Anda lakukan",
+          "items": [
+            "Membaca **Keterangan dari pengurus**. Bila keterangannya kosong, hubungi pengurus untuk mengetahui alasan dan langkah pemulihan.",
+            "Membuka **Notifikasi** untuk pemberitahuan pengurus dan keamanan akun.",
+            "Membuka **Sesi perangkat** dan **Ganti password** di bagian **KEAMANAN AKUN**.",
+            "Mengajukan banding di bagian **Banding**, menghubungi pengurus, serta membaca **Ketentuan komunitas** dan **Kebijakan privasi**.",
+            "Menghapus akun lewat tombol **Hapus akun** pada kotak **Ingin menghapus akun?**.",
+            "Mengetuk **Periksa status** untuk memuat status terbaru, atau **Keluar**."
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Mengajukan banding",
+          "items": [
+            { "text": "Pada bagian **Banding**, tulis **Alasan banding** minimal 10 karakter (spasi tidak dihitung) dan maksimal 2.000 karakter." },
+            { "text": "Ketuk **Kirim banding**. Pesan **Banding terkirim. Pengurus akan meninjaunya.** muncul." },
+            { "text": "Status banding tampil di halaman yang sama (**Menunggu ditinjau**, **Sedang ditinjau**, **Dikabulkan**, atau **Ditolak**) beserta target tanggapan. Pengurus menargetkan tanggapan paling lambat 2 hari kerja." },
+            { "text": "Selama banding ditinjau, formulir banding baru tidak ditampilkan. Bila banding ditolak, Anda dapat mengajukan banding baru dengan alasan tambahan atau menghubungi pengurus." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Akun tidak aktif berbeda dengan dibatasi",
+          "text": "Akun yang dinonaktifkan pengurus tidak dapat dipakai masuk; saat Anda mencoba masuk, layar **Status Akun** menampilkan **Akun tidak aktif**. Pemulihan atau penghapusan akun seperti ini hanya dilakukan pengurus setelah verifikasi identitas. Hubungi bantuan@kapdh.or.id dari alamat email akun Anda."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "kapdh-mobile/lib/features/account/account_screen.dart (kelompok menu, gembok, menu ditunda pemeliharaan, Keluar)",
+    "kapdh-mobile/lib/features/account/profile_edit_screen.dart (foto, DATA KEANGGOTAAN, kota 80, telepon 24 dan pola, bio 500, pendidikan 120 karakter dan tahun 1950 sampai tahun berjalan WIB, tautan 200, konflik versi, Buang perubahan?)",
+    "kapdh-mobile/lib/core/ui/profile_lists.dart (maxProfessions 5, maxEducationEntries 10, maxSocialLinks 10, 9 platform, Situs web hanya https, strata D3/S1/S2/S3/Lainnya)",
+    "kapdh-mobile/lib/features/account/widgets/master_picker.dart (maxSkills 10, Pilih profesi, Cari atau ketik profesi, Tambah, Profesi utama, ketikan maks 100, keahlian tidak aktif, Simpan pilihan)",
+    "kapdh-mobile/lib/features/account/avatar_image.dart (JPG/PNG/WebP, 5 MB)",
+    "kapdh-mobile/lib/features/account/privacy_settings_screen.dart (saklar dan bawaan, peringatan KTA belum aktif)",
+    "kapdh-mobile/lib/features/account/change_password_screen.dart dan lib/core/validation/password.dart (8-72 byte, aturan, hitung mundur, Lupa password saat ini?)",
+    "kapdh-mobile/lib/features/account/sessions_screen.dart (Keluarkan, Keluar dari semua perangkat)",
+    "kapdh-mobile/lib/core/session/session_controller.dart (logout menghapus data lokal walau server tak terjangkau)",
+    "kapdh-mobile/lib/features/account/notification_preferences_screen.dart (kategori push/email, kategori wajib, kartu izin push)",
+    "kapdh-mobile/lib/features/network/blocked_users_screen.dart, my_reports_screen.dart (Pengguna Diblokir, Buka blokir, status laporan)",
+    "kapdh-mobile/lib/features/account/delete_account_screen.dart dan lib/core/ui/reauth_dialog.dart (alur, centang, Konfirmasi identitas 10 menit, peringatan, Ada perubahan)",
+    "kapdh-mobile/lib/features/status/deletion_status_screen.dart, deletion_status_check.dart, lib/design/status_badge.dart (Status Akun, label status penghapusan, cek status dengan kode email, Akun tidak aktif)",
+    "kapdh-mobile/lib/features/status/restricted_screen.dart dan appeal_section.dart (portal Dibatasi, banding 10-2000 karakter, 2 hari kerja)",
+    "kapdh-mobile/lib/app/redirect.dart (matriks akses: Anggota diblokir hanya KTA aktif, ganti password dan hapus akun ditunda saat pemeliharaan)",
+    "kapdh-platform/apps/api/src/modules/account/deletion-policy.ts (DELETION_COMPLETION_DAYS 7, BACKUP_RETENTION_DAYS 30, DELETED_DATA, RETAINED_DATA, nomor DEL-)",
+    "kapdh-platform/apps/api/src/modules/account/deletion-disclosure.service.ts (peringatan tiket, refund, pembayaran, grup)",
+    "kapdh-platform/apps/api/src/modules/network/directory.service.ts (email, telepon, media sosial hanya bila flag aktif)",
+    "kapdh-platform/apps/api/src/modules/membership/profile-lists.ts (urutan pendidikan terbaru di atas)",
+    "kapdh-platform/apps/api/src/modules/events/member-events.service.ts (daftar peserta memakai show_in_directory)",
+    "kapdh-platform/packages/contracts/openapi/domains/me.yaml (ProfileUpdate maxItems dan maxLength)",
+    "kapdh-platform/apps/web/src/lib/organization.ts (email bantuan)",
+    "docs/adr/025-reautentikasi-hanya-tindakan-kredensial.md (reautentikasi hanya untuk hapus akun di sisi anggota)",
+    "docs/legal/bantuan.html (Keamanan akun, Profil dan privasi, Hapus akun dan data, email tidak dapat diubah setelah aktif, koreksi isi profil oleh pengurus, halaman /delete-account)",
+    "kapdh-platform/apps/api/src/modules/membership/admin-members.service.ts (pengurus mengoreksi nama, angkatan, kelas, jenis kelamin, isi profil, hapus foto, dengan alasan)",
+    "kapdh-platform/apps/api/src/core/membership/effective-status.ts (status dihitung ulang setelah pembatasan dicabut) dan docs/qa/uat-checklist.md 6.11",
+    "kapdh-platform/apps/api/src/modules/moderation/member-report.ts (Ditutup = tidak ada tindakan, Selesai = tindakan diambil)",
+    "kapdh-mobile/lib/features/auth/login_screen.dart (masuk dengan akun yang sedang dihapus atau nonaktif membuka Status Akun)",
+    "kapdh-mobile/lib/features/auth/auth_widgets.dart (label aturan 8 sampai 72 byte)",
+    "kapdh-platform/apps/web/src/pages/delete-account.astro (halaman hapus akun di situs)",
+    "kapdh-mobile/mockup-html/akun/account.html, profile-edit.html, privacy.html, change-password.html, sessions.html, notification-preferences.html, delete-account.html; auth/deletion-status.html, auth/restricted.html"
+  ]
+}

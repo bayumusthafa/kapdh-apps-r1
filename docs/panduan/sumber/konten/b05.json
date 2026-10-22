@@ -1,0 +1,407 @@
+{
+  "id": "b05",
+  "part": "anggota",
+  "title": "Beranda, Berita, dan Notifikasi",
+  "kicker": "Aplikasi Anggota",
+  "summary": "Beranda adalah layar pertama setelah Anda masuk. Bab ini menjelaskan isi Beranda, cara membaca berita, cara mengelola kotak masuk notifikasi, dan cara membuka dokumen resmi seperti Kebijakan Privasi dan Bantuan.",
+  "icon": "ph-house-simple",
+  "highlights": [
+    "Mengenali bagian Beranda dan lima tab navigasi bawah",
+    "Membuka banner, event, dan berita dengan aman",
+    "Memahami Beranda saat KTA belum aktif atau sudah berakhir",
+    "Membaca berita dan mengelola kotak masuk notifikasi",
+    "Menemukan Kebijakan Privasi, Ketentuan, dan Bantuan"
+  ],
+  "sections": [
+    {
+      "id": "b05-1",
+      "title": "Mengenal Beranda dan navigasi bawah",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Setelah masuk, anggota dengan KTA aktif langsung melihat **Beranda**. Layar ini merangkum kabar terbaru dari pengurus dan menyediakan jalan pintas ke fitur yang paling sering dipakai. Isinya diatur pengurus. Kabar terbaru dimuat saat Beranda pertama kali tampil; Beranda tidak dimuat ulang setiap kali Anda berpindah tab, jadi tarik layar ke bawah untuk memeriksa kabar yang lebih baru."
+        },
+        {
+          "type": "screens",
+          "items": [
+            {
+              "img": "mobile/b05-beranda-utama.png",
+              "caption": "Beranda anggota aktif: salam, akses cepat, banner, dan event mendatang"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Bagian-bagian Beranda, dari atas ke bawah",
+          "columns": ["Bagian", "Isi", "Saat diketuk"],
+          "rows": [
+            [
+              "Kepala Beranda",
+              "Logo KAPDH, salam Assalamu'alaikum, nama Anda, dan lonceng dengan angka notifikasi yang belum dibaca.",
+              "Lonceng membuka kotak masuk **Notifikasi**."
+            ],
+            [
+              "Akses cepat",
+              "Empat tombol bulat: **Pesan**, **Notifikasi**, **Tiket Saya**, dan **Berita**. Angka kuning pada **Pesan** menunjukkan percakapan yang belum dibaca; pada **Notifikasi**, notifikasi yang belum dibaca.",
+              "Membuka halaman masing-masing. **Pesan** membuka bagian **Pesan** di tab **Jejaring** (Bab 7), **Tiket Saya** dibahas di Bab 6."
+            ],
+            [
+              "Banner",
+              "Pengumuman bergambar dari pengurus, paling banyak 10 banner yang sedang tayang.",
+              "Membuka detail di aplikasi atau tautan luar. Lihat subbab berikutnya."
+            ],
+            [
+              "Event Mendatang",
+              "Paling banyak 5 event yang belum berakhir, diurutkan dari waktu mulai paling dekat.",
+              "Kartu membuka detail event. **Lihat semua** membuka tab **Event** (Bab 6)."
+            ],
+            [
+              "Berita Terbaru",
+              "Paling banyak 5 berita terbaru. Berita pertama tampil sebagai kartu besar.",
+              "Kartu membuka detail berita. **Lihat semua** membuka halaman **Berita**."
+            ]
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Lima tab navigasi bawah",
+          "columns": ["Tab", "Kegunaan"],
+          "rows": [
+            ["**Beranda**", "Ringkasan kabar terbaru dan akses cepat."],
+            ["**Event**", "Daftar event, pendaftaran, dan tiket (Bab 6)."],
+            ["**KTA**", "Tombol hijau besar di tengah. Membuka kartu tanda anggota digital Anda (Bab 4)."],
+            ["**Jejaring**", "Direktori alumni dan pesan (Bab 7). Angka di ikonnya menunjukkan percakapan belum dibaca dan undangan grup."],
+            ["**Akun**", "Profil, privasi, riwayat pembayaran, preferensi notifikasi, dokumen resmi, dan hapus akun (Bab 8)."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Mengetuk tab yang sedang aktif sekali lagi membawa Anda kembali ke halaman awal tab itu. Angka belum dibaca di atas 99 ditampilkan sebagai 99+."
+        }
+      ]
+    },
+    {
+      "id": "b05-2",
+      "title": "Banner, event mendatang, dan berita terbaru",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Banner tersusun menyamping. Geser ke kiri atau ke kanan untuk melihat banner lain; bila ada lebih dari satu banner, titik di pojok kanan bawah menunjukkan posisi Anda. Banner tidak berganti sendiri, jadi Anda dapat membacanya dengan tenang."
+        },
+        {
+          "type": "steps",
+          "title": "Membuka banner",
+          "items": [
+            { "text": "Geser banner sampai yang Anda cari tampil penuh." },
+            { "text": "Ketuk banner. Banner yang mengarah ke berita, event, atau halaman informasi langsung membuka layar detailnya di dalam aplikasi." },
+            { "text": "Bila banner berlabel **Tautan luar**, aplikasi menampilkan dialog **Buka tautan luar?** beserta alamat situs tujuan. Ketuk **Buka** untuk melanjutkan ke peramban, atau **Batal** untuk tetap di aplikasi." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            {
+              "img": "mobile/b05-beranda-berita-terbaru.png",
+              "caption": "Berita Terbaru di Beranda: berita pertama tampil sebagai kartu besar"
+            },
+            {
+              "img": "mobile/b05-beranda-tautan-luar.png",
+              "caption": "Dialog konfirmasi sebelum aplikasi membuka situs lain"
+            }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Perlu diketahui",
+          "items": [
+            "Banner hanya tampil selama masa tayang yang diatur pengurus. Banner tanpa tujuan hanya berupa pengumuman dan tidak dapat diketuk.",
+            "Bila konten tujuan sudah diarsipkan atau dibatalkan, aplikasi menampilkan pesan singkat **Konten tujuan sudah tidak tersedia** di bagian bawah layar, bukan layar kosong.",
+            "Kartu event menampilkan tanggal, lokasi, status pendaftaran seperti **Pendaftaran Dibuka**, dan harga atau label **Gratis**. Cara mendaftar event dijelaskan di Bab 6.",
+            "Kartu berita menampilkan kategori, tanggal terbit, dan jumlah suka. Ikon hati yang terisi berarti Anda sudah menyukai berita itu."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Periksa alamat sebelum membuka tautan luar",
+          "text": "Baca nama situs di dialog **Buka tautan luar?** sebelum mengetuk **Buka**. Isi situs luar di luar tanggung jawab pengurus. Pengurus KAPDH tidak pernah meminta password atau kode verifikasi (OTP) Anda, termasuk lewat tautan."
+        }
+      ]
+    },
+    {
+      "id": "b05-3",
+      "title": "Beranda sesuai status keanggotaan",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Isi Beranda mengikuti status keanggotaan Anda. Status ditentukan sistem dari hasil verifikasi iuran dan masa berlaku KTA, sehingga Anda tidak perlu mengaturnya sendiri. Setelah masuk, anggota yang KTA-nya belum aktif diarahkan lebih dulu ke halaman iuran pendaftaran, dan anggota yang masa keanggotaannya berakhir ke halaman perpanjangan (Bab 3). Bila status berubah, misalnya setelah iuran diverifikasi, Beranda menyesuaikan diri begitu aplikasi menerima status terbaru."
+        },
+        {
+          "type": "status",
+          "title": "Tampilan Beranda untuk setiap status",
+          "items": [
+            { "label": "KTA Aktif", "tone": "success", "text": "Beranda lengkap: akses cepat, banner, event mendatang, dan berita terbaru." },
+            { "label": "Segera Berakhir", "tone": "warning", "text": "Beranda tetap lengkap, ditambah kotak kuning **Masa aktif KTA segera berakhir** dengan tombol **Perpanjang**. Kotak ini muncul sejak 30 hari sebelum KTA berakhir." },
+            { "label": "KTA Tidak Aktif", "tone": "danger", "text": "Iuran pendaftaran belum diverifikasi. Beranda menampilkan **KTA Anda belum aktif**, tombol **Selesaikan Iuran Pendaftaran**, serta pintasan **KTA** dan **Notifikasi**." },
+            { "label": "KTA Kedaluwarsa", "tone": "danger", "text": "Masa keanggotaan sudah lewat. Beranda menampilkan **Masa keanggotaan berakhir**, tombol **Perpanjang Keanggotaan**, serta pintasan **KTA**, **Notifikasi**, dan **Tiket Saya**." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b05-beranda-perpanjang.png", "caption": "Pengingat saat KTA segera berakhir" },
+            { "img": "mobile/b05-beranda-belum-aktif.png", "caption": "Beranda saat KTA belum aktif" },
+            { "img": "mobile/b05-beranda-berakhir.png", "caption": "Beranda saat masa keanggotaan berakhir" }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Layanan saat KTA tidak aktif atau kedaluwarsa",
+          "columns": ["Fitur", "KTA Tidak Aktif", "KTA Kedaluwarsa"],
+          "rows": [
+            ["Banner, event mendatang, dan berita", "Khusus anggota aktif", "Khusus anggota aktif"],
+            ["Tab **Event** dan pendaftaran event", "Khusus anggota aktif", "Khusus anggota aktif. Tiket yang sudah lunas tetap dapat dibuka di **Tiket Saya**."],
+            ["Tab **Jejaring** dan pesan", "Khusus anggota aktif", "Khusus anggota aktif"],
+            ["Tab **KTA**", "Tersedia dengan label **KTA Tidak Aktif**", "Tersedia dengan label **KTA Kedaluwarsa**"],
+            ["Kotak masuk **Notifikasi**, riwayat pembayaran, dan menu **Akun**", "Tersedia", "Tersedia"]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Tab tersebut tetap terlihat dengan ikon gembok kecil. Ketuk tab itu untuk membaca penjelasannya beserta tombol langkah berikutnya: **Bayar iuran** bila KTA belum aktif, atau **Perpanjang KTA** bila keanggotaan sudah berakhir. Pada tab **Event**, anggota yang keanggotaannya berakhir juga mendapat tombol **Lihat Tiket Saya**. Ketuk **Tutup** untuk kembali. Cara membayar iuran ada di Bab 3."
+        }
+      ]
+    },
+    {
+      "id": "b05-4",
+      "title": "Menyegarkan Beranda dan membaca saat offline",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Untuk memeriksa kabar terbaru kapan saja, tarik layar Beranda ke bawah lalu lepaskan. Garis tipis di bagian atas menandakan aplikasi sedang memperbarui. Aplikasi juga menyimpan salinan Beranda terakhir di ponsel Anda, sehingga event dan berita yang sudah dimuat tetap dapat dibaca saat internet lambat atau terputus. Bila yang tampil adalah salinan tersimpan, sebuah kotak di atas akses cepat menjelaskan keadaannya."
+        },
+        {
+          "type": "status",
+          "title": "Kotak keterangan di Beranda",
+          "items": [
+            { "label": "Menampilkan data tersimpan", "tone": "info", "text": "Salinan tersimpan tampil sementara aplikasi mengambil data terbaru. Tunggu sebentar." },
+            { "label": "Offline", "tone": "warning", "text": "Tidak ada koneksi internet. Kotak menampilkan waktu pembaruan terakhir. Periksa koneksi, lalu ketuk **Coba lagi**." },
+            { "label": "Beranda belum dapat diperbarui", "tone": "warning", "text": "Ponsel terhubung ke internet, tetapi data terbaru belum dapat dimuat; kotak menyebutkan penyebabnya. Salinan terakhir tetap tampil; ketuk **Coba lagi** beberapa saat kemudian." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b05-beranda-offline.png", "caption": "Beranda saat offline: pita Offline dan waktu pembaruan terakhir" }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            "Pita kuning **Offline** di bawah kepala layar berarti aplikasi memakai data terakhir yang tersinkron. Ketuk **Coba lagi** di pita itu setelah koneksi kembali.",
+            "Saat sistem sedang dalam pemeliharaan, muncul pita **Pemeliharaan**. Anda tetap dapat membaca, tetapi perubahan data ditunda sampai pemeliharaan selesai. Ketuk **Detail** untuk melihat perkiraan waktunya.",
+            "Bila belum ada salinan tersimpan dan koneksi gagal, Beranda menampilkan pesan galat dengan tombol **Coba lagi**.",
+            "Bila belum ada banner, berita, maupun event, Beranda menampilkan **Belum ada kabar terbaru** dengan tombol **Muat ulang**. Bila hanya satu bagian yang kosong, bagian itu menampilkan keterangan singkat."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "text": "Salinan Beranda disimpan khusus untuk akun Anda dan dihapus otomatis saat Anda keluar dari aplikasi atau berganti akun. Akun lain yang masuk di ponsel yang sama tidak dapat melihat salinan Anda."
+        }
+      ]
+    },
+    {
+      "id": "b05-5",
+      "title": "Membaca berita",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Berita adalah kabar resmi dari pengurus, seperti pengumuman, kegiatan organisasi, dan panduan. Berita dapat dibaca anggota dengan KTA aktif, termasuk yang berstatus **Segera Berakhir**. Anggota lain melihat keterangan **Berita khusus anggota aktif** beserta tombol **Bayar iuran** atau **Perpanjang KTA**."
+        },
+        {
+          "type": "steps",
+          "title": "Membuka, menyaring, dan menyukai berita",
+          "items": [
+            { "text": "Di **Beranda**, ketuk **Berita** pada akses cepat, atau ketuk **Lihat semua** di samping judul **Berita Terbaru**." },
+            { "text": "Untuk menyaring, ketuk salah satu kategori di bagian atas, misalnya **Pengumuman**. Ketuk **Semua** untuk kembali ke seluruh berita." },
+            { "text": "Gulir ke bawah. Berita berikutnya dimuat otomatis; bila tidak, ketuk **Muat lebih banyak**. Tarik daftar ke bawah untuk memuat ulang." },
+            { "text": "Ketuk kartu berita untuk membuka **Detail Berita**: gambar sampul, kategori, judul, waktu terbit, dan isi lengkap." },
+            { "text": "Di akhir isi, ketuk **Suka**. Tombol berubah menjadi **Disukai** dan jumlah suka di sampingnya bertambah. Setiap anggota hanya dapat memberi satu suka per berita; ketuk sekali lagi untuk membatalkan." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b05-berita-daftar.png", "caption": "Halaman Berita dengan filter kategori" },
+            { "img": "mobile/b05-berita-detail.png", "caption": "Detail Berita: kategori, judul, dan waktu terbit" },
+            { "img": "mobile/b05-berita-disukai.png", "caption": "Akhir berita: tautan luar berikon panah dan tombol Disukai" }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Tautan dan kategori kosong",
+          "items": [
+            "Tautan ke fitur KAPDH, misalnya halaman event, langsung dibuka di dalam aplikasi.",
+            "Tautan ke situs lain diberi ikon panah keluar. Aplikasi selalu meminta konfirmasi **Buka tautan luar?** sebelum membukanya di peramban.",
+            "Bila kategori yang dipilih belum berisi berita, ketuk **Lihat semua berita** untuk kembali ke daftar lengkap."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "text": "Bila berita sudah diarsipkan atau belum diterbitkan, aplikasi menampilkan **Berita tidak lagi tersedia**. Ketuk **Lihat berita lain** untuk kembali ke daftar. Hal ini bisa terjadi saat Anda membuka berita dari banner atau notifikasi lama."
+        }
+      ]
+    },
+    {
+      "id": "b05-6",
+      "title": "Kotak masuk notifikasi",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "**Notifikasi** adalah kotak masuk resmi Anda. Semua pemberitahuan tersimpan di sini, mulai dari hasil verifikasi pembayaran, masa KTA, event, berita, chat, hingga keamanan akun. Kotak masuk tetap menyimpan semuanya walaupun notifikasi push di ponsel Anda dimatikan, dan tetap dapat dibuka saat KTA belum aktif, sudah kedaluwarsa, atau akun sedang dibatasi."
+        },
+        {
+          "type": "steps",
+          "title": "Membaca dan menandai notifikasi",
+          "items": [
+            { "text": "Ketuk lonceng di kepala **Beranda** atau **Notifikasi** pada akses cepat. Anda juga dapat membukanya lewat **Akun** > **Notifikasi**." },
+            { "text": "Notifikasi yang belum dibaca berlatar hijau muda dan berlabel **Baru**. Ketuk **Belum dibaca** untuk menampilkan yang belum dibaca saja; angka di dalam kurung menunjukkan jumlahnya. Ketuk **Semua** untuk kembali." },
+            { "text": "Ketuk sebuah notifikasi. Notifikasi itu otomatis ditandai dibaca, lalu aplikasi membuka layar tujuannya, misalnya detail pembayaran, tiket, KTA, atau detail berita." },
+            { "text": "Untuk menandai semuanya sekaligus, ketuk ikon centang ganda di kanan atas (**Tandai semua dibaca**). Ikon ini aktif bila masih ada notifikasi yang belum dibaca." },
+            { "text": "Tarik daftar ke bawah untuk memuat ulang. Notifikasi yang lebih lama dimuat otomatis saat Anda menggulir; bila tidak, ketuk **Muat lebih banyak**. Notifikasi baru langsung muncul di urutan teratas selama kotak masuk terbuka." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b05-notifikasi.png", "caption": "Kotak masuk: notifikasi belum dibaca berlatar hijau muda dan berlabel Baru" }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Kategori notifikasi",
+          "columns": ["Kategori", "Contoh isi"],
+          "rows": [
+            ["Pembayaran", "Hasil verifikasi iuran dan tiket, bukti pembayaran ditolak, refund."],
+            ["Keanggotaan", "Status KTA setelah iuran diverifikasi, pengingat 30 hari sebelum masa berlaku berakhir, dan perpanjangan."],
+            ["Event", "Pengingat H-3 dan H-1, perubahan jadwal atau lokasi, pembatalan event."],
+            ["Berita", "Pengumuman dan berita resmi pengurus."],
+            ["Chat", "Pesan baru dan undangan grup. Isi pesan tidak ditampilkan di notifikasi."],
+            ["Keamanan akun", "Login, penggantian password, dan pencabutan sesi perangkat."],
+            ["Akun", "Pembatasan, banding, dan penghapusan akun."]
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Bila notifikasi tidak membuka layar tujuan",
+          "items": [
+            "Notifikasi tanpa tujuan hanya berisi informasi; mengetuknya cukup menandainya dibaca.",
+            "Pesan **Tujuan notifikasi ini belum didukung versi aplikasi Anda** berarti aplikasi perlu diperbarui melalui toko aplikasi.",
+            "Bila tujuan tidak lagi sesuai dengan status akun Anda, aplikasi mengarahkan Anda ke layar yang sesuai, misalnya halaman perpanjangan.",
+            "Notifikasi push yang diketuk sebelum Anda masuk akan dibuka setelah Anda masuk. Bila notifikasi itu milik akun lain di ponsel yang sama, aplikasi menampilkan **Notifikasi tidak tersedia** dan tidak membuka isinya."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Pengaturan notifikasi",
+          "text": "Izin notifikasi push diminta setelah Anda masuk dan boleh ditolak; semua notifikasi tetap tersimpan di kotak masuk. Untuk menyalakannya lagi, izinkan notifikasi KAPDH di pengaturan ponsel. Push dan email per kategori diatur di **Akun** > **Preferensi notifikasi** (Bab 8). Notifikasi keamanan dan akun selalu dikirim. Setelah Anda keluar, ponsel itu berhenti menerima push untuk akun Anda."
+        }
+      ]
+    },
+    {
+      "id": "b05-7",
+      "title": "Kebijakan, ketentuan, dan Bantuan",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Dokumen resmi KAPDH dapat dibaca langsung di aplikasi kapan saja, termasuk sebelum Anda masuk dan apa pun status keanggotaan Anda. Setiap dokumen mencantumkan nomor versi dan tanggal terbit, sehingga Anda tahu versi mana yang sedang berlaku."
+        },
+        {
+          "type": "steps",
+          "title": "Membuka dokumen dari menu Akun",
+          "items": [
+            { "text": "Ketuk tab **Akun**, lalu gulir ke bagian **INFORMASI**." },
+            { "text": "Pilih dokumen: **Kebijakan privasi**, **Ketentuan layanan**, **Ketentuan komunitas**, **Bantuan**, atau **Tentang KAPDH**." },
+            { "text": "Baca isinya. Nomor versi dan tanggal terbit tertera tepat di bawah judul." },
+            { "text": "Ketuk panah kembali di kiri atas untuk kembali ke menu **Akun**." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b05-halaman-legal.png", "caption": "Halaman Kebijakan Privasi dengan versi dan tanggal terbit" }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Dokumen yang tersedia",
+          "columns": ["Dokumen", "Isi singkat"],
+          "rows": [
+            ["**Kebijakan privasi**", "Data pribadi yang diproses KAPDH, tujuan, penyimpanan, dan hak Anda."],
+            ["**Ketentuan layanan**", "Aturan penggunaan aplikasi, keanggotaan, iuran, dan event."],
+            ["**Ketentuan komunitas**", "Perilaku yang diharapkan di Jejaring dan pesan, serta penanganan laporan."],
+            ["**Bantuan**", "Panduan singkat dan jawaban atas pertanyaan yang sering diajukan."],
+            ["**Tentang KAPDH**", "Profil organisasi dan layanan bagi anggota."]
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Tempat lain untuk membuka dokumen",
+          "items": [
+            "Di layar masuk, tautan **Kebijakan Privasi** dan **Bantuan** tersedia sebelum Anda masuk.",
+            "Saat mendaftar, baca dokumen lewat **Baca Kebijakan Privasi** dan **Baca Ketentuan** sebelum menyetujuinya (Bab 2).",
+            "Tautan di dalam dokumen hanya dibuka bila berupa alamat situs aman (https) atau alamat email.",
+            "Bila dokumen belum diterbitkan pengurus, aplikasi menampilkan **Halaman belum tersedia** beserta kontak bantuan.",
+            "**Lisensi sumber terbuka** di bagian yang sama berisi daftar perangkat lunak pihak ketiga yang dipakai aplikasi."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Butuh bantuan lebih lanjut? Kirim email ke bantuan@kapdh.or.id atau hubungi nomor WhatsApp dukungan yang tercantum di aplikasi. Tanya jawab dan pemecahan masalah lengkap ada di Bab 17."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "kapdh-mobile/lib/features/home/home_screen.dart (akses cepat, beranda terkunci, pengingat perpanjangan, keadaan kosong, kotak cache)",
+    "kapdh-mobile/lib/features/home/home_controller.dart (cache dulu lalu server, tarik untuk menyegarkan)",
+    "kapdh-mobile/lib/features/home/widgets/home_widgets.dart (kepala Beranda, lencana 99+)",
+    "kapdh-mobile/lib/features/home/widgets/banner_carousel.dart (geser manual, label Tautan luar, target tidak tersedia)",
+    "kapdh-mobile/lib/features/home/shared/links.dart (dialog Buka tautan luar?, pesan Konten tujuan sudah tidak tersedia)",
+    "kapdh-mobile/lib/features/home/shared/member_gate.dart (berita khusus anggota aktif)",
+    "kapdh-mobile/lib/features/home/shared/content_widgets.dart (label Lihat semua)",
+    "kapdh-mobile/lib/features/home/shared/paged_list.dart (muat berikutnya, Muat lebih banyak)",
+    "kapdh-mobile/lib/core/cache/home_cache_store.dart (cache per akun, dihapus saat keluar)",
+    "kapdh-mobile/lib/features/news/news_list_screen.dart, news_detail_screen.dart, news_controllers.dart, widgets/post_card.dart, widgets/post_body.dart",
+    "kapdh-mobile/lib/features/notifications/notifications_screen.dart, notification_open_screen.dart, notification_presentation.dart, notification_unread_count.dart, push_permission.dart",
+    "kapdh-mobile/lib/features/account/notification_preferences_screen.dart (isi kategori, 30 hari, H-3 dan H-1)",
+    "kapdh-mobile/lib/features/account/account_screen.dart (menu Notifikasi, Preferensi notifikasi, bagian INFORMASI)",
+    "kapdh-mobile/lib/features/legal/legal_page_screen.dart (versi dan tanggal terbit, https/mailto, Halaman belum tersedia)",
+    "kapdh-mobile/lib/features/auth/login_screen.dart dan register_screen.dart (tautan legal sebelum masuk)",
+    "kapdh-mobile/lib/app/app_shell.dart (lima tab, tab terkunci, Bayar iuran, Perpanjang KTA)",
+    "kapdh-mobile/lib/app/app_banners.dart dan lib/design/offline_banner.dart (pita Offline dan Pemeliharaan)",
+    "kapdh-mobile/lib/app/redirect.dart (matriks akses per status)",
+    "kapdh-mobile/lib/core/push/push_service.dart (izin push diminta setelah login)",
+    "kapdh-platform/packages/contracts/dart/kapdh_api/lib/src/status_routes.dart (label status KTA)",
+    "kapdh-platform/apps/api/src/modules/content/home.service.ts (HOME_EVENT_LIMIT 5, HOME_POST_LIMIT 5)",
+    "kapdh-platform/apps/api/src/modules/content/banners.service.ts (HOME_BANNER_LIMIT 10, masa tayang)",
+    "kapdh-platform/apps/api/src/core/membership/period.ts (EXPIRING_WINDOW_DAYS 30)",
+    "kapdh-platform/apps/web/src/lib/site.ts (email bantuan)",
+    "docs/handoff/phase-c/mobile-home-news-events.md, mobile-account-notifications.md, api-notifications.md, api-content.md",
+    "docs/legal/bantuan.html (bagian Notifikasi, Kebijakan dan informasi lain)",
+    "kapdh-mobile/mockup-html/beranda/home.html, news-list.html, news-detail.html, notifications.html, legal-page.html",
+    "kapdh-mobile/lib/app/router.dart (StatefulShellRoute.indexedStack: Beranda tidak dimuat ulang saat berpindah tab; onboarding dan perpanjangan di luar tab)",
+    "kapdh-platform/packages/contracts/dart/kapdh_api/lib/src/status_routes.dart (routeForStatus: unverified ke iuran pendaftaran, expired ke perpanjangan)",
+    "kapdh-mobile/lib/features/network/network_screen.dart (sub-tab Jejaring, Pesan, Pesan Grup)",
+    "kapdh-mobile/lib/features/events/widgets/event_card.dart dan event_format.dart (label pendaftaran, Gratis)",
+    "kapdh-platform/apps/api/src/modules/chat/chat.notifications.ts (notifikasi pesan tanpa isi pesan)",
+    "kapdh-platform/apps/api/src/modules/content/home.service.ts baris 123-125 (event open/closed yang belum berakhir, urut waktu mulai)",
+    "docs/qa/uat-checklist.md U-04 dan U-08"
+  ]
+}

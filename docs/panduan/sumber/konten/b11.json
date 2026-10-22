@@ -1,0 +1,479 @@
+{
+  "id": "b11",
+  "part": "pengurus",
+  "title": "Manajemen Users (Data Alumni)",
+  "kicker": "Web Admin Pengurus",
+  "summary": "Menu Manajemen Users memuat seluruh data alumni yang terdaftar. Bab ini memandu pengurus mencari dan menyaring alumni, membaca Informasi Pengguna, mengoreksi data, membatasi akun, serta mengelola daftar profesi dan keahlian.",
+  "icon": "ph-users-three",
+  "highlights": [
+    "Mencari, menyaring, dan mengurutkan data alumni",
+    "Membaca profil, keanggotaan, dan histori setiap anggota",
+    "Mengoreksi data dan identitas dengan alasan yang tercatat",
+    "Membatasi akun, mencabut pembatasan, dan memulai reset sandi",
+    "Mengelola daftar profesi dan keahlian (Skill & Profesi)"
+  ],
+  "sections": [
+    {
+      "id": "b11-1",
+      "title": "Membuka daftar alumni",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Menu **Manajemen Users** adalah tempat pengurus memantau seluruh alumni yang terdaftar di KAPDH Apps, mulai dari yang baru mendaftar sampai yang sedang menghapus akun. Buka menu **Manajemen Users** di sisi kiri, lalu pilih **Data Alumni**. Di bawah judul halaman tampil jumlah total alumni terdaftar, atau jumlah alumni yang cocok bila Anda sedang mencari atau menyaring."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b11-daftar-alumni.png",
+          "caption": "Halaman Manajemen Users: jumlah alumni, kotak pencarian, tombol Filter, pilihan Urutkan, dan kartu alumni"
+        },
+        {
+          "type": "list",
+          "title": "Isi setiap kartu alumni",
+          "items": [
+            "Inisial atau foto, nama lengkap, dan email anggota.",
+            "Penanda **Admin** bila alumni tersebut juga memegang akun pengurus di web admin.",
+            "**Angkatan** beserta kode angkatannya, misalnya 12 (KAPDH 12), dan **Alamat** berupa kota domisili.",
+            "Nomor anggota, atau **Belum bernomor** bila email anggota belum terverifikasi.",
+            "Profesi utama (bila diisi) dan label status keanggotaan.",
+            "Ikon pensil untuk langsung membuka formulir ubah data (hanya bagi pemegang izin **Kelola anggota** dan tidak tampil pada akun yang sedang dihapus), serta tombol **Informasi Pengguna** untuk membuka detail anggota."
+          ]
+        },
+        {
+          "type": "status",
+          "title": "Arti status keanggotaan",
+          "items": [
+            { "label": "Menunggu Verifikasi Email", "tone": "info", "text": "Sudah mendaftar, tetapi belum memasukkan kode verifikasi email. Belum bernomor anggota." },
+            { "label": "KTA Tidak Aktif", "tone": "danger", "text": "Email terverifikasi dan nomor anggota sudah dibuat, tetapi iuran pendaftaran belum disetujui." },
+            { "label": "KTA Aktif", "tone": "success", "text": "Masa aktif keanggotaan sedang berjalan." },
+            { "label": "Segera Berakhir", "tone": "warning", "text": "Sisa masa aktif 30 hari atau kurang. Perpanjangan sudah dibuka." },
+            { "label": "KTA Kedaluwarsa", "tone": "danger", "text": "Masa aktif sudah habis. Anggota tetap dapat membayar perpanjangan." },
+            { "label": "Dibatasi", "tone": "neutral", "text": "Akun dibatasi pengurus. Status ini mengalahkan masa aktif sampai pembatasan dicabut." },
+            { "label": "Nonaktif", "tone": "neutral", "text": "Akun diblokir penuh atas keputusan tertulis Super Admin, misalnya karena disalahgunakan." },
+            { "label": "Penghapusan Diproses", "tone": "neutral", "text": "Anggota meminta akunnya dihapus. Data tidak dapat diubah atau dibatasi selama proses berjalan." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Alumni mendaftar sendiri",
+          "text": "Web admin tidak menyediakan tombol untuk menambah alumni. Alumni mendaftar sendiri lewat aplikasi (lihat Bab 2) dan langsung tampil di daftar ini, termasuk yang belum memasukkan kode verifikasi email. Akun yang sudah selesai dihapus tidak tampil lagi."
+        }
+      ]
+    },
+    {
+      "id": "b11-2",
+      "title": "Mencari, menyaring, dan mengurutkan",
+      "blocks": [
+        {
+          "type": "steps",
+          "title": "Mencari dan mengurutkan",
+          "items": [
+            { "text": "Ketik kata kunci di kotak **Cari alumni**. Pencarian mencocokkan nama, email, dan kota yang mengandung kata kunci, serta nomor anggota yang diawali kata kunci. Huruf besar dan kecil tidak dibedakan." },
+            { "text": "Daftar diperbarui sesaat setelah Anda berhenti mengetik, tanpa perlu menekan tombol. Untuk mengosongkan pencarian, hapus isi kotak tersebut." },
+            { "text": "Pilih **Urutkan** untuk mengubah urutan kartu, misalnya **Nama A-Z**, **Angkatan terkecil**, atau **Masa aktif habis tercepat**. Urutan bawaan adalah **Terdaftar terbaru**." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Menyaring daftar",
+          "items": [
+            { "text": "Klik **Filter**. Panel filter terbuka di bawah kotak pencarian." },
+            { "text": "Pasang satu atau beberapa filter pada tabel di bawah. Tombol berubah menjadi **Filter (1 aktif)**, **Filter (2 aktif)**, dan seterusnya sesuai jumlah filter yang terpasang." },
+            { "text": "Klik **Reset filter** untuk melepas semua filter sekaligus. Bila tidak ada alumni yang cocok, klik **Hapus pencarian dan filter**." }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Pilihan filter",
+          "columns": ["Filter", "Pilihan"],
+          "rows": [
+            ["**Status keanggotaan**", "**Semua status** atau salah satu status pada subbab sebelumnya, misalnya **Dibatasi** atau **Segera Berakhir**."],
+            ["**Angkatan**", "**Semua angkatan** atau Angkatan 1 sampai angkatan terbaru. Angkatan terbaru adalah tahun berjalan dikurangi 1996, jadi pada 2026 adalah angkatan 30."],
+            ["**Kota domisili**", "Ketik nama kota secara lengkap, misalnya Pekanbaru. Huruf besar dan kecil tidak dibedakan."],
+            ["**Jenis kelamin**", "**Semua**, **Laki-laki**, atau **Perempuan**."],
+            ["**Profesi**", "Daftar profesi dari halaman Skill & Profesi. Profesi yang sudah nonaktif ditandai (nonaktif)."],
+            ["**Keahlian**", "Daftar keahlian dari halaman Skill & Profesi, dengan penanda nonaktif yang sama."]
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b11-filter.png",
+          "caption": "Panel filter dengan status Dibatasi terpasang: tombol menjadi Filter (1 aktif) dan daftar menyisakan dua alumni"
+        },
+        {
+          "type": "p",
+          "text": "Setiap halaman memuat 24 kartu. Di bawah kartu tampil keterangan jumlah, misalnya Menampilkan 2 dari 2, beserta tombol **Halaman sebelumnya** dan **Halaman berikutnya**. Bila data bergeser saat Anda berpindah halaman sehingga halaman menjadi kosong, klik **Kembali ke halaman sebelumnya**."
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Filter tetap tersimpan",
+          "text": "Pencarian, filter, dan urutan disimpan di alamat halaman. Kembali dari Informasi Pengguna atau Skill & Profesi lewat tautan **Manajemen Users** di atas judul membuka daftar dengan filter yang sama, selama tab browser masih terbuka. **Data Alumni** di menu samping membuka daftar tanpa filter. Simpan alamat halaman sebagai penanda browser untuk penyaringan yang sering dipakai."
+        }
+      ]
+    },
+    {
+      "id": "b11-3",
+      "title": "Membaca Informasi Pengguna",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Klik **Informasi Pengguna** pada kartu alumni. Bagian atas menampilkan nama, nomor anggota, dan kode angkatan, beserta tombol tindakan yang sesuai izin Anda: **Ubah data**, **Batasi akun** atau **Cabut pembatasan**, dan **Reset sandi**. Untuk kembali ke daftar, klik **Manajemen Users** pada jejak navigasi di atas nama anggota."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b11-detail.png",
+          "caption": "Informasi Pengguna: tombol tindakan, kartu Profil alumni dengan profesi dan riwayat pendidikan, serta ringkasan di kolom kanan"
+        },
+        {
+          "type": "table",
+          "title": "Bagian halaman Informasi Pengguna",
+          "columns": ["Bagian", "Isi"],
+          "rows": [
+            ["**Profil alumni**", "Nomor anggota, kode angkatan, jenis kelamin, status pendidikan, kelas masuk dan keluar, tahun masuk sampai keluar, kota domisili, profesi, riwayat pendidikan, keahlian, dan bio."],
+            ["**Kontak (administratif)**", "Email, telepon, dan media sosial, masing-masing dengan keterangan ditampilkan atau disembunyikan dari anggota lain, serta apakah anggota tampil di direktori alumni."],
+            ["**Keanggotaan**", "Status keanggotaan dan status akun, tanggal mulai, berakhir, perpanjangan dibuka, KTA dibuat (email terverifikasi), terdaftar, dan login terakhir, serta tabel **Periode keanggotaan**."],
+            ["**Histori keanggotaan dan moderasi**", "Aktivasi, perpanjangan, pembatasan, pencabutan, koreksi nomor, dan peringatan, terbaru di atas, 10 entri per halaman."],
+            ["**Akun dibatasi**", "Hanya bila akun dibatasi: sejak kapan, oleh siapa, pesan untuk anggota, dan alasan internal."],
+            ["**Akun admin tertaut**", "Hanya bila alumni ini juga memegang akun pengurus: nama, peran, dan status akun adminnya."],
+            ["**Pembayaran terbaru**", "Pembayaran terakhir anggota beserta statusnya. Klik satu pembayaran untuk membukanya di Verifikasi Pembayaran, atau **Semua pembayaran** untuk seluruh riwayatnya (Bab 10)."],
+            ["**Tiket event terbaru**", "Event yang diikuti, total pembayaran tiket, status tiket, dan waktu check-in."],
+            ["**Moderasi**", "Jumlah laporan aktif, total laporan, peringatan, dan tindakan terakhir, dengan tautan **Laporan Moderasi** (Bab 14)."]
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Kartu **Profil alumni** menampilkan seluruh isian profil berulang anggota. Profesi tampil sesuai urutan anggota; profesi pertama adalah profesi utama yang tercetak di KTA, dan diberi keterangan (utama) bila anggota mengisi lebih dari satu profesi. Riwayat pendidikan setelah pondok tampil dari yang terbaru, lengkap dengan strata, jurusan, dan tahun tamat. Di kartu kontak, setiap akun media sosial tampil sebagai baris tersendiri dan dapat diklik untuk dibuka di tab baru. Profesi atau keahlian yang masternya sudah dinonaktifkan tetap tampil dengan penanda **Master nonaktif**."
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Kontak hanya untuk urusan kepengurusan",
+          "text": "Kontak tampil lengkap walaupun anggota menyembunyikannya dari anggota lain, karena pengurus memerlukannya untuk urusan administratif. Setiap pembukaan halaman ini tercatat di Audit. Gunakan kontak hanya untuk urusan kepengurusan dan jangan membagikannya ke pihak lain."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b11-keanggotaan.png",
+          "caption": "Kartu Keanggotaan dan histori anggota berstatus Segera Berakhir: periode aktivasi dan perpanjangan beserta pengurus yang menyetujui"
+        },
+        {
+          "type": "p",
+          "text": "Pilih jenis pada kotak **Semua jenis** di kartu histori untuk menampilkan satu jenis saja, misalnya **Koreksi nomor anggota** atau **Dibatasi (suspend)**. Setiap entri menyebut pengurus pelaksana (atau Sistem) dan alasannya bila ada. Entri aktivasi dan perpanjangan juga memuat masa aktif baru beserta tanggal berakhir sebelumnya, sedangkan entri koreksi nomor memuat nomor lama dan baru. Entri **Peringatan moderasi** serta alasan pembatasan dan pencabutannya hanya terlihat oleh pemegang izin **Lihat laporan**; pengurus lain melihat keterangan Alasan hanya untuk pemegang izin moderasi."
+        }
+      ]
+    },
+    {
+      "id": "b11-4",
+      "title": "Mengubah data dan mengoreksi identitas",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Anggota dapat mengubah sendiri foto, kota, telepon, bio, profesi, riwayat pendidikan, media sosial, keahlian, dan pengaturan privasinya di aplikasi (Bab 8). Nama lengkap, jenis kelamin, angkatan, dan kelas adalah data identitas yang tidak dapat diubah anggota; jenis kelamin, angkatan, dan kelas juga menentukan nomor anggota. Data identitas hanya dapat dikoreksi pengurus yang memegang izin **Kelola anggota**, misalnya bila anggota salah memilih angkatan saat mendaftar. Pengurus juga dapat mengoreksi atau menghapus isi profil yang melanggar Ketentuan Komunitas, misalnya foto profil, bio, profesi yang diketik sendiri, atau tautan media sosial."
+        },
+        {
+          "type": "steps",
+          "title": "Mengubah data anggota",
+          "items": [
+            { "text": "Buka Informasi Pengguna anggota, lalu klik **Ubah data**. Cara cepat: klik ikon pensil pada kartu alumni di daftar." },
+            { "text": "Ubah isian yang perlu dikoreksi. Isian lain biarkan apa adanya; hanya data yang berubah yang disimpan." },
+            { "text": "Isi **Alasan perubahan** (3-500 karakter), misalnya Koreksi kelas keluar sesuai ijazah. Alasan wajib dan tercatat di Audit." },
+            { "text": "Klik **Simpan perubahan**. Bila tidak ada data yang berubah, muncul pesan Belum ada perubahan." },
+            { "text": "Setelah tersimpan, formulir tertutup dan pesan hijau Data (nama anggota) disimpan tampil di atas halaman." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b11-ubah-data.png",
+          "caption": "Formulir Ubah data anggota: bagian Identitas, Domisili dan kontak, serta awal bagian profesi"
+        },
+        {
+          "type": "table",
+          "title": "Isian formulir Ubah data anggota",
+          "columns": ["Bagian", "Isian dan aturan"],
+          "rows": [
+            ["**Identitas**", "**Nama lengkap** (2-120 karakter), **Jenis kelamin**, **Angkatan** (1 sampai angkatan terbaru), **Kelas masuk**, dan **Kelas keluar**. Kelas keluar tidak boleh lebih rendah dari kelas masuk."],
+            ["**Domisili dan kontak**", "**Kota domisili** (maksimal 80 karakter, kosongkan untuk menghapus) dan **Telepon**, misalnya +62 812-3456-7890. Email tidak dapat diubah di sini."],
+            ["**Profesi**", "Maksimal 5 baris, masing-masing maksimal 100 karakter dan tidak boleh kembar. Profesi pertama tampil di KTA. Tambah baris dengan **Tambah profesi**; hapus dengan ikon tempat sampah."],
+            ["**Keahlian**", "Centang maksimal 10 keahlian dari daftar yang aktif."],
+            ["**Riwayat pendidikan**", "Maksimal 10 baris lewat **Tambah riwayat**, disimpan dari yang terbaru. **Universitas/instansi** wajib; **Jurusan/program studi**, **Strata**, dan **Tahun tamat** (1950-tahun ini) boleh kosong."],
+            ["**Bio**", "Maksimal 500 karakter."],
+            ["**Tautan sosial**", "Maksimal 10 tautan lewat **Tambah tautan**, tanpa kembar. Pilih platform, lalu isi nama pengguna tanpa spasi atau tautan https://. Platform Situs web wajib berupa tautan https://."],
+            ["**Hapus foto profil anggota**", "Muncul bila anggota memasang foto. Centang untuk melepas foto yang tidak pantas."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Pilih profesi dari saran",
+          "text": "Pilih saran dari daftar profesi aktif. Label yang sama dengan profesi aktif (huruf besar dan kecil tidak dibedakan) otomatis tertaut, sehingga anggota muncul pada filter profesi. Baris kosong diabaikan saat menyimpan. Profesi bertanda (nonaktif) memakai master yang sudah nonaktif: bila barisnya dihapus lalu disimpan, profesi itu tidak dapat ditautkan lagi."
+        },
+        {
+          "type": "steps",
+          "title": "Mengoreksi jenis kelamin, angkatan, atau kelas",
+          "items": [
+            { "text": "Di formulir, ubah **Jenis kelamin**, **Angkatan**, **Kelas masuk**, atau **Kelas keluar**, isi alasan, lalu klik **Simpan perubahan**." },
+            { "text": "Dialog **Simpan koreksi identitas?** menampilkan nilai lama dan baru, nomor anggota saat ini, dan alasan Anda. Periksa dengan teliti." },
+            { "text": "Centang **Saya sudah memeriksa data identitas baru dan alasan koreksinya.**, lalu klik **Simpan koreksi**." },
+            { "text": "Bila nomor anggota berubah, pesan hasil menampilkan nomor lama dan nomor baru. Nomor urut di bagian akhir tetap sama; hanya bagian angkatan, status pendidikan, dan jenis kelamin yang dihitung ulang." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b11-koreksi.png",
+          "caption": "Konfirmasi koreksi identitas: kelas keluar 5 menjadi 6, nomor anggota saat ini 12.02.01.7, dan alasan koreksi"
+        },
+        {
+          "type": "p",
+          "text": "Nomor anggota berformat AA.SS.JK.N: angkatan, status pendidikan (01 tamat MTs dan Aliyah, 02 tamat MTs atau Aliyah, 03 tidak tamat), jenis kelamin (01 laki-laki, 02 perempuan), dan nomor urut. Pada contoh gambar, kelas keluar dikoreksi dari 5 menjadi 6 sehingga 12.02.01.7 menjadi 12.01.01.7. Nomor lama dan baru tercatat di Audit dan histori, anggota menerima notifikasi Data keanggotaan diperbarui, dan QR KTA lama perlu diperbarui; anggota cukup membuka KTA di aplikasi untuk memuat QR baru (Bab 4). Koreksi nama lengkap juga meminta konfirmasi, tetapi tidak mengubah nomor."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Data diubah pengurus lain",
+          "text": "Bila pengurus lain menyimpan perubahan setelah Anda membuka formulir, muncul peringatan dan tombol **Simpan perubahan** dinonaktifkan agar perubahan mereka tidak tertimpa. Klik **Muat data terbaru**, periksa isinya, lalu ulangi perubahan Anda."
+        }
+      ]
+    },
+    {
+      "id": "b11-5",
+      "title": "Membatasi akun dan memulai reset sandi",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Pembatasan dipakai untuk pelanggaran Ketentuan Komunitas, misalnya promosi berulang setelah diperingatkan. Tombol **Batasi akun** tampil bagi pengurus yang memegang izin **Lihat anggota**, **Lihat laporan**, dan **Putuskan laporan**. Pembatasan juga dapat diputuskan dari laporan moderasi (Bab 14); hasilnya sama."
+        },
+        {
+          "type": "steps",
+          "title": "Membatasi akun",
+          "items": [
+            { "text": "Di Informasi Pengguna, klik **Batasi akun**." },
+            { "text": "Baca akibat pembatasan pada dialog, lalu isi **Alasan internal** (3-1000 karakter). Alasan ini untuk audit dan histori dan tidak pernah dikirim ke anggota." },
+            { "text": "Isi **Pesan untuk anggota** (3-500 karakter). Pesan ini tampil di halaman pembatasan pada aplikasi anggota, jadi jangan memuat data pelapor." },
+            { "text": "Centang **Saya memahami seluruh sesi anggota dicabut dan aksesnya dibatasi ke portal pembatasan.**, lalu klik **Batasi akun**. Tombol ini baru aktif setelah pernyataan dicentang." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b11-batasi.png",
+          "caption": "Dialog Batasi akun: akibat pembatasan, Alasan internal, Pesan untuk anggota, dan pernyataan yang wajib dicentang"
+        },
+        {
+          "type": "list",
+          "title": "Akibat pembatasan",
+          "items": [
+            "Status keanggotaan menjadi **Dibatasi** dan mengalahkan masa aktif. Tanggal masa aktif tidak berubah.",
+            "Seluruh sesi anggota dicabut sehingga anggota keluar dari semua perangkat, lalu aksesnya terbatas pada halaman pembatasan.",
+            "Profil disembunyikan dari direktori, dan verifikasi KTA menunjukkan Tidak aktif.",
+            "Tiket anggota tidak berlaku untuk check-in; refund diputuskan pengurus per kasus.",
+            "Anggota menerima notifikasi berisi pesan Anda dan dapat mengajukan banding dari halaman pembatasan (Bab 8). Banding ditangani di menu Moderasi (Bab 14).",
+            "Persetujuan pembayaran berikutnya tidak mencabut pembatasan, dan **Catat iuran** tidak dapat dipakai selama pembatasan berlaku."
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Mencabut pembatasan",
+          "items": [
+            { "text": "Buka Informasi Pengguna anggota yang dibatasi. Kartu **Akun dibatasi** tampil di kolom kanan." },
+            { "text": "Klik **Cabut pembatasan**, lalu isi **Alasan pencabutan** (3-1000 karakter)." },
+            { "text": "Bila perlu, isi **Pesan untuk anggota (opsional)**. Bila kosong, anggota menerima pesan baku Pembatasan akun Anda telah dicabut pengurus." },
+            { "text": "Klik **Cabut pembatasan**. Banding aktif anggota, bila ada, otomatis ditutup sebagai dikabulkan." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Status setelah pembatasan dicabut",
+          "text": "Pencabutan tidak otomatis membuat KTA aktif. Status dihitung ulang dari masa aktif: anggota yang masa aktifnya masih berjalan kembali **KTA Aktif** atau **Segera Berakhir**, yang masa aktifnya sudah habis menjadi **KTA Kedaluwarsa**, dan yang belum pernah disetujui iuran pendaftarannya menjadi **KTA Tidak Aktif**. Notifikasi ke anggota memuat arahan sesuai status barunya."
+        },
+        {
+          "type": "steps",
+          "title": "Memulai reset sandi (khusus Super Admin)",
+          "items": [
+            { "text": "Pastikan permintaan datang lewat kanal bantuan resmi. Tombol **Reset sandi** hanya muncul bila **Status akun** anggota **Aktif**, termasuk anggota yang sedang dibatasi." },
+            { "text": "Klik **Reset sandi**, isi **Alasan atau dasar permintaan** (3-500 karakter), lalu centang pernyataan pada dialog." },
+            { "text": "Klik **Mulai pemulihan**. Pada dialog **Konfirmasi identitas**, masukkan **Sandi** dan **Kode autentikator** Anda, lalu klik **Konfirmasi** (lihat Bab 9)." },
+            { "text": "Seluruh sesi anggota dicabut, anggota menerima notifikasi keamanan, dan kode pemulihan dikirim hanya ke email terverifikasi anggota. Kode berlaku 10 menit; anggota lalu membuat sandi baru di aplikasi (Bab 2)." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Pengurus tidak pernah melihat sandi",
+          "text": "Kode pemulihan dan sandi baru tidak pernah tampil di web admin. Pengiriman kode dibatasi 5 kali per jam untuk setiap email. Bila batas tercapai, dialog menampilkan sisa waktu tunggu dan tombol **Mulai pemulihan** baru dapat dipakai lagi setelah waktu tunggu habis."
+        }
+      ]
+    },
+    {
+      "id": "b11-6",
+      "title": "Mengelola Skill & Profesi",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Daftar profesi dan keahlian adalah data master yang dipilih alumni di profil aplikasi dan dipakai sebagai filter di direktori jejaring maupun di daftar alumni. Alumni juga boleh mengetik profesi sendiri, tetapi hanya profesi yang tertaut ke daftar ini yang dapat dipakai sebagai filter. Usulan profesi atau keahlian baru dari anggota masuk lewat kontak bantuan. Buka menu **Manajemen Users** lalu pilih **Skill & Profesi**, atau klik tombol **Manajemen Skill & Profesi** di halaman daftar alumni. Halaman ini memerlukan izin **Kelola master profesi dan keahlian**."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b11-master.png",
+          "caption": "Manajemen Skill & Profesi, tab Profesi: status, jumlah alumni pemakai, urutan tampil, dan tombol kelola di setiap baris"
+        },
+        {
+          "type": "p",
+          "text": "Pilih tab **Profesi** atau **Keahlian**. Gunakan kotak **Cari profesi** (atau **Cari keahlian**), pilihan **Status**, dan **Urutkan** (**Urutan tampil**, **Label A-Z**, **Label Z-A**, **Paling banyak dipakai**) untuk menemukan butir. Kolom **Dipakai** menunjukkan jumlah alumni yang memakai butir tersebut. Setiap halaman memuat 30 butir."
+        },
+        {
+          "type": "steps",
+          "title": "Menambah profesi atau keahlian",
+          "items": [
+            { "text": "Klik **Tambah profesi** atau **Tambah keahlian**." },
+            { "text": "Isi **Label** (1-100 karakter). Label harus unik tanpa membedakan huruf besar dan kecil, termasuk terhadap butir yang sudah nonaktif." },
+            { "text": "Isi **Urutan tampil**. Angka kecil tampil lebih dulu; nilai bawaannya 0." },
+            { "text": "Biarkan sakelar **Dapat dipilih alumni** menyala agar butir langsung dapat dipilih di aplikasi, lalu klik **Tambah**." }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Mengubah, menonaktifkan, dan menghapus",
+          "items": [
+            "Ikon pensil membuka formulir ubah. Mengganti label berlaku untuk semua alumni yang memakainya. Klik **Simpan** setelah selesai.",
+            "**Nonaktifkan** menghentikan pemilihan baru setelah Anda mengonfirmasi. Alumni yang sudah memakainya tetap menampilkan labelnya.",
+            "**Aktifkan** membuat butir nonaktif dapat dipilih lagi, langsung tanpa konfirmasi.",
+            "Ikon tempat sampah hanya muncul pada butir yang belum pernah dipakai (Dipakai 0 alumni). Penghapusan bersifat permanen: centang **Saya memahami akibat tindakan ini.**, lalu klik **Hapus profesi** atau **Hapus keahlian**.",
+            "Bila butir ternyata mulai dipakai sebelum terhapus, penghapusan ditolak dan dialog menyarankan menonaktifkannya."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Label sudah ada tetapi nonaktif",
+          "text": "Bila label yang Anda tambahkan sudah pernah dibuat lalu dinonaktifkan, penyimpanan ditolak. Pilih **Nonaktif** pada **Status** untuk menemukan butir lama itu, lalu klik **Aktifkan** sebagai gantinya."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Angkatan dan kelas bukan data master",
+          "text": "Pilihan angkatan bertambah otomatis setiap tahun (angkatan terbaru adalah tahun berjalan dikurangi 1996), dan kelas selalu Kelas 1 sampai 3 (MTs) serta Kelas 4 sampai 6 (1 sampai 3 Aliyah). Keduanya tidak perlu dan tidak dapat diatur di halaman ini."
+        }
+      ]
+    },
+    {
+      "id": "b11-7",
+      "title": "Izin, audit, dan hal yang tidak dapat dilakukan",
+      "blocks": [
+        {
+          "type": "table",
+          "title": "Izin yang diperlukan",
+          "columns": ["Tindakan", "Izin"],
+          "rows": [
+            ["Membuka daftar alumni dan Informasi Pengguna", "**Lihat anggota**"],
+            ["Mengubah data dan mengoreksi identitas", "**Lihat anggota** dan **Kelola anggota**"],
+            ["Membatasi akun dan mencabut pembatasan", "**Lihat anggota**, **Lihat laporan**, dan **Putuskan laporan**"],
+            ["Memulai reset sandi anggota", "Hanya peran Super Admin"],
+            ["Membuka Manajemen Skill & Profesi", "**Kelola master profesi dan keahlian**"],
+            ["Melihat kartu Pembayaran terbaru", "**Lihat pembayaran**. Tombol **Catat iuran** juga memerlukan **Putuskan pembayaran** (Bab 10)."],
+            ["Melihat kartu Tiket event terbaru", "**Kelola event dan tiket** atau **Lihat pembayaran**"],
+            ["Melihat kartu Moderasi, peringatan, dan alasan internal pembatasan", "**Lihat laporan**"],
+            ["Menelusuri catatan tindakan di menu Audit", "**Lihat audit** (Bab 14)"]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Akun alumni milik Anda sendiri",
+          "text": "Bila akun alumni tertaut ke akun admin Anda sendiri, halaman menampilkan peringatan dan tombol **Ubah data**, **Batasi akun**, **Cabut pembatasan**, serta **Reset sandi** tidak tersedia. Untuk mencegah konflik kepentingan, perubahan pada akun tersebut harus dilakukan pengurus lain. Izin diatur Super Admin di Manajemen Admin (Bab 15)."
+        },
+        {
+          "type": "table",
+          "title": "Catatan di Audit",
+          "columns": ["Tindakan", "Kode tindakan di Audit"],
+          "rows": [
+            ["Membuka Informasi Pengguna", "member.viewed"],
+            ["Menyimpan perubahan data, termasuk nama lengkap", "member.updated"],
+            ["Mengoreksi jenis kelamin, angkatan, atau kelas", "member.number_corrected bila nomor berubah, member.identity_corrected bila nomor tetap"],
+            ["Membatasi akun dan mencabut pembatasan", "member.suspended dan member.unsuspended"],
+            ["Memulai reset sandi", "member.password_reset_initiated"],
+            ["Menambah, mengubah atau menonaktifkan, dan menghapus master", "master.created, master.updated, dan master.deleted"]
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Untuk menelusuri tindakan tersebut, buka menu **Audit**, isi **Tindakan** dengan kode di atas persis seperti tertulis, lalu klik **Terapkan filter** (lihat Bab 14). Setiap entri mencatat pengurus pelaksana, waktu, dan alasan yang Anda tulis bila tindakan itu memerlukan alasan."
+        },
+        {
+          "type": "list",
+          "title": "Yang tidak dapat dilakukan dari web admin",
+          "items": [
+            "Menambah alumni baru. Alumni mendaftar sendiri lewat aplikasi.",
+            "Menghapus akun anggota. Penghapusan hanya atas permintaan anggota dari aplikasi (Bab 8) atau situs (Bab 16) dan selesai paling lambat 7 hari kalender.",
+            "Mengubah email login anggota atau pengaturan privasinya. Privasi tetap pilihan anggota.",
+            "Mengisi nomor anggota secara langsung. Nomor selalu dihitung sistem dan nomor urutnya tidak pernah berubah.",
+            "Melihat atau menentukan sandi maupun kode pemulihan anggota.",
+            "Menonaktifkan akun (status **Nonaktif**). Status ini untuk akun yang disalahgunakan atau sedang diselidiki dan diubah tim teknis atas keputusan tertulis Super Admin. Untuk pelanggaran perilaku, gunakan **Batasi akun**.",
+            "Memilih profesi atau keahlian nonaktif sebagai pilihan baru, atau menghapus master yang sudah dipakai alumni."
+          ]
+        },
+        {
+          "type": "faq",
+          "items": [
+            {
+              "q": "Anggota meminta datanya dihapus. Apa yang perlu dilakukan pengurus?",
+              "a": "Arahkan anggota ke menu hapus akun di aplikasi atau di situs kapdh.or.id. Pengurus tidak dapat menghapus akun dari web admin. Setelah anggota mengajukan, statusnya menjadi **Penghapusan Diproses**, datanya tidak dapat diubah atau dibatasi, dan penghapusan selesai paling lambat 7 hari kalender."
+            },
+            {
+              "q": "Mengapa tombol Ubah data atau ikon pensil tidak muncul?",
+              "a": "Kemungkinan Anda belum memegang izin **Kelola anggota**, akun sedang dalam proses penghapusan, atau akun alumni tertaut ke akun admin Anda sendiri. Pada kasus terakhir, ikon pensil di kartu tetap tampil, tetapi formulir tidak terbuka dan halaman Informasi Pengguna menampilkan peringatan beserta alasannya."
+            },
+            {
+              "q": "Anggota salah memilih angkatan saat mendaftar. Bagaimana memperbaikinya?",
+              "a": "Pastikan permintaan dikirim dari email akun anggota, misalnya ke bantuan@kapdh.or.id. Buka Informasi Pengguna, klik **Ubah data**, ubah **Angkatan**, isi **Alasan perubahan**, lalu konfirmasi koreksi identitas. Nomor anggota dihitung ulang dengan nomor urut tetap, dan anggota diberi tahu lewat notifikasi."
+            },
+            {
+              "q": "Anggota ingin mengganti email akunnya. Dapatkah pengurus mengubahnya?",
+              "a": "Tidak. Email akun yang sudah aktif belum dapat diubah, baik oleh anggota maupun pengurus. Jelaskan pilihan yang tersedia, misalnya menghapus akun lalu mendaftar kembali dengan email baru sebagai akun baru (Bab 8 dan Bab 2)."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "kapdh-platform/apps/admin/src/routes/members/routes.tsx",
+    "kapdh-platform/apps/admin/src/routes/members/MembersListPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/members/MemberDetailPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/members/MemberEditDialog.tsx",
+    "kapdh-platform/apps/admin/src/routes/members/MemberActionDialogs.tsx",
+    "kapdh-platform/apps/admin/src/routes/members/MembershipHistory.tsx",
+    "kapdh-platform/apps/admin/src/routes/members/MastersPage.tsx",
+    "kapdh-platform/apps/admin/src/routes/members/labels.ts",
+    "kapdh-platform/apps/admin/src/routes/members/queries.ts",
+    "kapdh-platform/apps/admin/src/routes/members/listMemory.ts",
+    "kapdh-platform/apps/admin/src/routes/members/CursorPager.tsx",
+    "kapdh-platform/apps/admin/src/auth/access.ts",
+    "kapdh-platform/apps/admin/src/nav.ts",
+    "kapdh-platform/apps/admin/src/components/ui/ReauthDialog.tsx",
+    "kapdh-platform/apps/admin/src/components/ui/Badge.tsx",
+    "kapdh-platform/apps/admin/src/components/ui/ConfirmDialog.tsx",
+    "kapdh-platform/apps/admin/src/components/ui/SearchInput.tsx",
+    "kapdh-platform/apps/admin/src/routes/audit/AuditPage.tsx",
+    "kapdh-platform/apps/api/src/modules/admin/audit-filter.ts",
+    "kapdh-platform/apps/api/src/modules/admin/permissions-catalog.ts",
+    "kapdh-platform/apps/api/src/core/membership/member-number.ts",
+    "kapdh-platform/apps/admin/src/routes/payments/recordEligibility.ts",
+    "kapdh-platform/apps/admin/src/api/mocks/members.ts",
+    "kapdh-platform/apps/admin/src/api/mocks/admins.ts",
+    "kapdh-platform/packages/shared/src/status.ts",
+    "kapdh-platform/packages/contracts/openapi/domains/admin-members.yaml",
+    "kapdh-platform/packages/contracts/openapi/domains/me.yaml",
+    "kapdh-platform/packages/contracts/src/generated/api.ts",
+    "kapdh-platform/apps/api/src/modules/membership/admin-members.service.ts",
+    "kapdh-platform/apps/api/src/modules/membership/member-password-reset.service.ts",
+    "kapdh-platform/apps/api/src/core/membership/membership.kernel.ts",
+    "kapdh-platform/apps/api/src/core/membership/period.ts",
+    "kapdh-platform/apps/api/src/modules/network/masters.service.ts",
+    "docs/handoff/phase-c/admin-members.md",
+    "docs/runbooks/alumni-account-disabled.md",
+    "docs/reference/Guidelines_KAPDH_v1.0.txt (halaman 16)",
+    "docs/reference/PRD_v3.5.txt (format nomor anggota AA.SS.JK.N)",
+    "docs/legal/bantuan.html (penghapusan paling lambat 7 hari kalender)",
+    "docs/qa/uat-checklist.md"
+  ]
+}

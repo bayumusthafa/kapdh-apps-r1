@@ -1,0 +1,450 @@
+{
+  "id": "b10",
+  "part": "pengurus",
+  "title": "Verifikasi Pembayaran dan Iuran",
+  "kicker": "Web Admin Pengurus",
+  "summary": "Halaman Verifikasi Pembayaran adalah tempat pengurus memeriksa bukti transfer, menyetujui atau menolak pembayaran, mencatat iuran yang dibayar di luar aplikasi, mengatur rekening tujuan dan biaya iuran, serta memproses refund.",
+  "icon": "ph-credit-card",
+  "highlights": [
+    "Membaca antrean, filter, dan penanda lewat batas review",
+    "Memeriksa bukti lalu menyetujui atau menolak dengan alasan",
+    "Mencatat iuran yang dibayar langsung kepada pengurus",
+    "Mengelola rekening tujuan, QRIS, dan biaya iuran",
+    "Memproses refund dan koreksi tanpa mengubah status lunas"
+  ],
+  "sections": [
+    {
+      "id": "b10-1",
+      "title": "Membuka halaman dan membaca antrean",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Klik **Verifikasi Pembayaran** di menu samping. Angka pada menu dan pada tab **Verifikasi Pembayaran** adalah jumlah pembayaran yang buktinya sudah dikirim dan menunggu keputusan; angka pada tab **Penyesuaian** adalah jumlah refund dan koreksi yang menunggu proses. Angka dan isi antrean diperbarui otomatis setiap menit. Halaman ini memiliki empat tab, dan tab yang tampil mengikuti izin akun admin Anda. Admin yang hanya berizin mengubah pengaturan melihat judul **Metode & Biaya Pembayaran** dengan tab **Kelola Metode** dan **Biaya Pembayaran** saja."
+        },
+        {
+          "type": "table",
+          "title": "Tab dan izin yang diperlukan",
+          "columns": ["Tab", "Kegunaan", "Izin admin"],
+          "rows": [
+            ["**Verifikasi Pembayaran**", "Antrean bukti transfer, keputusan setujui atau tolak, riwayat pembayaran, dan **Catat iuran**.", "Melihat: **Lihat pembayaran**. Memutus dan mencatat iuran: tambah **Putuskan pembayaran**."],
+            ["**Kelola Metode**", "Rekening bank, e-wallet, dan QRIS tujuan pembayaran yang tampil di aplikasi anggota.", "**Kelola metode bayar dan pengaturan**."],
+            ["**Biaya Pembayaran**", "Nominal iuran pendaftaran dan perpanjangan.", "**Kelola metode bayar dan pengaturan**."],
+            ["**Penyesuaian**", "Refund dan koreksi atas pembayaran yang sudah disetujui.", "Melihat: **Lihat pembayaran**. Memproses: **Putuskan pembayaran**."]
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Menyaring antrean",
+          "items": [
+            { "text": "Tab **Verifikasi Pembayaran** terbuka dengan **Status** **Menunggu** dan **Urutan** **Paling lama menunggu**, sehingga bukti yang paling lama dikirim berada di atas." },
+            { "text": "Ketik nama atau nomor KTA di **Cari** untuk menemukan pembayaran tertentu." },
+            { "text": "Pilih **Jenis**: **Semua jenis**, **Pendaftaran**, **Perpanjangan**, atau **Tiket event**." },
+            { "text": "Untuk mendahulukan yang terlambat, pilih **Batas review** **Lewat batas review**, atau ubah **Urutan** menjadi **Batas review terdekat**. Kedua pilihan ini hanya tampil saat Status **Menunggu**. Tautan **Lihat yang lewat batas** di Dashboard juga membuka antrean dengan saringan ini." },
+            { "text": "Ganti **Status** ke **Disetujui**, **Ditolak**, **Dibatalkan**, atau **Semua** untuk melihat pembayaran yang sudah diputus. Pilihan **Semua** juga memuat instruksi yang belum ada buktinya." },
+            { "text": "Klik nama alumni pada antrean. Detail pembayaran terbuka di panel kanan. Antrean menampilkan 20 baris per halaman; klik **Halaman berikutnya** untuk melanjutkan." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b10-detail.png",
+          "caption": "Antrean Menunggu dengan filter Cari, Jenis, Status, Batas review, dan Urutan; panel detail terbuka di kanan setelah nama diklik"
+        },
+        {
+          "type": "list",
+          "title": "Penanda pada antrean",
+          "items": [
+            "**Usia antrean**: lama waktu sejak bukti dikirim anggota.",
+            "**Lewat 1 hari kerja** (iuran) atau **Lewat batas review** (tiket): bukti sudah melewati batas review. Barisnya juga berlatar kuning. Dahulukan baris ini.",
+            "**Event dibatalkan**, **Tiket dibatalkan**, atau **Tiket kedaluwarsa** di bawah kolom **Jenis**: tiket atau event sudah tidak berjalan sebelum pembayaran diputus.",
+            "**Akun dihapus**: pemilik sudah menghapus akunnya. Pembayaran tetap perlu diputus berdasarkan mutasi rekening."
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Batas review",
+          "columns": ["Jenis pembayaran", "Batas review"],
+          "rows": [
+            ["Iuran pendaftaran dan perpanjangan", "1 hari kerja sejak bukti dikirim."],
+            ["Tiket event", "2 hari kerja sejak bukti dikirim, atau saat check-in event dibuka bila itu lebih awal. Bawaannya, check-in dibuka 2 jam sebelum acara dimulai, kecuali event mengatur jendela check-in sendiri (Bab 13)."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Cara hari kerja dihitung",
+          "text": "Hari kerja adalah Senin sampai Jumat waktu WIB. Bukti yang dikirim Sabtu atau Minggu dihitung seperti hari Jumat pada jam yang sama. Libur nasional belum diperhitungkan, jadi sesuaikan jadwal piket pengurus pada hari libur."
+        }
+      ]
+    },
+    {
+      "id": "b10-2",
+      "title": "Memeriksa bukti lalu menyetujui atau menolak",
+      "blocks": [
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Setujui hanya bila dana terlihat di rekening",
+          "text": "Bukti transfer dari anggota hanyalah petunjuk. Setujui pembayaran hanya setelah Anda melihat dana dengan nominal yang sama sudah masuk di mutasi rekening tujuan organisasi. Tangkapan layar bisa keliru atau dipalsukan, sedangkan mutasi rekening tidak."
+        },
+        {
+          "type": "steps",
+          "title": "Memeriksa pembayaran",
+          "items": [
+            { "text": "Klik nama alumni di antrean. Panel kanan menampilkan nama, nomor KTA, angkatan, jenis pembayaran, dan status." },
+            { "text": "Periksa bukti transfer. Klik **Buka ukuran penuh** untuk gambar, atau **Buka PDF** untuk berkas PDF." },
+            { "text": "Cocokkan **Nominal tagihan** beserta rinciannya dan **Rekening tujuan** yang dipilih anggota. Untuk QRIS, klik **Lihat QRIS** untuk melihat merchant penerima." },
+            { "text": "Buka mutasi rekening organisasi lewat internet banking atau aplikasi e-wallet, lalu pastikan dana dengan nominal tersebut sudah masuk. Baca juga **Catatan transfer** dari anggota bila ada." },
+            { "text": "Bila baris **Riwayat** menyebut **Pernah ditolak**, klik **Riwayat lengkap** untuk membaca alasan penolakan sebelumnya dan membuka bukti versi lama." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Menyetujui",
+          "items": [
+            { "text": "Centang pernyataan **Saya sudah memeriksa mutasi rekening ... dan dana ... sudah masuk.** Nama bank atau e-wallet tujuan dan nominal terisi sesuai pembayaran." },
+            { "text": "Klik **Setujui**. Tombol ini baru aktif setelah pernyataan dicentang. Pesan **Pembayaran disetujui.** tampil di panel." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Menolak",
+          "items": [
+            { "text": "Isi **Alasan penolakan (wajib bila menolak)**, minimal 3 dan maksimal 500 karakter. Alasan ini dibaca anggota di aplikasi, jadi tulis apa yang perlu diperbaiki, misalnya nominal tidak sesuai atau foto buram." },
+            { "text": "Klik **Tolak**. Dialog **Tolak pembayaran?** menampilkan nominal, akibat penolakan, dan alasan yang akan dikirim." },
+            { "text": "Centang **Saya sudah memeriksa bukti dan alasan penolakan sudah benar.**, lalu klik **Tolak pembayaran**. Klik **Batal** bila ingin memeriksa ulang." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b10-putuskan.png",
+          "caption": "Bagian bawah panel: Riwayat lengkap dengan bukti versi lama, pernyataan dana sudah masuk, alasan penolakan, serta tombol Tolak dan Setujui"
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Dana belum terlihat?",
+          "text": "Jangan setujui dulu. Periksa ulang mutasi beberapa saat kemudian, karena transfer antarbank kadang tertunda. Bila dana tetap tidak masuk, tolak dengan alasan yang jelas, misalnya dana belum diterima di rekening tujuan, agar anggota dapat menghubungi pengurus atau mengirim bukti yang benar."
+        },
+        {
+          "type": "list",
+          "title": "Keadaan khusus di panel",
+          "items": [
+            "Bila anggota mengganti bukti atau admin lain memutus lebih dulu, keputusan Anda tidak disimpan. Panel memuat data terbaru dan mengosongkan centang serta alasan. Periksa ulang sebelum memutus.",
+            "**Akun dihapus**: berkas bukti ikut terhapus. Cocokkan nominal, tanggal, dan referensi pembayaran dengan mutasi rekening tujuan sebelum memutus.",
+            "Pembayaran milik akun alumni yang tertaut ke akun admin Anda tidak dapat Anda putus. Mintalah pengurus lain memutusnya.",
+            "**Metode asal sudah nonaktif** di bawah rekening tujuan berarti rekening itu sudah dinonaktifkan, tetapi tetap berlaku untuk pembayaran ini.",
+            "Bila panel menulis **Akun Anda hanya dapat melihat antrean**, akun Anda belum memiliki izin memutus pembayaran.",
+            "Bila akun anggota sedang dibatasi pengurus, persetujuan iuran tetap menambah masa aktifnya, tetapi status dibatasi tidak ikut dicabut."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b10-3",
+      "title": "Akibat keputusan, riwayat, dan pembatalan",
+      "blocks": [
+        {
+          "type": "table",
+          "title": "Yang terjadi setelah Anda memutus",
+          "columns": ["Keputusan", "Iuran pendaftaran dan perpanjangan", "Tiket event"],
+          "rows": [
+            ["Setujui", "Pendaftaran: KTA aktif 12 bulan sejak disetujui. Perpanjangan: masa aktif bertambah 12 bulan. Anggota menerima **Iuran pendaftaran disetujui** atau **Iuran perpanjangan disetujui**.", "Tiket terbit beserta QR dan anggota menerima **Pembayaran tiket disetujui**. Bila tiket atau event sudah dibatalkan, tiket tidak diaktifkan kembali."],
+            ["Tolak", "Status menjadi **Perlu perbaikan**. Anggota menerima **Bukti iuran perlu diperbaiki** dan dapat mengunggah bukti baru pada tagihan yang sama, tanpa transfer ulang bila dananya sudah dikirim.", "Status menjadi **Ditolak final**. Tiket dibatalkan, kursi dilepas, dan bukti tidak dapat dikirim ulang. Anggota menerima **Pembayaran tiket ditolak** dan dapat mendaftar ulang bila kuota masih ada."]
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Masa perpanjangan dihitung dari tanggal berakhir KTA bila belum kedaluwarsa, atau dari tanggal disetujui bila sudah kedaluwarsa. Notifikasi keputusan masuk ke kotak **Notifikasi** di aplikasi anggota, dan juga dikirim sebagai notifikasi push dan email sesuai pengaturan notifikasi anggota. Keputusan tetap tersimpan walaupun pengiriman push atau email sedang gagal. Tampilan di sisi anggota dijelaskan di Bab 3."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Tiket yang sudah dibatalkan",
+          "text": "Menyetujui pembayaran tiket yang sudah dibatalkan berarti dana diterima, tetapi QR tidak terbit. Bila peserta berhak refund penuh, panel memberitahukannya, refund tercatat otomatis di tab **Penyesuaian**, dan anggota menerima **Dana tiket diterima, refund sedang diproses bendahara**. Bila tidak, anggota menerima **Dana tiket diterima**; refund diputuskan per kasus lewat **Catat penyesuaian**."
+        },
+        {
+          "type": "list",
+          "title": "Riwayat pembayaran",
+          "items": [
+            "Klik **Riwayat lengkap** di panel untuk membuka seluruh kejadian, misalnya **Tagihan dibuat**, **Bukti dikirim**, **Bukti diganti**, **Disetujui**, **Ditolak**, **Dibatalkan**, dan **Penyesuaian dicatat**.",
+            "Setiap kejadian mencatat waktu, pelaku (**Alumni**, **Pengurus** beserta namanya, atau **Sistem**), dan alasan bila ada.",
+            "Klik **Lihat bukti versi** pada kejadian bukti untuk membuka bukti mana pun. Keputusan selalu berlaku atas versi bukti yang aktif.",
+            "Untuk melihat semua pembayaran satu anggota, klik **Semua pembayaran** di detail anggota (Bab 11). Klik **Tampilkan semua pembayaran** untuk kembali ke antrean lengkap."
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Membatalkan instruksi yang belum ada buktinya",
+          "items": [
+            { "text": "Pilih **Status** **Semua**, lalu buka pembayaran berstatus **Menunggu transfer**. Tombol **Batalkan instruksi** hanya tampil untuk instruksi yang belum ada bukti transfernya." },
+            { "text": "Klik **Batalkan instruksi**. Pada dialog **Batalkan instruksi pembayaran?**, isi **Alasan pembatalan** minimal 3 karakter. Alasan terlihat oleh pemilik dan tercatat di riwayat." },
+            { "text": "Centang **Saya memastikan belum ada dana yang ditransfer untuk instruksi ini.**, lalu klik **Batalkan instruksi**. Pemilik menerima notifikasi **Instruksi pembayaran dibatalkan pengurus**." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "text": "Pembayaran yang sudah memiliki bukti tidak dapat dibatalkan; putuskan dengan **Setujui** atau **Tolak**. Batalkan instruksi hanya bila Anda yakin belum ada dana yang ditransfer."
+        }
+      ]
+    },
+    {
+      "id": "b10-4",
+      "title": "Mencatat iuran yang dibayar di luar aplikasi",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Gunakan **Catat iuran** bila anggota membayar iuran langsung kepada pengurus, bukan lewat instruksi di aplikasi. Contohnya anggota di perangkat yang instruksi iurannya disembunyikan lewat pengaturan **Instruksi bayar iuran per platform** (Bab 15); di aplikasinya tampil pesan **Iuran melalui pengurus**. Fitur ini hanya untuk iuran pendaftaran dan perpanjangan, bukan tiket. Catat iuran setelah dana Anda cocokkan dengan mutasi rekening penerima."
+        },
+        {
+          "type": "steps",
+          "items": [
+            { "text": "Klik **Catat iuran** di tab **Verifikasi Pembayaran**, di bagian **Pembayaran terbaru** pada detail anggota, atau pada kartu **Instruksi bayar iuran per platform** di **Pengaturan**. Dialog **Catat iuran di luar aplikasi** terbuka." },
+            { "text": "Di **Alumni**, ketik nama, No. KTA, email, atau kota, lalu pilih alumni. Status KTA dan masa aktifnya tampil. Klik **Ganti alumni** bila salah pilih." },
+            { "text": "Pilih **Jenis iuran**. Jenis yang tidak berlaku tampil nonaktif beserta alasannya, misalnya iuran pendaftaran yang sudah disetujui." },
+            { "text": "Baca kotak keterangan tagihan di bawahnya untuk mengetahui apakah tagihan baru dibuat atau tagihan yang ada diselesaikan." },
+            { "text": "Pilih **Rekening penerima dana**, yaitu rekening organisasi tempat dana masuk. Rekening nonaktif tetap dapat dipilih." },
+            { "text": "Di **Bukti verifikasi dana**, klik **Pilih berkas** dan unggah tangkapan mutasi atau bukti transfer (JPG/PNG maksimal 5 MB, atau PDF maksimal 10 MB). Tutup transaksi pihak lain pada tangkapan mutasi." },
+            { "text": "Isi **Catatan transfer (opsional)**, misalnya bank pengirim, dan **Catatan verifikasi** yang wajib, misalnya tanggal mutasi dan rekening penerima." },
+            { "text": "Centang **Saya sudah mencocokkan dana ... dengan mutasi rekening ...**, lalu klik **Catat iuran**. Detail pembayaran yang lunas terbuka di panel." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b10-catat-iuran.png",
+          "caption": "Dialog Catat iuran di luar aplikasi: alumni terpilih, jenis iuran, keterangan tagihan terbuka, rekening penerima, bukti, dan catatan"
+        },
+        {
+          "type": "table",
+          "title": "Arti kotak keterangan tagihan",
+          "columns": ["Keadaan", "Yang terjadi saat dicatat"],
+          "rows": [
+            ["Belum ada tagihan terbuka", "Pembayaran baru dibuat dengan biaya yang berlaku saat ini. Nominal dihitung sistem."],
+            ["Tagihan terbuka berstatus **Menunggu transfer**", "Tagihan yang sama diselesaikan sebagai lunas. Nominalnya tetap."],
+            ["Tagihan berstatus **Perlu perbaikan**", "Tagihan yang sama diselesaikan dengan bukti Anda sebagai versi berikutnya. Alasan penolakan lama tetap ada di riwayat."],
+            ["Anggota sudah mengirim bukti", "Iuran tidak dapat dicatat dua kali. Klik **Buka bukti anggota**, lalu putuskan dari antrean."],
+            ["Nominal iuran belum ditetapkan atau nol", "Iuran baru belum dapat dicatat. Klik **Buka tab Biaya** dan simpan nominal yang disahkan bendahara."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Setelah iuran dicatat",
+          "text": "Keanggotaan langsung aktif atau diperpanjang, dan anggota menerima notifikasi persetujuan iuran. Bukti verifikasi dana hanya untuk pengurus dan tidak pernah ditampilkan kepada anggota. Pencatatan tercatat di audit."
+        },
+        {
+          "type": "list",
+          "title": "Syarat pencatatan",
+          "items": [
+            "Akun alumni aktif dan tidak sedang dibatasi pengurus.",
+            "Pendaftaran hanya bila iuran pendaftaran belum pernah disetujui. Perpanjangan hanya bila KTA akan berakhir atau sudah kedaluwarsa; jendelanya dibuka 30 hari sebelum masa aktif habis.",
+            "Akun alumni yang tertaut ke akun admin Anda harus dicatat pengurus lain.",
+            "Izin admin: **Lihat pembayaran** dan **Putuskan pembayaran**. Formulir juga memerlukan **Lihat anggota** dan **Kelola metode bayar dan pengaturan**."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b10-5",
+      "title": "Mengelola rekening tujuan dan QRIS",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Tab **Kelola Metode** berisi rekening bank, e-wallet, dan QRIS organisasi yang ditampilkan kepada anggota sebagai tujuan pembayaran iuran dan tiket. Kolom **Urutan** menentukan urutan tampil di aplikasi. Gunakan **Status** untuk menyaring metode yang **Aktif** atau **Nonaktif**."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b10-metode.png",
+          "caption": "Tab Kelola Metode: daftar rekening tujuan, status Aktif, Nonaktif, dan Sudah dipakai, serta tombol Tambah metode"
+        },
+        {
+          "type": "steps",
+          "title": "Menambah rekening bank atau e-wallet",
+          "items": [
+            { "text": "Klik **Tambah metode**. Dialog **Tambah metode pembayaran** terbuka." },
+            { "text": "Pilih **Jenis rekening**: **Bank** atau **E-wallet**." },
+            { "text": "Isi **Nama bank atau e-wallet**, **Nomor rekening**, dan **Nama pemilik rekening** persis seperti di buku rekening atau akun e-wallet organisasi." },
+            { "text": "Bila perlu, isi **Petunjuk tambahan** berupa teks biasa, maksimal 1000 karakter, misalnya kode bank untuk transfer antarbank." },
+            { "text": "Atur **Urutan tampil** (angka kecil tampil lebih dahulu) dan biarkan **Tampilkan ke alumni** menyala bila metode langsung dipakai." },
+            { "text": "Klik **Simpan metode**. Pesan **Metode pembayaran ditambahkan.** tampil." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Menambah QRIS",
+          "items": [
+            { "text": "Klik **Tambah metode**, lalu pilih **QRIS** pada **Jenis rekening**. **Nama metode** otomatis terisi QRIS; Anda boleh menggantinya, misalnya QRIS KAPDH." },
+            { "text": "Isi **NMID** (diawali ID) dan **Nama merchant** persis seperti yang tertera pada QRIS." },
+            { "text": "Di **Gambar QRIS**, klik **Pilih gambar** dan unggah QRIS statis resmi organisasi tanpa nominal: PNG atau JPG, sisi terpendek minimal 512 px, maksimal 5 MB. Tunggu sampai pratinjau tampil." },
+            { "text": "Isi **Petunjuk tambahan**, misalnya ketik nominal persis sesuai tagihan." },
+            { "text": "Matikan dulu **Tampilkan ke alumni**, lalu klik **Simpan metode**. Sistem hanya memeriksa format dan ukuran gambar, bukan isi kode QR-nya." },
+            { "text": "Buka lagi metode itu dengan ikon pensil, lalu pindai pratinjau gambar QRIS dengan minimal dua aplikasi bank atau e-wallet. Pastikan nama merchant dan NMID sama dengan isian dan nominal tidak terisi otomatis. Setelah cocok, nyalakan **Tampilkan ke alumni** dan klik **Simpan metode**." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b10-metode-qris.png",
+          "caption": "Dialog Tambah metode pembayaran dengan jenis QRIS: Nama metode, NMID, Nama merchant, Gambar QRIS, dan Tampilkan ke alumni"
+        },
+        {
+          "type": "status",
+          "title": "Arti status metode",
+          "items": [
+            { "label": "Aktif", "tone": "success", "text": "Tampil di aplikasi dan dapat dipilih anggota untuk pembayaran baru." },
+            { "label": "Nonaktif", "tone": "neutral", "text": "Tidak dapat dipilih untuk pembayaran baru. Tagihan lama yang memakainya tetap berlaku." },
+            { "label": "Sudah dipakai", "tone": "info", "text": "Pernah dipakai pembayaran. Identitas rekening tidak dapat diubah dan metode tidak dapat dihapus, hanya dinonaktifkan." }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Mengubah, menonaktifkan, atau menghapus",
+          "items": [
+            "Klik ikon pensil pada baris metode untuk mengubahnya. Untuk menonaktifkan, matikan **Tampilkan ke alumni** lalu klik **Simpan metode**.",
+            "Pada metode **Sudah dipakai**, jenis, nama, nomor, nama pemilik, dan gambar QRIS tidak dapat diubah. Hanya petunjuk, status, dan urutan yang dapat diubah.",
+            "Untuk mengganti rekening atau QRIS yang sudah dipakai, nonaktifkan metode lama lalu tambah metode baru.",
+            "Ikon tempat sampah hanya ada pada metode yang belum pernah dipakai. Klik ikon itu, lalu **Hapus metode** pada dialog konfirmasi.",
+            "Bila muncul **Metode ini sudah diubah admin lain**, klik **Muat versi terbaru**, periksa isinya, lalu simpan lagi bila masih perlu."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Periksa nomor rekening dua kali",
+          "text": "Anggota mentransfer ke nomor yang Anda simpan di sini. Perubahan rekening hanya berlaku untuk tagihan baru; tagihan yang sudah dibuat tetap memakai rekening yang tercatat saat tagihan dibuat. Setiap penyimpanan tercatat di audit."
+        }
+      ]
+    },
+    {
+      "id": "b10-6",
+      "title": "Mengatur biaya iuran",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Tab **Biaya Pembayaran** menampilkan kartu **Biaya aktif** berisi nomor versi, tanggal berlaku, dan komponen iuran: **Register alumni baru** ditambah **Pembuatan KTA** menjadi **Total iuran pendaftaran**, serta **Perpanjangan KTA per tahun**. Baris **Ditetapkan oleh** menunjukkan admin yang terakhir menyimpan. Harga tiket diatur per event (Bab 13), bukan di sini."
+        },
+        {
+          "type": "steps",
+          "items": [
+            { "text": "Buka tab **Biaya Pembayaran**." },
+            { "text": "Di kartu **Ubah biaya**, isi nominal baru pada **Register alumni baru**, **Pembuatan KTA**, atau **Perpanjangan KTA per tahun**." },
+            { "text": "Periksa **Total iuran pendaftaran baru** yang dihitung otomatis." },
+            { "text": "Isi **Catatan perubahan** (opsional, untuk audit), misalnya keputusan rapat pengurus." },
+            { "text": "Klik **Simpan biaya baru**. Pesan **Biaya versi ... disimpan** tampil. Klik **Batalkan perubahan** bila ingin mengembalikan isian sebelum disimpan." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b10-biaya.png",
+          "caption": "Tab Biaya Pembayaran: kartu Biaya aktif dan formulir Ubah biaya. Nominal pada gambar hanya contoh"
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Biaya baru hanya untuk tagihan baru",
+          "text": "Tagihan yang sudah dibuat, termasuk yang sedang menunggu verifikasi, tetap memakai nominal saat tagihan dibuat. Panel detail pembayaran menampilkan **Versi biaya** yang dipakai. Masa berlaku iuran tetap 12 bulan kalender dan tidak diatur di tab ini; nilainya hanya dapat dilihat di **Pengaturan** (Bab 15)."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "text": "Simpan hanya nominal yang sudah disahkan bendahara. Bila nominal iuran belum ditetapkan atau bernilai nol, anggota tidak dapat membuat instruksi iuran dan **Catat iuran** ditolak. Bila muncul **Biaya sudah diubah admin lain**, klik **Muat versi terbaru** sebelum menyimpan."
+        }
+      ]
+    },
+    {
+      "id": "b10-7",
+      "title": "Penyesuaian: refund dan koreksi",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Pembayaran yang sudah disetujui tidak pernah diubah. Pengembalian dana (**Refund**) dan catatan keuangan administratif (**Koreksi**) dicatat terpisah sebagai penyesuaian. Refund dibuat otomatis saat event berbayar dibatalkan, saat peserta membatalkan tiket sendiri paling lambat H-3, atau saat pembayaran tiket yang sudah dibatalkan disetujui. Refund juga tercatat bila pengurus membatalkan tiket lunas dengan pilihan refund (Bab 13). Pengurus juga dapat mencatatnya sendiri."
+        },
+        {
+          "type": "steps",
+          "title": "Mencatat penyesuaian",
+          "items": [
+            { "text": "Di tab **Verifikasi Pembayaran**, pilih **Status** **Disetujui**, lalu klik nama alumni." },
+            { "text": "Di bagian **Penyesuaian** pada panel, klik **Catat penyesuaian**." },
+            { "text": "Pilih **Refund** atau **Koreksi**, lalu isi **Nominal**. Nominal refund harus lebih dari 0 dan tidak melebihi sisa yang dapat direfund." },
+            { "text": "Isi **Alasan (internal pengurus)**, misalnya event dibatalkan atau kelebihan transfer. Alasan ini tidak dikirim kepada anggota." },
+            { "text": "Untuk refund, centang **Catat rekening tujuan yang diterima lewat kontak dukungan resmi** hanya bila anggota mengirim rekeningnya lewat kontak resmi. Biasanya anggota mengirimnya sendiri lewat aplikasi." },
+            { "text": "Lampirkan **Bukti pendukung (opsional)** bila ada, lalu klik **Simpan penyesuaian**. Untuk refund, anggota menerima notifikasi **Refund sedang diproses bendahara**." }
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Memproses refund",
+          "items": [
+            { "text": "Buka tab **Penyesuaian**. Bawaannya menampilkan **Menunggu proses** dengan **Urutan** **Tenggat terdekat**. Pilih **Rekening tujuan** **Siap ditransfer** untuk melihat refund yang rekeningnya sudah ada, atau **Tenggat** **Lewat tenggat** untuk yang terlambat." },
+            { "text": "Klik nama alumni. Panel menampilkan pembayaran asal, tenggat, alasan, dan **Rekening tujuan refund**." },
+            { "text": "Transfer dana dari rekening organisasi ke rekening tujuan tersebut." },
+            { "text": "Klik **Tandai selesai**, unggah **Bukti transfer refund**, centang **Dana refund sudah saya transfer ke rekening tujuan di atas.**, lalu klik **Tandai selesai**. Anggota menerima notifikasi **Refund selesai**." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b10-penyesuaian-detail.png",
+          "caption": "Tab Penyesuaian: refund lewat tenggat yang siap ditransfer, panel rincian dengan rekening tujuan, dan tombol Tandai selesai, Ubah, Batalkan"
+        },
+        {
+          "type": "status",
+          "title": "Penanda pada daftar penyesuaian",
+          "items": [
+            { "label": "Menunggu proses", "tone": "warning", "text": "Penyesuaian belum diselesaikan." },
+            { "label": "Menunggu rekening", "tone": "warning", "text": "Refund belum memiliki rekening tujuan. Anggota diminta mengirimnya lewat aplikasi." },
+            { "label": "Siap ditransfer", "tone": "success", "text": "Rekening tujuan sudah ada dan dana dapat ditransfer." },
+            { "label": "Lewat tenggat", "tone": "danger", "text": "Tenggat refund sudah lewat. Dahulukan baris ini." },
+            { "label": "Selesai", "tone": "success", "text": "Refund sudah ditransfer atau koreksi sudah dicatat selesai." },
+            { "label": "Dibatalkan", "tone": "neutral", "text": "Penyesuaian dibatalkan dan tidak dapat diproses lagi." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Tenggat dan kerahasiaan rekening",
+          "text": "Tenggat refund adalah 7 hari kerja sejak tiket atau event dibatalkan, atau sejak refund dicatat bila tidak ada pembatalan. Koreksi tidak memiliki tenggat. Rekening tujuan hanya terlihat oleh pengurus berizin memutus pembayaran selama refund diproses, dan dihapus otomatis setelah refund selesai atau dibatalkan."
+        },
+        {
+          "type": "list",
+          "title": "Tombol lain di panel penyesuaian",
+          "items": [
+            "**Ubah**: mengubah nominal, alasan, atau rekening tujuan selama penyesuaian masih menunggu proses.",
+            "**Batalkan**: isi alasan minimal 3 karakter dan konfirmasi. Untuk refund, anggota menerima pemberitahuan **Refund dibatalkan** dengan arahan ke kontak dukungan.",
+            "**Buka pembayaran asal**: kembali ke detail pembayaran di tab **Verifikasi Pembayaran**.",
+            "Koreksi ditandai selesai dengan **Tandai selesai**; bukti pendukung untuk koreksi bersifat opsional. Anggota menerima notifikasi **Koreksi pembayaran dicatat**."
+          ]
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "kapdh-platform/apps/admin/src/routes/payments/PaymentsPage.tsx (tab, izin per tab, judul)",
+    "kapdh-platform/apps/admin/src/routes/payments/VerificationTab.tsx (filter, urutan, 20 per halaman, polling 60 detik, penanda lewat batas)",
+    "kapdh-platform/apps/admin/src/routes/payments/PaymentDecisionPanel.tsx (centang dana, alasan 3-500, Tolak pembayaran, Batalkan instruksi, konflik)",
+    "kapdh-platform/apps/admin/src/routes/payments/PaymentHistory.tsx (label riwayat, bukti versi lama)",
+    "kapdh-platform/apps/admin/src/routes/payments/RecordDuesDialog.tsx dan recordEligibility.ts (Catat iuran, syarat, izin, catatan 200/500)",
+    "kapdh-platform/apps/admin/src/routes/payments/MethodsTab.tsx, MethodFormDialog.tsx, PaymentQrField.tsx (metode, QRIS 512 px 5 MB, petunjuk 1000, urutan)",
+    "kapdh-platform/apps/admin/src/routes/payments/FeesTab.tsx (biaya aktif, versi, hanya tagihan baru)",
+    "kapdh-platform/apps/admin/src/routes/payments/AdjustmentsTab.tsx, AdjustmentPanel.tsx, CreateAdjustmentDialog.tsx, PaymentAdjustmentsSection.tsx",
+    "kapdh-platform/apps/admin/src/routes/payments/labels.tsx, components/ui/Badge.tsx, components/ui/ConfirmDialog.tsx, lib/labels.ts (label izin dan status)",
+    "kapdh-platform/apps/admin/src/routes/members/MemberDetailPage.tsx, routes/settings/SettingsPage.tsx (pintu masuk Catat iuran)",
+    "kapdh-platform/apps/api/src/modules/payments/payment-rules.ts (batas review 1 hari kerja, tiket min 2 hari kerja/buka check-in, refund 7 hari kerja)",
+    "kapdh-platform/apps/api/src/modules/payments/business-days.ts (Senin-Jumat WIB, tanpa kalender libur)",
+    "kapdh-platform/apps/api/src/modules/payments/payment-ledger.ts (efek persetujuan/penolakan, judul notifikasi)",
+    "kapdh-platform/apps/api/src/modules/payments/payment-views.ts (can_decide, can_cancel, can_adjust)",
+    "kapdh-platform/apps/api/src/modules/payments/admin-payments.service.ts (Catat iuran lewat jalur persetujuan, notifikasi pembatalan)",
+    "kapdh-platform/apps/api/src/modules/payments/admin-adjustments.service.ts (tenggat refund, notifikasi Refund selesai/dibatalkan)",
+    "kapdh-platform/apps/api/src/core/payments-kernel/payment-handler.registry.ts, core/membership/membership.kernel.ts (periode 12 bulan)",
+    "kapdh-platform/apps/api/src/core/settings/keys.ts dan packages/database/seeds/reference.ts (12/30 hari, check-in 2 jam, eskalasi 2 hari kerja, batal mandiri H-3)",
+    "kapdh-platform/apps/api/src/modules/notifications/channel-policy.ts (kategori pembayaran: push dan email)",
+    "kapdh-platform/apps/admin/src/api/mocks/payments.ts (data contoh tangkapan layar)",
+    "docs/adr/006-biaya-di-app-settings.md, docs/adr/026-metode-qris-dan-gambar-qr-publik.md",
+    "docs/handoff/phase-c/admin-payments.md, docs/handoff/phase-c/api-payments.md",
+    "docs/reference/prototype/screen_8_admin_payments.html, docs/qa/uat-checklist.md (2.3, 2.14, 2.16, 10.2, 10.11, 10.12)",
+    "kapdh-platform/apps/admin/src/nav.ts, routes/dashboard/DashboardPage.tsx (tautan Lihat yang lewat batas), routes/settings/SettingsPage.tsx (kebijakan baca-saja 12 bulan)",
+    "kapdh-platform/apps/admin/src/routes/events/EventForm.tsx (Atur jendela check-in sendiri), EventTicketsTab.tsx (batal tiket dengan refund)",
+    "kapdh-platform/apps/api/src/modules/payments/payment-rules.ts fullRefundForCancelledTicket (refund per kasus), core/membership/membership.kernel.ts (suspend tidak dicabut)",
+    "kapdh-platform/apps/api/src/modules/events/admin-events.service.ts adminRefund, reservations.service.ts (refund H-3)",
+    "kapdh-mobile/lib/features/payments/new_payment_screen.dart, renewal_screen.dart (Iuran melalui pengurus, tidak perlu transfer ulang)",
+    "docs/legal/bantuan.html (bukti ditolak, tiket ditolak final dan daftar ulang)"
+  ]
+}
