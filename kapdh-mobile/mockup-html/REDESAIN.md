@@ -106,7 +106,7 @@ aplikasi, tab KTA menjadi tombol tengah yang menonjol di semua layar, dan font t
 | Berita | Kartu pertama hero (kategori dan tanggal/suka di atas gambar), sisanya baris ringkas 80 x 80 | Hanya di Beranda; halaman Berita tetap `PostCard` biasa | `PostCard` varian hero/compact |
 | Pengingat KTA | Tombol "Perpanjang" berwarna isi | Warna `warning` #8A5A00 dengan teks putih (5,9:1). Amber desain 2,1:1, gagal kontras | `_RenewalReminder` |
 | Memuat | Skeleton mengikuti bentuk Beranda | Shimmer v2 bernada hijau, statis bila *reduce motion* | `LoadingSkeleton` (varian Beranda) |
-| Beranda terkunci | StatusHero + tombol aksi dalam satu kartu | Judul "Akses Tersedia" tidak ditambahkan (teks baru) | `_GatedHome` |
+| Beranda KTA tidak aktif/kedaluwarsa | StatusHero + tombol aksi dalam satu kartu | Judul "Akses Tersedia" tidak ditambahkan (teks baru) | `_GatedHome` |
 | Keadaan kosong/galat | Ikon dalam persegi membulat | `EmptyState`/`ErrorState` di semua layar ikut berubah | `states.dart` |
 
 Tidak diambil karena melanggar aturan mockup atau rujukan desain: Tailwind, Lucide dan foto Unsplash dari CDN,
@@ -131,7 +131,7 @@ menyediakan gaya regular, fill dan duotone dalam satu keluarga.
 | Tab KTA (tengah) | Fill | `badge_outlined` / `badge` -> `identification-card-fill` | `KapdhIcons.badgeOutlined / KapdhIcons.badge` |
 | Tab Jejaring | Regular / Fill | `school_outlined` / `school` -> `graduation-cap` / `graduation-cap-fill` | `KapdhIcons.schoolOutlined / KapdhIcons.school` |
 | Tab Akun | Regular / Fill | `person_outline` / `person` -> `user-circle` / `user-circle-fill` | `KapdhIcons.personOutline / KapdhIcons.person` |
-| Gembok tab terkunci | Fill | `lock` -> `lock-simple-fill` | `KapdhIcons.lock` |
+| Gembok tab khusus anggota aktif | Fill | `lock` -> `lock-simple-fill` | `KapdhIcons.lock` |
 
 Pembaruan audit: Phosphor kini dipakai untuk SEMUA ikon (lihat bagian Audit di bawah). Di Flutter font Phosphor dibundel
 langsung (`assets/fonts/phosphor`), bukan lewat paket `phosphor_flutter` yang tidak kompatibel dengan Flutter 3.47;
@@ -281,7 +281,7 @@ fill (codepoint fill sudah di `phosphor-codepoints.json`) + lencana emas.
 
 **Akses cepat: Pesan menggantikan KTA** (usulan). Untuk anggota aktif, ubin pertama kini "Pesan" (jumlah percakapan
 belum dibaca, ke tab Jejaring > Pesan), karena KTA sudah bisa dibuka dari tombol tengah navigasi bawah sehingga ubin KTA
-dobel. Pada KTA tidak aktif atau kedaluwarsa ubin KTA tetap (status KTA penting di sana dan Jejaring terkunci). Di
+dobel. Pada KTA tidak aktif atau kedaluwarsa ubin KTA tetap (status KTA penting di sana dan Jejaring khusus anggota aktif). Di
 Flutter: `QuickAction` pertama di `_QuickAccess` memakai `KapdhIcons.chatBubble` (`ph:chat-circle-dots-fill`) dengan
 lencana dari penghitung chat yang sudah ada (`chatBadgeCountsProvider`) dan membuka tab Jejaring > Pesan.
 
@@ -326,7 +326,7 @@ server; daftar berulang Ubah Profil dan Profil Alumni menyusul 21 Oktober 2026 b
 | Tema | `KapdhPalette` (ThemeExtension, `context.kc`) untuk terang dan gelap; `KapdhTheme.dark()` + `themeMode: ThemeMode.system`. Judul w700, dialog/lembar radius 24, menu dan snackbar radius 12 bergaris rambut, chip tidak terpilih bergaris, halo fokus field (`KapdhHaloBorder`), tombol teks berfont Poppins. |
 | Komponen | Tombol utama berbayangan, OTP aktif bergaris primary + halo + kursor berkedip (statis bila *reduce motion*), kartu bergaris rambut + `shadowSm` (TappableCard, SummaryCard, StatusActionCard, QRIS, kontak, AccountSection, akses cepat), InfoBox bergaris 20 %, keadaan kosong/galat berikon persegi membulat, skeleton berkilau (`KapdhShimmer`), SectionEmpty bergaris putus, bilah aksi bawah berbayangan. |
 | Pita hijau | `BrandMeshPainter` di semua `BrandHeader`; `BrandIconButton` (tombol kaca), `BrandLogoFrame`; header Beranda, Akun dan Profil Alumni bersudut bawah 24. Masuk tetap bermotif gelombang. |
-| Beranda | Akses cepat di atas banner, ikon fill bergradasi dalam lingkaran 56, Pesan (membuka tab Jejaring > Pesan) menggantikan KTA untuk anggota aktif, lencana emas belum dibaca; tombol KTA tengah menonjol; titik banner di dalam gambar; judul bagian dengan pil "Lihat semua"; kartu event berfooter; berita hero + baris ringkas; skeleton berbentuk Beranda; Beranda terkunci dalam satu kartu; tombol Perpanjang terisi. |
+| Beranda | Akses cepat di atas banner, ikon fill bergradasi dalam lingkaran 56, Pesan (membuka tab Jejaring > Pesan) menggantikan KTA untuk anggota aktif, lencana emas belum dibaca; tombol KTA tengah menonjol; titik banner di dalam gambar; judul bagian dengan pil "Lihat semua"; kartu event berfooter; berita hero + baris ringkas; skeleton berbentuk Beranda; Beranda KTA tidak aktif/kedaluwarsa dalam satu kartu; tombol Perpanjang terisi. |
 | Layar lain | Splash abu terang (gelap tetap hijau tua; latar peluncuran Android/iOS ikut), Ubah Profil (tampilan tiga kartu berkepala ikon), Profil Alumni (bagian Riwayat Pendidikan, Keahlian, Media Sosial berupa baris). |
 | Profil berulang (21 Oktober 2026) | Kontrak C2 `professions[]`, `education[]`, `social_links[]` (migrasi 0009-0010, API, web admin, SDK Dart). Ubah Profil: profesi lebih dari satu (maks. 5) lewat lembar "Pilih profesi" yang menerima master aktif atau ketikan sendiri; entri "Pendidikan n" berulang (Universitas/Instansi, Jurusan/Program Studi, Strata D3/S1/S2/S3/Lainnya, Tahun Tamat) dengan "Tambah Riwayat" dan hapus merah, maks. 10; baris tautan berulang dengan pemilih platform berlogo Phosphor (sembilan platform, menu seperti frame 17), hapus merah dan "Tambah tautan", maks. 10. Profil Alumni: riwayat pendidikan terbaru di atas ("Strata · Jurusan · Tamat tahun"), cip profesi jamak, Media Sosial dari `social_links`. Kartu direktori: profesi jamak dan pendidikan teratas. Uji widget mencakup teks 200 % dan tema gelap. |
 | Teks 200 % | Label navigasi dan judul banner dibatasi 1,3; kepala Beranda 1,3 seperti app bar; akses cepat 2 x 2; stepper hanya label aktif; judul bagian membungkus. |

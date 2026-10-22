@@ -75,7 +75,7 @@
             <div class="status-action-card mt-4">
               <div class="status-action-card__info">
                 <span class="status-badge status-badge--success"><span class="ic ph-check-circle-fill" aria-hidden="true"></span>KTA Aktif</span>
-                <p class="status-action-card__message">Seluruh fitur alumni aktif. Perpanjangan dibuka mulai 18 Sep 2027.</p>
+                <p class="status-action-card__message">Keanggotaan organisasi aktif. Perpanjangan dibuka mulai 18 Sep 2027.</p>
               </div>
               <button class="btn btn--solid btn--inline" type="button" disabled>Perpanjang</button>
             </div>
@@ -92,7 +92,7 @@
         </div>
         <div class="sysnav" aria-hidden="true"></div>
       </div>
-      <p class="frame__note">StatusActionCard: tombol "Perpanjang" nonaktif sampai server mengirim action renew; alasannya tertulis di keterangan. Tanpa tanggal pembukaan: "Seluruh fitur alumni aktif. Perpanjangan belum dibuka." Bila action renew ada: "Seluruh fitur alumni aktif." dengan tombol aktif.</p>
+      <p class="frame__note">StatusActionCard: tombol "Perpanjang" nonaktif sampai server mengirim action renew; alasannya tertulis di keterangan. Tanpa tanggal pembukaan: "Keanggotaan organisasi aktif. Perpanjangan belum dibuka." Bila action renew ada: "Keanggotaan organisasi aktif." dengan tombol aktif.</p>
     </figure>
 
     <figure class="frame">
@@ -167,12 +167,12 @@
             <div class="status-action-card mt-4">
               <div class="status-action-card__info">
                 <span class="status-badge status-badge--danger"><span class="ic ph-x-circle-fill" aria-hidden="true"></span>KTA Tidak Aktif</span>
-                <p class="status-action-card__message">Selesaikan iuran pendaftaran untuk mengaktifkan KTA dan fitur alumni.</p>
+                <p class="status-action-card__message">Selesaikan iuran pendaftaran. KTA berlaku setelah pengurus memverifikasi iuran organisasi Anda.</p>
               </div>
               <button class="btn btn--solid btn--inline" type="button">Bayar</button>
             </div>
             <section class="kta-locked mt-4" aria-labelledby="kta-locked-3">
-              <h3 class="kta-locked__title" id="kta-locked-3">Terbuka setelah KTA aktif</h3>
+              <h3 class="kta-locked__title" id="kta-locked-3">Layanan untuk anggota terverifikasi</h3>
               <p class="kta-locked__item"><span class="ic ph-qr-code" aria-hidden="true"></span><span>QR KTA untuk verifikasi</span></p>
               <p class="kta-locked__item"><span class="ic ph-users-three" aria-hidden="true"></span><span>Jejaring alumni dan chat</span></p>
               <p class="kta-locked__item"><span class="ic ph-calendar-dots" aria-hidden="true"></span><span>Pendaftaran event dan tiket</span></p>
@@ -181,15 +181,15 @@
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
             <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#" aria-label="Event, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-calendar-dots" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Event</span></a>
+            <a class="bottom-nav__item" href="#" aria-label="Event, khusus anggota aktif"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-calendar-dots" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Event</span></a>
             <a class="bottom-nav__item bottom-nav__item--kta is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item" href="#" aria-label="Jejaring, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#" aria-label="Jejaring, khusus anggota aktif"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
             <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
       </div>
-      <p class="frame__note">"Bayar" membuka /onboarding/fees (go). Tab Event dan Jejaring terkunci (lencana gembok) untuk status unverified.</p>
+      <p class="frame__note">"Bayar" membuka /onboarding/fees (go). Tab Event dan Jejaring bergembok (khusus anggota aktif) untuk status unverified.</p>
     </figure>
 
     <figure class="frame">
@@ -222,7 +222,7 @@
               <button class="btn btn--solid btn--inline" type="button">Lanjutkan</button>
             </div>
             <section class="kta-locked mt-4" aria-labelledby="kta-locked-4">
-              <h3 class="kta-locked__title" id="kta-locked-4">Terbuka setelah KTA aktif</h3>
+              <h3 class="kta-locked__title" id="kta-locked-4">Layanan untuk anggota terverifikasi</h3>
               <p class="kta-locked__item"><span class="ic ph-qr-code" aria-hidden="true"></span><span>QR KTA untuk verifikasi</span></p>
               <p class="kta-locked__item"><span class="ic ph-users-three" aria-hidden="true"></span><span>Jejaring alumni dan chat</span></p>
               <p class="kta-locked__item"><span class="ic ph-calendar-dots" aria-hidden="true"></span><span>Pendaftaran event dan tiket</span></p>
@@ -232,9 +232,9 @@
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
             <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#" aria-label="Event, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-calendar-dots" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Event</span></a>
+            <a class="bottom-nav__item" href="#" aria-label="Event, khusus anggota aktif"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-calendar-dots" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Event</span></a>
             <a class="bottom-nav__item bottom-nav__item--kta is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item" href="#" aria-label="Jejaring, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#" aria-label="Jejaring, khusus anggota aktif"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
             <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
@@ -269,7 +269,7 @@
             <div class="status-action-card mt-4">
               <div class="status-action-card__info">
                 <span class="status-badge status-badge--danger"><span class="ic ph-x-circle-fill" aria-hidden="true"></span>KTA Kedaluwarsa</span>
-                <p class="status-action-card__message">Masa aktif berakhir 13 Okt 2026. Perpanjang untuk mengaktifkan kembali KTA dan fitur alumni.</p>
+                <p class="status-action-card__message">Masa keanggotaan berakhir 13 Okt 2026. Hubungi pengurus atau perpanjang keanggotaan organisasi.</p>
               </div>
               <button class="btn btn--solid btn--inline" type="button">Perpanjang</button>
             </div>
@@ -277,15 +277,15 @@
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
             <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#" aria-label="Event, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-calendar-dots" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Event</span></a>
+            <a class="bottom-nav__item" href="#" aria-label="Event, khusus anggota aktif"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-calendar-dots" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Event</span></a>
             <a class="bottom-nav__item bottom-nav__item--kta is-selected" href="#" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item" href="#" aria-label="Jejaring, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#" aria-label="Jejaring, khusus anggota aktif"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
             <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-user-circle" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
       </div>
-      <p class="frame__note">Tanpa expires_at: "Masa aktif KTA sudah berakhir. Perpanjang untuk mengaktifkan kembali KTA dan fitur alumni." Tab Event dan Jejaring terkunci untuk status expired.</p>
+      <p class="frame__note">Tanpa expires_at: "Masa keanggotaan sudah berakhir. Hubungi pengurus atau perpanjang keanggotaan organisasi." Tab Event dan Jejaring bergembok (khusus anggota aktif) untuk status expired.</p>
     </figure>
 
     <figure class="frame">

@@ -151,7 +151,7 @@ const out = `<!doctype html>
       <dt>Cakupan</dt><dd>${coverage.length - missing.length} dari ${coverage.length} layar Flutter (${screens.length - 1} <code>*_screen.dart</code> + <code>AppShell</code>)${missing.length ? `, <strong>${missing.length} belum ada halaman</strong>` : ', semuanya punya halaman'}</dd>
       <dt>Sumber</dt><dd><code>kapdh-mobile/lib</code> (Flutter 3.47.2, <code>KapdhTheme.light()</code>)</dd>
     </dl>
-    <p class="page-header__note">Tiruan statis tampilan Flutter saat ini sebagai bahan iterasi desain. Setiap halaman berisi satu layar dengan semua keadaan pentingnya (utama, gulir penuh, kosong, galat, memuat, terkunci, dialog, lembar bawah) sebagai frame berlabel. Teks disalin dari Dart; data contoh fiktif. Buka lewat Chrome/Edge atau <code>node tools/serve.mjs</code>. Tombol di kanan atas mengganti tema gelap, teks 200 % dan tablet untuk semua layar (usulan v2).</p>
+    <p class="page-header__note">Tiruan statis tampilan Flutter saat ini sebagai bahan iterasi desain. Setiap halaman berisi satu layar dengan semua keadaan pentingnya (utama, gulir penuh, kosong, galat, memuat, khusus anggota aktif, dialog, lembar bawah) sebagai frame berlabel. Teks disalin dari Dart; data contoh fiktif. Buka lewat Chrome/Edge atau <code>node tools/serve.mjs</code>. Tombol di kanan atas mengganti tema gelap, teks 200 % dan tablet untuk semua layar (usulan v2).</p>
   </header>
 
   <main class="doc">

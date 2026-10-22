@@ -37,7 +37,7 @@
 .kta-synced { display: flex; align-items: center; justify-content: center; gap: var(--s1); font-size: var(--fs-caption); color: var(--color-text-muted); }
 .kta-synced .ic { --ic-size: var(--ic-xs); }
 
-/* _LockedFeatures "Terbuka setelah KTA aktif": kartu putih 14 x 16, garis divider, radius 14; baris ikon 18 muted + 10 + 13 */
+/* _LockedFeatures "Layanan untuk anggota terverifikasi": kartu putih 14 x 16, garis divider, radius 14; baris ikon 18 muted + 10 + 13 */
 .kta-locked { padding: 13px 15px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--r-lg); }
 .kta-locked__title { font-size: var(--fs-body); font-weight: 600; }
 .kta-locked__item { display: flex; align-items: center; gap: 10px; margin-top: var(--s2); font-size: calc(13px * var(--ts, 1)); }
