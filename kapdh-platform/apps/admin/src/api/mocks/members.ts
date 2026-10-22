@@ -32,9 +32,10 @@ import { error, json, type MockRequest, type MockRoute, noContent, paginate, typ
  *   pemulihan sandi akun tidak aktif memakai galat akar `field_errors._`.
  * - Pemulihan sandi tunduk pada batas OTP 5 per jam per email (429 RATE_LIMITED dengan retry_after_seconds).
  * - Profil berulang (professions, education, social_links) adalah sumber kebenaran; field lama diturunkan darinya:
- *   `profession` = profesi pertama bertaut master, `last_education_institution` = institusi teratas,
- *   `social_<platform>` = tautan pertama platform itu. Field lama yang dikirim mengubah entri padanannya; field lama
- *   bersama penggantinya ditolak 400. Pendidikan disimpan terbaru di atas (tanpa tahun di atas).
+ *   `profession` = profesi pertama bertaut master (`profession_entries` memuat master setiap profesi),
+ *   `last_education_institution` = institusi teratas, `social_<platform>` = tautan pertama platform itu. Field lama
+ *   yang dikirim mengubah entri padanannya; field lama bersama penggantinya ditolak 400. Pendidikan disimpan terbaru
+ *   di atas (tanpa tahun di atas).
  */
 type Detail = S["AdminMemberDetail"];
 type Summary = S["AdminMemberSummary"];
@@ -836,6 +837,15 @@ function professionLabels(m: MemberState): string[] {
   );
 }
 
+/** `profession_entries`: profesi seurutan `professions` beserta master tertautnya (nonaktif tetap ditandai). */
+function professionEntries(m: MemberState): S["AdminMemberProfessionEntry"][] {
+  const labels = professionLabels(m);
+  return m.professions.map((e, i) => ({
+    label: labels[i]!,
+    master: e.profession_id ? masterRef(e.profession_id) : null,
+  }));
+}
+
 /** Field lama `profession`: profesi pertama yang tertaut master. */
 function primaryProfession(m: MemberState): S["MasterItem"] | null {
   const entry = m.professions.find((e) => e.profession_id !== null);
@@ -899,6 +909,7 @@ function present(m: MemberState): Detail {
     privacy: m.privacy,
     profession: primaryProfession(m),
     professions: professionLabels(m),
+    profession_entries: professionEntries(m),
     education: m.education.map((e) => ({ ...e })),
     social_links: m.social_links.map((l) => ({ ...l })),
     skills: m.skill_ids.map(masterRef).filter((s): s is S["MasterItem"] => s !== null),

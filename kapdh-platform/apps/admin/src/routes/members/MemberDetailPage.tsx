@@ -36,7 +36,7 @@ import { lastMembersSearch } from "./listMemory";
 import { PasswordResetDialog, SuspendDialog, UnsuspendDialog } from "./MemberActionDialogs";
 import { MemberEditDialog } from "./MemberEditDialog";
 import { MembershipHistory } from "./MembershipHistory";
-import { type MemberDetail, useMemberDetail } from "./queries";
+import { type MemberDetail, professionEntries, useMemberDetail } from "./queries";
 import { RefreshFailedBanner } from "./RefreshFailedBanner";
 
 type S = components["schemas"];
@@ -339,20 +339,20 @@ function Section({
 }
 
 /**
- * Profesi sesuai urutan anggota (pertama = profesi utama di KTA). Profesi bertaut master nonaktif tetap tampil
- * sebagai label historis (AC F10-4); penandanya dari field `profession` (profesi pertama bertaut master).
+ * Profesi sesuai urutan anggota (pertama = profesi utama di KTA). Setiap profesi bertaut master nonaktif tetap tampil
+ * sebagai label historis dengan penanda per entri (AC F10-4, `profession_entries`).
  */
 function ProfessionList({ member: m }: { member: MemberDetail }) {
-  if (m.professions.length === 0) return "-";
-  const inactive = m.profession?.active === false ? m.profession.label : null;
+  const entries = professionEntries(m);
+  if (entries.length === 0) return "-";
   return (
     <ul aria-label="Profesi" className="flex flex-wrap gap-1.5">
-      {m.professions.map((label, i) => (
+      {entries.map(({ label, master }, i) => (
         <li key={`${i}-${label}`} className="inline-flex flex-wrap items-center gap-1.5">
           <Badge tone={i === 0 ? "primary" : "neutral"}>
-            {i === 0 && m.professions.length > 1 ? `${label} (utama)` : label}
+            {i === 0 && entries.length > 1 ? `${label} (utama)` : label}
           </Badge>
-          {label === inactive ? <Badge tone="neutral">Master nonaktif</Badge> : null}
+          {master?.active === false ? <Badge tone="neutral">Master nonaktif</Badge> : null}
         </li>
       ))}
     </ul>

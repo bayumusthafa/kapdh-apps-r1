@@ -24,6 +24,27 @@ export const masterKeys = {
   detail: (kind: MasterKind, id: string) => ["admin-master", kind, id] as const,
 };
 
+export type ProfessionEntry = S["AdminMemberProfessionEntry"];
+
+/**
+ * Profesi anggota beserta master tertautnya, seurutan dengan `professions`. API sebelum `profession_entries` ada
+ * hanya memberi `profession` (profesi pertama yang tertaut master), jadi hanya entri itu yang dapat ditandai.
+ */
+export function professionEntries(m: MemberDetail): ProfessionEntry[] {
+  if (m.profession_entries) return m.profession_entries;
+  const linked = m.profession;
+  return m.professions.map((label) => ({ label, master: linked && linked.label === label ? linked : null }));
+}
+
+/** Label (huruf kecil) profesi yang tertaut master nonaktif: label historis yang tidak dapat ditautkan ulang. */
+export function inactiveProfessionLabels(m: MemberDetail): Set<string> {
+  return new Set(
+    professionEntries(m)
+      .filter((entry) => entry.master?.active === false)
+      .map((entry) => entry.label.toLowerCase()),
+  );
+}
+
 /** Bentuk `current` 409 VERSION_CONFLICT untuk anggota ini (kontrak: AdminMemberDetail tersaring per izin). */
 export function memberFromConflict(error: ApiError, userId: string): MemberDetail | null {
   const current = error.current as Partial<MemberDetail> | undefined;

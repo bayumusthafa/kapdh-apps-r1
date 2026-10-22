@@ -27,6 +27,11 @@ network.yaml `NetworkEducationEntry` dan `NetworkSocialLink` (additionalProperti
 - Filter `profession_id` (searchDirectory, adminListMembers) kini cocok bila SALAH SATU profesi anggota tertaut master
   itu. `MemberCard.profession_label` dan `AdminMemberSummary.profession_label` = profesi pertama di daftar, termasuk
   ketikan sendiri.
+- `AdminMemberDetail.profession_entries` (properti respons opsional baru, skema `AdminMemberProfessionEntry`
+  `{label, master: MasterItem | null}`): sejajar dan seurutan dengan `professions`, sehingga web admin menandai
+  SETIAP profesi bertaut master nonaktif (AC F10-4) di detail dan formulir ubah, bukan hanya profesi bertaut pertama
+  (`profession`). Server selalu mengirimnya; opsional agar web admin baru tetap berjalan terhadap image API
+  sebelumnya (tanpa penanda master).
 - Masa transisi aplikasi 1.0.0: field lama `profession`/`profession_id`, `last_education_institution`,
   `last_education_city`, `social_instagram`/`social_x`/`social_facebook`/`social_linkedin` dan `social` tetap dibaca
   dan ditulis, dan deskripsinya ditandai "Deprecated". Nilai bacanya adalah proyeksi daftar baru (profesi pertama yang
@@ -44,7 +49,8 @@ setelah versi minimum aplikasi melewati build pertama yang memakai daftar baru. 
 `EducationEntryInput`, `SocialLink`, `SocialLinkInput`, `NetworkEducationEntry`, `NetworkSocialLink`, enum
 `EducationLevel` (`otherValue` untuk `other`) dan `SocialPlatform`, field `Profile.professions/education/socialLinks`,
 `ProfileUpdate.professions/education/socialLinks`, `DirectoryMember.professions/latestEducation`,
-`NetworkMemberProfile.professions/education/socialLinks` dan padanannya di model admin.
+`NetworkMemberProfile.professions/education/socialLinks` dan padanannya di model admin, ditambah model
+`AdminMemberProfessionEntry` dan field opsional `AdminMemberDetail.professionEntries`.
 
 ### Metode bayar QRIS dengan gambar QR (permintaan PO 2026-10-15, ADR-026; aditif, tidak memutus)
 

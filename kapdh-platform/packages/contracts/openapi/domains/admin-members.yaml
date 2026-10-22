@@ -541,6 +541,21 @@ components:
           format: date-time
           description: Waktu tindakan moderasi terakhir (warn/suspend/unsuspend).
 
+    AdminMemberProfessionEntry:
+      type: object
+      description: |
+        Satu profesi anggota dengan tautan masternya (F-10, AC F10-4). Master nonaktif hanya tetap tertaut selama
+        entrinya tidak dihapus: setelah dihapus dan disimpan, label yang diketik ulang tersimpan sebagai ketikan
+        sendiri (master: null) dan anggota tidak lagi cocok dengan filter `profession_id` master itu.
+      required: [label, master]
+      properties:
+        label: { $ref: "#/components/schemas/ProfessionLabel" }
+        master:
+          oneOf:
+            - $ref: "#/components/schemas/MasterItem"
+            - type: "null"
+          description: Master yang tertaut beserta `active`; null untuk profesi ketikan sendiri.
+
     AdminMemberDetail:
       description: |
         Tampilan administratif lengkap (F-15). Kontak dan sosial ditampilkan terlepas dari flag privasi; flag
@@ -621,6 +636,16 @@ components:
               maxItems: 5
               description: Profesi sesuai urutan anggota (pertama = utama); ketikan sendiri maupun label master.
               items: { $ref: "#/components/schemas/ProfessionLabel" }
+            profession_entries:
+              type: array
+              maxItems: 5
+              description: |
+                Entri `professions` beserta tautan masternya, sejajar dan seurutan dengan `professions` (label sama
+                per indeks), sehingga setiap profesi bertaut master nonaktif dapat ditandai sebagai label historis
+                (AC F10-4), bukan hanya profesi bertaut pertama (`profession`). Selalu dikirim server; opsional agar
+                klien tetap berjalan terhadap API sebelum field ini ada (tanpanya hanya `profession` yang diketahui
+                tautan masternya).
+              items: { $ref: "#/components/schemas/AdminMemberProfessionEntry" }
             education:
               type: array
               maxItems: 10
