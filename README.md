@@ -28,10 +28,10 @@ KAPDHAPPS/                         satu repo selama build (ADR-001); kapdh-mobil
     ARCHITECTURE.md                kontrak rekayasa (mengikat untuk setiap kontributor)
     BUILD_PLAN.md                  fase build dan peta kepemilikan path
     adr/                           catatan keputusan arsitektur 001-024
-    runbooks/                      production-init, go-live (+ rollback), rilis-dan-gerbang-go-live, ci-cd,
-                                   compose-cadangan, backup-restore, restore-backup, monitoring, incident-response,
-                                   load-test, storage-migration, app-store-submission, alumni-account-disabled,
-                                   push-fcm
+    runbooks/                      production-init, go-live (+ rollback), rilis-dan-gerbang-go-live,
+                                   gladi-migrasi-profil-berulang, ci-cd, compose-cadangan, backup-restore,
+                                   restore-backup, monitoring, incident-response, load-test, storage-migration,
+                                   app-store-submission, alumni-account-disabled, push-fcm
     qa/                            traceability.md (bukti otomatis per AC/N/U), uat-checklist.md (UAT manual),
                                    device-matrix.md (D7), templat bukti restore-drills/, availability/, load/
     handoff/                       laporan serah terima per fase/irisan (fakta, keputusan, isu terbuka)
@@ -63,6 +63,7 @@ KAPDHAPPS/                         satu repo selama build (ADR-001); kapdh-mobil
 | Menjalankan dan mengembangkan platform | `kapdh-platform/README.md`, README per paket (`apps/worker`, `packages/{database,contracts,design-tokens}`) |
 | Menjalankan dan mengembangkan aplikasi | `kapdh-mobile/README.md` |
 | Inisialisasi production, go-live, rollback | `docs/runbooks/production-init.md`, `docs/runbooks/go-live.md`, `docs/runbooks/rilis-dan-gerbang-go-live.md` |
+| Gladi migrasi profil berulang (0009-0010) pada salinan pulihan production | `docs/runbooks/gladi-migrasi-profil-berulang.md` |
 | CI/CD, image, deploy staging/production, Compose cadangan | `docs/runbooks/ci-cd.md`, `docs/runbooks/compose-cadangan.md`, `kapdh-platform/infra/README.md` |
 | Backup, restore drill, monitoring, insiden, uji beban | `docs/runbooks/backup-restore.md`, `monitoring.md`, `incident-response.md`, `load-test.md`, `storage-migration.md` |
 | Restore backup tanpa menghidupkan akun terhapus; status akun `disabled` | `docs/runbooks/restore-backup.md`, `docs/runbooks/alumni-account-disabled.md` (Bahasa Inggris, dari hardening Fase D) |

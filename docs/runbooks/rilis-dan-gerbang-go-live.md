@@ -320,30 +320,128 @@ job rilis production memakai pengecualian `report` dengan alasan dan penyetuju (
 
 Berlaku untuk rilis pertama yang memuat `0009_profile_lists` dan `0010_profile_lists_bridge` (profesi jamak, riwayat
 pendidikan, media sosial dinamis; kontrak aditif, `packages/contracts/CHANGELOG.md`). Gladi lebih dahulu di staging
-dengan salinan data production bila memungkinkan.
+dengan data **sintetis** yang bentuknya meniru production (PRD 5.3: data pribadi nyata tidak disalin ke staging):
+nilai lama `social_*` (termasuk string kosong dan nilai lebih dari 200 karakter), `last_education_institution`
+(termasuk lebih dari 120 karakter), satu baris `alumni_professions` per alumni, lalu sesudah migrasi satu anggota uji
+yang daftarnya diisi penuh lewat API baru untuk menguji penolakan tulisan lama (langkah 3). Gladi dengan data nyata
+**hanya** di lingkungan drill restore yang terisolasi (`docs/runbooks/backup-restore.md` 8.1), mengikuti
+`docs/runbooks/gladi-migrasi-profil-berulang.md`; salinan pulihan dimusnahkan sesudahnya.
 
-1. **Sebelum migrasi**: catat jumlah baris lama sebagai pembanding **[bukti]**:
+Kueri SQL di bawah dijalankan sebagai `kapdh_migrator` (baca saja) dari kontainer di jaringan database, misalnya
+setelah kueri disimpan di `hitung.sql`:
+
+```bash
+sudo docker run --rm -i --network coolify --env-file /etc/kapdh/production/release.env postgres:17.11-alpine3.24 \
+  sh -c 'psql "$MIGRATOR_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f -' < hitung.sql
+```
+
+1. **Sebelum migrasi** **[bukti]**:
+   1. Hitung nilai lama yang akan disalin isi awal 0010, dengan aturan yang sama dengan 0010: pendidikan bila
+      `last_education_institution` tidak kosong setelah `btrim` (disalin, dipotong 120 karakter); tautan bila panjang
+      nilainya 1 sampai 200 karakter (disalin apa adanya); profesi = setiap baris `alumni_professions` (paling banyak
+      satu per alumni, indeks unik `alumni_professions_alumni_user_id_key`):
+
+      ```sql
+      select count(*) filter (where btrim(coalesce(last_education_institution, '')) <> '') as pendidikan,
+             count(*) filter (where char_length(social_instagram) between 1 and 200)
+               + count(*) filter (where char_length(social_x) between 1 and 200)
+               + count(*) filter (where char_length(social_facebook) between 1 and 200)
+               + count(*) filter (where char_length(social_linkedin) between 1 and 200) as tautan,
+             (select count(*) from app.alumni_professions) as profesi
+      from app.alumni;
+      ```
+
+   2. Hitung nilai sosial lama yang **dilewati** isi awal (string kosong atau lebih dari 200 karakter). API lama
+      menolak keduanya, jadi nilainya hanya mungkin dari tulisan di luar API. Harus 0. Bila tidak, pemilik produk
+      memutuskan sebelum rilis: nilai itu tidak masuk daftar, dan kolom lamanya dikosongkan begitu tautan, pendidikan
+      atau profesi anggota itu disimpan lagi (proyeksi daftar ke kolom lama):
+
+      ```sql
+      select count(*) filter (where char_length(social_instagram) not between 1 and 200)
+               + count(*) filter (where char_length(social_x) not between 1 and 200)
+               + count(*) filter (where char_length(social_facebook) not between 1 and 200)
+               + count(*) filter (where char_length(social_linkedin) not between 1 and 200) as tautan_dilewati
+      from app.alumni;
+      ```
+
+   3. **Dump pra-migrasi** (jalur manual). `run-release.sh` tidak membuat dump; jalur otomatis membuatnya sendiri
+      (`remote-migrate.sh`, `KAPDH_BACKUP_DIR`; `docs/runbooks/ci-cd.md` bagian 5). Perintahnya sama dengan
+      `remote-migrate.sh`: `pg_dump` format custom database `kapdh` dari image PostgreSQL resource (versi klien = versi
+      server), lalu dibaca ulang `pg_restore --list`, ke direktori khusus root, dengan sha256:
+
+      ```bash
+      sudo -i   # blok ini sebagai root
+      umask 077; D=/var/backups/kapdh/premigrate-manual; install -d -m 700 "$D"
+      F="$D/kapdh-production-premigrate-$(date -u +%Y%m%dT%H%M%SZ).dump"
+      docker run --rm --network coolify --env-file /etc/kapdh/production/release.env postgres:17.11-alpine3.24 \
+        sh -c 'exec pg_dump --format=custom --compress=6 --dbname="$ADMIN_DATABASE_URL"' </dev/null > "$F.partial" \
+        && docker run --rm -i --network none postgres:17.11-alpine3.24 pg_restore --list < "$F.partial" > /dev/null \
+        && mv "$F.partial" "$F" && sha256sum "$F" | tee "$F.sha256"
+      ```
+
+      Tidak ada baris sha256 = dump gagal: hapus `$F.partial` dan jangan jalankan job. Catat nama berkas dan sha256 di
+      paket bukti. Dump memuat data pribadi (D2): mode 600, disimpan paling lama 7 hari seperti dump pra-migrasi
+      otomatis, lalu `shred -u`. Pemulihan dari dump ini mengikuti `docs/runbooks/ci-cd.md` bagian 9.
+
+2. **Job rilis production** seperti bagian 5 langkah 2 (mode `enforce`), dengan image `kapdh-release` rilis ini
+   **[bukti]**:
+
+   ```bash
+   sudo sh kapdh-platform/infra/scripts/run-release.sh production ghcr.io/<org>/kapdh-release:<tag-rilis-ini>   # enforce
+   ```
+
+   Jalur otomatis: mode gerbang dibaca dari `KAPDH_RELEASE_GATE*` di `/etc/kapdh/ci-migrate/production.env` (bawaan
+   `enforce`). Bila gerbang go-live production masih merah saat rilis ini, gerbang pra-migrasi menolak tanpa mengubah
+   skema (bagian 5.1). Rilis hanya boleh dilanjutkan lewat pengecualian terdokumentasi bagian 5.3: persetujuan
+   tertulis, alasan dan penyetuju (`RELEASE_GATE=report` dengan `RELEASE_GATE_REASON` dan `RELEASE_GATE_APPROVER` di
+   jalur manual; `KAPDH_RELEASE_GATE=report`, `KAPDH_RELEASE_GATE_REASON` dan `KAPDH_RELEASE_GATE_APPROVER` di berkas
+   itu pada jalur otomatis, lalu dihapus lagi sesudah job).
+
+   Migrasi hanya menambah tabel, fungsi dan trigger, lalu mengisi daftar dari kolom lama; kolom lama,
+   `alumni_professions` dan data lain tidak diubah. Migrasi lebih dahulu mengunci `alumni`, `alumni_professions` dan
+   `master_professions` (EXCLUSIVE) dengan batas tunggu 15 detik (`SET LOCAL lock_timeout`): job menunggu transaksi
+   profil yang sedang berjalan selesai, lalu menahan simpan profil baru sampai job commit (beberapa detik; baca tetap
+   berjalan). Ini mencegah deadlock antara job dan API lama. Bila kunci tidak diperoleh dalam 15 detik (ada transaksi
+   lama yang menggantung), job gagal cepat: `[migrate] Gagal: 55P03 ...` lalu `[rilis] GAGAL: migrasi gagal; ...`.
+   Seluruh transaksi migrasi dibatalkan, skema tetap 0008, API/worker lama berjalan seperti biasa, dan simpan profil
+   yang sempat tertahan (paling lama 15 detik) dilanjutkan. `roles.sql` dan sandi role yang sudah diterapkan job
+   bersifat idempoten. Ulangi langkah 1.3 dan 2 saat tulisan profil sepi. Transaksi yang terbuka lebih dari 15 detik
+   dapat dihitung lebih dahulu sebagai superuser (`psql "$ADMIN_DATABASE_URL"`, karena role lain tidak melihat
+   `xact_start` sesi milik role lain):
+
+   ```sql
+   select count(*) as transaksi_lama from pg_stat_activity
+   where datname = current_database() and backend_type = 'client backend' and pid <> pg_backend_pid()
+     and xact_start < now() - interval '15 seconds';
+   ```
+
+   Setelah job dan **sebelum** langkah 3, bandingkan isi awal dengan kolom lama dalam satu kueri (satu snapshot)
+   **[bukti]**. Setiap pasangan harus sama:
 
    ```sql
    select count(*) filter (where btrim(coalesce(last_education_institution, '')) <> '') as pendidikan,
-          count(*) filter (where social_instagram is not null) + count(*) filter (where social_x is not null)
-            + count(*) filter (where social_facebook is not null)
-            + count(*) filter (where social_linkedin is not null) as tautan,
-          (select count(*) from app.alumni_professions) as profesi
+          (select count(*) from app.alumni_education) as pendidikan_baru,
+          count(*) filter (where char_length(social_instagram) between 1 and 200)
+            + count(*) filter (where char_length(social_x) between 1 and 200)
+            + count(*) filter (where char_length(social_facebook) between 1 and 200)
+            + count(*) filter (where char_length(social_linkedin) between 1 and 200) as tautan,
+          (select count(*) from app.alumni_social_links) as tautan_baru,
+          (select count(*) from app.alumni_professions) as profesi,
+          (select count(*) from app.alumni_profession_entries) as profesi_baru
    from app.alumni;
    ```
 
-2. **Job rilis** dengan image `kapdh-release` baru (bagian 3 atau jalur otomatis). Migrasi hanya menambah tabel,
-   fungsi dan trigger, lalu mengisi daftar dari kolom lama; kolom lama, `alumni_professions` dan data lain tidak
-   diubah. Migrasi lebih dahulu mengunci `alumni`, `alumni_professions` dan `master_professions` (EXCLUSIVE): job
-   menunggu transaksi profil yang sedang berjalan selesai, lalu menahan simpan profil baru sampai job commit
-   (beberapa detik; baca tetap berjalan). Ini mencegah deadlock antara job dan API lama. Setelah job, ulangi hitungan
-   di atas terhadap tabel baru (`alumni_education`, `alumni_social_links`, `alumni_profession_entries`); angkanya
-   harus sama **[bukti]**.
+   Selama hanya API lama yang menulis, trigger jembatan menjaga setiap pasangan tetap sama. Pasangan yang berbeda
+   berarti isi awal atau jembatan salah: jangan redeploy; skema sudah naik, jadi pemilik produk memilih perbaikan maju
+   atau pembatalan darurat (langkah 6). Nilai `pendidikan`, `tautan` dan `profesi` sama dengan langkah 1.1 kecuali ada
+   simpan profil di antara keduanya. Setelah API baru berjalan (langkah 3), daftar boleh lebih panjang dari kolom lama
+   (profesi kedua, tautan platform baru), jadi perbandingan ini hanya berlaku sebelum redeploy.
+
 3. **Coolify**: redeploy `kapdh-api` → `kapdh-worker` → `kapdh-admin` → `kapdh-web`. Selama jendela antara migrasi dan
    redeploy, API lama tetap berjalan; tulisan profilnya diterapkan trigger jembatan ke daftar baru dan kolom lama
    diproyeksikan ulang saat commit, sehingga tidak ada yang hilang. Tulisan lama yang tidak muat karena daftar anggota
-   sudah penuh (10 tautan atau 5 profesi dari aplikasi baru) ditolak, bukan disimpan setengah. Aplikasi 1.0.0 yang sudah terpasang tetap bekerja dengan field lama (proyeksi daftar baru).
+   sudah penuh (10 tautan atau 5 profesi dari aplikasi baru) ditolak, bukan disimpan setengah. Aplikasi 1.0.0 yang
+   sudah terpasang tetap bekerja dengan field lama (proyeksi daftar baru).
 4. **Uji asap**: ubah profil akun uji lewat aplikasi lama (field lama) dan web admin baru (daftar baru), lalu buka
    `GET /me` dan profil di direktori: keduanya menampilkan perubahan yang sama.
 5. **Rollback image** (jalur biasa, bagian 6.1): aman tanpa membalik skema. Image lama membaca kolom lama yang selalu
@@ -355,8 +453,9 @@ dengan salinan data production bila memungkinkan.
    - Setelah build aplikasi mobile yang memakai daftar baru tersebar, JANGAN rollback API ke image sebelum 0009: build
      itu tidak dapat membaca profil tanpa ketiga daftar. Pakai perbaikan maju (mode maintenance bila perlu).
 6. **Pembatalan skema darurat** (hanya atas keputusan pemilik produk, misalnya migrasi ternyata merusak data): lakukan
-   rollback image lebih dahulu (langkah 5), dump database (`docs/runbooks/backup-restore.md`), lalu jalankan skrip
-   pembatalan dari image rilis baru sebagai `kapdh_migrator` dalam satu transaksi **[bukti]**:
+   rollback image lebih dahulu (langkah 5), buat dump baru dengan perintah langkah 1.3, lalu jalankan skrip pembatalan
+   dari image rilis baru sebagai `kapdh_migrator` dalam satu transaksi **[bukti]** (digladikan di
+   `docs/runbooks/gladi-migrasi-profil-berulang.md` Langkah 7):
 
    ```bash
    sudo docker run --rm --network coolify --env-file /etc/kapdh/production/release.env --entrypoint sh \
@@ -367,6 +466,9 @@ dengan salinan data production bila memungkinkan.
    Skrip menghapus tiga tabel baru beserta fungsi dan trigger 0010, lalu menghapus catatan journal 0009-0010 sehingga
    cek versi skema image lama lulus. Kolom lama tidak disentuh. Yang hilang permanen hanya isi tambahan pada langkah 5.
    Bila rilis ini dipasang lagi kelak, job rilis menerapkan ulang 0009-0010 dan mengisi daftar dari kolom lama.
+   Seperti 0009, skrip memasang `lock_timeout` 15 detik: bila kunci tabel profil tidak diperoleh, skrip gagal `55P03`
+   tanpa perubahan apa pun dan dapat diulang saat tulisan profil sepi.
+
 7. **Akhir masa transisi**: field lama baru dapat dihapus dari kontrak dan kolom lama dari skema (perubahan memutus,
    ADR baru) setelah `min_app_version` dinaikkan melewati build pertama yang memakai daftar baru dan build itu sudah
    tersebar di toko.
