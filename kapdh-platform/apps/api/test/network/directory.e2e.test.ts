@@ -1,7 +1,10 @@
 import {
   alumni,
+  alumniEducation,
+  alumniProfessionEntries,
   alumniProfessions,
   alumniSkills,
+  alumniSocialLinks,
   blocks,
   masterProfessions,
   masterSkills,
@@ -481,6 +484,8 @@ describe("AC F10-2: field tersembunyi tidak ikut payload", () => {
         "cohort_code",
         "city",
         "profession",
+        "professions",
+        "latest_education",
         "last_education_institution",
         "last_education_city",
         "skills",
@@ -501,6 +506,7 @@ describe("AC F10-2: field tersembunyi tidak ikut payload", () => {
     expect(body).not.toHaveProperty("phone");
     expect(body).not.toHaveProperty("email");
     expect(body).not.toHaveProperty("social");
+    expect(body).not.toHaveProperty("social_links");
     expect(body.bio).toBe(contact.bio);
     for (const secret of [contact.phone, target.email, "kontak.rahasia", "xrahasia", "linkedin.com"])
       expect(res.body).not.toContain(secret);
@@ -517,6 +523,7 @@ describe("AC F10-2: field tersembunyi tidak ikut payload", () => {
     expect(phoneBody.phone).toBe(contact.phone);
     expect(phoneBody).not.toHaveProperty("email");
     expect(phoneBody).not.toHaveProperty("social");
+    expect(phoneBody).not.toHaveProperty("social_links");
 
     const all = await member({ profile: { ...contact, showPhone: true, showEmail: true, showSocial: true } });
     const allBody = expectOperation(
@@ -533,6 +540,13 @@ describe("AC F10-2: field tersembunyi tidak ikut payload", () => {
         facebook: "https://facebook.com/rahasia",
         linkedin: "https://linkedin.com/in/rahasia",
       },
+      // Kolom lama yang ditulis penulis lama ikut menjadi daftar tautan (jembatan migrasi 0010).
+      social_links: [
+        { platform: "instagram", value: "kontak.rahasia" },
+        { platform: "x", value: "@xrahasia" },
+        { platform: "facebook", value: "https://facebook.com/rahasia" },
+        { platform: "linkedin", value: "https://linkedin.com/in/rahasia" },
+      ],
     });
 
     // Flag aktif tetapi data kosong: kunci ada dengan nilai null (kontrak NetworkMemberProfile).
@@ -544,6 +558,80 @@ describe("AC F10-2: field tersembunyi tidak ikut payload", () => {
     ) as Json;
     expect(emptyBody.phone).toBeNull();
     expect(emptyBody.social).toEqual({ instagram: null, x: null, facebook: null, linkedin: null });
+    expect(emptyBody.social_links).toEqual([]);
+  });
+});
+
+describe("Profil berulang di direktori (professions, education, social_links)", () => {
+  it("profesi jamak, pendidikan teratas di kartu, filter profesi cocok dengan profesi mana pun, tautan mengikuti show_social", async () => {
+    const city = uniqueCity();
+    const caller = await viewer();
+    const other = await master("professions");
+    const second = await master("professions");
+    const target = await member({ status: "verified", city, profile: { showSocial: true } });
+    const hidden = await member({ status: "verified", city, profile: { showSocial: false } });
+    const now = t.clock.now();
+    for (const owner of [target, hidden]) {
+      await t.db.insert(alumniProfessionEntries).values([
+        { alumniUserId: owner.userId, position: 0, label: "Penulis Lepas", createdAt: now },
+        { alumniUserId: owner.userId, position: 1, professionId: second.id, createdAt: now },
+      ]);
+      await t.db.insert(alumniEducation).values([
+        {
+          alumniUserId: owner.userId,
+          position: 0,
+          institution: "UIN Contoh",
+          major: "Pendidikan Agama Islam",
+          level: "s2",
+          graduationYear: 2022,
+          createdAt: now,
+        },
+        {
+          alumniUserId: owner.userId,
+          position: 1,
+          institution: "Universitas Contoh",
+          level: "s1",
+          createdAt: now,
+        },
+      ]);
+      await t.db.insert(alumniSocialLinks).values({
+        alumniUserId: owner.userId,
+        position: 0,
+        platform: "tiktok",
+        value: "uji.tiktok",
+        createdAt: now,
+      });
+    }
+
+    const found = await searchOk(caller.token, { city, profession_id: second.id });
+    expect(found.items.map((item) => item.user_id).sort()).toEqual([target.userId, hidden.userId].sort());
+    expect(found.items[0]).toMatchObject({
+      professions: ["Penulis Lepas", second.label],
+      latest_education: {
+        institution: "UIN Contoh",
+        major: "Pendidikan Agama Islam",
+        level: "s2",
+        graduation_year: 2022,
+      },
+    });
+    expect((await searchOk(caller.token, { city, profession_id: other.id })).items).toEqual([]);
+
+    const profile = expectOperation(
+      "get",
+      "/directory/{userId}",
+      await profileOf(caller.token, target.userId),
+    ) as Json;
+    expect(profile).toMatchObject({
+      professions: ["Penulis Lepas", second.label],
+      education: [
+        { institution: "UIN Contoh", major: "Pendidikan Agama Islam", level: "s2", graduation_year: 2022 },
+        { institution: "Universitas Contoh", major: null, level: "s1", graduation_year: null },
+      ],
+      social_links: [{ platform: "tiktok", value: "uji.tiktok" }],
+    });
+    const private_ = await profileOf(caller.token, hidden.userId);
+    expect(expectOperation("get", "/directory/{userId}", private_)).not.toHaveProperty("social_links");
+    expect(private_.body).not.toContain("uji.tiktok");
   });
 });
 

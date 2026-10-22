@@ -188,7 +188,7 @@ describe("N-01, AC F10-1: rencana kueri direktori memakai indeks dan keyset (EXP
       expectIndexedPage(await plan({ filters }));
     const byProfession = await plan({ filters: { professionId } });
     expectIndexedPage(byProfession);
-    expect(byProfession).toMatch(/using alumni_professions_\w+ on alumni_professions/);
+    expect(byProfession).toMatch(/using alumni_profession_entries_\w+ on alumni_profession_entries/);
     const bySkill = await plan({ filters: { skillId } });
     expectIndexedPage(bySkill);
     expect(bySkill).toMatch(/using alumni_skills_\w+ on alumni_skills/);

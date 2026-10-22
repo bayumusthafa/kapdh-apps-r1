@@ -31,6 +31,10 @@ import { error, json, type MockRequest, type MockRoute, noContent, paginate, typ
  *   field_errors, `current` {suspended_at, account_status, version}); ubah data akun yang sedang dihapus dan
  *   pemulihan sandi akun tidak aktif memakai galat akar `field_errors._`.
  * - Pemulihan sandi tunduk pada batas OTP 5 per jam per email (429 RATE_LIMITED dengan retry_after_seconds).
+ * - Profil berulang (professions, education, social_links) adalah sumber kebenaran; field lama diturunkan darinya:
+ *   `profession` = profesi pertama bertaut master, `last_education_institution` = institusi teratas,
+ *   `social_<platform>` = tautan pertama platform itu. Field lama yang dikirim mengubah entri padanannya; field lama
+ *   bersama penggantinya ditolak 400. Pendidikan disimpan terbaru di atas (tanpa tahun di atas).
  */
 type Detail = S["AdminMemberDetail"];
 type Summary = S["AdminMemberSummary"];
@@ -103,14 +107,14 @@ interface MemberState {
   last_login_at: string | null;
   phone: string | null;
   bio: string | null;
-  last_education_institution: string | null;
+  /** Profesi sesuai urutan anggota: tertaut master (`profession_id`) atau ketikan sendiri (`label`). */
+  professions: ProfessionEntry[];
+  /** Riwayat pendidikan, terbaru di atas (urutan server). */
+  education: S["EducationEntry"][];
+  social_links: S["SocialLink"][];
+  /** Kota lulusan dari aplikasi lama (field lama tanpa padanan di `education`). */
   last_education_city: string | null;
-  social_instagram: string | null;
-  social_x: string | null;
-  social_facebook: string | null;
-  social_linkedin: string | null;
   privacy: S["ProfilePrivacy"];
-  profession_id: string | null;
   skill_ids: string[];
   suspension: Suspension | null;
   linked_admin: S["AdminMemberLinkedAdmin"] | null;
@@ -125,6 +129,11 @@ interface MemberState {
   /** Jumlah sesi umum anggota yang masih aktif (dicabut saat suspend/reset sandi). */
   sessions: number;
   version: number;
+}
+
+interface ProfessionEntry {
+  profession_id: string | null;
+  label: string | null;
 }
 
 interface MasterState {
@@ -359,13 +368,41 @@ function payment(
   };
 }
 
+/** Bentuk ringkas data lama (satu profesi, lulusan terakhir, empat kolom sosial) yang diubah seed() menjadi daftar. */
+interface LegacySeed {
+  profession_id?: string | null;
+  last_education_institution?: string | null;
+  social_instagram?: string | null;
+  social_x?: string | null;
+  social_facebook?: string | null;
+  social_linkedin?: string | null;
+}
+
 type Seed = Partial<MemberState> &
+  LegacySeed &
   Pick<
     MemberState,
     "user_id" | "full_name" | "email" | "gender" | "cohort" | "class_in" | "class_out" | "seq" | "city"
   >;
 
-function seed(s: Seed): MemberState {
+function seed(input: Seed): MemberState {
+  const {
+    profession_id,
+    last_education_institution,
+    social_instagram,
+    social_x,
+    social_facebook,
+    social_linkedin,
+    ...s
+  } = input;
+  const legacyLinks: S["SocialLink"][] = (
+    [
+      ["instagram", social_instagram],
+      ["x", social_x],
+      ["facebook", social_facebook],
+      ["linkedin", social_linkedin],
+    ] as const
+  ).flatMap(([platform, value]) => (value ? [{ platform, value }] : []));
   const registered = s.registered_at ?? "2025-11-02T03:00:00Z";
   const periods = s.periods ?? [];
   const latest = periods[0];
@@ -382,14 +419,13 @@ function seed(s: Seed): MemberState {
     last_login_at: "2026-10-10T02:15:00Z",
     phone: null,
     bio: null,
-    last_education_institution: null,
+    professions: profession_id ? [{ profession_id, label: null }] : [],
+    education: last_education_institution
+      ? [{ institution: last_education_institution, major: null, level: null, graduation_year: null }]
+      : [],
+    social_links: legacyLinks,
     last_education_city: null,
-    social_instagram: null,
-    social_x: null,
-    social_facebook: null,
-    social_linkedin: null,
     privacy: PRIVACY_DEFAULT,
-    profession_id: null,
     skill_ids: [],
     suspension: null,
     linked_admin: null,
@@ -428,11 +464,25 @@ function memberFixtures(): MemberState[] {
       registered_at: "2026-01-04T02:00:00Z",
       phone: "+62 812-7000-1002",
       bio: "Pengusaha konveksi dan pembina UMKM alumni.",
-      last_education_institution: "Universitas Riau",
+      professions: [
+        { profession_id: professionId("Wirausaha"), label: null },
+        { profession_id: null, label: "Konsultan UMKM" },
+      ],
+      education: [
+        {
+          institution: "Universitas Terbuka",
+          major: "Magister Manajemen",
+          level: "s2",
+          graduation_year: 2021,
+        },
+        { institution: "Universitas Riau", major: "Manajemen", level: "s1", graduation_year: 2013 },
+      ],
       last_education_city: "Pekanbaru",
-      social_instagram: "hasan.uji",
-      social_linkedin: "https://www.linkedin.com/in/hasan-uji",
-      profession_id: professionId("Wirausaha"),
+      social_links: [
+        { platform: "instagram", value: "hasan.uji" },
+        { platform: "linkedin", value: "https://www.linkedin.com/in/hasan-uji" },
+        { platform: "tiktok", value: "hasan.konveksi" },
+      ],
       skill_ids: [skillId("Kewirausahaan"), skillId("Pemasaran Digital")],
       linked_admin: {
         admin_id: SYSTEM_ADMIN.admin_id,
@@ -553,6 +603,9 @@ function memberFixtures(): MemberState[] {
       privacy: { show_in_directory: true, show_phone: true, show_email: true, show_social: true },
       phone: "+62 813-6100-0009",
       social_instagram: "nur.aisyah",
+      education: [
+        { institution: "Universitas Islam Riau", major: "Farmasi", level: "s1", graduation_year: null },
+      ],
       periods: [activation(mockId("a", 7), "2026-07-02T03:00:00Z")],
     }),
     seed({
@@ -776,8 +829,25 @@ function masterRef(id: string): S["MasterItem"] | null {
   return m ? { id: m.id, label: m.label, active: m.active } : null;
 }
 
+/** Label profesi sesuai urutan; label master dibaca dari master (label historis, AC F10-4). */
+function professionLabels(m: MemberState): string[] {
+  return m.professions.map((e) =>
+    e.profession_id ? (masters.get(e.profession_id)?.label ?? "") : (e.label ?? ""),
+  );
+}
+
+/** Field lama `profession`: profesi pertama yang tertaut master. */
+function primaryProfession(m: MemberState): S["MasterItem"] | null {
+  const entry = m.professions.find((e) => e.profession_id !== null);
+  return entry?.profession_id ? masterRef(entry.profession_id) : null;
+}
+
+/** Field lama `social_<platform>`: tautan pertama platform itu. */
+function firstLink(m: MemberState, platform: S["SocialPlatform"]): string | null {
+  return m.social_links.find((l) => l.platform === platform)?.value ?? null;
+}
+
 function summaryOf(m: MemberState): Summary {
-  const profession = m.profession_id ? masterRef(m.profession_id) : null;
   return {
     user_id: m.user_id,
     full_name: m.full_name,
@@ -788,7 +858,7 @@ function summaryOf(m: MemberState): Summary {
     member_number: memberNumber(m),
     city: m.city,
     avatar_url: m.avatar_file_id ? avatarDataUrl(initialsOf(m.full_name)) : null,
-    profession_label: profession?.label ?? null,
+    profession_label: professionLabels(m)[0] ?? null,
     account_status: m.account_status,
     effective_status: effectiveStatus(m),
     expires_at: m.expires_at,
@@ -820,14 +890,17 @@ function present(m: MemberState): Detail {
     graduation_year: grad,
     phone: m.phone,
     bio: m.bio,
-    last_education_institution: m.last_education_institution,
+    last_education_institution: m.education[0]?.institution ?? null,
     last_education_city: m.last_education_city,
-    social_instagram: m.social_instagram,
-    social_x: m.social_x,
-    social_facebook: m.social_facebook,
-    social_linkedin: m.social_linkedin,
+    social_instagram: firstLink(m, "instagram"),
+    social_x: firstLink(m, "x"),
+    social_facebook: firstLink(m, "facebook"),
+    social_linkedin: firstLink(m, "linkedin"),
     privacy: m.privacy,
-    profession: m.profession_id ? masterRef(m.profession_id) : null,
+    profession: primaryProfession(m),
+    professions: professionLabels(m),
+    education: m.education.map((e) => ({ ...e })),
+    social_links: m.social_links.map((l) => ({ ...l })),
     skills: m.skill_ids.map(masterRef).filter((s): s is S["MasterItem"] => s !== null),
     avatar_file_id: m.avatar_file_id,
     email_verified_at: m.email_verified_at,
@@ -878,7 +951,11 @@ function usageCount(master: MasterState): number {
   let n = 0;
   for (const m of members.values()) {
     if (m.account_status === "deleted") continue;
-    if (master.kind === "professions" ? m.profession_id === master.id : m.skill_ids.includes(master.id))
+    if (
+      master.kind === "professions"
+        ? m.professions.some((e) => e.profession_id === master.id)
+        : m.skill_ids.includes(master.id)
+    )
       n += 1;
   }
   return n;
@@ -942,8 +1019,10 @@ export const mockMembers = {
     const m = members.get(userId);
     const master = masters.get(masterId);
     if (!m || !master) return;
-    if (master.kind === "professions") m.profession_id = masterId;
-    else if (!m.skill_ids.includes(masterId)) m.skill_ids = [...m.skill_ids, masterId];
+    if (master.kind === "professions") {
+      if (!m.professions.some((e) => e.profession_id === masterId))
+        m.professions = [...m.professions, { profession_id: masterId, label: null }];
+    } else if (!m.skill_ids.includes(masterId)) m.skill_ids = [...m.skill_ids, masterId];
   },
   /** Permintaan `method` yang path-nya cocok dijawab galat server (bawaan 500) sebanyak `times` kali. */
   fail(method: string, path: RegExp, status = 500, times = 1): void {
@@ -1105,6 +1184,9 @@ const UPDATE_KEYS = new Set([
   "city",
   "phone",
   "bio",
+  "professions",
+  "education",
+  "social_links",
   "last_education_institution",
   "last_education_city",
   "social_instagram",
@@ -1116,6 +1198,151 @@ const UPDATE_KEYS = new Set([
   "remove_avatar",
 ]);
 const SOCIAL_KEYS = ["social_instagram", "social_x", "social_facebook", "social_linkedin"] as const;
+const LEGACY_PLATFORM: Record<(typeof SOCIAL_KEYS)[number], S["SocialPlatform"]> = {
+  social_instagram: "instagram",
+  social_x: "x",
+  social_facebook: "facebook",
+  social_linkedin: "linkedin",
+};
+/** Field lama per daftar penggantinya; dikirim bersama penggantinya -> 400 pada field lama (seperti server). */
+const LEGACY_FIELDS: Record<"professions" | "education" | "social_links", readonly string[]> = {
+  professions: ["profession_id"],
+  education: ["last_education_institution", "last_education_city"],
+  social_links: SOCIAL_KEYS,
+};
+const SOCIAL_PLATFORMS: readonly S["SocialPlatform"][] = [
+  "instagram",
+  "tiktok",
+  "x",
+  "facebook",
+  "linkedin",
+  "youtube",
+  "threads",
+  "telegram",
+  "website",
+];
+const EDUCATION_LEVELS: readonly S["EducationLevel"][] = ["d3", "s1", "s2", "s3", "other"];
+const MAX_PROFESSIONS = 5;
+const MAX_LIST = 10;
+
+/** Nama pengguna disimpan tanpa @ di depan (aturan SocialHandle); URL https apa adanya. */
+function normalizeHandle(v: string): string {
+  const t = v.trim();
+  return t.startsWith("https://") ? t : t.replace(/^@/, "");
+}
+
+/** Tahun berjalan Asia/Jakarta: batas atas tahun tamat (kontrak EducationEntryInput). */
+function jakartaYear(now = new Date()): number {
+  return new Date(now.getTime() + 7 * 3_600_000).getUTCFullYear();
+}
+
+/** Urutan tersimpan server: tahun tamat menurun, entri tanpa tahun di atas, tahun sama mengikuti urutan kiriman. */
+function sortEducation(entries: S["EducationEntry"][]): S["EducationEntry"][] {
+  const rank = (e: S["EducationEntry"]) => e.graduation_year ?? Number.MAX_SAFE_INTEGER;
+  return [...entries].sort((a, b) => rank(b) - rank(a));
+}
+
+function validateLists(body: Record<string, unknown>, errors: FieldErrors): void {
+  for (const [list, legacy] of Object.entries(LEGACY_FIELDS)) {
+    if (!(list in body)) continue;
+    for (const key of legacy)
+      if (key in body)
+        errors[key] = [`Field lama ini tidak dapat dikirim bersama ${list}. Kirim ${list} saja.`];
+  }
+  if ("professions" in body) {
+    const list = body.professions;
+    if (!Array.isArray(list) || list.length > MAX_PROFESSIONS)
+      errors.professions = [`Maksimal ${MAX_PROFESSIONS} profesi.`];
+    else {
+      list.forEach((v, i) => {
+        const e = textError(v, "Profesi", 1, 100);
+        if (e) errors[`professions.${i}`] = [e];
+      });
+      const keys = list.map((v) => String(v).trim().toLowerCase());
+      if (new Set(keys).size !== keys.length) errors.professions = ["Profesi tidak boleh ganda."];
+    }
+  }
+  if ("education" in body) {
+    const list = body.education;
+    if (!Array.isArray(list) || list.length > MAX_LIST)
+      errors.education = [`Maksimal ${MAX_LIST} riwayat pendidikan.`];
+    else
+      list.forEach((raw, i) => {
+        const entry = (raw ?? {}) as Record<string, unknown>;
+        for (const key of Object.keys(entry))
+          if (!["institution", "major", "level", "graduation_year"].includes(key))
+            errors[`education.${i}`] = ["Field tidak dikenal."];
+        const inst = textError(entry.institution, "Universitas/instansi", 1, 120);
+        if (inst) errors[`education.${i}.institution`] = [inst];
+        if (entry.major !== undefined) {
+          const major = nullableText(entry.major, "Jurusan", 1, 120);
+          if (major) errors[`education.${i}.major`] = [major];
+        }
+        if (
+          entry.level !== undefined &&
+          entry.level !== null &&
+          !EDUCATION_LEVELS.includes(entry.level as S["EducationLevel"])
+        )
+          errors[`education.${i}.level`] = ["Strata tidak dikenal."];
+        if (
+          entry.graduation_year !== undefined &&
+          entry.graduation_year !== null &&
+          !isInt(entry.graduation_year, 1950, jakartaYear())
+        )
+          errors[`education.${i}.graduation_year`] = ["Tahun tamat tidak boleh melewati tahun ini."];
+      });
+  }
+  if ("social_links" in body) {
+    const list = body.social_links;
+    if (!Array.isArray(list) || list.length > MAX_LIST)
+      errors.social_links = [`Maksimal ${MAX_LIST} tautan.`];
+    else {
+      const seen = new Set<string>();
+      list.forEach((raw, i) => {
+        const link = (raw ?? {}) as Record<string, unknown>;
+        if (!SOCIAL_PLATFORMS.includes(link.platform as S["SocialPlatform"]))
+          errors[`social_links.${i}.platform`] = ["Platform tidak dikenal."];
+        const v = link.value;
+        if (typeof v !== "string" || v.length > 200 || !SOCIAL_HANDLE.test(v))
+          errors[`social_links.${i}.value`] = ["Isi nama pengguna atau tautan https:// yang valid."];
+        else if (link.platform === "website" && !v.startsWith("https://"))
+          errors[`social_links.${i}.value`] = ["Situs web harus berupa tautan https://"];
+        else {
+          const key = `${String(link.platform)}:${normalizeHandle(v).toLowerCase()}`;
+          if (seen.has(key)) errors[`social_links.${i}.value`] = ["Tautan ini sudah ada."];
+          seen.add(key);
+        }
+      });
+    }
+  }
+}
+
+/** Label yang sama dengan master aktif (atau master nonaktif yang sudah terpasang) ditautkan ke master itu. */
+function resolveProfessions(labels: string[], m: MemberState): ProfessionEntry[] {
+  const attached = new Set(m.professions.map((e) => e.profession_id).filter((id) => id !== null));
+  return labels.map((raw) => {
+    const label = raw.trim();
+    const master = sameLabel("professions", label);
+    return master && (master.active || attached.has(master.id))
+      ? { profession_id: master.id, label: null }
+      : { profession_id: null, label };
+  });
+}
+
+/** Field lama social_<platform>: ganti tautan pertama platform itu, tambah di akhir, atau hapus (null). */
+function applyLegacySocial(m: MemberState, platform: S["SocialPlatform"], value: string | null): void {
+  const index = m.social_links.findIndex((l) => l.platform === platform);
+  if (value === null) {
+    if (index >= 0) m.social_links = m.social_links.filter((_, i) => i !== index);
+    return;
+  }
+  const first = m.social_links[index];
+  if (first)
+    m.social_links = m.social_links
+      .filter((l) => l === first || l.platform !== platform || l.value.toLowerCase() !== value.toLowerCase())
+      .map((l) => (l === first ? { ...l, value } : l));
+  else if (m.social_links.length < MAX_LIST) m.social_links = [...m.social_links, { platform, value }];
+}
 
 function unknownKeys(body: Record<string, unknown>, allowed: Set<string>, errors: FieldErrors): void {
   for (const key of Object.keys(body)) {
@@ -1161,6 +1388,7 @@ function validateUpdate(body: Record<string, unknown>, m: MemberState): FieldErr
   }
   if ("bio" in body && body.bio !== null && (typeof body.bio !== "string" || body.bio.length > 500))
     errors.bio = ["Bio maksimal 500 karakter."];
+  validateLists(body, errors);
   if ("last_education_institution" in body) {
     const e = nullableText(body.last_education_institution, "Institusi pendidikan", 1, 120);
     if (e) errors.last_education_institution = [e];
@@ -1175,12 +1403,18 @@ function validateUpdate(body: Record<string, unknown>, m: MemberState): FieldErr
     if (typeof v !== "string" || v.length > 200 || !SOCIAL_HANDLE.test(v))
       errors[key] = ["Isi nama pengguna atau tautan https:// yang valid."];
   }
-  if ("profession_id" in body && body.profession_id !== null) {
+  if ("profession_id" in body && body.profession_id !== null && !errors.profession_id) {
     const id = body.profession_id;
     const master = typeof id === "string" ? masters.get(id) : undefined;
+    const current = primaryProfession(m)?.id ?? null;
     if (!master || master.kind !== "professions") errors.profession_id = ["Profesi tidak ditemukan."];
-    else if (!master.active && m.profession_id !== id)
+    else if (!master.active && current !== id)
       errors.profession_id = ["Profesi ini sudah nonaktif dan tidak dapat dipilih (AC F10-4)."];
+    else if (
+      current !== id &&
+      m.professions.filter((e) => e.profession_id !== current).length >= MAX_PROFESSIONS
+    )
+      errors.profession_id = ["Daftar profesi sudah penuh (maksimal 5)."];
   }
   if ("skill_ids" in body) {
     const ids = body.skill_ids;
@@ -1461,7 +1695,8 @@ const memberRoutes: MockRoute[] = [
         .filter((m) => status === null || effectiveStatus(m) === status)
         .filter((m) => !city || (m.city ?? "").toLowerCase() === city)
         .filter((m) => !gender || m.gender === gender)
-        .filter((m) => !professionFilter || m.profession_id === professionFilter)
+        // Profesi boleh lebih dari satu: cocok bila salah satunya tertaut master ini.
+        .filter((m) => !professionFilter || m.professions.some((e) => e.profession_id === professionFilter))
         .filter((m) => !skillFilter || m.skill_ids.includes(skillFilter))
         .filter((m) => linked === undefined || (m.linked_admin !== null) === linked)
         // Nama/email/kota sebagian tanpa beda huruf besar, atau awalan nomor anggota.
@@ -1520,16 +1755,53 @@ const memberRoutes: MockRoute[] = [
       if ("city" in body) m.city = str("city");
       if ("phone" in body) m.phone = str("phone");
       if ("bio" in body) m.bio = str("bio") || null;
-      if ("last_education_institution" in body)
-        m.last_education_institution = str("last_education_institution");
+      // Daftar pengganti seluruhnya; institusi teratas berganti -> kota lulusan lama dikosongkan (seperti server).
+      if ("professions" in body) m.professions = resolveProfessions(body.professions as string[], m);
+      if ("education" in body) {
+        const next = sortEducation(
+          (body.education as Record<string, unknown>[]).map((e) => ({
+            institution: String(e.institution).trim(),
+            major: typeof e.major === "string" ? e.major.trim() : null,
+            level: (e.level as S["EducationLevel"] | null | undefined) ?? null,
+            graduation_year: (e.graduation_year as number | null | undefined) ?? null,
+          })),
+        );
+        if (next[0]?.institution !== m.education[0]?.institution) m.last_education_city = null;
+        m.education = next;
+      }
+      if ("social_links" in body)
+        m.social_links = (body.social_links as { platform: S["SocialPlatform"]; value: string }[]).map(
+          (l) => ({
+            platform: l.platform,
+            value: normalizeHandle(l.value),
+          }),
+        );
+      // Field lama aplikasi 1.0.0: mengubah satu entri padanannya.
+      if ("last_education_institution" in body) {
+        const inst = str("last_education_institution");
+        const [top, ...rest] = m.education;
+        if (inst === null) m.education = rest;
+        else if (top) m.education = [{ ...top, institution: inst }, ...rest];
+        else m.education = [{ institution: inst, major: null, level: null, graduation_year: null }];
+      }
       if ("last_education_city" in body) m.last_education_city = str("last_education_city");
       for (const key of SOCIAL_KEYS)
         if (key in body) {
           const v = str(key);
-          // Nama pengguna disimpan tanpa @ di depan (aturan SocialHandle).
-          m[key] = v && !v.startsWith("https://") ? v.replace(/^@/, "") : v;
+          applyLegacySocial(m, LEGACY_PLATFORM[key], v ? normalizeHandle(v) : null);
         }
-      if ("profession_id" in body) m.profession_id = (body.profession_id as string | null) ?? null;
+      if ("profession_id" in body) {
+        const id = (body.profession_id as string | null) ?? null;
+        const current = primaryProfession(m)?.id ?? null;
+        if (id !== current) {
+          const label = id ? (masters.get(id)?.label.toLowerCase() ?? "") : "";
+          // Ketikan sendiri berlabel sama dengan master baru digantikan entri bertaut master.
+          const rest = m.professions.filter(
+            (e) => e.profession_id !== current && !(e.label !== null && e.label.toLowerCase() === label),
+          );
+          m.professions = id ? [{ profession_id: id, label: null }, ...rest] : rest;
+        }
+      }
       if ("skill_ids" in body) m.skill_ids = [...(body.skill_ids as string[])];
       if (body.remove_avatar === true) m.avatar_file_id = null;
       const after = memberNumber(m);

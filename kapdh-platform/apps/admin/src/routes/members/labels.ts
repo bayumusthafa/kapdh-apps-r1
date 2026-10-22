@@ -28,6 +28,63 @@ export const EDUCATION_STATUS_LABEL: Record<S["EducationStatus"], string> = {
   "03": "03 - Tidak tamat",
 };
 
+/** Strata riwayat pendidikan setelah pondok (kontrak EducationLevel). */
+export const EDUCATION_LEVEL_LABEL: Record<S["EducationLevel"], string> = {
+  d3: "D3",
+  s1: "S1",
+  s2: "S2",
+  s3: "S3",
+  other: "Lainnya",
+};
+
+export const EDUCATION_LEVEL_OPTIONS = (Object.keys(EDUCATION_LEVEL_LABEL) as S["EducationLevel"][]).map(
+  (value) => ({ value, label: EDUCATION_LEVEL_LABEL[value] }),
+);
+
+/** Platform tautan sosial (kontrak SocialPlatform) dengan nama tampilan. */
+export const SOCIAL_PLATFORM_LABEL: Record<S["SocialPlatform"], string> = {
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  x: "X",
+  facebook: "Facebook",
+  linkedin: "LinkedIn",
+  youtube: "YouTube",
+  threads: "Threads",
+  telegram: "Telegram",
+  website: "Situs web",
+};
+
+export const SOCIAL_PLATFORM_OPTIONS = (Object.keys(SOCIAL_PLATFORM_LABEL) as S["SocialPlatform"][]).map(
+  (value) => ({ value, label: SOCIAL_PLATFORM_LABEL[value] }),
+);
+
+/**
+ * Awal tautan untuk nama pengguna per platform; situs web tanpa awal karena nilainya selalu URL https (aturan
+ * SocialLinkInput).
+ */
+export const SOCIAL_PLATFORM_BASE: Record<S["SocialPlatform"], string | null> = {
+  instagram: "https://www.instagram.com/",
+  tiktok: "https://www.tiktok.com/@",
+  x: "https://x.com/",
+  facebook: "https://www.facebook.com/",
+  linkedin: "https://www.linkedin.com/in/",
+  youtube: "https://www.youtube.com/@",
+  threads: "https://www.threads.net/@",
+  telegram: "https://t.me/",
+  website: null,
+};
+
+/** Keterangan satu riwayat pendidikan: "S1 · Manajemen · Tamat 2013" (bagian kosong dilewati). */
+export function educationMeta(entry: S["EducationEntry"]): string {
+  return [
+    entry.level ? EDUCATION_LEVEL_LABEL[entry.level] : null,
+    entry.major,
+    entry.graduation_year ? `Tamat ${entry.graduation_year}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 /** Status akun lapisan autentikasi (`users.status`, PRD 4.2); berbeda dari status keanggotaan. */
 export const ACCOUNT_STATUS_LABEL: Record<S["AccountStatus"], string> = {
   pending_otp: "Menunggu verifikasi email",
@@ -85,6 +142,10 @@ export const COHORT_BASE_YEAR = 1996;
  * identitas dan pendaftaran. Dipakai untuk pilihan filter dan pra-validasi formulir; server tetap sumber kebenaran.
  */
 export function latestCohort(now: Date = new Date()): number {
-  const year = Number(formatInTimeZone(now, DEFAULT_TIME_ZONE, "yyyy"));
-  return Math.min(99, Math.max(1, year - COHORT_BASE_YEAR));
+  return Math.min(99, Math.max(1, currentYear(now) - COHORT_BASE_YEAR));
+}
+
+/** Tahun berjalan WIB (Asia/Jakarta); batas atas tahun tamat riwayat pendidikan, sama dengan server. */
+export function currentYear(now: Date = new Date()): number {
+  return Number(formatInTimeZone(now, DEFAULT_TIME_ZONE, "yyyy"));
 }

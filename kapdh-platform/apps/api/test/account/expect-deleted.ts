@@ -6,7 +6,10 @@ import {
   accountDeletions,
   admins,
   alumni,
+  alumniEducation,
+  alumniProfessionEntries,
   alumniProfessions,
+  alumniSocialLinks,
   auditLogs,
   blocks,
   deviceTokens,
@@ -70,6 +73,9 @@ export async function expectFullyDeleted(
   expect(
     await count(db.select().from(alumniProfessions).where(eq(alumniProfessions.alumniUserId, userId))),
   ).toBe(0);
+  // Profil berulang (migrasi 0009) ikut terhapus bersama baris alumni (CASCADE).
+  for (const table of [alumniProfessionEntries, alumniEducation, alumniSocialLinks])
+    expect(await count(db.select().from(table).where(eq(table.alumniUserId, userId)))).toBe(0);
   expect(await remainingPersonalData(db, userId)).toEqual(
     Object.fromEntries(Object.keys(await remainingPersonalData(db, userId)).map((key) => [key, 0])),
   );

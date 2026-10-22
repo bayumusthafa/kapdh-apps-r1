@@ -92,13 +92,15 @@ USER root
 RUN apk add --no-cache postgresql17-client \
   && psql --version
 COPY infra/db/roles.sql infra/db/role-passwords.sql /app/infra/db/
+# Skrip pembatalan darurat migrasi (hanya atas keputusan pemilik; runbook rilis bagian 5.5). Tidak dijalankan job rilis.
+COPY infra/db/rollback /app/infra/db/rollback
 COPY infra/scripts/release-job.sh /app/infra/scripts/release-job.sh
 # Skrip operator backup/restore dan pemantauan ikut di image yang dipin digest. Host tanpa akses SSH/scp memasangnya
 # dengan `docker create` + `docker cp` ke /opt/kapdh/infra (runbook backup-restore bagian 3). Image ini tidak
 # menjalankannya; folder test/ dikecualikan .dockerignore.
 COPY infra/backup /app/infra/backup
 COPY infra/monitoring /app/infra/monitoring
-RUN chmod 0644 /app/infra/db/roles.sql /app/infra/db/role-passwords.sql \
+RUN chmod 0644 /app/infra/db/roles.sql /app/infra/db/role-passwords.sql /app/infra/db/rollback/*.sql \
   && chmod 0755 /app/infra/scripts/release-job.sh /app/infra/backup/*.sh /app/infra/monitoring/*.sh
 USER node
 # Job sekali jalan; tidak ada proses jangka panjang yang perlu diperiksa.

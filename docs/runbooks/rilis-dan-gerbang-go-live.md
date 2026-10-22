@@ -316,6 +316,61 @@ job rilis production memakai pengecualian `report` dengan alasan dan penyetuju (
    uji, lalu bendahara menandatangani sidik jari baru. Instruksi terbuka tetap memakai QR lama sampai anggota
    mengganti tujuan.
 
+### 5.5 Rilis profil berulang (migrasi 0009-0010)
+
+Berlaku untuk rilis pertama yang memuat `0009_profile_lists` dan `0010_profile_lists_bridge` (profesi jamak, riwayat
+pendidikan, media sosial dinamis; kontrak aditif, `packages/contracts/CHANGELOG.md`). Gladi lebih dahulu di staging
+dengan salinan data production bila memungkinkan.
+
+1. **Sebelum migrasi**: catat jumlah baris lama sebagai pembanding **[bukti]**:
+
+   ```sql
+   select count(*) filter (where btrim(coalesce(last_education_institution, '')) <> '') as pendidikan,
+          count(*) filter (where social_instagram is not null) + count(*) filter (where social_x is not null)
+            + count(*) filter (where social_facebook is not null)
+            + count(*) filter (where social_linkedin is not null) as tautan,
+          (select count(*) from app.alumni_professions) as profesi
+   from app.alumni;
+   ```
+
+2. **Job rilis** dengan image `kapdh-release` baru (bagian 3 atau jalur otomatis). Migrasi hanya menambah tabel,
+   fungsi dan trigger, lalu mengisi daftar dari kolom lama; kolom lama, `alumni_professions` dan data lain tidak
+   diubah. Migrasi lebih dahulu mengunci `alumni`, `alumni_professions` dan `master_professions` (EXCLUSIVE): job
+   menunggu transaksi profil yang sedang berjalan selesai, lalu menahan simpan profil baru sampai job commit
+   (beberapa detik; baca tetap berjalan). Ini mencegah deadlock antara job dan API lama. Setelah job, ulangi hitungan
+   di atas terhadap tabel baru (`alumni_education`, `alumni_social_links`, `alumni_profession_entries`); angkanya
+   harus sama **[bukti]**.
+3. **Coolify**: redeploy `kapdh-api` → `kapdh-worker` → `kapdh-admin` → `kapdh-web`. Selama jendela antara migrasi dan
+   redeploy, API lama tetap berjalan; tulisan profilnya diterapkan trigger jembatan ke daftar baru dan kolom lama
+   diproyeksikan ulang saat commit, sehingga tidak ada yang hilang. Tulisan lama yang tidak muat karena daftar anggota
+   sudah penuh (10 tautan atau 5 profesi dari aplikasi baru) ditolak, bukan disimpan setengah. Aplikasi 1.0.0 yang sudah terpasang tetap bekerja dengan field lama (proyeksi daftar baru).
+4. **Uji asap**: ubah profil akun uji lewat aplikasi lama (field lama) dan web admin baru (daftar baru), lalu buka
+   `GET /me` dan profil di direktori: keduanya menampilkan perubahan yang sama.
+5. **Rollback image** (jalur biasa, bagian 6.1): aman tanpa membalik skema. Image lama membaca kolom lama yang selalu
+   diproyeksikan API baru, dan tulisannya diterapkan trigger jembatan ke daftar baru. Yang tidak terlihat di image lama
+   hanya isi tambahan (profesi kedua dan seterusnya, ketikan sendiri yang tidak tertaut master, jurusan/strata/tahun,
+   tautan platform baru); isi itu tetap tersimpan dan tampil lagi setelah image baru dipasang kembali.
+   - `kapdh-admin` WAJIB di-rollback bersama `kapdh-api`: web admin baru membaca `professions`, `education` dan
+     `social_links` yang tidak dikirim API lama, sehingga halaman detail dan ubah anggota gagal.
+   - Setelah build aplikasi mobile yang memakai daftar baru tersebar, JANGAN rollback API ke image sebelum 0009: build
+     itu tidak dapat membaca profil tanpa ketiga daftar. Pakai perbaikan maju (mode maintenance bila perlu).
+6. **Pembatalan skema darurat** (hanya atas keputusan pemilik produk, misalnya migrasi ternyata merusak data): lakukan
+   rollback image lebih dahulu (langkah 5), dump database (`docs/runbooks/backup-restore.md`), lalu jalankan skrip
+   pembatalan dari image rilis baru sebagai `kapdh_migrator` dalam satu transaksi **[bukti]**:
+
+   ```bash
+   sudo docker run --rm --network coolify --env-file /etc/kapdh/production/release.env --entrypoint sh \
+     ghcr.io/<org>/kapdh-release:<tag-rilis-ini> \
+     -c 'psql "$MIGRATOR_DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f /app/infra/db/rollback/0009-0010-profile-lists.sql'
+   ```
+
+   Skrip menghapus tiga tabel baru beserta fungsi dan trigger 0010, lalu menghapus catatan journal 0009-0010 sehingga
+   cek versi skema image lama lulus. Kolom lama tidak disentuh. Yang hilang permanen hanya isi tambahan pada langkah 5.
+   Bila rilis ini dipasang lagi kelak, job rilis menerapkan ulang 0009-0010 dan mengisi daftar dari kolom lama.
+7. **Akhir masa transisi**: field lama baru dapat dihapus dari kontrak dan kolom lama dari skema (perubahan memutus,
+   ADR baru) setelah `min_app_version` dinaikkan melewati build pertama yang memakai daftar baru dan build itu sudah
+   tersebar di toko.
+
 ## 6. Rollback dan pemulihan (PRD 8.4)
 
 ### 6.1 Rollback image (tanpa job rilis)
@@ -330,6 +385,8 @@ journal image dan hanya menjalankan gerbang go-live (pra-migrasi bila enforce, l
 1. Pastikan migrasi antara tag lama dan tag sekarang kompatibel mundur (catatan rilis/PR; PRD 5.5). Bila tidak, jangan
    rollback image: perbaikan maju, mode maintenance read-only bila integritas data terancam. Rollback ke image sebelum
    migrasi 0008 (ADR-026): nonaktifkan dahulu semua metode QRIS dengan web admin baru (bagian 5.4 langkah 6).
+   Rollback ke image sebelum migrasi 0009 (profil berulang): `kapdh-admin` ikut di-rollback, dan tidak lagi boleh
+   setelah build mobile yang memakai daftar profil tersebar (bagian 5.5 langkah 5).
 2. Bukti gerbang baca-saja dengan image lama (tidak mengubah apa pun) **[bukti]**:
 
    ```bash

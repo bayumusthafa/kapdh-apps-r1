@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kapdh_api/kapdh_api.dart';
@@ -8,8 +9,10 @@ import 'package:kapdh_api/kapdh_api.dart';
 import '../../app/routes.dart';
 import '../../app/theme/kapdh_palette.dart';
 import '../../app/theme/kapdh_tokens.dart';
+import '../../core/api/api_providers.dart';
 import '../../core/api/error_presenter.dart';
 import '../../core/session/session_controller.dart';
+import '../../core/ui/profile_lists.dart';
 import '../../design/design.dart';
 import 'widgets/scroll_column.dart';
 import 'account_repository.dart';
@@ -21,16 +24,78 @@ import 'widgets/profile_avatar.dart';
 /// Pola nomor telepon kontrak C2 (`ProfileUpdate.phone`).
 final RegExp _phonePattern = RegExp(r'^\+?[0-9][0-9 -]{5,22}$');
 
-/// Aturan tunggal tautan sosial kontrak C2 (`SocialHandle`): nama pengguna atau URL https; skema lain ditolak.
-final RegExp _socialPattern = RegExp(
-  r'''^(?:@?[A-Za-z0-9._-]{1,100}|https://[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:[/?#][^\s<>"'`]*)?)$''',
-);
+/// Kunci galat server per entri daftar berulang (`education.0.institution`, `social_links.1.value`, `education.2`).
+final RegExp _rowErrorKey = RegExp(r'^(education|social_links)\.(\d+)(?:\.(\w+))?$');
 
-/// Ubah profil sendiri (F-10, PRD 4.6; guideline hal. 7): foto, kota, telepon, tentang saya, lulusan terakhir,
-/// media sosial, satu profesi dan maksimal 10 keahlian dari master terkontrol. Identitas keanggotaan (nama, jenis
-/// kelamin, angkatan, kelas, email, nomor anggota) hanya ditampilkan; koreksinya oleh pengurus (PRD 3.5,
-/// AC F05-6). Hanya field yang berubah dikirim lewat PATCH /me/profile dengan If-Match versi profil (AC F15-4);
-/// isian tidak hilang saat jaringan gagal (PRD 4.5).
+/// Tahun tamat paling awal yang dapat dipilih (kontrak `EducationEntryInput.graduation_year` minimum).
+const int _firstGraduationYear = 1950;
+
+/// Satu riwayat pendidikan yang sedang diisi ("Pendidikan n"). [id] stabil per baris agar field tidak bertukar isi
+/// saat baris lain dihapus.
+class _EducationDraft {
+  _EducationDraft({String institution = '', String major = ''})
+    : institution = TextEditingController(text: institution),
+      major = TextEditingController(text: major),
+      id = _nextId++;
+
+  factory _EducationDraft.of(
+    EducationEntry entry,
+  ) => _EducationDraft(institution: entry.institution, major: entry.major ?? '')
+    // Strata yang belum dikenal versi ini tidak punya pilihan di dropdown; daftarnya dikunci (lihat _educationLocked).
+    ..level = entry.level == EducationLevel.unknown ? null : entry.level
+    ..year = entry.graduationYear;
+
+  static int _nextId = 0;
+
+  final int id;
+  final TextEditingController institution;
+  final TextEditingController major;
+  EducationLevel? level;
+  int? year;
+
+  /// Baris yang sama sekali belum diisi diabaikan saat menyimpan.
+  bool get blank => institution.text.trim().isEmpty && major.text.trim().isEmpty && level == null && year == null;
+
+  /// Bentuk pembanding (urutan field kontrak EducationEntry).
+  (String, String?, EducationLevel?, int?) get key {
+    final m = major.text.trim();
+    return (institution.text.trim(), m.isEmpty ? null : m, level, year);
+  }
+
+  void dispose() {
+    institution.dispose();
+    major.dispose();
+  }
+}
+
+/// Satu tautan media sosial yang sedang diisi.
+class _SocialDraft {
+  _SocialDraft({required this.platform, String value = ''})
+    : value = TextEditingController(text: value),
+      id = _nextId++;
+
+  static int _nextId = 0;
+
+  final int id;
+  final TextEditingController value;
+  SocialPlatform platform;
+
+  bool get blank => value.text.trim().isEmpty;
+
+  /// Nilai seperti yang disimpan server (aturan SocialHandle: @ di depan nama pengguna dibuang).
+  String get normalized {
+    final v = value.text.trim();
+    return v.startsWith('@') ? v.substring(1) : v;
+  }
+
+  void dispose() => value.dispose();
+}
+
+/// Ubah profil sendiri (F-10, PRD 4.6; guideline hal. 7; v2): foto, kota, telepon, tentang saya, profesi (lebih dari
+/// satu, dari daftar atau ketik sendiri), maksimal 10 keahlian dari master terkontrol, riwayat pendidikan berulang dan
+/// media sosial berulang (maksimal 10). Identitas keanggotaan (nama, jenis kelamin, angkatan, kelas, email, nomor
+/// anggota) hanya ditampilkan; koreksinya oleh pengurus (PRD 3.5, AC F05-6). Hanya field yang berubah dikirim lewat
+/// PATCH /me/profile dengan If-Match versi profil (AC F15-4); isian tidak hilang saat jaringan gagal (PRD 4.5).
 class ProfileEditScreen extends ConsumerStatefulWidget {
   const ProfileEditScreen({super.key});
 
@@ -42,19 +107,15 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   final _city = TextEditingController();
   final _phone = TextEditingController();
   final _bio = TextEditingController();
-  final _eduInstitution = TextEditingController();
-  final _eduCity = TextEditingController();
-  final _instagram = TextEditingController();
-  final _x = TextEditingController();
-  final _facebook = TextEditingController();
-  final _linkedin = TextEditingController();
 
   Me? _me;
   bool _loading = true;
   ApiException? _error;
 
-  MasterItem? _profession;
+  List<String> _professions = const [];
   List<MasterItem> _skills = const [];
+  List<_EducationDraft> _education = const [];
+  List<_SocialDraft> _links = const [];
   PickedAvatar? _newAvatar;
 
   /// Berkas foto yang sudah terunggah untuk [_newAvatar]; dipakai ulang saat simpan diulang (kuota unggah N-10).
@@ -64,6 +125,16 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   bool _saving = false;
   bool _submitted = false;
   Map<String, List<String>> _fieldErrors = const {};
+
+  /// Galat server per baris daftar berulang, berkunci id draf yang benar-benar dikirim, sehingga galat tetap di baris
+  /// yang salah walau baris lain kemudian diisi atau dihapus.
+  Map<int, Map<String, String>> _rowErrors = const {};
+
+  /// Daftar yang memuat nilai yang belum dikenal versi aplikasi ini (platform atau strata baru dari server). Daftar
+  /// itu hanya ditampilkan dan tidak pernah dikirim: SDK mengodekan nilai tak dikenal sebagai '' yang ditolak server,
+  /// dan membuangnya dari daftar pengganti akan menghapus entri itu (N-13).
+  bool _educationLocked = false;
+  bool _linksLocked = false;
 
   List<MasterItem>? _professionMasters;
   List<MasterItem>? _skillMasters;
@@ -76,15 +147,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     (_city, (p) => p.city),
     (_phone, (p) => p.phone),
     (_bio, (p) => p.bio),
-    (_eduInstitution, (p) => p.lastEducationInstitution),
-    (_eduCity, (p) => p.lastEducationCity),
-    (_instagram, (p) => p.socialInstagram),
-    (_x, (p) => p.socialX),
-    (_facebook, (p) => p.socialFacebook),
-    (_linkedin, (p) => p.socialLinkedin),
   ];
-
-  List<TextEditingController> get _controllers => [for (final (controller, _) in _textFields) controller];
 
   @override
   void initState() {
@@ -94,8 +157,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
   @override
   void dispose() {
-    for (final controller in _controllers) {
+    for (final (controller, _) in _textFields) {
       controller.dispose();
+    }
+    for (final draft in _education) {
+      draft.dispose();
+    }
+    for (final draft in _links) {
+      draft.dispose();
     }
     super.dispose();
   }
@@ -119,6 +188,25 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     }
   }
 
+  /// Mengganti baris daftar berulang. Pengendali baris lama dibuang setelah frame berikut, saat field-nya sudah
+  /// dilepas dari pohon widget.
+  void _replaceDrafts({List<_EducationDraft>? education, List<_SocialDraft>? links}) {
+    final retired = [
+      if (education != null) ..._education.where((d) => !education.contains(d)),
+      if (links != null) ..._links.where((d) => !links.contains(d)),
+    ];
+    if (education != null) _education = education;
+    if (links != null) _links = links;
+    if (retired.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Baris yang dipasang kembali (rebase konflik memakai baris isian sendiri) tidak dibuang.
+      for (final draft in retired) {
+        if (draft is _EducationDraft && !_education.contains(draft)) draft.dispose();
+        if (draft is _SocialDraft && !_links.contains(draft)) draft.dispose();
+      }
+    });
+  }
+
   /// Mengisi formulir dari profil server (memuat pertama atau "muat versi terbaru").
   void _fill(Me me) {
     final p = me.profile;
@@ -126,12 +214,22 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     for (final (controller, value) in _textFields) {
       controller.text = value(p) ?? '';
     }
-    _profession = p.profession;
+    _professions = p.professions;
     _skills = p.skills;
+    _educationLocked = p.education.any((e) => e.level == EducationLevel.unknown);
+    _linksLocked = p.socialLinks.any((l) => l.platform == SocialPlatform.unknown);
+    _replaceDrafts(
+      education: [for (final entry in p.education) _EducationDraft.of(entry)],
+      links: [
+        for (final link in p.socialLinks)
+          if (link.platform != SocialPlatform.unknown) _SocialDraft(platform: link.platform, value: link.value),
+      ],
+    );
     _newAvatar = null;
     _uploadedAvatarId = null;
     _removeAvatar = false;
     _fieldErrors = const {};
+    _rowErrors = const {};
   }
 
   /// "Pakai isian saya" setelah 409 VERSION_CONFLICT (AC F15-4, PRD 4.5): hanya field yang benar-benar diubah
@@ -147,10 +245,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       for (final (controller, value) in _textFields)
         if (_norm(controller.text) != value(base)) (controller, controller.text),
     ];
-    final professionEdited = _profession?.id != base.profession?.id;
-    final profession = _profession;
-    final skillsEdited = !_sameSkills(_skills, base.skills);
-    final skills = _skills;
+    final professions = _sameStrings(_professions, base.professions) ? null : _professions;
+    final skills = _sameSkills(_skills, base.skills) ? null : _skills;
+    final education = _sameEducation(base.education) ? null : _education;
+    final links = _sameLinks(base.socialLinks) ? null : _links;
     final newAvatar = _newAvatar;
     final uploadedAvatarId = _uploadedAvatarId;
     final removeAvatar = _removeAvatar;
@@ -159,8 +257,11 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     for (final (controller, text) in textEdits) {
       controller.text = text;
     }
-    if (professionEdited) _profession = profession;
-    if (skillsEdited) _skills = skills;
+    if (professions != null) _professions = professions;
+    if (skills != null) _skills = skills;
+    // Baris isian sendiri dipertahankan (pengendali yang sama), menggantikan baris versi terbaru, kecuali daftar versi
+    // terbaru kini memuat nilai yang belum dikenal (daftar terkunci).
+    _replaceDrafts(education: _educationLocked ? null : education, links: _linksLocked ? null : links);
     _newAvatar = newAvatar;
     _uploadedAvatarId = uploadedAvatarId;
     _removeAvatar = removeAvatar;
@@ -171,13 +272,59 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     return trimmed.isEmpty ? null : trimmed;
   }
 
+  static bool _sameStrings(List<String> a, List<String> b) =>
+      a.length == b.length && [for (var i = 0; i < a.length; i++) a[i] == b[i]].every((same) => same);
+
   static bool _sameSkills(List<MasterItem> a, List<MasterItem> b) {
     final left = {for (final s in a) s.id};
     final right = {for (final s in b) s.id};
     return left.length == right.length && left.containsAll(right);
   }
 
-  /// Galat validasi lokal per field (kunci = nama field kontrak), sama dengan aturan server C2.
+  List<_EducationDraft> get _filledEducation => [
+    for (final draft in _education)
+      if (!draft.blank) draft,
+  ];
+
+  List<_SocialDraft> get _filledLinks => [
+    for (final draft in _links)
+      if (!draft.blank) draft,
+  ];
+
+  bool _sameEducation(List<EducationEntry> base) {
+    if (_educationLocked) return true;
+    final drafts = _filledEducation;
+    if (drafts.length != base.length) return false;
+    for (var i = 0; i < base.length; i++) {
+      final b = base[i];
+      if (drafts[i].key != (b.institution, b.major, b.level, b.graduationYear)) return false;
+    }
+    return true;
+  }
+
+  bool _sameLinks(List<SocialLink> base) {
+    if (_linksLocked) return true;
+    final drafts = _filledLinks;
+    if (drafts.length != base.length) return false;
+    for (var i = 0; i < base.length; i++) {
+      if (drafts[i].platform != base[i].platform || drafts[i].normalized != base[i].value) return false;
+    }
+    return true;
+  }
+
+  /// Indeks entri pada body yang dikirim (baris kosong tidak ikut), untuk memetakan galat server
+  /// (`education.0.institution`, `social_links.1.value`) ke baris formulir.
+  int? _sentIndexOf<T>(List<T> all, T draft, bool Function(T) blank) {
+    if (blank(draft)) return null;
+    var index = 0;
+    for (final d in all) {
+      if (identical(d, draft)) return index;
+      if (!blank(d)) index++;
+    }
+    return null;
+  }
+
+  /// Galat validasi lokal per field (kunci = path field kontrak), sama dengan aturan server C2.
   Map<String, String> _localErrors() {
     final errors = <String, String>{};
     final profile = _me?.profile;
@@ -189,22 +336,31 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       errors['phone'] = 'Gunakan angka, boleh diawali + (mis. +62 812 3456 7890).';
     }
     if (_bio.text.trim().length > 500) errors['bio'] = 'Maksimal 500 karakter.';
-    if ((_norm(_eduInstitution.text)?.length ?? 0) > 120) {
-      errors['last_education_institution'] = 'Maksimal 120 karakter.';
+    if (_skills.length > maxSkills) errors['skill_ids'] = 'Maksimal $maxSkills keahlian.';
+    if (_professions.length > maxProfessions) errors['professions'] = 'Maksimal $maxProfessions profesi.';
+    for (final label in _professions) {
+      if (label.length > 100) errors['professions'] = 'Profesi "$label" melebihi 100 karakter.';
+      if (hasControlCharacter(label)) errors['professions'] = 'Profesi "$label" memuat karakter yang tidak diizinkan.';
     }
-    if ((_norm(_eduCity.text)?.length ?? 0) > 80) errors['last_education_city'] = 'Maksimal 80 karakter.';
-    for (final (key, controller) in [
-      ('social_instagram', _instagram),
-      ('social_x', _x),
-      ('social_facebook', _facebook),
-      ('social_linkedin', _linkedin),
-    ]) {
-      final value = _norm(controller.text);
-      if (value != null && (value.length > 200 || !_socialPattern.hasMatch(value))) {
-        errors[key] = 'Isi nama pengguna atau tautan yang diawali https://';
+    final education = _filledEducation;
+    for (final (i, draft) in education.indexed) {
+      final institution = draft.institution.text.trim();
+      if (institution.isEmpty) {
+        errors['education.$i.institution'] = 'Isi universitas/instansi atau hapus riwayat ini.';
+      } else if (institution.length > 120) {
+        errors['education.$i.institution'] = 'Maksimal 120 karakter.';
+      }
+      if (draft.major.text.trim().length > 120) errors['education.$i.major'] = 'Maksimal 120 karakter.';
+    }
+    final seen = <String>{};
+    for (final (i, draft) in _filledLinks.indexed) {
+      final problem = draft.platform.problemOf(draft.value.text.trim());
+      if (problem != null) {
+        errors['social_links.$i.value'] = problem;
+      } else if (!seen.add('${draft.platform.name}:${draft.normalized.toLowerCase()}')) {
+        errors['social_links.$i.value'] = 'Tautan ini sudah ada.';
       }
     }
-    if (_skills.length > maxSkills) errors['skill_ids'] = 'Maksimal $maxSkills keahlian.';
     return errors;
   }
 
@@ -221,13 +377,24 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       city: city != null && city != p.city ? city : null,
       phone: text(_phone.text, p.phone),
       bio: text(_bio.text, p.bio),
-      lastEducationInstitution: text(_eduInstitution.text, p.lastEducationInstitution),
-      lastEducationCity: text(_eduCity.text, p.lastEducationCity),
-      socialInstagram: text(_instagram.text, p.socialInstagram),
-      socialX: text(_x.text, p.socialX),
-      socialFacebook: text(_facebook.text, p.socialFacebook),
-      socialLinkedin: text(_linkedin.text, p.socialLinkedin),
-      professionId: _profession?.id == p.profession?.id ? const Optional.absent() : Optional(_profession?.id),
+      professions: _sameStrings(_professions, p.professions) ? null : _professions,
+      education: _sameEducation(p.education)
+          ? null
+          : [
+              for (final draft in _filledEducation)
+                EducationEntryInput(
+                  institution: draft.institution.text.trim(),
+                  major: Optional(draft.key.$2),
+                  level: Optional(draft.level),
+                  graduationYear: Optional(draft.year),
+                ),
+            ],
+      socialLinks: _sameLinks(p.socialLinks)
+          ? null
+          : [
+              for (final draft in _filledLinks)
+                SocialLinkInput(platform: draft.platform, value: draft.value.text.trim()),
+            ],
       skillIds: _sameSkills(_skills, p.skills) ? null : [for (final s in _skills) s.id],
       avatarFileId: avatarFileId != null
           ? Optional(avatarFileId)
@@ -301,13 +468,13 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     });
   }
 
-  Future<void> _chooseProfession() async {
-    final choice = await showProfessionPicker(
+  Future<void> _chooseProfessions() async {
+    final professions = await showProfessionsPicker(
       context,
       load: () async => _professionMasters ??= await _repo.listMasters(MasterKind.professions),
-      selected: _profession,
+      selected: _professions,
     );
-    if (choice != null && mounted) setState(() => _profession = choice.item);
+    if (professions != null && mounted) setState(() => _professions = professions);
   }
 
   Future<void> _chooseSkills() async {
@@ -318,6 +485,30 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     );
     if (skills != null && mounted) setState(() => _skills = skills);
   }
+
+  void _addEducation() => setState(() => _replaceDrafts(education: [..._education, _EducationDraft()]));
+
+  void _removeEducation(_EducationDraft draft) =>
+      setState(() => _replaceDrafts(education: [..._education]..remove(draft)));
+
+  /// Tautan baru memakai platform pertama yang belum dipakai (Situs web bila semua sudah ada).
+  void _addLink() {
+    final used = {for (final d in _links) d.platform};
+    final platform = SocialPlatformUi.choices.firstWhere(
+      (p) => !used.contains(p),
+      orElse: () => SocialPlatform.website,
+    );
+    setState(
+      () => _replaceDrafts(
+        links: [
+          ..._links,
+          _SocialDraft(platform: platform),
+        ],
+      ),
+    );
+  }
+
+  void _removeLink(_SocialDraft draft) => setState(() => _replaceDrafts(links: [..._links]..remove(draft)));
 
   Future<void> _save() async {
     final me = _me;
@@ -332,6 +523,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       _saving = true;
       _fieldErrors = const {};
     });
+    var sentEducation = const <_EducationDraft>[];
+    var sentLinks = const <_SocialDraft>[];
     try {
       var avatarId = _uploadedAvatarId;
       final picked = _newAvatar;
@@ -341,6 +534,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         if (mounted) setState(() => _uploadedAvatarId = avatarId);
       }
       final update = _diff(me, avatarFileId: avatarId);
+      // Draf yang ikut terkirim, untuk memetakan galat server berindeks ke barisnya.
+      sentEducation = _filledEducation;
+      sentLinks = _filledLinks;
       if (update == null) {
         _snack('Tidak ada perubahan untuk disimpan.');
         return;
@@ -358,7 +554,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       if (error.code == ErrorCode.versionConflict) {
         await _onConflict(error);
       } else if (error.fieldErrors.isNotEmpty) {
-        setState(() => _fieldErrors = error.fieldErrors);
+        setState(() {
+          _fieldErrors = error.fieldErrors;
+          _rowErrors = _rowErrorsOf(error.fieldErrors, sentEducation, sentLinks);
+        });
         _snack(error.message);
       } else {
         if (error.code == ErrorCode.fileInvalid) setState(() => _uploadedAvatarId = null);
@@ -367,6 +566,27 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  /// Galat server `education.N.*` dan `social_links.N.*` berkunci id draf ke-N yang dikirim. Galat seluruh entri
+  /// (`education.N`) ditampilkan pada field utama barisnya.
+  static Map<int, Map<String, String>> _rowErrorsOf(
+    Map<String, List<String>> fieldErrors,
+    List<_EducationDraft> education,
+    List<_SocialDraft> links,
+  ) {
+    final rows = <int, Map<String, String>>{};
+    for (final MapEntry(:key, :value) in fieldErrors.entries) {
+      final match = _rowErrorKey.firstMatch(key);
+      if (match == null) continue;
+      final index = int.parse(match.group(2)!);
+      final isEducation = match.group(1) == 'education';
+      final ids = isEducation ? [for (final d in education) d.id] : [for (final d in links) d.id];
+      if (index >= ids.length) continue;
+      final field = match.group(3) ?? (isEducation ? 'institution' : 'value');
+      (rows[ids[index]] ??= {})[field] = value.join(' ');
+    }
+    return rows;
   }
 
   /// 409 VERSION_CONFLICT (AC F15-4, PRD 4.5): profil diubah di perangkat lain. Pengguna memilih memuat versi
@@ -470,6 +690,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     String? fieldError(String key) => _fieldErrors[key]?.join(' ') ?? local[key];
     final profile = me.profile;
     final showAvatarUrl = _removeAvatar ? null : profile.avatarUrl;
+    final currentYear = ref.read(clockProvider)().year;
 
     Widget field(
       String key,
@@ -583,8 +804,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           helper: '${_bio.text.trim().length}/500 karakter',
         ),
         const SizedBox(height: KapdhSpace.s2),
-        // [v2] Tiga kartu berkepala ikon. Isiannya data profil yang ada sekarang (satu profesi, satu pendidikan, empat
-        // media sosial tetap); isian berulang menunggu perubahan kontrak profil (REDESAIN.md).
+        // [v2] Tiga kartu berkepala ikon: Profesi & Keahlian, Riwayat Pendidikan dan Media Sosial (daftar berulang).
         AccountFormCard(
           icon: KapdhIcons.workOutline,
           title: 'Profesi & Keahlian',
@@ -592,22 +812,29 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _TagPickerField(
-                key: const ValueKey('profile-profession'),
+                key: const ValueKey('profile-professions'),
+                pickerKey: const ValueKey('profile-professions-picker'),
                 label: 'Profesi',
                 kind: 'profesi',
-                tags: [
-                  if (_profession case final profession?)
-                    profession.active == false ? '${profession.label} (tidak aktif)' : profession.label,
-                ],
-                placeholder: 'Pilih profesi',
-                helper: 'Pekerjaan utama saat ini. Pilih dari daftar.',
-                errorText: fieldError('profession_id'),
-                onTap: _saving ? null : _chooseProfession,
-                onRemove: _saving ? null : (_) => setState(() => _profession = null),
+                tags: _professions,
+                placeholder: 'Pilih atau tambah…',
+                helper:
+                    'Pekerjaan utama saat ini; boleh lebih dari satu (maksimal $maxProfessions). Pilih dari daftar atau '
+                    'ketik sendiri.',
+                // Galat daftar (`professions`) dan per label (`professions.N`) dari server, atau validasi lokal.
+                errorText:
+                    [
+                      for (final MapEntry(:key, :value) in _fieldErrors.entries)
+                        if (key == 'professions' || key.startsWith('professions.')) ...value,
+                    ].join(' ').nullIfEmpty ??
+                    local['professions'],
+                onTap: _saving ? null : _chooseProfessions,
+                onRemove: _saving ? null : (index) => setState(() => _professions = [..._professions]..removeAt(index)),
               ),
               const SizedBox(height: KapdhSpace.s5),
               _TagPickerField(
                 key: const ValueKey('profile-skills'),
+                pickerKey: const ValueKey('profile-skills-picker'),
                 label: 'Keahlian',
                 kind: 'keahlian',
                 tags: [
@@ -626,16 +853,39 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         AccountFormCard(
           icon: KapdhIcons.schoolOutlined,
           title: 'Riwayat Pendidikan',
-          description: 'Pendidikan terakhir setelah pondok: universitas/instansi dan kotanya.',
+          description: 'Pendidikan setelah pondok: universitas/instansi, jenjang, jurusan, tahun tamat.',
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              field(
-                'last_education_institution',
-                'Universitas/Instansi',
-                _eduInstitution,
-                hint: 'Mis. Universitas Indonesia',
-              ),
-              field('last_education_city', 'Kota', _eduCity, hint: 'Mis. Jakarta', bottom: 0),
+              if (fieldError('education') case final message?) _ListError(message: message),
+              if (_educationLocked) const _LockedListNote(),
+              for (final (index, draft) in _education.indexed) ...[
+                if (index > 0) const SizedBox(height: KapdhSpace.s3),
+                _EducationItem(
+                  key: ValueKey('profile-education-${draft.id}'),
+                  number: index + 1,
+                  draft: draft,
+                  currentYear: currentYear,
+                  enabled: !_saving && !_educationLocked,
+                  errorOf: (name) {
+                    if (_rowErrors[draft.id]?[name] case final message?) return message;
+                    final sent = _sentIndexOf(_education, draft, (d) => d.blank);
+                    return sent == null ? null : local['education.$sent.$name'];
+                  },
+                  onChanged: () => setState(() {}),
+                  onRemove: () => _removeEducation(draft),
+                ),
+              ],
+              if (_education.length < maxEducationEntries && !_educationLocked)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    key: const ValueKey('profile-education-add'),
+                    onPressed: _saving ? null : _addEducation,
+                    icon: const Icon(KapdhIcons.add),
+                    label: const Text('Tambah Riwayat'),
+                  ),
+                ),
             ],
           ),
         ),
@@ -646,34 +896,48 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              field(
-                'social_instagram',
-                'Instagram',
-                _instagram,
-                hint: '@namapengguna atau tautan',
-                icon: KapdhIcons.instagramLogo,
+              if (fieldError('social_links') case final message?) _ListError(message: message),
+              if (_linksLocked) const _LockedListNote(),
+              for (final (index, draft) in _links.indexed) ...[
+                if (index > 0) ...[
+                  const SizedBox(height: KapdhSpace.s4),
+                  Divider(height: 1, color: context.kc.divider),
+                  const SizedBox(height: KapdhSpace.s4),
+                ],
+                _SocialItem(
+                  key: ValueKey('profile-link-${draft.id}'),
+                  number: index + 1,
+                  draft: draft,
+                  enabled: !_saving && !_linksLocked,
+                  errorText:
+                      _rowErrors[draft.id]?['value'] ??
+                      _rowErrors[draft.id]?['platform'] ??
+                      switch (_sentIndexOf(_links, draft, (d) => d.blank)) {
+                        final sent? => local['social_links.$sent.value'],
+                        null => null,
+                      },
+                  onChanged: () => setState(() {}),
+                  onRemove: () => _removeLink(draft),
+                ),
+              ],
+              Padding(
+                padding: EdgeInsets.only(top: _links.isEmpty ? 0 : KapdhSpace.s3),
+                child: Text(
+                  'Tempel tautan atau ketik nama pengguna, mis. @kapdh. Maksimal $maxSocialLinks tautan. '
+                  'Disembunyikan dari anggota lain kecuali diizinkan di Privasi.',
+                  style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.45, color: context.kc.textMuted),
+                ),
               ),
-              field('social_x', 'X (Twitter)', _x, hint: '@namapengguna atau tautan', icon: KapdhIcons.xLogo),
-              field(
-                'social_facebook',
-                'Facebook',
-                _facebook,
-                hint: 'nama pengguna atau tautan',
-                icon: KapdhIcons.facebook,
-              ),
-              field(
-                'social_linkedin',
-                'LinkedIn',
-                _linkedin,
-                hint: 'https://www.linkedin.com/in/...',
-                icon: KapdhIcons.linkedinLogo,
-                bottom: KapdhSpace.s3,
-              ),
-              Text(
-                'Tempel tautan atau ketik nama pengguna, mis. @kapdh. Disembunyikan dari anggota lain kecuali diizinkan '
-                'di Privasi.',
-                style: TextStyle(fontSize: KapdhFontSize.caption, height: 1.45, color: context.kc.textMuted),
-              ),
+              if (_links.length < maxSocialLinks && !_linksLocked)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    key: const ValueKey('profile-link-add'),
+                    onPressed: _saving ? null : _addLink,
+                    icon: const Icon(KapdhIcons.add),
+                    label: const Text('Tambah tautan'),
+                  ),
+                ),
             ],
           ),
         ),
@@ -686,6 +950,278 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           onPressed: _dirty ? _save : null,
         ),
       ],
+    );
+  }
+}
+
+extension on String {
+  String? get nullIfEmpty => isEmpty ? null : this;
+}
+
+/// Keterangan daftar terkunci: memuat isian dari versi aplikasi yang lebih baru.
+class _LockedListNote extends StatelessWidget {
+  const _LockedListNote();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.only(bottom: KapdhSpace.s3),
+    child: InfoBox(
+      message: 'Bagian ini memuat isian dari versi aplikasi yang lebih baru. Perbarui aplikasi untuk mengubahnya.',
+    ),
+  );
+}
+
+class _ListError extends StatelessWidget {
+  const _ListError({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: KapdhSpace.s3),
+    child: Text(
+      message,
+      style: TextStyle(fontSize: KapdhFontSize.caption, color: context.kc.danger),
+    ),
+  );
+}
+
+/// Tombol hapus baris daftar berulang (Pendidikan, tautan): ikon tempat sampah merah, target 48 (v2: satu makna satu
+/// warna di kedua daftar).
+class _RemoveButton extends StatelessWidget {
+  const _RemoveButton({super.key, required this.tooltip, required this.onPressed});
+
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: tooltip,
+    color: context.kc.danger,
+    icon: const Icon(KapdhIcons.deleteOutline, size: KapdhIconSize.md),
+    onPressed: onPressed,
+  );
+}
+
+/// "Pendidikan n" (v2): kotak latar bergaris dengan judul dan tombol hapus merah, Universitas/Instansi, Jurusan/Program
+/// Studi, Strata (D3/S1/S2/S3/Lainnya) dan Tahun Tamat (helper "Tahun ijazah terbit.").
+class _EducationItem extends StatelessWidget {
+  const _EducationItem({
+    super.key,
+    required this.number,
+    required this.draft,
+    required this.currentYear,
+    required this.enabled,
+    required this.errorOf,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  final int number;
+  final _EducationDraft draft;
+
+  /// Tahun tamat terakhir yang dapat dipilih (server menolak tahun setelah tahun berjalan).
+  final int currentYear;
+  final bool enabled;
+  final String? Function(String field) errorOf;
+  final VoidCallback onChanged;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.kc;
+    return Semantics(
+      container: true,
+      label: 'Pendidikan $number',
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: p.background,
+          border: Border.all(color: p.cardBorder),
+          borderRadius: BorderRadius.circular(KapdhRadius.md),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(KapdhSpace.s3, 0, KapdhSpace.s1, KapdhSpace.s3),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: KapdhSize.touchTargetMin),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Pendidikan $number',
+                        style: const TextStyle(fontSize: KapdhFontSize.body, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    _RemoveButton(
+                      key: ValueKey('profile-education-remove-${draft.id}'),
+                      tooltip: 'Hapus Pendidikan $number',
+                      onPressed: enabled ? onRemove : null,
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: KapdhSpace.s2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    KapdhTextField(
+                      key: ValueKey('profile-education-institution-${draft.id}'),
+                      label: 'Universitas/Instansi',
+                      controller: draft.institution,
+                      hint: 'Mis. Universitas Indonesia',
+                      enabled: enabled,
+                      inputFormatters: [LengthLimitingTextInputFormatter(120)],
+                      errorText: errorOf('institution'),
+                      onChanged: (_) => onChanged(),
+                    ),
+                    const SizedBox(height: KapdhSpace.s4),
+                    KapdhTextField(
+                      key: ValueKey('profile-education-major-${draft.id}'),
+                      label: 'Jurusan/Program Studi',
+                      controller: draft.major,
+                      hint: 'Mis. Pendidikan Bahasa Arab',
+                      enabled: enabled,
+                      inputFormatters: [LengthLimitingTextInputFormatter(120)],
+                      errorText: errorOf('major'),
+                      onChanged: (_) => onChanged(),
+                    ),
+                    const SizedBox(height: KapdhSpace.s4),
+                    KapdhDropdownField<EducationLevel?>(
+                      key: ValueKey('profile-education-level-${draft.id}'),
+                      label: 'Strata',
+                      value: draft.level,
+                      hint: 'Pilih strata',
+                      errorText: errorOf('level'),
+                      items: [
+                        const DropdownMenuItem(value: null, child: Text('Tidak diisi')),
+                        for (final level in educationLevelChoices)
+                          DropdownMenuItem(value: level, child: Text(educationLevelLabel(level))),
+                      ],
+                      onChanged: enabled
+                          ? (level) {
+                              draft.level = level;
+                              onChanged();
+                            }
+                          : null,
+                    ),
+                    const SizedBox(height: KapdhSpace.s4),
+                    KapdhDropdownField<int?>(
+                      key: ValueKey('profile-education-year-${draft.id}'),
+                      label: 'Tahun Tamat',
+                      value: draft.year,
+                      hint: 'Pilih tahun',
+                      helperText: 'Tahun ijazah terbit.',
+                      errorText: errorOf('graduation_year'),
+                      items: [
+                        const DropdownMenuItem(value: null, child: Text('Tidak diisi')),
+                        for (var year = currentYear; year >= _firstGraduationYear; year--)
+                          DropdownMenuItem(value: year, child: Text('$year')),
+                      ],
+                      onChanged: enabled
+                          ? (year) {
+                              draft.year = year;
+                              onChanged();
+                            }
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Satu tautan media sosial (v2): pemilih platform berlogo Phosphor (menu Instagram … Situs web) dan tombol hapus
+/// merah, lalu field nama pengguna/tautan.
+class _SocialItem extends StatelessWidget {
+  const _SocialItem({
+    super.key,
+    required this.number,
+    required this.draft,
+    required this.enabled,
+    required this.errorText,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  final int number;
+  final _SocialDraft draft;
+  final bool enabled;
+  final String? errorText;
+  final VoidCallback onChanged;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final platform = draft.platform;
+    return Semantics(
+      container: true,
+      label: 'Tautan $number',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: KapdhDropdownField<SocialPlatform>(
+                  key: ValueKey('profile-link-platform-${draft.id}'),
+                  label: 'Platform tautan $number',
+                  labelVisible: false,
+                  value: platform,
+                  items: [
+                    for (final choice in SocialPlatformUi.choices)
+                      DropdownMenuItem(
+                        value: choice,
+                        child: Row(
+                          children: [
+                            Icon(choice.icon, size: KapdhIconSize.md),
+                            const SizedBox(width: KapdhSpace.s3),
+                            Flexible(child: Text(choice.label, overflow: TextOverflow.ellipsis)),
+                          ],
+                        ),
+                      ),
+                  ],
+                  onChanged: enabled
+                      ? (choice) {
+                          if (choice == null) return;
+                          draft.platform = choice;
+                          onChanged();
+                        }
+                      : null,
+                ),
+              ),
+              _RemoveButton(
+                key: ValueKey('profile-link-remove-${draft.id}'),
+                tooltip: 'Hapus tautan ${platform.label}',
+                onPressed: enabled ? onRemove : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: KapdhSpace.s2),
+          Padding(
+            padding: const EdgeInsets.only(right: KapdhSize.touchTargetMin),
+            child: KapdhTextField(
+              key: ValueKey('profile-link-value-${draft.id}'),
+              label: 'Nama pengguna atau tautan ${platform.label}',
+              labelVisible: false,
+              controller: draft.value,
+              hint: platform.hint,
+              enabled: enabled,
+              keyboardType: TextInputType.url,
+              inputFormatters: [LengthLimitingTextInputFormatter(200)],
+              errorText: errorText,
+              onChanged: (_) => onChanged(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -722,8 +1258,8 @@ class _ReadOnlyRow extends StatelessWidget {
   }
 }
 
-/// Field pilihan master (Ubah Profil v2): label, cip terpilih bernada tint yang seluruhnya menghapus (pil 36 dalam
-/// target 48), pemilih bergaya field ("Pilih profesi") yang membuka lembar master, helper dan galat.
+/// Field pilihan berlabel (Ubah Profil v2): label, cip terpilih bernada tint yang seluruhnya menghapus (pil 36 dalam
+/// target 48), pemilih bergaya field ("Pilih atau tambah…") yang membuka lembar pilihan, helper dan galat.
 class _TagPickerField extends StatelessWidget {
   const _TagPickerField({
     super.key,
@@ -733,10 +1269,13 @@ class _TagPickerField extends StatelessWidget {
     required this.placeholder,
     required this.onTap,
     required this.onRemove,
+    this.pickerKey,
     this.helper,
     this.errorText,
   });
 
+  /// Kunci kotak pemilih (uji mengetuk pemilihnya, bukan tengah seluruh field yang dapat jatuh di helper).
+  final Key? pickerKey;
   final String label;
 
   /// "profesi" / "keahlian" untuk label pembaca layar ("Hapus keahlian Bahasa Arab").
@@ -820,6 +1359,7 @@ class _TagPickerField extends StatelessWidget {
             label: '$label, $placeholder',
             excludeSemantics: true,
             child: InkWell(
+              key: pickerKey,
               onTap: onTap,
               borderRadius: BorderRadius.circular(KapdhRadius.md),
               // Ink (bukan Container) agar riak tekan & sorotan fokus tidak tertutup warna kotak pemilih.

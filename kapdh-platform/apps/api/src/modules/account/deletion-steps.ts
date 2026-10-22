@@ -1342,7 +1342,10 @@ export class DeletionSteps {
     }
   }
 
-  /** Profil alumni dihapus (alumni_professions/alumni_skills ikut CASCADE). N tidak didaur ulang (sequence). */
+  /**
+   * Profil alumni dihapus (alumni_professions, alumni_skills dan daftar profil berulang alumni_profession_entries,
+   * alumni_education, alumni_social_links ikut CASCADE). N tidak didaur ulang (sequence).
+   */
   async profile(ctx: StepContext): Promise<void> {
     await this.tx(ctx, async (tx) => {
       await this.requests.lockUser(tx, ctx.userId);

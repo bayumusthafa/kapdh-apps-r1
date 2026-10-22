@@ -49,7 +49,7 @@ paths:
           schema: { $ref: "#/components/schemas/Gender" }
         - name: profession_id
           in: query
-          description: Profesi (master, termasuk yang nonaktif).
+          description: Profesi (master, termasuk yang nonaktif); cocok bila salah satu profesi anggota tertaut master itu.
           schema: { type: string, format: uuid }
         - name: skill_id
           in: query
@@ -132,10 +132,11 @@ paths:
         satu transaksi (AC F05-6, F17-1). Contoh: 12.02.01.7 dengan kelas keluar dikoreksi menjadi 6 menjadi
         12.01.01.7. Kelas keluar tidak boleh lebih rendah dari kelas masuk (400).
 
-        profession_id/skill_ids mengikuti aturan master aktif yang sama dengan PATCH /me/profile (AC F10-4);
-        keempat tautan sosial memakai aturan SocialHandle yang sama dengan profil sendiri (nama pengguna atau URL
-        https; skema lain 400). `remove_avatar` menghapus foto yang tidak pantas (berkas dilepas dan dibersihkan
-        job). Akun deletion_pending tidak dapat diubah (400). Admin tidak dapat mengubah akun alumni yang tertaut
+        `professions`, `education`, `social_links` dan skill_ids mengikuti aturan yang sama dengan PATCH /me/profile
+        (daftar pengganti, master aktif AC F10-4, SocialHandle: nama pengguna atau URL https, skema lain 400),
+        termasuk aturan transisi field lama (profession_id, last_education_*, social_*) dan penolakan field lama
+        bersama penggantinya. Audit tidak menyalin isi profesi/pendidikan/tautan (hanya nama field yang berubah).
+        `remove_avatar` menghapus foto yang tidak pantas (berkas dilepas dan dibersihkan job). Akun deletion_pending tidak dapat diubah (400). Admin tidak dapat mengubah akun alumni yang tertaut
         ke identitas adminnya sendiri (admins.linked_alumni_user_id; konflik kepentingan, PRD 2.3) -> 403
         FORBIDDEN. Versi berbeda dari If-Match -> 409 VERSION_CONFLICT dengan `current` berbentuk
         AdminMemberDetail yang disaring per izin seperti GET detail (AC F15-4, F15-1).
@@ -440,7 +441,9 @@ components:
           description: Null hanya untuk akun pending_otp (nomor dialokasikan saat OTP).
         city: { type: [string, "null"] }
         avatar_url: { type: [string, "null"], format: uri }
-        profession_label: { type: [string, "null"] }
+        profession_label:
+          type: [string, "null"]
+          description: Profesi utama (pertama di daftar profesi); null bila tidak ada.
         account_status: { $ref: "#/components/schemas/AccountStatus" }
         effective_status: { $ref: "#/components/schemas/EffectiveStatus" }
         expires_at: { type: [string, "null"], format: date-time }
@@ -565,6 +568,9 @@ components:
               social_linkedin,
               privacy,
               profession,
+              professions,
+              education,
+              social_links,
               skills,
               avatar_file_id,
               email_verified_at,
@@ -588,17 +594,43 @@ components:
             graduation_year: { type: integer }
             phone: { type: [string, "null"] }
             bio: { type: [string, "null"] }
-            last_education_institution: { type: [string, "null"] }
-            last_education_city: { type: [string, "null"] }
-            social_instagram: { type: [string, "null"] }
-            social_x: { type: [string, "null"] }
-            social_facebook: { type: [string, "null"] }
-            social_linkedin: { type: [string, "null"] }
+            last_education_institution:
+              type: [string, "null"]
+              description: Deprecated (aplikasi 1.0.0); sama dengan Profile.last_education_institution.
+            last_education_city:
+              type: [string, "null"]
+              description: Deprecated (aplikasi 1.0.0); sama dengan Profile.last_education_city.
+            social_instagram:
+              type: [string, "null"]
+              description: Deprecated; tautan instagram pertama di social_links.
+            social_x: { type: [string, "null"], description: Deprecated; tautan x pertama di social_links. }
+            social_facebook:
+              type: [string, "null"]
+              description: Deprecated; tautan facebook pertama di social_links.
+            social_linkedin:
+              type: [string, "null"]
+              description: Deprecated; tautan linkedin pertama di social_links.
             privacy: { $ref: "#/components/schemas/ProfilePrivacy" }
             profession:
               oneOf:
                 - $ref: "#/components/schemas/MasterItem"
                 - type: "null"
+              description: Deprecated (aplikasi 1.0.0); profesi pertama yang tertaut master.
+            professions:
+              type: array
+              maxItems: 5
+              description: Profesi sesuai urutan anggota (pertama = utama); ketikan sendiri maupun label master.
+              items: { $ref: "#/components/schemas/ProfessionLabel" }
+            education:
+              type: array
+              maxItems: 10
+              description: Riwayat pendidikan, terbaru di atas.
+              items: { $ref: "#/components/schemas/EducationEntry" }
+            social_links:
+              type: array
+              maxItems: 10
+              description: Semua tautan sosial terlepas dari show_social (tujuan administratif, F-10).
+              items: { $ref: "#/components/schemas/SocialLink" }
             skills:
               type: array
               items: { $ref: "#/components/schemas/MasterItem" }
@@ -667,29 +699,55 @@ components:
           maxLength: 24
           pattern: '^\+?[0-9][0-9 -]{5,22}$'
         bio: { type: [string, "null"], maxLength: 500 }
-        last_education_institution: { type: [string, "null"], minLength: 1, maxLength: 120 }
-        last_education_city: { type: [string, "null"], minLength: 1, maxLength: 80 }
+        professions:
+          type: array
+          maxItems: 5
+          description: Daftar profesi pengganti (aturan sama dengan ProfileUpdate.professions).
+          items: { $ref: "#/components/schemas/ProfessionLabel" }
+        education:
+          type: array
+          maxItems: 10
+          description: Riwayat pendidikan pengganti (aturan sama dengan ProfileUpdate.education).
+          items: { $ref: "#/components/schemas/EducationEntryInput" }
+        social_links:
+          type: array
+          maxItems: 10
+          description: Tautan sosial pengganti (aturan sama dengan ProfileUpdate.social_links).
+          items: { $ref: "#/components/schemas/SocialLinkInput" }
+        last_education_institution:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 120
+          description: Deprecated (aplikasi 1.0.0); pakai `education`.
+        last_education_city:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 80
+          description: Deprecated (aplikasi 1.0.0).
         social_instagram:
           oneOf:
             - $ref: "#/components/schemas/SocialHandle"
             - type: "null"
-          description: Instagram (aturan SocialHandle); null mengosongkan.
+          description: Deprecated; pakai `social_links`. Instagram (aturan SocialHandle); null mengosongkan.
         social_x:
           oneOf:
             - $ref: "#/components/schemas/SocialHandle"
             - type: "null"
-          description: X (aturan SocialHandle); null mengosongkan.
+          description: Deprecated; pakai `social_links`. X (aturan SocialHandle); null mengosongkan.
         social_facebook:
           oneOf:
             - $ref: "#/components/schemas/SocialHandle"
             - type: "null"
-          description: Facebook (aturan SocialHandle); null mengosongkan.
+          description: Deprecated; pakai `social_links`. Facebook (aturan SocialHandle); null mengosongkan.
         social_linkedin:
           oneOf:
             - $ref: "#/components/schemas/SocialHandle"
             - type: "null"
-          description: LinkedIn (aturan SocialHandle); null mengosongkan.
-        profession_id: { type: [string, "null"], format: uuid }
+          description: Deprecated; pakai `social_links`. LinkedIn (aturan SocialHandle); null mengosongkan.
+        profession_id:
+          type: [string, "null"]
+          format: uuid
+          description: Deprecated; pakai `professions`. Aturan transisi sama dengan ProfileUpdate.profession_id.
         skill_ids:
           type: array
           maxItems: 10

@@ -59,16 +59,31 @@ paths:
         berubah.
 
         Aturan server:
-        - profession_id dan skill_ids hanya boleh menunjuk master aktif, kecuali master nonaktif yang SUDAH
-          terpasang pada profil ini (label historis tetap, AC F10-4); selain itu 400 VALIDATION_ERROR pada field
-          tersebut. skill_ids menggantikan seluruh himpunan keahlian (maksimal 10, tanpa duplikat).
+        - `professions`, `education` dan `social_links` masing-masing MENGGANTIKAN seluruh daftar ([] mengosongkan);
+          aturan per daftar ada di ProfileUpdate. Profesi yang cocok dengan label master aktif (tanpa membedakan
+          huruf besar/kecil) ditautkan ke master itu; label lain disimpan sebagai ketikan sendiri.
+        - skill_ids hanya boleh menunjuk master aktif, kecuali master nonaktif yang SUDAH terpasang pada profil ini
+          (label historis tetap, AC F10-4); selain itu 400 VALIDATION_ERROR pada field tersebut. skill_ids
+          menggantikan seluruh himpunan keahlian (maksimal 10, tanpa duplikat).
         - avatar_file_id wajib berkas milik pemanggil dengan purpose `avatar` dan status ready; selain itu 422
           FILE_INVALID (tanpa membedakan berkas milik orang lain dari berkas yang tidak ada, N-09).
         - Privasi: kontak dan tautan sosial bawaan tersembunyi (show_phone/show_email/show_social false, N-15);
           field tersembunyi tidak ikut payload direktori/profil anggota lain (AC F10-2).
-        - Keempat tautan sosial memakai aturan SocialHandle yang sama: nama pengguna atau URL https; skema lain
-          (javascript:, data:, http:, dll.) ditolak 400 VALIDATION_ERROR pada field tersebut (N-09, N-14).
+        - Setiap tautan sosial memakai aturan SocialHandle: nama pengguna atau URL https; skema lain (javascript:,
+          data:, http:, dll.) ditolak 400 VALIDATION_ERROR pada field tersebut (N-09, N-14).
         - Perubahan avatar/kota/profesi tercermin pada GET /me/card berikutnya.
+
+        Masa transisi aplikasi 1.0.0 (field lama, deprecated): `profession_id`, `last_education_institution`,
+        `last_education_city` dan `social_instagram`/`social_x`/`social_facebook`/`social_linkedin` tetap diterima.
+        Masing-masing hanya mengubah satu entri daftar barunya: profession_id melepas profesi pertama yang tertaut
+        master lalu menaruh master baru (wajib aktif) sebagai profesi utama, atau null melepasnya saja; 400 pada
+        profession_id bila daftar profesi sudah penuh (5); last_education_institution mengganti institusi entri
+        pendidikan teratas atau membuat entri baru (null menghapus entri teratas); social_<platform> mengganti tautan
+        pertama platform itu atau menambahkannya di akhir (null menghapusnya; 400 pada field itu bila tautan baru
+        tidak muat karena daftar sudah penuh, 10). last_education_city hanya disimpan
+        untuk dibaca kembali oleh aplikasi lama dan dikosongkan server bila institusi teratas berganti. Field lama
+        bersama penggantinya dalam satu body (mis. profession_id dengan professions, social_x dengan social_links)
+        ditolak 400 VALIDATION_ERROR pada field lama.
         Versi berbeda dari If-Match menghasilkan 409 VERSION_CONFLICT dengan `current` berbentuk Me (AC F15-4).
       x-kapdh-access: { audience: mobile, member_access: nonsuspended }
       parameters:
@@ -192,13 +207,97 @@ components:
       maxLength: 200
       pattern: '^(?:@?[A-Za-z0-9._-]{1,100}|https://[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:[/?#][^\s<>"''`]*)?)$'
       description: |
-        Aturan tunggal untuk tautan sosial (Instagram, X, Facebook, LinkedIn) pada profil sendiri dan koreksi
-        pengurus (F-10, N-09, N-14): nama pengguna (huruf, angka, titik, garis bawah, tanda hubung; @ di depan
-        opsional dan dibuang server) atau URL `https://` dengan nama host. Skema lain (javascript:, data:, http:,
-        mailto:, dll.), spasi dan karakter <>"'` ditolak 400 VALIDATION_ERROR. Server memeriksa ulang pola yang sama
-        (tidak bergantung pada klien) dan menyimpan nilai yang sudah dinormalkan; klien merender nama pengguna
-        sebagai tautan ke domain platform dan URL hanya sebagai tautan https.
+        Aturan tunggal untuk tautan sosial pada profil sendiri dan koreksi pengurus (F-10, N-09, N-14): nama
+        pengguna (huruf, angka, titik, garis bawah, tanda hubung; @ di depan opsional dan dibuang server) atau URL
+        `https://` dengan nama host. Skema lain (javascript:, data:, http:, mailto:, dll.), spasi dan karakter
+        <>"'` ditolak 400 VALIDATION_ERROR. Server memeriksa ulang pola yang sama (tidak bergantung pada klien) dan
+        menyimpan nilai yang sudah dinormalkan; klien merender nama pengguna sebagai tautan ke domain platform dan
+        URL hanya sebagai tautan https. Platform `website` hanya menerima URL https (lihat SocialLinkInput).
       examples: ["ahmad.uji", "https://www.linkedin.com/in/ahmad.uji"]
+
+    ProfessionLabel:
+      type: string
+      minLength: 1
+      maxLength: 100
+      description: |
+        Satu profesi (F-10, Ubah Profil v2 "Pilih dari daftar atau ketik sendiri"). Server memangkas spasi tepi dan
+        menolak karakter kontrol. Label yang sama dengan master profesi aktif (tanpa membedakan huruf besar/kecil)
+        ditautkan ke master itu dan disimpan dengan ejaan master, sehingga filter direktori `profession_id` dan
+        label historis master nonaktif (AC F10-4) tetap berlaku; label lain disimpan apa adanya sebagai ketikan
+        sendiri.
+      examples: ["Guru", "Penerjemah"]
+
+    EducationLevel:
+      type: string
+      enum: [d3, s1, s2, s3, other]
+      description: Strata pendidikan setelah pondok; label tampilan D3, S1, S2, S3 dan Lainnya.
+
+    EducationEntry:
+      type: object
+      description: |
+        Satu riwayat pendidikan setelah pondok (Ubah Profil v2 "Riwayat Pendidikan"). Daftar selalu terurut
+        terbaru di atas: tahun tamat menurun, entri tanpa tahun tamat (sedang berjalan atau tidak diisi) di atas
+        entri bertahun, dan entri dengan tahun yang sama mengikuti urutan kiriman. Entri hasil migrasi data lama
+        "Lulusan Terakhir" hanya memuat institusi.
+      required: [institution, major, level, graduation_year]
+      properties:
+        institution: { type: string, maxLength: 120, description: Universitas/instansi. }
+        major: { type: [string, "null"], maxLength: 120, description: Jurusan/program studi. }
+        level:
+          oneOf:
+            - $ref: "#/components/schemas/EducationLevel"
+            - type: "null"
+        graduation_year:
+          type: [integer, "null"]
+          minimum: 1950
+          maximum: 2100
+          description: Tahun tamat (tahun ijazah terbit).
+
+    EducationEntryInput:
+      type: object
+      description: |
+        Entri riwayat pendidikan pada ProfileUpdate/AdminMemberUpdate. Field opsional yang tidak dikirim sama dengan
+        null. Tahun tamat tidak boleh melewati tahun berjalan (Asia/Jakarta); selain itu 400 VALIDATION_ERROR.
+      additionalProperties: false
+      required: [institution]
+      properties:
+        institution: { type: string, minLength: 1, maxLength: 120 }
+        major: { type: [string, "null"], minLength: 1, maxLength: 120 }
+        level:
+          oneOf:
+            - $ref: "#/components/schemas/EducationLevel"
+            - type: "null"
+        graduation_year: { type: [integer, "null"], minimum: 1950, maximum: 2100 }
+
+    SocialPlatform:
+      type: string
+      enum: [instagram, tiktok, x, facebook, linkedin, youtube, threads, telegram, website]
+      description: |
+        Platform tautan sosial (Ubah Profil v2): Instagram, TikTok, X (Twitter), Facebook, LinkedIn, YouTube,
+        Threads, Telegram, Situs web. Klien merender nama pengguna sebagai tautan ke domain platform; `website`
+        selalu URL.
+
+    SocialLink:
+      type: object
+      required: [platform, value]
+      properties:
+        platform: { $ref: "#/components/schemas/SocialPlatform" }
+        value:
+          type: string
+          maxLength: 200
+          description: Nilai tersimpan yang sudah lolos aturan SocialHandle (nama pengguna tanpa @ atau URL https).
+
+    SocialLinkInput:
+      type: object
+      description: |
+        Satu tautan sosial pada ProfileUpdate/AdminMemberUpdate. `value` memakai aturan SocialHandle; untuk
+        `website` hanya URL https. Pasangan platform + nilai yang sama (tanpa membedakan huruf besar/kecil) tidak
+        boleh ganda.
+      additionalProperties: false
+      required: [platform, value]
+      properties:
+        platform: { $ref: "#/components/schemas/SocialPlatform" }
+        value: { $ref: "#/components/schemas/SocialHandle" }
 
     Me:
       type: object
@@ -347,6 +446,9 @@ components:
           social_facebook,
           social_linkedin,
           profession,
+          professions,
+          education,
+          social_links,
           skills,
           avatar_file_id,
           avatar_url,
@@ -365,19 +467,52 @@ components:
         city: { type: [string, "null"], description: "Kota domisili (bukan alamat lengkap, PRD 3.5)." }
         phone: { type: [string, "null"] }
         bio: { type: [string, "null"], maxLength: 500, description: Tentang saya. }
-        last_education_institution: { type: [string, "null"], description: Lulusan terakhir (institusi). }
-        last_education_city: { type: [string, "null"] }
+        last_education_institution:
+          type: [string, "null"]
+          description: |
+            Deprecated (aplikasi 1.0.0): institusi entri teratas `education`, null bila daftar kosong.
+        last_education_city:
+          type: [string, "null"]
+          description: |
+            Deprecated (aplikasi 1.0.0): kota lulusan terakhir yang diisi aplikasi lama; tidak ada padanannya di
+            `education` dan dikosongkan server bila institusi teratas berganti.
         social_instagram:
           type: [string, "null"]
-          description: Nilai tersimpan yang sudah lolos aturan SocialHandle (nama pengguna atau URL https).
-        social_x: { type: [string, "null"], description: Sama dengan social_instagram (SocialHandle). }
-        social_facebook: { type: [string, "null"], description: Sama dengan social_instagram (SocialHandle). }
-        social_linkedin: { type: [string, "null"], description: Sama dengan social_instagram (SocialHandle). }
+          description: |
+            Deprecated (aplikasi 1.0.0): tautan pertama berplatform instagram di `social_links`, null bila tidak ada.
+        social_x:
+          type: [string, "null"]
+          description: Deprecated (aplikasi 1.0.0); sama dengan social_instagram untuk platform x.
+        social_facebook:
+          type: [string, "null"]
+          description: Deprecated (aplikasi 1.0.0); sama dengan social_instagram untuk platform facebook.
+        social_linkedin:
+          type: [string, "null"]
+          description: Deprecated (aplikasi 1.0.0); sama dengan social_instagram untuk platform linkedin.
         profession:
           oneOf:
             - $ref: "#/components/schemas/MasterItem"
             - type: "null"
-          description: Satu profesi; master nonaktif tetap tampil sebagai label historis (AC F10-4).
+          description: |
+            Deprecated (aplikasi 1.0.0): profesi pertama di `professions` yang tertaut master; master nonaktif
+            tetap tampil sebagai label historis (AC F10-4). Null bila semua profesi ketikan sendiri.
+        professions:
+          type: array
+          maxItems: 5
+          description: |
+            Profesi (maksimal 5) sesuai urutan pemilik; yang pertama adalah profesi utama di KTA dan kartu
+            direktori. Label master nonaktif tetap tampil sebagai label historis (AC F10-4).
+          items: { $ref: "#/components/schemas/ProfessionLabel" }
+        education:
+          type: array
+          maxItems: 10
+          description: Riwayat pendidikan setelah pondok, terbaru di atas (lihat EducationEntry).
+          items: { $ref: "#/components/schemas/EducationEntry" }
+        social_links:
+          type: array
+          maxItems: 10
+          description: Tautan sosial (maksimal 10) sesuai urutan pemilik; tampil ke anggota lain hanya bila show_social.
+          items: { $ref: "#/components/schemas/SocialLink" }
         skills:
           type: array
           maxItems: 10
@@ -412,32 +547,59 @@ components:
           pattern: '^\+?[0-9][0-9 -]{5,22}$'
           description: Nomor telepon; tampil ke anggota lain hanya bila show_phone true (AC F10-2).
         bio: { type: [string, "null"], maxLength: 500 }
-        last_education_institution: { type: [string, "null"], minLength: 1, maxLength: 120 }
-        last_education_city: { type: [string, "null"], minLength: 1, maxLength: 80 }
+        professions:
+          type: array
+          maxItems: 5
+          description: |
+            Daftar profesi pengganti (maksimal 5, tanpa label ganda tanpa membedakan huruf besar/kecil); [] menghapus
+            semua. Urutan dipertahankan; yang pertama menjadi profesi utama.
+          items: { $ref: "#/components/schemas/ProfessionLabel" }
+        education:
+          type: array
+          maxItems: 10
+          description: Riwayat pendidikan pengganti (maksimal 10); [] menghapus semua. Server mengurutkan terbaru di atas.
+          items: { $ref: "#/components/schemas/EducationEntryInput" }
+        social_links:
+          type: array
+          maxItems: 10
+          description: Tautan sosial pengganti (maksimal 10); [] menghapus semua. Urutan dipertahankan.
+          items: { $ref: "#/components/schemas/SocialLinkInput" }
+        last_education_institution:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 120
+          description: Deprecated (aplikasi 1.0.0); pakai `education`. Aturan transisi di updateMyProfile.
+        last_education_city:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 80
+          description: Deprecated (aplikasi 1.0.0); tidak ada padanannya di `education`.
         social_instagram:
           oneOf:
             - $ref: "#/components/schemas/SocialHandle"
             - type: "null"
-          description: Instagram (aturan SocialHandle); null mengosongkan.
+          description: Deprecated (aplikasi 1.0.0); pakai `social_links`. Instagram (aturan SocialHandle); null mengosongkan.
         social_x:
           oneOf:
             - $ref: "#/components/schemas/SocialHandle"
             - type: "null"
-          description: X (aturan SocialHandle); null mengosongkan.
+          description: Deprecated (aplikasi 1.0.0); pakai `social_links`. X (aturan SocialHandle); null mengosongkan.
         social_facebook:
           oneOf:
             - $ref: "#/components/schemas/SocialHandle"
             - type: "null"
-          description: Facebook (aturan SocialHandle); null mengosongkan.
+          description: Deprecated (aplikasi 1.0.0); pakai `social_links`. Facebook (aturan SocialHandle); null mengosongkan.
         social_linkedin:
           oneOf:
             - $ref: "#/components/schemas/SocialHandle"
             - type: "null"
-          description: LinkedIn (aturan SocialHandle); null mengosongkan.
+          description: Deprecated (aplikasi 1.0.0); pakai `social_links`. LinkedIn (aturan SocialHandle); null mengosongkan.
         profession_id:
           type: [string, "null"]
           format: uuid
-          description: Satu profesi dari master aktif; null menghapus profesi.
+          description: |
+            Deprecated (aplikasi 1.0.0); pakai `professions`. Master profesi aktif yang menggantikan profesi pertama
+            yang tertaut master dan menjadi profesi utama; null melepasnya.
         skill_ids:
           type: array
           maxItems: 10
@@ -550,7 +712,9 @@ components:
           description: Tahun lulus (1996 + angkatan) yang ditampilkan terpisah di kartu (PRD 3.5).
         profession_label:
           type: [string, "null"]
-          description: Profesi untuk baris "Angkatan n | Profesi"; label historis tetap tampil (AC F10-4).
+          description: |
+            Profesi utama (pertama di Profile.professions) untuk baris "Angkatan n | Profesi"; label historis tetap
+            tampil (AC F10-4).
         city: { type: [string, "null"], description: Kota domisili saja (disahkan v3.3). }
         avatar_url:
           type: [string, "null"]
