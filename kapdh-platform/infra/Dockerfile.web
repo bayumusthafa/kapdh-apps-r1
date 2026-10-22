@@ -7,7 +7,8 @@
 #   docker build -f infra/Dockerfile.web --build-arg PUBLIC_API_URL=https://staging-api.kapdh.or.id/api/v1 \
 #     --build-arg KAPDH_COMMIT=$(git rev-parse HEAD) -t kapdh-web:<versi>-staging .
 #
-# Build menjalankan gerbang CSP situs (apps/web/scripts/assert-csp-safe.mjs); header ada di infra/nginx-web.conf.
+# Build menjalankan gerbang CSP situs (apps/web/scripts/assert-csp-safe.mjs) dan menulis berkas asosiasi tautan
+# aplikasi dari apps/web/app-links.json (apps/web/scripts/write-app-links.mjs); header ada di infra/nginx-web.conf.
 # Base image dipin versi patch + digest (PRD 7.1); nginx berjalan sebagai user nginx (uid 101) di port 8080
 # (infra/nginx-main.conf).
 
@@ -29,6 +30,7 @@ RUN --mount=type=cache,id=kapdh-pnpm-store,target=/pnpm/store \
   && pnpm --filter "@kapdh/web..." build \
   && test -f apps/web/dist/index.html \
   && test -f apps/web/dist/kta/index.html \
+  && test -f apps/web/dist/app/index.html \
   && test -f apps/web/dist/404.html
 
 # ---------------------------------------------------------------------------------------------- tahap runtime

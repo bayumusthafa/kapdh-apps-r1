@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:fake_async/fake_async.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_api/kapdh_api.dart';
 import 'package:kapdh_mobile/core/push/push_platform.dart';
@@ -23,6 +26,13 @@ class FakePushPlatform implements PushPlatform {
 
   /// Simulasi FCM tanpa koneksi: deleteToken gagal.
   bool offline = false;
+
+  /// Simulasi iOS sebelum token APNs diterima: getToken melempar galat ini.
+  Object? tokenError;
+
+  /// Simulasi iOS sebelum token APNs diterima: deleteToken melempar galat ini.
+  Object? deleteError;
+  int tokenRequests = 0;
   int permissionRequests = 0;
   final shown = <PushMessage>[];
   final tokenRefresh = StreamController<String>.broadcast();
@@ -40,7 +50,12 @@ class FakePushPlatform implements PushPlatform {
   }
 
   @override
-  Future<String?> getToken() async => token;
+  Future<String?> getToken() async {
+    tokenRequests++;
+    final error = tokenError;
+    if (error != null) throw error;
+    return token;
+  }
 
   @override
   Stream<String> get onTokenRefresh => tokenRefresh.stream;
@@ -48,6 +63,8 @@ class FakePushPlatform implements PushPlatform {
   @override
   Future<void> deleteToken() async {
     if (offline) throw Exception('SERVICE_NOT_AVAILABLE (uji)');
+    final error = deleteError;
+    if (error != null) throw error;
     deletes++;
     token = 'fcm-${deletes + 1}';
   }
@@ -83,13 +100,17 @@ void main() {
     store: store,
   );
 
-  setUp(() {
+  /// Tiruan dan layanan baru; di dalam fakeAsync dipanggil ulang agar antrean microtask dan timer percobaan ulang
+  /// layanan ikut dikendalikan zona tersebut.
+  void rebuild() {
     platform = FakePushPlatform();
     registered = [];
     opened = [];
     store = MemorySecureStore();
     service = build();
-  });
+  }
+
+  setUp(rebuild);
 
   tearDown(() => service.dispose());
 
@@ -125,6 +146,164 @@ void main() {
       ..add('fcm-baru');
     await pumpEventQueue();
     expect(registered.map((r) => r.token), ['fcm-1', 'fcm-baru']);
+  });
+
+  group('iOS: token APNs belum tersedia saat login (getToken gagal apns-token-not-set)', () {
+    FirebaseException apnsTokenNotSet() => FirebaseException(plugin: 'firebase_messaging', code: 'apns-token-not-set');
+
+    test('token yang tiba lewat onTokenRefresh tetap didaftarkan PUT /devices', () async {
+      platform.tokenError = apnsTokenNotSet();
+      await service.onSignedIn('user-1');
+      expect(registered, isEmpty);
+      expect(platform.tokenRefresh.hasListener, isTrue, reason: 'langganan dibuat sebelum getToken');
+
+      platform.tokenRefresh.add('fcm-apns');
+      await pumpEventQueue();
+      expect(registered.single.token, 'fcm-apns');
+      expect((await PushRegistrationStore(store).read())?.userId, 'user-1');
+    });
+
+    test('keluar sebelum token tiba: tidak ada yang didaftarkan dan langganan dilepas', () async {
+      platform.tokenError = apnsTokenNotSet();
+      await service.onSignedIn('user-1');
+      await service.onSignedOut();
+      expect(platform.tokenRefresh.hasListener, isFalse);
+
+      platform.tokenRefresh.add('fcm-apns');
+      await pumpEventQueue();
+      expect(registered, isEmpty);
+    });
+
+    test('penghapusan token tertunda gagal apns-token-not-set: langganan tetap dipasang, token baru didaftarkan '
+        'setelah token lama terhapus', () async {
+      await PushRegistrationStore(store).write(const PushRegistration(userId: 'user-1', pendingUnregister: true));
+      platform.deleteError = apnsTokenNotSet();
+      await service.onSignedIn('user-2');
+      await pumpEventQueue();
+      expect(platform.tokenRefresh.hasListener, isTrue, reason: 'langganan dibuat sebelum penghapusan token lama');
+      expect(platform.deletes, 0);
+      expect(registered, isEmpty, reason: 'token akun lama belum terhapus');
+      expect((await PushRegistrationStore(store).read())?.pendingUnregister, isTrue);
+
+      // Token APNs diterima: FCM menerbitkan token lama perangkat lewat onTokenRefresh.
+      platform.deleteError = null;
+      platform.tokenRefresh.add('fcm-1');
+      await pumpEventQueue();
+      expect(platform.deletes, 1);
+      expect(registered.map((r) => r.token), ['fcm-2'], reason: 'token lama tidak didaftarkan untuk akun baru');
+      expect(
+        await PushRegistrationStore(store).read(),
+        isA<PushRegistration>()
+            .having((r) => r.userId, 'user', 'user-2')
+            .having((r) => r.pendingUnregister, 'pending', isFalse),
+      );
+    });
+
+    test('tanpa onTokenRefresh: penghapusan token lama diulang berjeda lalu token baru didaftarkan', () {
+      fakeAsync((async) {
+        rebuild();
+        unawaited(PushRegistrationStore(store).write(const PushRegistration(userId: 'user-1')));
+        platform.deleteError = apnsTokenNotSet();
+        unawaited(service.onSignedIn('user-2'));
+        async.flushMicrotasks();
+        expect(platform.deletes, 0);
+        expect(platform.tokenRequests, 0, reason: 'token tidak diminta sebelum token akun lama terhapus');
+
+        platform.deleteError = null;
+        async.elapse(PushService.apnsRetryDelays.first);
+        expect(platform.deletes, 1);
+        expect(registered.map((r) => r.token), ['fcm-2']);
+        expect(async.pendingTimers, isEmpty);
+      });
+    });
+
+    test('getToken gagal apns-token-not-set lalu berhasil pada percobaan ulang tanpa onTokenRefresh', () {
+      fakeAsync((async) {
+        rebuild();
+        platform.tokenError = apnsTokenNotSet();
+        unawaited(service.onSignedIn('user-1'));
+        async.flushMicrotasks();
+        expect(platform.tokenRequests, 1);
+        expect(registered, isEmpty);
+
+        async.elapse(PushService.apnsRetryDelays[0]);
+        expect(platform.tokenRequests, 2, reason: 'token APNs masih belum ada');
+
+        // Token FCM sudah tersimpan dari peluncuran sebelumnya, sehingga onTokenRefresh tidak terbit.
+        platform.tokenError = null;
+        async.elapse(PushService.apnsRetryDelays[1]);
+        expect(platform.tokenRequests, 3);
+        expect(registered.single.token, 'fcm-1');
+        expect(platform.permissionRequests, 1, reason: 'izin tidak diminta ulang pada percobaan ulang');
+
+        async.elapse(const Duration(minutes: 1));
+        expect(platform.tokenRequests, 3, reason: 'percobaan ulang berhenti setelah terdaftar');
+        expect(async.pendingTimers, isEmpty);
+      });
+    });
+
+    test('percobaan ulang dibatasi (sekitar 30 detik); token yang tiba sesudahnya tetap didaftarkan', () {
+      fakeAsync((async) {
+        rebuild();
+        platform.tokenError = apnsTokenNotSet();
+        unawaited(service.onSignedIn('user-1'));
+        async.elapse(const Duration(seconds: 30));
+        expect(platform.tokenRequests, 1 + PushService.apnsRetryDelays.length);
+        expect(async.pendingTimers, isEmpty);
+
+        async.elapse(const Duration(minutes: 5));
+        expect(platform.tokenRequests, 1 + PushService.apnsRetryDelays.length);
+        expect(registered, isEmpty);
+
+        platform.tokenRefresh.add('fcm-apns');
+        async.flushMicrotasks();
+        expect(registered.single.token, 'fcm-apns');
+      });
+    });
+
+    test('galat getToken lain bukan menunggu APNs: tidak diulang dan dicatat dengan kodenya', () {
+      final logs = <String>[];
+      final originalDebugPrint = debugPrint;
+      debugPrint = (message, {wrapWidth}) => logs.add(message ?? '');
+      try {
+        fakeAsync((async) {
+          rebuild();
+          platform.tokenError = FirebaseException(plugin: 'firebase_messaging', code: 'unknown');
+          unawaited(service.onSignedIn('user-1'));
+          async.flushMicrotasks();
+          async.elapse(const Duration(minutes: 1));
+          expect(platform.tokenRequests, 1);
+          expect(async.pendingTimers, isEmpty);
+          expect(registered, isEmpty);
+        });
+      } finally {
+        debugPrint = originalDebugPrint;
+      }
+      expect(logs, contains('push: pendaftaran perangkat gagal (FirebaseException unknown)'));
+      expect(logs.where((line) => line.contains('APNs')), isEmpty);
+    });
+
+    test('keluar selama jeda percobaan ulang: tidak ada yang didaftarkan, timer dan langganan dilepas', () {
+      fakeAsync((async) {
+        rebuild();
+        platform.tokenError = apnsTokenNotSet();
+        unawaited(service.onSignedIn('user-1'));
+        async.elapse(const Duration(seconds: 3));
+        expect(platform.tokenRequests, 2);
+        expect(async.pendingTimers, hasLength(1));
+
+        unawaited(service.onSignedOut());
+        async.flushMicrotasks();
+        expect(async.pendingTimers, isEmpty, reason: 'keluar berjalan tanpa menunggu jeda dan membatalkan timer');
+        expect(platform.tokenRefresh.hasListener, isFalse);
+
+        platform.tokenError = null;
+        platform.tokenRefresh.add('fcm-apns');
+        async.elapse(const Duration(minutes: 1));
+        expect(platform.tokenRequests, 2);
+        expect(registered, isEmpty);
+      });
+    });
   });
 
   test('keluar/berganti akun: token perangkat dihapus dan akun berikut mendapat token baru (AC F13-5)', () async {
