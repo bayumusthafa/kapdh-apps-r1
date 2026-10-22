@@ -471,7 +471,14 @@ sudo docker run --rm -i --network coolify --env-file /etc/kapdh/production/relea
 
 7. **Akhir masa transisi**: field lama baru dapat dihapus dari kontrak dan kolom lama dari skema (perubahan memutus,
    ADR baru) setelah `min_app_version` dinaikkan melewati build pertama yang memakai daftar baru dan build itu sudah
-   tersebar di toko.
+   tersebar di toko. Bersamaan dengan itu, hapus kalimat tentang kota pendidikan lama dari Kebijakan Privasi 4.2 dan
+   Bantuan, lalu terbitkan ulang (`docs/legal/README.md`, Revisi profil berulang).
+8. **Naskah legal dan Bantuan** (bersama rilis aplikasi mobile, bukan saat redeploy API): revisi profil berulang
+   Kebijakan Privasi, Ketentuan Layanan, Ketentuan Komunitas, dan Bantuan (`docs/legal/`) WAJIB terbit lewat web admin
+   pada hari build mobile pertama yang memakai daftar baru dirilis ke pengguna. Umumkan perubahan lebih dahulu melalui
+   aplikasi dan situs (Kebijakan Privasi bagian 19), isi `[tanggal terbit]`, terbitkan keempat halaman pada hari yang
+   sama, lalu pastikan gerbang `legal_pages` tetap lulus (versi `app_settings.legal` sama dengan versi tayang)
+   **[bukti]**. Jangan terbitkan sebelum build itu tersedia: aplikasi 1.0.0 belum menampilkan daftar baru.
 
 ## 6. Rollback dan pemulihan (PRD 8.4)
 

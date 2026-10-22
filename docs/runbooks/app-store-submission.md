@@ -193,6 +193,10 @@ Jawaban umum:
   putuskan apakah kategori ini dideklarasikan dan catat alasannya.
 - Kebijakan privasi (`kebijakan-privasi`) wajib memuat daftar di atas, pemroses, retensi D2, cara penghapusan, dan
   kontak.
+- Build pertama yang memakai daftar profil berulang: revisi naskah legal dan Bantuan (`docs/legal/README.md`, Revisi
+  profil berulang) terbit pada hari build itu dirilis ke pengguna (`rilis-dan-gerbang-go-live.md` bagian 5.5
+  langkah 8). Baris profil di tabel tetap pada kategori formulir yang sama, jadi Data safety dan App Privacy tidak
+  perlu diubah untuk daftar baru.
 
 ## 5. Templat catatan reviewer
 
