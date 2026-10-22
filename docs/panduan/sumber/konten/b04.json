@@ -1,0 +1,555 @@
+{
+  "id": "b04",
+  "part": "anggota",
+  "title": "KTA Digital",
+  "kicker": "Aplikasi Anggota",
+  "summary": "Kartu Tanda Anggota (KTA) digital adalah bukti keanggotaan Anda di KAPDH. Bab ini menjelaskan kapan KTA aktif, arti setiap status, cara menunjukkan QR, memakai KTA tanpa internet, dan cara pihak lain memeriksanya.",
+  "icon": "ph-identification-card",
+  "highlights": [
+    "Kapan KTA aktif dan arti setiap status kartu",
+    "Membaca isi KTA, termasuk arti nomor anggota",
+    "Menunjukkan QR dalam tampilan layar penuh",
+    "Memakai KTA tanpa internet sampai 7 hari",
+    "Cara pemeriksa memverifikasi KTA dan kapan memperpanjang"
+  ],
+  "sections": [
+    {
+      "id": "b04-1",
+      "title": "Kapan KTA Anda aktif",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "KTA digital dibuat otomatis begitu email Anda terverifikasi saat pendaftaran. Pada saat itu Anda sudah mendapat nomor anggota, tetapi kartu masih berstatus **KTA Tidak Aktif**. KTA menjadi **KTA Aktif** setelah pengurus memverifikasi iuran pendaftaran Anda. Masa keanggotaan dihitung sejak tanggal verifikasi itu, bukan sejak tanggal transfer."
+        },
+        {
+          "type": "steps",
+          "title": "Menyelesaikan iuran pendaftaran",
+          "items": [
+            {
+              "text": "Ketuk tab **KTA** di tengah bilah navigasi bawah."
+            },
+            {
+              "text": "Pada kartu status di bawah KTA, ketuk **Bayar** untuk membuka langkah iuran pendaftaran. Cara membayar dan mengirim bukti dijelaskan di Bab 3."
+            },
+            {
+              "text": "Bila pembayaran sudah Anda buat, tombolnya berubah menjadi **Lanjutkan**. Ketuk untuk melihat status pembayaran tersebut."
+            },
+            {
+              "text": "Tunggu verifikasi pengurus. Begitu iuran disetujui, status kartu berubah menjadi **KTA Aktif** tanpa perlu Anda perbarui sendiri, dan Anda menerima notifikasi hasil verifikasi."
+            }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            {
+              "img": "mobile/b04-kta-tidak-aktif.png",
+              "caption": "KTA Tidak Aktif: QR belum tersedia dan tombol Bayar siap diketuk"
+            }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Selama KTA belum aktif",
+          "items": [
+            "Kotak QR pada kartu bergambar gembok dengan keterangan **QR muncul setelah KTA aktif**.",
+            "Masa berlaku tertulis **Berlaku sampai: belum aktif**.",
+            "Di bawah kartu status tampil daftar **Layanan untuk anggota terverifikasi**: QR KTA untuk verifikasi, jejaring alumni dan chat, serta pendaftaran event dan tiket.",
+            "Tab **Event** dan **Jejaring** bertanda gembok kecil. Bila diketuk, muncul penjelasan bahwa layanan itu khusus anggota aktif, dengan tombol **Bayar iuran**.",
+            "Beranda (berisi ajakan menyelesaikan iuran pendaftaran), riwayat pembayaran, kotak masuk notifikasi, dan pengaturan akun tetap dapat dibuka."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "text": "KTA berstatus **KTA Tidak Aktif** bukan bukti keanggotaan. Jangan menunjukkannya sebagai tanda anggota sebelum statusnya berubah menjadi **KTA Aktif**."
+        }
+      ]
+    },
+    {
+      "id": "b04-2",
+      "title": "Mengenali isi KTA",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Buka tab **KTA**. Layar **Kartu Tanda Anggota** menampilkan kartu hijau berlogo KAPDH. Tepat di bawah kartu tertera waktu sinkronisasi terakhir, misalnya Tersinkron 18 Okt 2026, 09.41 WIB. Di bawahnya ada kartu status berisi label status, keterangan, dan tombol tindakan."
+        },
+        {
+          "type": "screens",
+          "items": [
+            {
+              "img": "mobile/b04-kta-aktif.png",
+              "caption": "KTA Aktif lengkap dengan QR verifikasi"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Isi kartu",
+          "columns": [
+            "Bagian kartu",
+            "Keterangan"
+          ],
+          "rows": [
+            [
+              "Foto",
+              "Foto profil Anda. Bila belum ada foto, kartu menampilkan inisial nama. Foto diganti dari menu Akun (lihat Bab 8)."
+            ],
+            [
+              "Nama",
+              "Nama lengkap sesuai data keanggotaan."
+            ],
+            [
+              "Baris di bawah nama",
+              "Angkatan dan profesi utama, misalnya Angkatan 12 | Guru. Bila profesi belum diisi, yang tampil adalah tahun lulus, misalnya Lulus 2008."
+            ],
+            [
+              "**Kode Angkatan**",
+              "Kode angkatan, misalnya KAPDH 12."
+            ],
+            [
+              "**Nomor Anggota**",
+              "Nomor unik berformat AA.SS.JK.N. Artinya dijelaskan pada tabel berikut."
+            ],
+            [
+              "**Kota**",
+              "Kota domisili saja, bukan alamat lengkap. Baris ini tidak tampil bila kota belum diisi."
+            ],
+            [
+              "Masa berlaku",
+              "Misalnya Berlaku sampai 18/10/2027. Pada kartu yang kedaluwarsa tertulis Berakhir diikuti tanggalnya."
+            ],
+            [
+              "QR",
+              "Kode QR untuk verifikasi. Hanya tampil pada kartu berstatus **KTA Aktif** dan **Segera Berakhir**."
+            ]
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Arti nomor anggota (contoh: 12.01.01.7)",
+          "columns": [
+            "Bagian",
+            "Arti",
+            "Contoh"
+          ],
+          "rows": [
+            [
+              "AA",
+              "Angkatan, dua digit (01 sampai 99).",
+              "12 = angkatan 12"
+            ],
+            [
+              "SS",
+              "Status pendidikan menurut kelas masuk dan kelas keluar: 01 tamat MTs dan Aliyah, 02 tamat salah satu, 03 tidak tamat.",
+              "01 = tamat MTs dan Aliyah"
+            ],
+            [
+              "JK",
+              "Jenis kelamin: 01 laki-laki, 02 perempuan.",
+              "01 = laki-laki"
+            ],
+            [
+              "N",
+              "Nomor urut dari sistem, tanpa nol di depan. Tidak pernah berubah dan tidak pernah diberikan kepada orang lain.",
+              "7"
+            ]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "text": "Nomor anggota tidak berubah saat perpanjangan. Bila pengurus mengoreksi angkatan, kelas, atau jenis kelamin Anda, bagian depan nomor ikut menyesuaikan, sedangkan nomor urutnya tetap. Setelah koreksi, sinkronkan KTA agar QR memuat nomor yang baru."
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Bila kota domisili belum diisi, layar KTA menampilkan pengingat dengan tombol **Lengkapi** yang membuka profil Anda. Profesi yang tampil di KTA adalah profesi utama, yaitu profesi pertama di profil Anda (lihat Bab 8)."
+        }
+      ]
+    },
+    {
+      "id": "b04-3",
+      "title": "Status kartu dan artinya",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Label status selalu tampil di kartu status di bawah KTA, bersama keterangan dan tombol yang sesuai. Status ditentukan oleh server KAPDH, bukan oleh aplikasi di ponsel Anda, sehingga selalu mengikuti hasil verifikasi pengurus terbaru."
+        },
+        {
+          "type": "status",
+          "title": "Label status KTA",
+          "items": [
+            {
+              "label": "KTA Aktif",
+              "tone": "success",
+              "text": "Keanggotaan berlaku dan QR tersedia. Tombol **Perpanjang** masih nonaktif, dan keterangannya menyebut tanggal perpanjangan mulai dibuka."
+            },
+            {
+              "label": "Segera Berakhir",
+              "tone": "warning",
+              "text": "Masa keanggotaan tersisa 30 hari atau kurang. KTA dan QR tetap berlaku. Ketuk **Perpanjang** agar keanggotaan tidak terputus."
+            },
+            {
+              "label": "KTA Tidak Aktif",
+              "tone": "danger",
+              "text": "Iuran pendaftaran belum diverifikasi pengurus. QR belum tersedia. Ketuk **Bayar**, atau **Lanjutkan** bila pembayaran sudah dibuat."
+            },
+            {
+              "label": "KTA Kedaluwarsa",
+              "tone": "danger",
+              "text": "Masa keanggotaan sudah lewat. QR tidak tersedia sampai perpanjangan diverifikasi. Ketuk **Perpanjang** untuk mengajukan perpanjangan, atau hubungi pengurus."
+            },
+            {
+              "label": "Dibatasi",
+              "tone": "neutral",
+              "text": "Akun sedang dibatasi pengurus. KTA tidak dapat dipakai sebagai bukti keanggotaan, QR tidak tersedia, dan aplikasi membuka halaman pembatasan."
+            },
+            {
+              "label": "Offline",
+              "tone": "warning",
+              "text": "Bukan status keanggotaan. Kartu ditampilkan dari sinkronisasi terakhir karena server tidak terjangkau. Lihat subbab Memakai KTA tanpa internet."
+            }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            {
+              "img": "mobile/b04-kta-segera-berakhir.png",
+              "caption": "Segera Berakhir: tanggal berakhir dan tombol Perpanjang"
+            },
+            {
+              "img": "mobile/b04-kta-kedaluwarsa.png",
+              "caption": "KTA Kedaluwarsa: QR tidak tersedia sampai perpanjangan diverifikasi"
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Status kartu diperbarui otomatis saat tab **KTA** pertama kali dibuka, setiap kali Anda kembali ke aplikasi, dan saat ada notifikasi pembayaran atau masa KTA. Untuk memperbarui kapan saja, ketuk ikon sinkron di pojok kanan atas atau tarik layar ke bawah."
+        }
+      ]
+    },
+    {
+      "id": "b04-4",
+      "title": "Menunjukkan QR KTA",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "QR pada KTA berisi tautan ke halaman Verifikasi KTA di situs kapdh.or.id. QR baru diterbitkan setiap kali KTA tersinkron dan berlaku paling lama 7 hari, atau sampai masa keanggotaan berakhir bila tanggal itu lebih dulu tiba. Karena itu, selalu tunjukkan QR langsung dari aplikasi."
+        },
+        {
+          "type": "steps",
+          "title": "Menunjukkan KTA kepada pemeriksa",
+          "items": [
+            {
+              "text": "Ketuk tab **KTA**. Pastikan labelnya **KTA Aktif** atau **Segera Berakhir** dan kotak QR menampilkan kode QR, bukan gambar gembok."
+            },
+            {
+              "text": "Bila ada internet, ketuk ikon sinkron di pojok kanan atas agar QR yang tampil adalah yang terbaru."
+            },
+            {
+              "text": "Naikkan kecerahan layar ponsel Anda agar QR mudah terbaca kamera."
+            },
+            {
+              "text": "Ketuk kartu KTA. Kartu terbuka dalam tampilan layar penuh mendatar dengan proporsi KTP, sehingga QR tampil lebih besar."
+            },
+            {
+              "text": "Arahkan layar ke pemeriksa. Setelah selesai, ketuk di mana saja atau ketuk tombol silang di pojok kanan atas untuk kembali."
+            }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            {
+              "img": "mobile/b04-kta-layar-penuh.png",
+              "caption": "Tampilan layar penuh mendatar memperbesar kartu dan QR"
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Jangan memakai tangkapan layar",
+          "text": "Tangkapan layar lama dapat memuat QR yang sudah tidak berlaku, sehingga pemeriksa melihat hasil **QR tidak valid atau perlu diperbarui**. Pemeriksa juga selalu melihat status terkini dari server, bukan status yang tergambar pada kartu."
+        }
+      ]
+    },
+    {
+      "id": "b04-5",
+      "title": "Memakai KTA tanpa internet",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Setiap kali tersinkron, KTA disimpan dengan aman di ponsel Anda. Bila server tidak dapat dihubungi, misalnya karena sinyal hilang, aplikasi menampilkan kartu tersimpan itu dengan pita **Offline** beserta waktu sinkronisasi terakhir. Kartu offline dapat ditunjukkan paling lama 7 hari sejak sinkronisasi terakhir dan tidak melewati tanggal berakhir keanggotaan."
+        },
+        {
+          "type": "screens",
+          "items": [
+            {
+              "img": "mobile/b04-kta-offline.png",
+              "caption": "Kartu offline berpita Offline dengan waktu sinkronisasi"
+            },
+            {
+              "img": "mobile/b04-kta-belum-tersimpan.png",
+              "caption": "KTA belum pernah tersinkron di perangkat ini"
+            }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Yang perlu diketahui saat offline",
+          "items": [
+            "Kartu status menyatakan bahwa status berasal dari sinkronisasi terakhir. Kartu offline bukan bukti status saat ini; pemeriksa tetap melihat status terkini dari server saat memindai QR.",
+            "Selama aplikasi terbuka, sinkronisasi dicoba ulang otomatis setelah 15 detik, 30 detik, 1 menit, 2 menit, lalu setiap 5 menit. Anda juga dapat mengetuk **Sinkronkan** kapan saja.",
+            "Bila kotak QR bertuliskan **Sinkronkan untuk memperbarui QR**, QR tersimpan sudah tidak dapat dipakai. Sambungkan internet, lalu sinkronkan.",
+            "Kartu yang sudah kedaluwarsa atau sedang dibatasi tidak ditampilkan saat offline.",
+            "Memilih **Keluar** di menu Akun, atau masuk dengan akun lain, menghapus KTA tersimpan beserta fotonya dari perangkat. Sinkronkan lagi setelah masuk."
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Bila KTA tidak dapat ditampilkan offline",
+          "columns": [
+            "Pesan di layar",
+            "Artinya",
+            "Yang perlu dilakukan"
+          ],
+          "rows": [
+            [
+              "**KTA belum tersimpan di perangkat ini**",
+              "KTA belum pernah tersinkron di perangkat ini, atau yang tersimpan milik akun lain.",
+              "Sambungkan internet, lalu ketuk **Sinkronkan**."
+            ],
+            [
+              "**Kartu offline perlu disinkronkan**",
+              "Sinkronisasi terakhir sudah lebih dari 7 hari, atau masa QR sudah habis.",
+              "Sambungkan internet, lalu ketuk **Sinkronkan**."
+            ],
+            [
+              "**Masa berlaku kartu tersimpan sudah lewat**",
+              "Tanggal berakhir keanggotaan pada kartu tersimpan sudah lewat.",
+              "Sambungkan internet untuk memeriksa status terbaru atau memperpanjang keanggotaan."
+            ],
+            [
+              "**Kartu tidak dapat ditampilkan offline**",
+              "Status terakhir kartu sedang dibatasi.",
+              "Sambungkan internet untuk memeriksa status terbaru."
+            ],
+            [
+              "**Jam perangkat tidak sesuai**",
+              "Jam ponsel lebih dari 5 menit lebih awal daripada waktu sinkronisasi terakhir, misalnya karena jam dimundurkan.",
+              "Aktifkan tanggal dan jam otomatis di pengaturan ponsel, lalu sinkronkan KTA kembali."
+            ]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Akan menghadiri acara di lokasi yang sinyalnya lemah? Buka tab **KTA** selagi masih terhubung internet. Kartu dan QR yang baru tersinkron siap ditunjukkan offline sampai 7 hari."
+        }
+      ]
+    },
+    {
+      "id": "b04-6",
+      "title": "Cara pihak lain memverifikasi KTA",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Siapa pun dapat memeriksa keabsahan KTA Anda, misalnya panitia acara. Pemeriksa tidak perlu memasang aplikasi atau masuk akun. Halaman verifikasi selalu membaca status terkini dari server KAPDH, sehingga kartu yang sudah kedaluwarsa atau dibatasi tidak akan tampil aktif walaupun gambarnya terlihat aktif."
+        },
+        {
+          "type": "steps",
+          "title": "Langkah pemeriksa",
+          "items": [
+            {
+              "text": "Buka kamera ponsel atau aplikasi pemindai QR, lalu arahkan ke QR pada KTA."
+            },
+            {
+              "text": "Ketuk tautan yang muncul. Halaman **Verifikasi KTA** di situs kapdh.or.id terbuka dan langsung memeriksa status."
+            },
+            {
+              "text": "Baca label hasil. Bila hasilnya **Aktif**, cocokkan nama dan foto di halaman dengan pemegang kartu."
+            },
+            {
+              "text": "Bila hasilnya **Tidak dapat memverifikasi**, periksa koneksi internet ponsel pemeriksa, lalu ketuk **Coba lagi**."
+            }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "web/b04-web-verifikasi-aktif.png",
+          "caption": "Hasil Aktif di halaman Verifikasi KTA: nama, kode angkatan, nomor anggota, masa berlaku, dan waktu pemeriksaan"
+        },
+        {
+          "type": "table",
+          "title": "Hasil pemeriksaan",
+          "columns": [
+            "Hasil",
+            "Artinya",
+            "Data yang ditampilkan"
+          ],
+          "rows": [
+            [
+              "**Aktif**",
+              "Keanggotaan berlaku.",
+              "Nama, kode angkatan, nomor anggota, tanggal berlaku sampai, foto (bila ada), dan waktu pemeriksaan."
+            ],
+            [
+              "**Aktif, segera berakhir**",
+              "Keanggotaan berlaku, tetapi akan berakhir dalam 30 hari atau kurang.",
+              "Sama seperti Aktif, ditambah tanggal berakhir pada keterangan."
+            ],
+            [
+              "**Kedaluwarsa**",
+              "Masa keanggotaan sudah berakhir. Kartu tidak dapat dipakai sampai diperpanjang.",
+              "Nama, kode angkatan, nomor anggota, dan tanggal berakhir, tanpa foto. Bila keanggotaan sudah berakhir lebih dari 30 hari, identitas tidak ditampilkan."
+            ],
+            [
+              "**Tidak aktif**",
+              "Keanggotaan tidak dapat digunakan saat ini, misalnya belum aktif atau sedang dibatasi.",
+              "Hanya label dan waktu pemeriksaan. Alasannya tidak pernah ditampilkan."
+            ],
+            [
+              "**Tidak ditemukan**",
+              "Nomor anggota pada QR tidak terdaftar, misalnya karena akun sudah dihapus.",
+              "Hanya label dan waktu pemeriksaan."
+            ],
+            [
+              "**QR tidak valid atau perlu diperbarui**",
+              "QR rusak, dipalsukan, sudah tidak berlaku, atau terbit sebelum nomor anggota dikoreksi.",
+              "Tidak ada data anggota. Minta pemegang kartu membuka KTA dalam keadaan online, lalu pindai ulang QR yang baru."
+            ],
+            [
+              "**Tidak dapat memverifikasi**",
+              "Server tidak dapat dihubungi, atau terlalu banyak pemeriksaan dalam waktu singkat. Bukan berarti anggota tidak terdaftar.",
+              "Tidak ada data anggota. Tunggu sebentar, lalu ketuk **Coba lagi**."
+            ]
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Privasi pada halaman verifikasi",
+          "items": [
+            "Email, nomor telepon, alamat, dan bukti pembayaran tidak pernah ditampilkan.",
+            "Foto hanya tampil untuk hasil Aktif, dan alasan pembatasan akun tidak pernah ditampilkan.",
+            "Nomor anggota saja tidak cukup untuk melihat data. Verifikasi selalu memerlukan QR sah yang diterbitkan aplikasi.",
+            "Halaman ini juga dapat dibuka dari tautan **Verifikasi KTA** di bagian bawah situs, tetapi hasil hanya muncul bila dibuka dari QR. Situs selengkapnya dibahas di Bab 16."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b04-7",
+      "title": "Masa keanggotaan dan pengingat perpanjangan",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Keanggotaan berlaku 12 bulan kalender sejak iuran pendaftaran diverifikasi pengurus, dihitung dalam Waktu Indonesia Barat. Ketika sisa masa tinggal 30 hari atau kurang, status berubah menjadi **Segera Berakhir** dan perpanjangan dapat diajukan. Tidak ada masa tenggang: begitu tanggal berakhir tiba, status langsung menjadi **KTA Kedaluwarsa**."
+        },
+        {
+          "type": "table",
+          "title": "Perjalanan satu periode keanggotaan",
+          "columns": [
+            "Waktu",
+            "Yang terjadi"
+          ],
+          "rows": [
+            [
+              "Iuran pendaftaran diverifikasi",
+              "KTA menjadi **KTA Aktif**. Masa berlaku 12 bulan dimulai dari tanggal verifikasi."
+            ],
+            [
+              "30 hari sebelum berakhir",
+              "Status menjadi **Segera Berakhir**, tombol **Perpanjang** aktif, dan Anda menerima notifikasi Masa KTA segera berakhir yang membuka layar **Perpanjang KTA**."
+            ],
+            [
+              "Tanggal berakhir",
+              "Status menjadi **KTA Kedaluwarsa**, QR tidak tersedia, dan Anda menerima notifikasi Masa KTA telah berakhir. Perpanjangan tetap dapat diajukan."
+            ],
+            [
+              "Perpanjangan diverifikasi sebelum berakhir",
+              "Masa baru 12 bulan dimulai dari tanggal berakhir yang lama, sehingga sisa masa aktif Anda tidak hilang."
+            ],
+            [
+              "Perpanjangan diverifikasi setelah kedaluwarsa",
+              "Masa baru 12 bulan dimulai dari tanggal verifikasi pengurus."
+            ]
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Memperpanjang dari tab KTA",
+          "items": [
+            {
+              "text": "Buka tab **KTA**. Bila perpanjangan belum dibuka, tombol **Perpanjang** tampil abu-abu dan keterangannya menyebut tanggal mulai dibuka."
+            },
+            {
+              "text": "Mulai 30 hari sebelum masa berakhir, atau kapan saja setelah kedaluwarsa, ketuk **Perpanjang**."
+            },
+            {
+              "text": "Layar **Perpanjang KTA** menampilkan masa keanggotaan, rincian iuran perpanjangan, dan riwayat periode. Ketuk **Lanjut ke pembayaran**, lalu ikuti langkah di Bab 3. Bila yang tampil **Iuran melalui pengurus**, selesaikan iuran dengan menghubungi pengurus."
+            },
+            {
+              "text": "Bila pembayaran perpanjangan sudah dibuat, tombol berubah menjadi **Lanjutkan** untuk membuka status pembayarannya."
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Pengingat masa KTA",
+          "text": "Pengingat segera berakhir dan pemberitahuan masa berakhir masing-masing dikirim satu kali per periode ke kotak masuk **Notifikasi**, juga lewat notifikasi push dan email bila tersedia. Pengingat segera berakhir tidak dikirim bila bukti iuran perpanjangan Anda sedang menunggu verifikasi. Push dan email kategori **Masa KTA** dapat diatur di **Akun** > **Preferensi notifikasi**."
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "text": "Saat KTA kedaluwarsa, Anda tetap dapat masuk, membuka KTA, riwayat pembayaran, tiket yang sudah lunas, dan kotak masuk notifikasi, serta mengajukan perpanjangan. Jejaring, pesan, dan pendaftaran event baru adalah layanan untuk anggota aktif; status keanggotaan Anda diperbarui pengurus setelah iuran perpanjangan diverifikasi."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "kapdh-mobile/lib/features/kta/kta_screen.dart",
+    "kapdh-mobile/lib/features/kta/kta_presentation.dart",
+    "kapdh-mobile/lib/features/kta/kta_sync.dart",
+    "kapdh-mobile/lib/features/kta/kta_fullscreen.dart",
+    "kapdh-mobile/lib/design/kta_card.dart",
+    "kapdh-mobile/lib/design/offline_banner.dart",
+    "kapdh-mobile/lib/design/status_badge.dart",
+    "kapdh-mobile/lib/app/theme/kapdh_tokens.dart (label status KTA)",
+    "kapdh-mobile/lib/app/redirect.dart (akses per status)",
+    "kapdh-mobile/lib/app/app_shell.dart (tab bergembok, lembar khusus anggota aktif, tombol Bayar iuran)",
+    "kapdh-mobile/lib/core/cache/kta_cache_store.dart (maxAge 7 hari, clockTolerance 5 menit, alasan cache)",
+    "kapdh-mobile/lib/features/account/notification_preferences_screen.dart (kategori Masa KTA)",
+    "kapdh-mobile/lib/features/account/account_screen.dart (Keluar menghapus cache KTA)",
+    "kapdh-mobile/mockup-html/kta/kta.html",
+    "kapdh-platform/apps/api/src/core/membership/member-number.ts (format AA.SS.JK.N, tahun lulus 1996 + angkatan)",
+    "kapdh-platform/apps/api/src/core/membership/period.ts (12 bulan WIB, Segera Berakhir 30 hari, jendela perpanjangan)",
+    "kapdh-platform/apps/api/src/core/membership/effective-status.ts",
+    "kapdh-platform/apps/api/src/core/qr/qr-token.service.ts (QR maks 7 hari, isi QR /kta/<nomor>#t=)",
+    "kapdh-platform/apps/api/src/modules/membership/member-card.service.ts",
+    "kapdh-platform/apps/api/src/modules/membership/membership-view.ts (offline_valid_until, aksi kartu)",
+    "kapdh-platform/apps/api/src/modules/membership/kta-verify.service.ts (hasil verifikasi, identitas 30 hari, foto hanya aktif)",
+    "kapdh-platform/apps/api/src/modules/membership/expiry-reminders.service.ts (pengingat 30 hari, notifikasi berakhir)",
+    "kapdh-platform/apps/web/src/pages/kta/index.astro",
+    "kapdh-platform/apps/web/src/scripts/kta-verify.ts (label hasil verifikasi)",
+    "kapdh-platform/apps/web/src/scripts/kta-page.ts",
+    "docs/adr/017-token-qr-kta-dan-qr-tiket.md",
+    "docs/handoff/phase-c/mobile-onboarding-payments-kta.md (jeda coba ulang 15 dtk sampai 5 mnt)",
+    "docs/legal/bantuan.html (Keanggotaan dan KTA)",
+    "kapdh-mobile/lib/app/router.dart (tab dalam IndexedStack: KTA disinkron saat pertama dibuka)",
+    "kapdh-mobile/lib/features/payments/payment_updates.dart (sinkron saat notifikasi pembayaran/keanggotaan)",
+    "kapdh-mobile/lib/features/payments/renewal_screen.dart (layar Perpanjang KTA, Lanjut ke pembayaran, Iuran melalui pengurus, Riwayat periode)",
+    "kapdh-mobile/lib/core/session/session_controller.dart (cache KTA dihapus saat keluar atau berganti akun)",
+    "kapdh-platform/apps/api/src/modules/auth/auth.service.ts (nomor anggota dialokasikan saat OTP email benar)",
+    "kapdh-platform/apps/api/src/core/membership/membership.kernel.ts (N tidak dipakai ulang, prefiks dihitung ulang saat koreksi)",
+    "kapdh-platform/apps/api/src/core/membership/access.ts (akses per status)",
+    "kapdh-platform/apps/web/src/lib/site.ts (tautan Verifikasi KTA di footer)",
+    "docs/runbooks/app-store-submission.md bagian 2 (D13: teks iuran sebagai status keanggotaan, bukan pembuka fitur)",
+    "docs/qa/uat-checklist.md U-03 (3.1-3.10)"
+  ]
+}

@@ -1,0 +1,402 @@
+{
+  "id": "b02",
+  "part": "anggota",
+  "title": "Memulai: Unduh, Daftar, dan Masuk",
+  "kicker": "Aplikasi Anggota",
+  "summary": "Bab ini memandu Anda dari mengunduh KAPDH Apps sampai berhasil masuk: mengisi Data Diri, memverifikasi email dengan kode OTP, mengenal tahap Biaya KTA, serta memulihkan password yang terlupa.",
+  "icon": "ph-user-plus",
+  "highlights": [
+    "Mengunduh aplikasi resmi dan memeriksa persyaratan perangkat",
+    "Mengisi Data Diri pendaftaran dan membuat password yang sah",
+    "Memverifikasi email dengan kode OTP 6 digit",
+    "Masuk ke aplikasi dan memulihkan password yang terlupa",
+    "Memahami pesan galat, layar Wajib Update, dan pemeliharaan"
+  ],
+  "sections": [
+    {
+      "id": "b02-1",
+      "title": "Mengunduh dan membuka aplikasi",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "KAPDH Apps untuk anggota tersedia di ponsel Android dan iPhone. Tidak ada versi web untuk anggota. Buka kapdh.or.id/unduh, atau ketuk **Unduh Aplikasi** di bagian atas situs, lalu ketuk tombol **Google Play** atau **App Store** sesuai ponsel Anda. Bila tombol bertuliskan Segera tersedia, aplikasi belum dapat diunduh dari toko tersebut. Halaman yang sama juga merangkum cara bergabung dan persyaratan perangkat."
+        },
+        {
+          "type": "shot",
+          "img": "web/b02-unduh.png",
+          "caption": "Halaman Unduh Aplikasi KAPDH: tombol Google Play dan App Store, cara bergabung, serta persyaratan perangkat."
+        },
+        {
+          "type": "table",
+          "title": "Persyaratan perangkat",
+          "columns": ["Perangkat", "Persyaratan"],
+          "rows": [
+            ["Android", "Versi 8.0 ke atas"],
+            ["iPhone (iOS)", "Versi 15 ke atas"],
+            ["Koneksi", "Internet untuk mendaftar dan memperbarui KTA"]
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Saat aplikasi dibuka, layar pembuka berlogo KAPDH memeriksa versi aplikasi, keadaan layanan, dan sesi masuk Anda. Pada pemasangan baru atau setelah aplikasi diperbarui, bila Anda belum masuk, berikutnya tampil layar Selamat Datang dengan dua pilihan: **Daftar KAPDH Apps** untuk alumni yang belum punya akun dan **Sudah Punya Akun? Masuk** untuk yang sudah terdaftar. Setelah Anda memilih salah satunya, pembukaan berikutnya langsung menuju layar Masuk."
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b02-selamat-datang.png", "caption": "Layar Selamat Datang pada pemasangan pertama." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Unduh hanya dari tautan resmi",
+          "text": "Pasang aplikasi hanya melalui tombol di halaman Unduh Aplikasi atau dari toko aplikasi resmi. Pengurus KAPDH tidak pernah meminta password atau kode verifikasi Anda, termasuk lewat telepon atau pesan WhatsApp."
+        }
+      ]
+    },
+    {
+      "id": "b02-2",
+      "title": "Mendaftar: mengisi Data Diri",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Pendaftaran terdiri atas empat tahap yang tampil di bagian atas layar: **Data Diri**, **OTP**, **Biaya KTA**, dan **Pembayaran**. Bab ini membahas tiga tahap pertama. Tahap Pembayaran dibahas di Bab 3."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Siapa yang dapat mendaftar?",
+          "text": "Alumni Pondok Pesantren Darel Hikmah yang berusia 18 tahun ke atas, dari angkatan 1 sampai angkatan terbaru, termasuk alumni yang tidak menamatkan pendidikannya. Data pendataan lama tidak dipindahkan otomatis, jadi anggota lama pun mendaftar sendiri lewat aplikasi."
+        },
+        {
+          "type": "steps",
+          "title": "Langkah mengisi Data Diri",
+          "items": [
+            { "text": "Ketuk **Daftar KAPDH Apps** di layar Selamat Datang, atau ketuk **Daftar** di bawah tulisan Belum ada akun? pada layar Masuk. Layar **Daftar Alumni** terbuka." },
+            { "text": "Isi **Nama Lengkap**, lalu pilih **Jenis Kelamin**: **Laki-laki** atau **Perempuan**." },
+            { "text": "Isi **Email** yang aktif dan dapat Anda buka sekarang. Kode verifikasi akan dikirim ke alamat ini." },
+            { "text": "Isi **Password**. Perhatikan daftar aturan di bawah kolom: setiap aturan yang terpenuhi bertanda centang hijau." },
+            { "text": "Pilih **Angkatan**, lalu **Kelas Masuk** dan **Kelas Keluar**. Periksa kotak **Perhitungan Tahun Akademik** yang muncul setelah ketiganya terisi." },
+            { "text": "Ketuk **Baca Kebijakan Privasi** dan **Baca Ketentuan**, lalu centang Saya telah membaca dan menyetujui Kebijakan Privasi serta Ketentuan KAPDH." },
+            { "text": "Ketuk **Lanjut verifikasi email**. Selama data dikirim, tombol bertuliskan **Mengirim...**" }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b02-daftar-terisi.png", "caption": "Formulir Daftar Alumni yang sudah terisi lengkap (data contoh)." }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Isian Data Diri",
+          "columns": ["Isian", "Keterangan"],
+          "rows": [
+            ["Nama Lengkap", "Minimal 2 karakter dan paling panjang 120 karakter. Tulis nama lengkap Anda sebagai alumni."],
+            ["Jenis Kelamin", "Pilih **Laki-laki** atau **Perempuan**."],
+            ["Email", "Harus berformat email yang benar. Satu email hanya untuk satu akun."],
+            ["Password", "Harus memenuhi kelima aturan password (lihat di bawah)."],
+            ["Angkatan", "Diurutkan dari angkatan terbaru sampai angkatan 1, disertai tahun lulusnya, misalnya Angkatan 12 (lulus 2008). Angkatan terbaru mengikuti tahun berjalan, misalnya Angkatan 30 (lulus 2026)."],
+            ["Kelas Masuk dan Kelas Keluar", "Pilihan tertulis Kelas 1 (1 MTs) sampai Kelas 3 (3 MTs), lalu Kelas 4 (1 Aliyah) sampai Kelas 6 (3 Aliyah). Kelas Keluar tidak boleh sebelum Kelas Masuk."],
+            ["Persetujuan", "Wajib dicentang. Di bawahnya tertulis versi Kebijakan Privasi dan Ketentuan yang Anda setujui."]
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Tahun masuk, tahun keluar, dan tahun lulus dihitung otomatis dari angkatan dan kelas, jadi Anda tidak perlu mengisinya. Tahun lulus sama dengan 1996 ditambah nomor angkatan. Contoh: Angkatan 12 lulus 2008; bila masuk di Kelas 1 dan keluar di Kelas 6, kotak menampilkan Tahun Masuk 2002, Tahun Keluar 2008, dan Tahun Lulus 2008. Angka ini adalah pratinjau. Sistem menghitung ulang dan menetapkan nomor anggota setelah email Anda terverifikasi."
+        },
+        {
+          "type": "list",
+          "title": "Aturan password",
+          "items": [
+            "Panjang 8 sampai 72 byte. Untuk huruf, angka, dan simbol biasa, satu karakter sama dengan satu byte; huruf beraksen memakai lebih dari satu byte.",
+            "Memuat huruf besar dan huruf kecil.",
+            "Memuat angka.",
+            "Memuat simbol, misalnya ! @ # atau titik. Spasi tidak dihitung sebagai simbol.",
+            "Penghitung di kanan kolom berwarna merah (misalnya 5/8) sampai panjang minimal terpenuhi. Password yang lebih dari 72 byte ditolak, bukan dipotong."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Periksa sebelum mengirim",
+          "text": "Nama lengkap, jenis kelamin, angkatan, kelas masuk, dan kelas keluar dipakai untuk KTA dan nomor anggota. Setelah terdaftar, data ini hanya dapat dikoreksi pengurus. KAPDH tidak meminta NIK, nomor KTP, tanggal lahir, maupun alamat rumah saat pendaftaran."
+        }
+      ]
+    },
+    {
+      "id": "b02-3",
+      "title": "Verifikasi email dengan kode OTP",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Setelah Anda mengetuk **Lanjut verifikasi email**, layar **Masukkan kode verifikasi** terbuka. Kode 6 digit dikirim dari noreply@kapdh.or.id dengan subjek Kode verifikasi pendaftaran KAPDH. Akun Anda baru aktif setelah kode ini dimasukkan dengan benar."
+        },
+        {
+          "type": "steps",
+          "items": [
+            { "text": "Buka kotak masuk email Anda dan cari email kode dari KAPDH." },
+            { "text": "Ketik kode ke enam kotak **Kode OTP**, atau salin kode dari email lalu ketuk **Tempel kode**. Pada sebagian ponsel, kode juga muncul sebagai saran di keyboard." },
+            { "text": "Kode diperiksa otomatis begitu digit keenam terisi. Bila tidak, ketuk **Verifikasi**." },
+            { "text": "Bila kode benar, akun Anda aktif dan aplikasi langsung membuka tahap **Biaya KTA**." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b02-otp-salah.png", "caption": "Kode salah: sisa percobaan, hitung mundur Kirim ulang, dan tautan ubah email." },
+            { "img": "mobile/b02-otp-ubah-email.png", "caption": "Lembar Ubah alamat email untuk email yang salah ketik." }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Aturan kode verifikasi",
+          "columns": ["Aturan", "Ketentuan"],
+          "rows": [
+            ["Masa berlaku", "10 menit sejak kode dikirim."],
+            ["Batas percobaan", "5 kali per kode, tampil sebagai Sisa percobaan: 3 dari 5. Bila habis, kode tidak berlaku lagi dan Anda perlu meminta kode baru."],
+            ["Kirim ulang", "Tombol **Kirim ulang** aktif 60 detik setelah kode terakhir dikirim. Sebelumnya tampil hitung mundur, misalnya Kirim ulang dalam 0:27."],
+            ["Kode terbaru", "Setiap kode baru membatalkan kode sebelumnya. Selalu pakai kode dari email yang paling akhir."],
+            ["Batas pengiriman", "Paling banyak 5 kode per jam untuk satu email, dihitung bersama kode Lupa Password."]
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Mengganti email yang salah ketik",
+          "items": [
+            { "text": "Di layar kode verifikasi, ketuk **Salah email? Ubah alamat email**." },
+            { "text": "Isi **Email baru** dengan alamat yang benar, lalu isi **Password** yang Anda buat saat mendaftar." },
+            { "text": "Ketuk **Kirim kode ke email baru**. Kode baru dikirim ke email baru dengan subjek Kode verifikasi perubahan email KAPDH, dan email lama tidak dapat lagi dipakai untuk aktivasi. Bila di bawah kolom Email baru muncul Email sudah terdaftar, gunakan email lain atau masuk dengan akun tersebut." },
+            { "text": "Masukkan kode dari email baru di layar kode verifikasi seperti biasa. Perubahan email ini hanya tersedia selama akun belum terverifikasi; setelah akun aktif, email akun belum dapat diubah, jadi hubungi bantuan bila perlu (Bab 17)." }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Kode belum masuk?",
+          "items": [
+            "Periksa folder spam, promosi, atau sampah di email Anda.",
+            "Tunggu hitung mundur selesai, lalu ketuk **Kirim ulang**.",
+            "Bila aplikasi tertutup sebelum kode dimasukkan, buka lagi lalu **Masuk** dengan email dan password yang Anda daftarkan. Aplikasi akan meminta kode verifikasi lagi.",
+            "Tombol kembali di layar kode membawa Anda ke formulir Daftar Alumni dengan isian yang sama, kecuali password, selama aplikasi belum ditutup.",
+            "Bila muncul tombol **Mulai ulang pendaftaran**, kode tidak dapat diperbarui lagi. Ketuk tombol itu, periksa isian Data Diri yang masih tersimpan, isi password, lalu kirim ulang formulir untuk menerima kode baru."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "text": "Jangan berikan kode verifikasi kepada siapa pun, termasuk kepada orang yang mengaku sebagai pengurus KAPDH."
+        }
+      ]
+    },
+    {
+      "id": "b02-4",
+      "title": "Tahap Biaya KTA setelah verifikasi",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Begitu email terverifikasi, KTA digital Anda langsung dibuat dengan status **KTA Tidak Aktif** dan nomor anggota sudah ditetapkan. Layar bertajuk **KTA Anda sudah dibuat** menampilkan kartu ringkas berisi nama, angkatan, tahun lulus, dan nomor anggota, disusul **Rincian iuran pendaftaran**."
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b02-biaya-kta.png", "caption": "Tahap Biaya KTA: KTA ringkas berstatus Tidak Aktif dan rincian iuran (nominal contoh)." }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            "Komponen dan total iuran pendaftaran diatur pengurus dan dapat berubah. Nominal pada gambar hanya contoh.",
+            "Masa aktif keanggotaan tertulis di bawah total dan dihitung sejak iuran diverifikasi pengurus.",
+            "Ketuk **Lanjut ke pembayaran** untuk melihat cara membayar. Bila Anda sudah pernah membuka pembayaran, tombolnya bertuliskan **Lanjutkan pembayaran**.",
+            "Bila tampil **Iuran melalui pengurus**, pembayaran diatur langsung oleh pengurus. Hubungi pengurus lewat kontak yang tampil di layar.",
+            "Bila Anda menutup aplikasi sebelum membayar, tahap ini terbuka lagi saat aplikasi dibuka berikutnya.",
+            "Bila bukti pembayaran sudah Anda kirim, aplikasi langsung membuka layar status pembayaran, bukan tahap ini (lihat Bab 3)."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Kapan KTA aktif?",
+          "text": "KTA aktif setelah pengurus memverifikasi iuran pendaftaran Anda. Cara membayar dan mengunggah bukti transfer dijelaskan di Bab 3, sedangkan isi dan pemakaian KTA digital dijelaskan di Bab 4."
+        }
+      ]
+    },
+    {
+      "id": "b02-5",
+      "title": "Masuk ke aplikasi",
+      "blocks": [
+        {
+          "type": "steps",
+          "items": [
+            { "text": "Buka aplikasi. Bila layar Selamat Datang tampil, ketuk **Sudah Punya Akun? Masuk**." },
+            { "text": "Isi **Email** dan **Password** akun Anda. Ketuk ikon mata di kolom password untuk menampilkan atau menyembunyikannya." },
+            { "text": "Ketuk **Masuk**. Tombol ini baru dapat diketuk setelah email dan password terisi. Selama data diperiksa, tombol bertuliskan **Memeriksa...**" },
+            { "text": "Aplikasi membuka halaman sesuai status Anda, misalnya Beranda, atau tahap **Biaya KTA** bila iuran pendaftaran belum diverifikasi." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b02-masuk.png", "caption": "Layar Masuk dengan tautan Lupa Password dan Daftar." }
+          ]
+        },
+        {
+          "type": "status",
+          "title": "Yang terjadi setelah Anda mengetuk Masuk",
+          "items": [
+            { "label": "Berhasil masuk", "tone": "success", "text": "Aplikasi membuka Beranda, tahap Biaya KTA bila iuran pendaftaran belum diverifikasi, atau layar **Perpanjang KTA** bila keanggotaan sudah berakhir (Bab 3)." },
+            { "label": "Email belum diverifikasi", "tone": "warning", "text": "Layar kode verifikasi terbuka. Masukkan kode terbaru dari email Anda." },
+            { "label": "Akun dibatasi", "tone": "warning", "text": "Aplikasi membuka halaman **Akun Anda sedang dibatasi** sebagai pengganti aplikasi utama. Penjelasannya ada di Bab 8." },
+            { "label": "Akun sedang dihapus", "tone": "neutral", "text": "Layar **Status Akun** menampilkan proses penghapusan. Akun tidak dapat dipakai masuk selama penghapusan berjalan." },
+            { "label": "Akun dinonaktifkan", "tone": "danger", "text": "Layar **Status Akun** menampilkan Akun tidak aktif, sehingga akun tidak dapat dipakai masuk. Hubungi pengurus melalui kontak di layar itu, sebaiknya dari email akun Anda." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Terlalu banyak percobaan masuk",
+          "text": "Setelah 10 kali gagal masuk dalam 15 menit untuk email yang sama, aplikasi menahan percobaan berikutnya dan tombol Masuk berganti menjadi hitung mundur, misalnya Coba lagi dalam 4:59. Sambil menunggu, Anda tetap dapat memakai **Lupa Password**."
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Anda tidak perlu masuk setiap kali membuka aplikasi karena sesi tersimpan di ponsel. Cara keluar dan mengganti password saat sudah masuk dijelaskan di Bab 8."
+        }
+      ]
+    },
+    {
+      "id": "b02-6",
+      "title": "Lupa password",
+      "blocks": [
+        {
+          "type": "steps",
+          "items": [
+            { "text": "Di layar Masuk, ketuk **Lupa Password**. Email yang sudah Anda ketik ikut terisi." },
+            { "text": "Periksa **Email**, lalu ketuk **Kirim kode**." },
+            { "text": "Di layar **Masukkan kode pemulihan**, ketik atau tempel kode 6 digit dari email bersubjek Kode pemulihan sandi KAPDH. Aturannya sama dengan kode pendaftaran: berlaku 10 menit, 5 kali percobaan, kirim ulang setelah 60 detik." },
+            { "text": "Di layar **Buat password baru**, isi **Password Baru** sesuai aturan password, lalu ketik ulang di **Ulangi Password Baru**." },
+            { "text": "Ketuk **Simpan password baru** sebelum hitung mundur Selesaikan dalam habis. Waktunya 10 menit sejak kode benar." },
+            { "text": "Setelah muncul **Password berhasil diganti**, ketuk **Masuk** dan masuk dengan password baru." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b02-lupa-email.png", "caption": "Langkah Email: masukkan email akun lalu ketuk Kirim kode." },
+            { "img": "mobile/b02-sandi-baru.png", "caption": "Langkah Password Baru dengan hitung mundur 10 menit." }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Perlu diketahui",
+          "items": [
+            "Demi keamanan, aplikasi tidak memberi tahu apakah sebuah email terdaftar. Kode hanya dikirim bila email itu milik akun yang emailnya sudah terverifikasi dan tidak sedang dihapus atau dinonaktifkan.",
+            "Bila Anda kembali ke layar Lupa Password setelah kode terkirim, ketuk **Sudah menerima kode? Lanjutkan verifikasi** agar tidak perlu meminta kode baru.",
+            "Setelah password baru disimpan, semua perangkat yang masuk ke akun Anda dikeluarkan.",
+            "Bila waktu membuat password baru habis, ketuk **Ulangi** untuk meminta kode baru.",
+            "Bila Anda menekan kembali di layar Buat password baru, muncul pertanyaan **Batalkan password baru?** karena kodenya sudah terpakai. Pilih **Lanjutkan mengisi** untuk tetap di layar.",
+            "Bila pengurus memulai pemulihan untuk Anda, semua perangkat dikeluarkan dan email berisi kode serta tautan. Buka tautan di ponsel yang terpasang aplikasi KAPDH, lalu masukkan kodenya, atau pakai **Lupa Password**."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Lupa password sebelum akun terverifikasi?",
+          "text": "Lupa Password tidak mengirim kode untuk akun yang emailnya belum diverifikasi. Isi ulang formulir **Daftar** dengan email yang sama dan password baru, lalu masukkan kode verifikasi baru yang dikirim ke email Anda."
+        }
+      ]
+    },
+    {
+      "id": "b02-7",
+      "title": "Pesan galat, Wajib Update, dan pemeliharaan",
+      "blocks": [
+        {
+          "type": "table",
+          "title": "Pesan yang sering muncul saat daftar dan masuk",
+          "columns": ["Pesan di layar", "Arti dan yang perlu dilakukan"],
+          "rows": [
+            ["Email sudah terdaftar (di bawah kolom Email)", "Email ini sudah dipakai akun yang emailnya terverifikasi, mungkin akun Anda sendiri. Ketuk **Masuk**, atau pakai **Lupa Password** bila Anda lupa password."],
+            ["Pendaftaran belum dibuka karena Kebijakan Privasi atau Ketentuan belum diterbitkan pengurus. Coba lagi nanti.", "Pendaftaran belum dapat dilakukan saat ini. Ketuk **Coba lagi** beberapa saat kemudian."],
+            ["Kebijakan Privasi atau Ketentuan baru saja diperbarui. Baca ulang lalu setujui kembali.", "Centang persetujuan dilepas otomatis. Baca versi terbaru, centang lagi, lalu ketuk **Lanjut verifikasi email**."],
+            ["Versi kebijakan belum dapat dimuat. Periksa koneksi Anda.", "Kotak persetujuan baru dapat dicentang setelah versi dokumen termuat. Periksa internet, lalu ketuk **Coba lagi**."],
+            ["Setujui Kebijakan Privasi dan Ketentuan untuk melanjutkan.", "Centang kotak persetujuan sebelum mengirim."],
+            ["Coba lagi dalam 0:42 (pada tombol kirim)", "Permintaan terlalu sering. Tunggu hitung mundur selesai, lalu kirim lagi."],
+            ["Terlalu banyak permintaan kode. Coba lagi nanti.", "Batas 5 kode per jam untuk email ini tercapai. Pakai kode terakhir yang masih berlaku, atau coba lagi nanti."],
+            ["Kode salah. Sisa percobaan 3.", "Periksa kode di email terbaru, lalu ketik ulang dengan teliti."],
+            ["Kode tidak berlaku lagi. Minta kode baru.", "Kode kedaluwarsa atau percobaannya habis. Ketuk **Kirim ulang** untuk mendapatkan kode baru."],
+            ["Email atau password salah.", "Periksa ejaan email serta huruf besar dan kecil pada password, lalu coba lagi."],
+            ["Terlalu banyak percobaan masuk. Coba lagi nanti atau gunakan lupa password.", "Tunggu hitung mundur selesai, atau pulihkan akun lewat **Lupa Password**."],
+            ["Tanpa koneksi atau Server belum dapat dihubungi (di layar pembuka)", "Ponsel tidak tersambung ke internet atau layanan sedang sibuk. Periksa koneksi lalu ketuk **Coba lagi**; sesi Anda tetap tersimpan."]
+          ]
+        },
+        {
+          "type": "p",
+          "text": "Bila versi aplikasi di ponsel Anda sudah tidak didukung, layar **Wajib Update** bertuliskan Perbarui aplikasi KAPDH muncul dan fitur lain tidak dapat dibuka. Ketuk **Perbarui di Play Store** di Android atau **Perbarui di App Store** di iPhone, pasang pembaruannya, lalu buka aplikasi lagi atau ketuk **Periksa lagi**. Bila tautan toko belum tersedia, hubungi pengurus melalui kotak **Butuh bantuan?** di layar yang sama."
+        },
+        {
+          "type": "p",
+          "text": "Saat layanan sedang dirawat, tampil layar **Layanan sedang dalam pemeliharaan** beserta perkiraan waktu selesai bila tersedia. Data Anda tetap aman; pengiriman data baru ditunda sementara. Ketuk **Coba lagi** untuk memeriksa apakah layanan sudah kembali. Selama pemeliharaan, Anda belum dapat mendaftar, memasukkan kode verifikasi, masuk, atau memulihkan password. Bila Anda sudah masuk, dapat tersedia pilihan **Lanjut dalam mode baca** dan **Tampilkan KTA** sehingga KTA tetap dapat ditunjukkan."
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b02-wajib-update.png", "caption": "Layar Wajib Update dengan tombol ke toko aplikasi." },
+            { "img": "mobile/b02-pemeliharaan.png", "caption": "Layar pemeliharaan dengan perkiraan waktu selesai." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Bila galat terus berulang, catat pesan yang muncul dan waktu kejadiannya, lalu hubungi bantuan@kapdh.or.id. Jangan pernah menyertakan password atau kode verifikasi dalam pesan Anda."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "kapdh-platform/apps/web/src/pages/unduh.astro",
+    "kapdh-platform/apps/web/src/components/StoreButtons.astro",
+    "kapdh-platform/apps/web/src/scripts/config-page.ts (Unduh di Google Play, Segera tersedia)",
+    "kapdh-mobile/lib/core/welcome/welcome_gate.dart (Welcome sekali per pemasangan/pembaruan)",
+    "kapdh-mobile/lib/features/status/deletion_status_screen.dart (Status Akun, Akun tidak aktif)",
+    "kapdh-mobile/lib/features/status/restricted_screen.dart (Akun Anda sedang dibatasi)",
+    "kapdh-mobile/lib/features/payments/renewal_screen.dart (Perpanjang KTA)",
+    "kapdh-platform/packages/shared/src/status.ts (rute awal per status)",
+    "kapdh-platform/apps/api/src/modules/auth/auth.controller.ts (full_name 2-120 karakter)",
+    "kapdh-mobile/android/app/build.gradle.kts (minSdk 26 = Android 8.0)",
+    "kapdh-mobile/ios/Podfile (platform ios 15.0)",
+    "kapdh-mobile/lib/features/system/splash_screen.dart",
+    "kapdh-mobile/lib/features/system/welcome_screen.dart",
+    "kapdh-mobile/lib/features/system/update_required_screen.dart",
+    "kapdh-mobile/lib/features/system/maintenance_screen.dart",
+    "kapdh-mobile/lib/features/auth/register_screen.dart",
+    "kapdh-mobile/lib/features/auth/registration_draft.dart",
+    "kapdh-mobile/lib/features/auth/auth_widgets.dart",
+    "kapdh-mobile/lib/features/auth/otp_screen.dart",
+    "kapdh-mobile/lib/features/auth/otp_challenge.dart (otpMaxAttempts 5, otpValidity 10 menit, otpResendCooldown 60 detik)",
+    "kapdh-mobile/lib/features/auth/email_correction_sheet.dart",
+    "kapdh-mobile/lib/features/auth/login_screen.dart",
+    "kapdh-mobile/lib/features/auth/forgot_password_screen.dart",
+    "kapdh-mobile/lib/features/auth/forgot_otp_screen.dart",
+    "kapdh-mobile/lib/features/auth/reset_password_screen.dart",
+    "kapdh-mobile/lib/features/auth/auth_flow.dart (reset_token 10 menit)",
+    "kapdh-mobile/lib/features/onboarding/onboarding_fees_screen.dart",
+    "kapdh-mobile/lib/features/membership/academic.dart (cohortBaseYear 1996, label kelas, rumus tahun akademik)",
+    "kapdh-mobile/lib/core/validation/password.dart",
+    "kapdh-mobile/lib/design/kapdh_stepper.dart",
+    "kapdh-mobile/lib/design/otp_boxes.dart",
+    "kapdh-mobile/lib/app/redirect.dart",
+    "kapdh-mobile/lib/features/account/profile_edit_screen.dart (data keanggotaan hanya dikoreksi pengurus)",
+    "kapdh-platform/packages/shared/src/password.ts",
+    "kapdh-platform/apps/api/src/modules/auth/otp-challenge.service.ts (OTP_TTL 10 menit, resend 60 detik, 5 percobaan, 5 kirim per jam per email)",
+    "kapdh-platform/apps/api/src/modules/auth/auth.service.ts (email sudah terdaftar, pendaftaran belum dibuka, VERSION_CONFLICT, registrasi ulang akun pending)",
+    "kapdh-platform/apps/api/src/modules/auth/password.service.ts (lupa password hanya akun aktif)",
+    "kapdh-platform/apps/api/src/core/identity/password-verifier.ts (10 gagal login per 15 menit)",
+    "kapdh-platform/apps/api/src/core/adapters/mailer.ts (subjek email OTP, teks pemulihan oleh pengurus)",
+    "kapdh-platform/.env.example (MAIL_FROM noreply@kapdh.or.id)",
+    "docs/legal/bantuan.html (Memulai, Kendala teknis, Data yang hanya dapat dikoreksi pengurus)",
+    "docs/legal/ketentuan.html (batas usia 18 tahun)",
+    "docs/handoff/phase-c/mobile-auth-recovery.md",
+    "docs/handoff/phase-c/api-auth.md",
+    "kapdh-mobile/mockup-html/auth/*.html"
+  ]
+}

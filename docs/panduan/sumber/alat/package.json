@@ -1,0 +1,17 @@
+{
+  "name": "kapdh-panduan-alat",
+  "private": true,
+  "type": "module",
+  "description": "Pembangun Panduan Penggunaan (PDF) dan Presentasi Peluncuran (PPTX) KAPDH Apps",
+  "scripts": {
+    "pdf": "node build-pdf.mjs",
+    "pptx": "node build-pptx.mjs"
+  },
+  "dependencies": {
+    "pagedjs": "0.4.3",
+    "playwright-core": "1.56.1",
+    "pptxgenjs": "3.12.0",
+    "qrcode": "1.5.4",
+    "sharp": "0.34.4"
+  }
+}

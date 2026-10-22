@@ -1,0 +1,429 @@
+{
+  "id": "b14",
+  "part": "pengurus",
+  "title": "Moderasi dan Audit",
+  "kicker": "Web Admin Pengurus",
+  "summary": "Halaman Moderasi adalah tempat pengurus meninjau laporan dan banding anggota, lalu memutus tindakan dengan acuan Ketentuan Komunitas. Halaman Audit mencatat setiap perubahan penting dan hanya dapat dibaca serta diekspor.",
+  "icon": "ph-gavel",
+  "highlights": [
+    "Membaca antrean, prioritas, dan target penanganan laporan",
+    "Memeriksa bukti, pihak terlapor, dan riwayat moderasinya",
+    "Memutus: abaikan, peringatkan, suspend, atau cabut suspend",
+    "Menangani laporan grup dan banding atas pembatasan akun",
+    "Menelusuri entri audit dan mengekspornya ke CSV"
+  ],
+  "sections": [
+    {
+      "id": "b14-1",
+      "title": "Membuka antrean laporan",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Klik **Moderasi** di menu samping. Angka pada menu adalah jumlah laporan aktif, yaitu laporan berstatus **Terbuka** dan **Ditinjau** yang dapat Anda lihat. Kartu **Moderasi** di Dashboard menampilkan angka yang sama (**Laporan aktif (terbuka + ditinjau)**) beserta **Mendesak (target 24 jam)** dan **Lewat target penanganan**, dengan tautan **Buka antrean moderasi aktif**. Antrean diperbarui otomatis setiap menit dan menampilkan 20 laporan per halaman."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b14-antrean.png",
+          "caption": "Halaman Moderasi: kartu ringkasan, filter antrean, dan laporan Mendesak yang lewat target di urutan teratas"
+        },
+        {
+          "type": "list",
+          "title": "Kartu ringkasan di atas antrean",
+          "items": [
+            "**Terbuka**: laporan aktif yang belum diklaim pengurus.",
+            "**Sedang ditinjau**: laporan aktif yang sudah diklaim seorang pengurus.",
+            "**Lewat target**: laporan aktif yang sudah melewati target penanganan. Barisnya di antrean berlatar kuning dan bertanda **Lewat target**.",
+            "**Mendesak**: laporan aktif berkategori **Ancaman/keselamatan**.",
+            "Angka pada kartu selalu menghitung seluruh laporan aktif dan tidak berubah mengikuti filter."
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Menyaring antrean",
+          "items": [
+            { "text": "Antrean terbuka dengan **Status** **Perlu ditangani** (gabungan Terbuka dan Ditinjau) dan **Urutkan** **Paling mendesak**, sehingga laporan dengan target penanganan terdekat berada di atas." },
+            { "text": "Ketik nama atau nomor anggota di **Cari pihak terlapor** untuk menemukan laporan tentang seorang anggota. Laporan grup yang belum menunjuk anggota tidak ikut dalam pencarian ini." },
+            { "text": "Pilih **Prioritas** (**Mendesak** atau **Normal**), **Kategori**, atau **Objek** (**Pengguna**, **Pesan**, atau **Grup**)." },
+            { "text": "Centang **Hanya yang lewat target** untuk mendahulukan laporan yang terlambat." },
+            { "text": "Ganti **Status** ke **Selesai**, **Diabaikan**, atau **Semua status** untuk melihat laporan yang sudah diputus. **Urutkan** juga dapat diubah ke **Terbaru** atau **Terlama**." },
+            { "text": "Klik nama kategori di kolom **Laporan** untuk membuka detailnya. Antrean sengaja tidak memuat bukti maupun identitas pelapor." }
+          ]
+        },
+        {
+          "type": "status",
+          "title": "Status laporan",
+          "items": [
+            { "label": "Terbuka", "tone": "warning", "text": "Laporan belum diputus dan belum diklaim. Laporan ini boleh langsung diputus tanpa klaim." },
+            { "label": "Ditinjau", "tone": "info", "text": "Sudah diklaim seorang pengurus. Nama peninjau tampil di bawah status." },
+            { "label": "Selesai", "tone": "success", "text": "Diputus dengan tindakan: peringatan, suspend, atau cabut suspend." },
+            { "label": "Diabaikan", "tone": "neutral", "text": "Diputus dengan **Abaikan**, termasuk banding yang ditolak." }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Prioritas dan target penanganan",
+          "columns": ["Prioritas", "Kategori", "Target penanganan"],
+          "rows": [
+            ["**Mendesak**", "**Ancaman/keselamatan**", "24 jam sejak laporan dibuat, termasuk Sabtu dan Minggu."],
+            ["**Normal**", "**Spam**, **Pelecehan**, **Ujaran kebencian**, **Konten seksual**, **Penipuan**, **Lainnya**, dan **Banding**", "2 hari kerja sejak laporan dibuat. Hari kerja adalah Senin sampai Jumat WIB; laporan yang masuk Sabtu atau Minggu mulai dihitung Senin pukul 00.00 WIB."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Prioritas ditentukan sistem",
+          "text": "Prioritas dan target penanganan dihitung otomatis dari kategori yang dipilih pelapor dan tidak dapat diubah pengurus. Libur nasional belum diperhitungkan, jadi atur piket moderasi pada hari libur. Halaman ini memerlukan izin **Lihat laporan**; mengklaim dan memutus memerlukan juga **Putuskan laporan**. Izin diatur Super Admin (Bab 15)."
+        }
+      ]
+    },
+    {
+      "id": "b14-2",
+      "title": "Membaca detail laporan",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Halaman detail memuat bukti terbatas yang direkam saat laporan dikirim. Pengurus tidak dapat membuka percakapan anggota di luar bukti ini. Setiap kali detail dibuka, nama pengurus, waktu, dan rujukan bukti yang ditampilkan tercatat di audit, tanpa menyalin isi buktinya."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b14-detail.png",
+          "caption": "Detail laporan pesan: Ringkasan, Bukti berisi pesan konteks dan pesan yang dilaporkan, Pihak terlapor, serta Peninjauan"
+        },
+        {
+          "type": "table",
+          "title": "Bagian halaman detail",
+          "columns": ["Bagian", "Isi"],
+          "rows": [
+            ["**Ringkasan**", "Status, prioritas, penanda **Lewat target**, kategori, objek, waktu dibuat, target penanganan, pelapor, peninjau, **Penjelasan pelapor**, dan **Laporan aktif lain terhadap pihak yang sama**."],
+            ["**Bukti**", "Salinan saat laporan dikirim: **Pesan yang dilaporkan** dan paling banyak 5 pesan **Konteks**, **Profil saat dilaporkan**, **Grup saat dilaporkan**, atau (banding) **Suspend yang dibanding**."],
+            ["**Pihak terlapor**", "Nama, nomor anggota, angkatan, status keanggotaan terkini, masa aktif, serta waktu dan pesan suspend bila sedang dibatasi."],
+            ["**Riwayat moderasi**", "Peringatan, suspend, dan pencabutan suspend sebelumnya terhadap anggota itu, beserta pengurus dan alasannya."],
+            ["**Keputusan**", "Tampil setelah laporan diputus: tindakan, waktu, pengurus, catatan internal, pesan untuk anggota, dan apakah pesan terlapor dihapus."]
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Keadaan khusus pada bukti",
+          "items": [
+            "Bukti tetap utuh walaupun pesan, foto profil, atau foto grup kemudian dihapus atau diganti. Pesan yang dihapus setelah laporan dibuat diberi keterangan bahwa salinan buktinya tetap utuh.",
+            "Demi keamanan, gambar bukti hanya dapat dibuka dalam waktu singkat setelah halaman dimuat, paling lama 10 menit. Bila muncul **Tautan bukti kedaluwarsa (berlaku 10 menit).**, klik **Muat ulang bukti**.",
+            "Berkas yang sudah melewati masa simpan tampil sebagai keterangan bahwa berkas sudah dihapus sesuai kebijakan retensi.",
+            "Bila akun pelapor atau pihak terlapor sudah dihapus, namanya tampil sebagai **Akun dihapus**, dan penjelasan maupun isi pesan yang ditulis akun itu tidak ditampilkan."
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Mengklaim laporan",
+          "items": [
+            { "text": "Klik **Klaim untuk ditinjau** di kartu **Peninjauan**. Status berubah menjadi **Ditinjau**, nama Anda tampil sebagai peninjau, dan kartu **Peninjauan** diganti tulisan **Anda sedang meninjau laporan ini.**" },
+            { "text": "Klaim hanya penanda agar pengurus lain tahu laporan sedang Anda tangani. Laporan tetap dapat diputus tanpa klaim." },
+            { "text": "Bila laporan sedang ditinjau pengurus lain, tombolnya menjadi **Ambil alih peninjauan**. Gunakan hanya setelah berkoordinasi dengan peninjau sebelumnya." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Konflik kepentingan",
+          "text": "Laporan tentang akun alumni yang tertaut ke akun admin Anda tidak pernah tampil di antrean, hitungan, maupun pencarian Anda, termasuk laporan grup yang belum menunjuk anggota bila akun alumni Anda masih menjadi anggota grup itu. Laporan yang dikirim akun alumni Anda tetap dapat dibaca, tetapi klaim dan keputusannya harus dilakukan pengurus lain. Aturan ini juga berlaku bagi Super Admin."
+        }
+      ]
+    },
+    {
+      "id": "b14-3",
+      "title": "Memutus laporan",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Jadikan Ketentuan Komunitas acuan setiap keputusan. Ketentuan itu memuat daftar perilaku terlarang dan menetapkan bahwa tindakan disesuaikan dengan berat pelanggaran, dampaknya bagi anggota lain, serta riwayat pelanggaran sebelumnya. Tindakan tidak harus berurutan: pelanggaran berat seperti eksploitasi anak, ancaman keselamatan, atau penipuan dapat langsung dikenai suspend tanpa peringatan. Satu laporan hanya dapat diputus satu kali."
+        },
+        {
+          "type": "steps",
+          "title": "Memutus laporan",
+          "items": [
+            { "text": "Di kartu **Putuskan laporan**, pilih **Tindakan**. Pilihan menyesuaikan keadaan anggota: **Suspend** tampil bila anggota belum dibatasi, dan **Cabut suspend** bila anggota sedang dibatasi." },
+            { "text": "Isi **Catatan internal (alasan keputusan)**, 3 sampai 1.000 karakter. Catatan ini hanya untuk pengurus dan audit, tidak pernah dikirim ke anggota." },
+            { "text": "Isi **Pesan untuk anggota**, 3 sampai 500 karakter. Pesan wajib untuk **Peringatkan** dan **Suspend**, dan dikirim ke anggota yang dikenai keputusan tanpa menyebut pelapor." },
+            { "text": "Untuk laporan pesan, centang **Jadikan pesan terlapor placeholder (snapshot bukti tetap tersimpan)** bila pesan perlu dihapus dari percakapan." },
+            { "text": "Klik **Putuskan laporan**. Dialog konfirmasi menampilkan akibat tindakan dan catatan internal Anda. Untuk **Abaikan** atau **Peringatkan** tanpa penghapusan pesan, cukup klik **Ya, abaikan** atau **Ya, peringatkan**." },
+            { "text": "Untuk **Suspend**, **Cabut suspend**, atau bila pesan dijadikan placeholder, centang dulu **Saya sudah memeriksa bukti dan keputusan ini sesuai pedoman moderasi.**, lalu klik tombol konfirmasi, misalnya **Ya, suspend**." },
+            { "text": "Pesan seperti **Laporan diputus: Suspend.** tampil di atas halaman, dan kartu **Keputusan** menggantikan formulir." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b14-konfirmasi.png",
+          "caption": "Dialog Suspend laporan ini?: akibat suspend, peringatan penghapusan pesan, catatan internal, dan pernyataan yang wajib dicentang"
+        },
+        {
+          "type": "table",
+          "title": "Tindakan dan akibatnya",
+          "columns": ["Tindakan", "Akibat"],
+          "rows": [
+            ["**Abaikan**", "Bukan pelanggaran; tidak ada perubahan pada anggota. Laporan berstatus **Diabaikan**, dan pelapor tetap diberi tahu laporannya selesai ditinjau."],
+            ["**Peringatkan**", "Anggota menerima peringatan berisi pesan Anda dan tercatat di riwayat moderasinya. Masa keanggotaan tidak berubah."],
+            ["**Suspend**", "Akun dibatasi sampai dicabut pengurus. Semua sesi login anggota diakhiri dan akses komunitas ditutup. Masa keanggotaan tidak berubah."],
+            ["**Cabut suspend**", "Pembatasan berakhir; status dihitung ulang dari masa aktif, jadi dapat menjadi **KTA Kedaluwarsa** atau **KTA Tidak Aktif**. Pesan untuk anggota boleh kosong (dipakai teks baku)."],
+            ["Pesan dijadikan placeholder (dihapus)", "Isi pesan hilang bagi semua anggota percakapan dan diganti keterangan pesan dihapus. Tidak dapat dikembalikan. Salinan di bukti laporan tetap ada."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Periksa bukti sebelum mengonfirmasi",
+          "text": "Laporan yang sudah diputus tidak dapat dibuka ulang. Pesan yang dihapus dan peringatan yang terkirim tidak dapat ditarik. Suspend yang ternyata keliru dicabut lewat **Cabut pembatasan** di detail anggota (Bab 11); tombol itu memerlukan izin **Lihat anggota**, **Lihat laporan**, dan **Putuskan laporan**."
+        },
+        {
+          "type": "list",
+          "title": "Bila keputusan tidak dapat dibuat atau disimpan",
+          "items": [
+            "**Laporan ini sudah diubah atau diputus pengurus lain. Data terbaru dimuat ulang.**: pengurus lain lebih dulu mengklaim atau memutus. Baca data terbaru sebelum bertindak.",
+            "Bila akun pihak terlapor sudah dihapus, laporan hanya dapat ditutup dengan **Abaikan**.",
+            "Peringatan hanya dapat diberikan kepada akun yang aktif. Akun yang sedang dalam proses penghapusan tidak dapat dibatasi.",
+            "Tulisan **Akun Anda hanya dapat membaca laporan.** menggantikan formulir bila akun Anda belum memiliki izin **Putuskan laporan**."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "title": "Menghapus isi profil yang melanggar",
+          "text": "Laporan profil tidak memiliki tombol hapus konten. Untuk menghapus foto profil, bio, atau tautan media sosial yang melanggar, buka detail anggota lalu klik **Ubah data** (Bab 11; memerlukan izin **Kelola anggota**), misalnya centang **Hapus foto profil anggota (mis. foto tidak pantas)**, lalu isi **Alasan perubahan**."
+        }
+      ]
+    },
+    {
+      "id": "b14-4",
+      "title": "Laporan grup dan banding",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Laporan grup hanya merekam nama grup, foto grup, dan jumlah anggota saat dilaporkan, tanpa isi pesan. Karena laporan grup tidak menunjuk satu anggota, Anda memilih sendiri anggota yang dikenai tindakan saat memberi peringatan atau suspend. Untuk mengabaikan laporan grup, anggota tidak perlu dipilih."
+        },
+        {
+          "type": "steps",
+          "title": "Memutus laporan grup",
+          "items": [
+            { "text": "Pilih **Peringatkan** atau **Suspend**. Kotak **Anggota grup yang dikenai tindakan** muncul." },
+            { "text": "Ketik nama atau nomor anggota di **Cari anggota grup**, lalu pilih anggotanya. Daftar memuat anggota dan mantan anggota yang pernah bergabung beserta perannya, misalnya admin grup. Bila grup besar, hanya 50 nama pertama yang tampil." },
+            { "text": "Anggota yang sedang disuspend tidak dapat dipilih untuk **Suspend**. Akun alumni Anda sendiri tidak dicantumkan." },
+            { "text": "Lengkapi catatan dan pesan, lalu putuskan. Dialog konfirmasi menyebut anggota yang Anda pilih." }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "text": "Bila daftar anggota grup gagal dimuat, klik **Muat ulang daftar anggota**. Selama daftar tidak tersedia, peringatan atau suspend untuk laporan grup tidak dapat diputus, tetapi laporan tetap dapat diabaikan."
+        },
+        {
+          "type": "p",
+          "text": "Anggota yang dibatasi dapat mengajukan banding dari halaman pembatasan di aplikasinya (Bab 8). Banding masuk antrean dengan kategori **Banding**, prioritas **Normal**, dan target 2 hari kerja. Anggota hanya dapat memiliki satu banding yang sedang diproses. Peringatan tidak dapat dibanding lewat aplikasi; keberatan atas peringatan disampaikan anggota ke bantuan@kapdh.or.id."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b14-banding.png",
+          "caption": "Detail banding: alasan banding, Suspend yang dibanding beserta alasan internalnya, Pemohon, serta pilihan Tolak banding dan Kabulkan banding"
+        },
+        {
+          "type": "table",
+          "title": "Pilihan pada banding",
+          "columns": ["Pilihan", "Akibat"],
+          "rows": [
+            ["**Tolak banding**", "Suspend tetap berlaku. Pemohon menerima **Banding ditolak** berisi pesan Anda dan dapat mengajukan banding baru dengan alasan tambahan. Laporan berstatus **Diabaikan**."],
+            ["**Kabulkan banding (cabut suspend)**", "Suspend dicabut dan status keanggotaan dihitung ulang dari masa aktif. Pemohon menerima **Banding dikabulkan**."],
+            ["**Tutup sebagai dikabulkan**", "Satu-satunya pilihan bila suspend yang dibanding bertanda **Sudah dicabut (banding usang)**. Keanggotaan tidak berubah; banding ditutup dan pemohon menerima **Banding dikabulkan** berisi pesan Anda."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "**Pesan untuk pemohon** wajib diisi pada setiap keputusan banding. Di dialog konfirmasi, **Tolak banding** tampil sebagai **Abaikan laporan ini?** (tombol **Ya, abaikan**) dan pengabulan sebagai **Cabut suspend laporan ini?** (tombol **Ya, cabut suspend**). Mencabut pembatasan lewat detail anggota (Bab 11) otomatis menutup banding aktifnya sebagai dikabulkan."
+        }
+      ]
+    },
+    {
+      "id": "b14-5",
+      "title": "Yang diterima anggota setelah keputusan",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Setiap keputusan mengirim notifikasi ke kotak **Notifikasi** di aplikasi anggota. Notifikasi moderasi termasuk kategori akun yang wajib, sehingga selalu dikirim juga sebagai notifikasi push dan email dan tidak dapat dimatikan anggota. Pihak terlapor tidak pernah diberi tahu adanya laporan maupun identitas pelapor. Cara anggota melapor dijelaskan di Bab 7."
+        },
+        {
+          "type": "table",
+          "title": "Notifikasi yang dikirim",
+          "columns": ["Penerima", "Judul notifikasi", "Isi"],
+          "rows": [
+            ["Pelapor", "**Laporan Anda selesai ditinjau**", "Ucapan terima kasih tanpa rincian tindakan. Di **Laporan saya**, pelapor hanya melihat ada atau tidaknya tindakan."],
+            ["Anggota yang diperingatkan", "**Peringatan dari pengurus**", "Pesan untuk anggota yang Anda tulis. Notifikasi membuka Ketentuan Komunitas."],
+            ["Anggota yang disuspend", "**Akun Anda dibatasi**", "Pesan untuk anggota yang Anda tulis. Saat masuk lagi, anggota diarahkan ke halaman pembatasan."],
+            ["Anggota yang suspend-nya dicabut", "**Pembatasan akun dicabut** atau **Banding dikabulkan**", "Pesan Anda atau teks baku, ditambah arahan sesuai status baru: membuka KTA, memperpanjang, atau menyelesaikan iuran pendaftaran."],
+            ["Pemohon banding yang ditolak", "**Banding ditolak**", "Pesan untuk pemohon yang Anda tulis."]
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Selama akun dibatasi",
+          "items": [
+            "Semua sesi login anggota langsung diakhiri. Akibat lain, seperti profil hilang dari Jejaring, KTA tampil tidak aktif saat diperiksa, dan tiket tidak dapat dipakai untuk check-in, dirangkum di Bab 11.",
+            "Masa keanggotaan tetap berjalan. Pembayaran baru tidak dapat dibuat, dan pembayaran iuran tidak mencabut pembatasan.",
+            "Dari halaman **Akun Anda sedang dibatasi**, anggota masih dapat membuka **Notifikasi**, **Sesi perangkat**, dan **Ganti password**, mengajukan banding, menghubungi pengurus, serta menghapus akun (Bab 8)."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Menulis pesan untuk anggota",
+          "text": "Tulis dengan sopan dan jelas: pelanggaran apa yang terjadi dan rujukannya di Ketentuan Komunitas. Jangan menyebut pelapor, menyalin isi bukti yang tidak perlu, atau memasukkan catatan internal. Pesan ini tersimpan dan dapat dibaca anggota di aplikasinya."
+        }
+      ]
+    },
+    {
+      "id": "b14-6",
+      "title": "Menelusuri log audit",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Klik **Audit** di menu samping. Halaman ini memerlukan izin **Lihat audit**. Audit mencatat perubahan penting, misalnya keputusan pembayaran, perubahan data dan status anggota, keputusan moderasi dan pembukaan bukti laporan, perubahan admin dan izin, metode bayar, pengaturan, serta ekspor. Setiap entri ditulis bersamaan dengan perubahannya; bila audit gagal dicatat, perubahan itu ikut dibatalkan."
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Audit hanya dapat dibaca",
+          "text": "Tidak ada pengurus, termasuk Super Admin, yang dapat mengubah atau menghapus entri audit. Satu-satunya perubahan adalah penyamaran identitas pelaku ketika akunnya dihapus; entri seperti itu menampilkan pelaku dengan keterangan identitas dianonimkan."
+        },
+        {
+          "type": "shot",
+          "img": "admin/b14-audit.png",
+          "caption": "Halaman Audit: Filter audit dan tabel entri berisi waktu, pelaku beserta perannya, kode tindakan, entitas, alasan, dan Request ID"
+        },
+        {
+          "type": "steps",
+          "title": "Mencari entri",
+          "items": [
+            { "text": "Isi satu atau beberapa kotak di **Filter audit**, lalu klik **Terapkan filter**. Filter baru berlaku setelah tombol ini diklik." },
+            { "text": "**Nama pelaku**: sebagian nama admin atau alumni, minimal 2 karakter. **Peran pelaku**: **Alumni**, **Admin**, **Super Admin**, **Sistem**, atau **Anonim**." },
+            { "text": "**Tindakan** dan **Jenis entitas**: ketik kode persis seperti di tabel, misalnya payment.approved atau report. Kode yang hanya diketik sebagian tidak menemukan apa pun." },
+            { "text": "**Id entitas** dan **Request ID**: salin dari entri lain, atau ambil Request ID dari **Kode referensi** pada pesan galat, untuk menelusuri satu objek atau satu permintaan." },
+            { "text": "**Dari (WIB)** dan **Sebelum (WIB)**: rentang waktu. Batas awal ikut dihitung, batas akhir tidak, dan batas akhir harus setelah batas awal." },
+            { "text": "Pilih **Urutan** **Terbaru dulu** atau **Terlama dulu**. Tabel menampilkan 25 entri per halaman. Klik **Reset filter** untuk kembali ke semua entri." }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Kode tindakan yang sering dicari",
+          "columns": ["Kode", "Kejadian"],
+          "rows": [
+            ["payment.approved, payment.rejected", "Pembayaran disetujui atau ditolak (Bab 10)."],
+            ["member.viewed, member.updated", "Informasi Pengguna dibuka, atau data anggota diubah (Bab 11)."],
+            ["member.warned, member.suspended, member.unsuspended", "Anggota diperingatkan, dibatasi, atau pembatasannya dicabut."],
+            ["moderation.report_viewed", "Detail laporan beserta buktinya dibuka, diklaim, atau diputus pengurus."],
+            ["moderation.report_claimed, moderation.report_resolved", "Laporan diklaim, atau diputus beserta alasannya."],
+            ["moderation.report_created, moderation.appeal_created", "Anggota mengirim laporan atau banding."],
+            ["admin.login, admin.invited, admin.updated", "Admin masuk, diundang, atau nama, peran, izin, dan statusnya diubah (Bab 9 dan Bab 15)."],
+            ["settings.updated", "Pengaturan aplikasi diubah (Bab 15)."],
+            ["audit.export.requested, audit.export.downloaded", "Ekspor audit diminta, atau berkasnya diunduh."]
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Membaca detail entri",
+          "items": [
+            { "text": "Klik kode pada kolom **Tindakan**. Dialog **Detail entri audit** terbuka." },
+            { "text": "Baca **Waktu**, **Tindakan**, **Pelaku** beserta perannya, **Entitas**, **Request ID**, dan **Alasan**." },
+            { "text": "Bandingkan kotak **Sebelum** dan **Sesudah** untuk melihat nilai yang berubah. **Tidak ada data.** berarti sisi itu kosong, misalnya pada entri pembuatan data baru." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b14-audit-detail.png",
+          "caption": "Dialog Detail entri audit untuk pembatasan anggota: pelaku, alasan, serta nilai Sebelum dan Sesudah"
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Data yang tidak pernah dicatat",
+          "text": "Sandi, kode OTP, token, secret autentikator, isi chat, bukti bayar, dan NIK tidak pernah masuk audit. Data kontak seperti telepon atau email dapat terlihat di dialog detail untuk penelusuran berizin, tetapi disamarkan pada berkas ekspor."
+        }
+      ]
+    },
+    {
+      "id": "b14-7",
+      "title": "Mengekspor audit ke CSV",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Kartu **Ekspor CSV** di bawah tabel hanya tampil bagi pengurus yang memegang izin **Lihat audit** dan **Ekspor audit**. Ekspor selalu memakai filter yang sedang diterapkan, sehingga isinya sama dengan hasil pencarian di tabel."
+        },
+        {
+          "type": "steps",
+          "items": [
+            { "text": "Terapkan filter yang diinginkan, lalu periksa baris **Filter ekspor** di kartu **Ekspor CSV**. Tanpa filter, tertulis **Tanpa filter (semua entri)**." },
+            { "text": "Klik **Ekspor CSV dengan filter ini**. Berkas dibuat di latar dengan status **Diproses**, dan status diperbarui otomatis." },
+            { "text": "Setelah berstatus **Siap**, klik **Siapkan unduhan**. Tombol **Unduh berkas** muncul beserta batas waktu tautannya." },
+            { "text": "Klik **Unduh berkas** sebelum waktu pada **Tautan berlaku sampai** lewat. Tautan hanya berlaku singkat, paling lama 10 menit; setelah itu klik **Siapkan unduhan** lagi." }
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b14-ekspor.png",
+          "caption": "Kartu Ekspor CSV: filter ekspor, berkas berstatus Siap dengan jumlah baris dan waktu hapus otomatis, serta tombol Unduh berkas"
+        },
+        {
+          "type": "status",
+          "title": "Status ekspor",
+          "items": [
+            { "label": "Diproses", "tone": "info", "text": "Berkas sedang dibuat. Proses yang melewati 1 jam dihentikan dan berstatus Gagal." },
+            { "label": "Siap", "tone": "success", "text": "Berkas dapat diunduh. Tertulis jumlah baris, ukuran, dan waktu berkas dihapus otomatis." },
+            { "label": "Gagal", "tone": "danger", "text": "Misalnya hasil melebihi batas baris ekspor. Persempit filter, lalu minta ekspor baru." },
+            { "label": "Kedaluwarsa", "tone": "neutral", "text": "Berkas sudah dihapus otomatis 24 jam setelah selesai dibuat. Minta ekspor baru bila masih perlu." }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Batas dan perlindungan ekspor",
+          "items": [
+            "Satu ekspor memuat paling banyak 50.000 baris. Hasil yang lebih besar tidak dipotong diam-diam, tetapi gagal dengan alasan melebihi batas baris.",
+            "Setiap admin dapat meminta paling banyak 10 ekspor per jam.",
+            "Kolom pribadi pada nilai Sebelum dan Sesudah, seperti email, telepon, WhatsApp, media sosial, alamat, tanggal dan tempat lahir, kota, foto, bukti, alamat IP, dan perangkat, diganti **[disembunyikan]**.",
+            "Sel yang diawali =, +, -, atau @ diberi tanda kutip tunggal agar tidak dijalankan sebagai rumus di aplikasi spreadsheet.",
+            "Admin hanya melihat ekspor yang ia minta sendiri, sedangkan Super Admin melihat semua ekspor. Kartu menampilkan 20 ekspor terakhir.",
+            "Setiap unduhan tercatat di audit, dan izin Anda diperiksa ulang setiap kali tautan disiapkan."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Jaga berkas ekspor",
+          "text": "Berkas CSV tetap memuat nama pelaku, tindakan, dan alasan. Simpan di perangkat organisasi, jangan dibagikan di grup percakapan, dan hapus setelah tidak diperlukan."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "kapdh-platform/apps/admin/src/routes/moderation/ModerationListPage.tsx (filter, urutan, 20 per halaman, polling 60 detik, kartu ringkasan, Lewat target)",
+    "kapdh-platform/apps/admin/src/routes/moderation/ReportDetailPage.tsx (bagian detail, klaim/ambil alih, pilihan tindakan, catatan 3-1000, pesan 3-500, placeholder, konfirmasi dua langkah, laporan grup 50 calon, banding)",
+    "kapdh-platform/apps/admin/src/routes/moderation/labels.tsx (label kategori, objek, tindakan, prioritas)",
+    "kapdh-platform/apps/admin/src/components/ui/Badge.tsx dan ConfirmDialog.tsx (status laporan, pernyataan hanya untuk nada bahaya)",
+    "kapdh-platform/apps/admin/src/routes/audit/AuditPage.tsx (filter, 25 per halaman, detail entri, ekspor, tautan 10 menit, 20 ekspor terakhir)",
+    "kapdh-platform/apps/admin/src/nav.ts, routes/dashboard/DashboardPage.tsx, auth/access.ts, components/ui/States.tsx (menu, kartu Dashboard, Kode referensi)",
+    "kapdh-platform/apps/admin/src/api/mocks/moderation.ts dan audit.ts (data contoh tangkapan layar)",
+    "kapdh-platform/apps/api/src/modules/moderation/due-at.ts (mendesak 24 jam, normal 2 hari kerja Senin-Jumat WIB, akhir pekan mulai Senin)",
+    "kapdh-platform/apps/api/src/modules/moderation/admin-reports.service.ts (validasi keputusan, warn hanya akun aktif, notifikasi pelapor/banding, hapus pesan, audit report_viewed/resolved)",
+    "kapdh-platform/apps/api/src/modules/moderation/moderation-visibility.ts (konflik kepentingan, berlaku juga Super Admin, hitungan tidak terpengaruh filter)",
+    "kapdh-platform/apps/api/src/modules/moderation/reports.service.ts (banding hanya suspend berlaku, banding usang ditutup sistem)",
+    "kapdh-platform/apps/api/src/core/membership/membership.kernel.ts (suspend mencabut sesi, judul notifikasi Akun Anda dibatasi / Pembatasan akun dicabut / Banding dikabulkan, teks baku, hitung ulang status)",
+    "kapdh-platform/apps/api/src/modules/notifications/channel-policy.ts (kategori account wajib push dan email)",
+    "kapdh-platform/apps/api/src/modules/admin/permissions-catalog.ts (label izin Lihat laporan, Putuskan laporan, Lihat audit, Ekspor audit)",
+    "kapdh-platform/apps/api/src/modules/admin/audit-filter.ts, audit.service.ts (filter sama untuk pencarian dan ekspor, from inklusif to eksklusif, kode persis)",
+    "kapdh-platform/apps/api/src/modules/admin/audit-export.shared.ts, audit-export.service.ts, audit-export.job.ts, csv.ts (50.000 baris, 10 per jam, batas 1 jam, retensi 24 jam, penyamaran, netralisasi formula, kepemilikan)",
+    "kapdh-platform/apps/api/src/core/audit/sanitize.ts (secret tidak dicatat)",
+    "kapdh-platform/apps/api/src/core/files/file-token.ts (URL berkas privat bawaan 300 detik, maksimal 600 detik: gambar bukti dan unduhan ekspor)",
+    "kapdh-platform/apps/api/src/modules/moderation/reports.service.ts, evidence.ts (laporan pesan hanya merekam pesan, konteks, dan nama grup; snapshot grup hanya untuk laporan grup)",
+    "kapdh-platform/apps/admin/src/routes/members/MemberDetailPage.tsx, MemberEditDialog.tsx; apps/api/src/modules/membership/admin-members.controller.ts (Batasi akun/Cabut pembatasan butuh members.read + moderation.read + moderation.resolve; Ubah data butuh members.manage; Alasan perubahan)",
+    "kapdh-mobile/lib/features/status/restricted_screen.dart, appeal_section.dart, app/redirect.dart, features/network/my_reports_screen.dart (menu halaman pembatasan, rute yang boleh dibuka anggota dibatasi, Laporan saya)",
+    "kapdh-platform/packages/shared/src/status.ts (label KTA Kedaluwarsa dan KTA Tidak Aktif)",
+    "docs/adr/007-audit-append-only-dan-role-purge.md (append-only, anonimisasi aktor)",
+    "docs/handoff/phase-c/api-moderation.md, docs/handoff/phase-c/admin-governance.md (peringatan tidak dapat dibanding di R1.0, calon subjek laporan grup)",
+    "docs/legal/ketentuan-komunitas.html (bagian 4, 5, 8, 9, 10, 11: acuan keputusan, akibat pembatasan, banding, keberatan peringatan)",
+    "docs/reference/PRD_v3.5.txt 3.17 dan docs/qa/uat-checklist.md 6.8-6.11, 7.12, 10.5"
+  ]
+}

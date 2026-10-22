@@ -1,0 +1,366 @@
+{
+  "id": "b01",
+  "part": "umum",
+  "title": "Mengenal KAPDH Apps",
+  "kicker": "Gambaran Umum",
+  "summary": "KAPDH Apps adalah platform digital resmi Keluarga Alumni Pondok Pesantren Darel Hikmah. Bab ini memberi gambaran besar: bagian-bagiannya, fitur utama, arti status keanggotaan, dan cara memakai panduan ini.",
+  "icon": "ph-info",
+  "highlights": [
+    "Apa itu KAPDH Apps dan siapa saja penggunanya",
+    "Kapan memakai aplikasi anggota, web admin, dan situs kapdh.or.id",
+    "Fitur utama, kebutuhan perangkat, dan peta lima tab aplikasi",
+    "Arti setiap status keanggotaan dan KTA",
+    "Komitmen privasi, legalitas perkumpulan, dan cara membaca panduan"
+  ],
+  "sections": [
+    {
+      "id": "b01-1",
+      "title": "Apa itu KAPDH Apps dan untuk siapa",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "KAPDH Apps adalah platform digital resmi Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH) untuk menghubungkan alumni Pondok Pesantren Darel Hikmah di seluruh Indonesia. Pendaftaran anggota, iuran, Kartu Tanda Anggota (KTA) digital, berita, kegiatan, dan komunikasi antaralumni tersambung pada satu identitas keanggotaan. Anggota dapat memantau sendiri status pembayaran dan masa aktif KTA, sedangkan pengurus memproses pekerjaan administrasi secara tertib dan tercatat tanpa bergantung pada pesan pribadi."
+        },
+        {
+          "type": "table",
+          "title": "Siapa memakai KAPDH Apps",
+          "columns": ["Pengguna", "Kebutuhan utama", "Memakai"],
+          "rows": [
+            ["Alumni baru", "Mendaftar, memverifikasi email, membayar iuran pendaftaran, dan memantau keputusan pengurus.", "Aplikasi anggota"],
+            ["Anggota aktif", "Menunjukkan KTA, membaca informasi resmi, mengikuti event, mencari sesama alumni, dan berkirim pesan.", "Aplikasi anggota"],
+            ["Anggota yang masa aktifnya habis", "Melihat riwayat sendiri, memperpanjang keanggotaan, mengelola akun, atau menghapus akun.", "Aplikasi anggota"],
+            ["Pengurus (admin)", "Menjalankan tugas sesuai izin yang diberikan: pembayaran, anggota, konten, event dan check-in, moderasi, audit, notifikasi, atau pengaturan.", "Web admin"],
+            ["Super Admin", "Memegang seluruh izin dan menjadi satu-satunya peran yang dapat mengelola akun admin beserta izinnya.", "Web admin"],
+            ["Masyarakat umum", "Membaca informasi organisasi, memeriksa QR KTA, mengunduh aplikasi, atau meminta hapus akun.", "Situs kapdh.or.id"]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Siapa yang dapat mendaftar",
+          "text": "Alumni Pondok Pesantren Darel Hikmah berusia 18 tahun atau lebih, dari angkatan 1 (lulus 1997) sampai angkatan terbaru, termasuk yang menamatkan MTs, Aliyah, keduanya, atau tidak tamat. Data pendataan lama tidak dipindahkan otomatis, jadi setiap alumni, termasuk anggota lama, mendaftar sendiri melalui aplikasi."
+        }
+      ]
+    },
+    {
+      "id": "b01-2",
+      "title": "Tiga bagian KAPDH Apps dan kapan memakainya",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "KAPDH Apps terdiri atas tiga bagian yang saling terhubung. Data yang Anda isi di aplikasi anggota diproses pengurus melalui web admin. Sebagian informasinya, misalnya status KTA saat QR dipindai, dapat diperiksa siapa pun melalui situs kapdh.or.id."
+        },
+        {
+          "type": "table",
+          "columns": ["Bagian", "Untuk siapa", "Pakai saat Anda ingin"],
+          "rows": [
+            ["Aplikasi anggota KAPDH untuk Android dan iOS", "Alumni", "Mendaftar, membayar iuran, menunjukkan KTA, membaca berita, mendaftar event, mencari sesama alumni, dan berkirim pesan."],
+            ["Web admin pengurus di admin.kapdh.or.id", "Pengurus yang ditugaskan", "Memverifikasi pembayaran, mengelola anggota, konten, event dan check-in, moderasi, admin, notifikasi, audit, serta pengaturan."],
+            ["Situs publik kapdh.or.id", "Siapa saja", "Membaca informasi organisasi, mengunduh aplikasi, memeriksa keaslian KTA lewat QR, menghubungi pengurus, atau meminta hapus akun tanpa aplikasi."]
+          ]
+        },
+        {
+          "type": "shot",
+          "img": "admin/b01-admin-dashboard.png",
+          "caption": "Web admin pengurus: menu di sisi kiri dan Dashboard dengan bagian Perlu tindakan. Menu dan isi Dashboard mengikuti izin admin."
+        },
+        {
+          "type": "shot",
+          "img": "web/b01-situs-beranda.png",
+          "caption": "Beranda situs kapdh.or.id dengan menu Tentang, Bantuan, Kontak, dan tombol Unduh Aplikasi."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Tidak ada versi web untuk anggota",
+          "text": "Anggota memakai aplikasi di ponsel; web admin hanya untuk pengurus. Akun pengurus terpisah dari akun alumni pribadinya, wajib memasukkan kode 6 digit dari aplikasi autentikator saat masuk, dan keluar otomatis setelah 30 menit tidak aktif (lihat Bab 9)."
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Pasang aplikasi KAPDH hanya melalui tautan resmi di halaman **Unduh Aplikasi** situs kapdh.or.id (lihat Bab 2 dan Bab 16)."
+        }
+      ]
+    },
+    {
+      "id": "b01-3",
+      "title": "Fitur utama sekilas",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Tabel berikut merangkum fitur utama aplikasi anggota dan bab yang membahasnya secara rinci. Fitur pengurus dijelaskan di Bagian B (Bab 9 sampai Bab 15)."
+        },
+        {
+          "type": "table",
+          "columns": ["Fitur", "Yang dapat Anda lakukan", "Bab"],
+          "rows": [
+            ["Daftar dan verifikasi email", "Mendaftar dengan data diri, angkatan, serta kelas masuk dan keluar, lalu memasukkan kode 6 digit yang dikirim ke email.", "Bab 2"],
+            ["Iuran dan pembayaran", "Membayar iuran pendaftaran atau perpanjangan melalui transfer bank, dompet digital, atau QRIS resmi organisasi, mengunggah bukti, dan memantau keputusan pengurus.", "Bab 3"],
+            ["KTA digital dan QR", "Menunjukkan kartu berisi nomor anggota, QR, dan masa berlaku. KTA yang sudah tersinkron tetap tampil tanpa internet sampai 7 hari.", "Bab 4"],
+            ["Beranda, berita, notifikasi", "Melihat banner, event mendatang, dan berita resmi, serta menerima pemberitahuan di kotak masuk, notifikasi ponsel, dan sebagian lewat email.", "Bab 5"],
+            ["Event dan tiket", "Mencari kegiatan, memesan tempat, menerima tiket digital berkode QR, dan check-in di lokasi acara.", "Bab 6"],
+            ["Jejaring dan pesan", "Mencari sesama alumni berdasarkan nama, angkatan, kelas, kota, profesi, atau keahlian, lalu berkirim pesan pribadi atau grup.", "Bab 7"],
+            ["Akun, profil, privasi", "Mengisi profil (sampai 5 profesi, 10 riwayat pendidikan, dan 10 tautan media sosial), mengatur privasi, mengelola sesi perangkat, dan menghapus akun.", "Bab 8"]
+          ]
+        },
+        {
+          "type": "steps",
+          "title": "Perjalanan anggota baru, dari unduh sampai KTA aktif",
+          "items": [
+            { "title": "Pasang aplikasi", "text": "Unduh aplikasi KAPDH melalui halaman **Unduh Aplikasi** di kapdh.or.id, lalu buka aplikasinya." },
+            { "title": "Daftar", "text": "Ketuk **Daftar KAPDH Apps**, isi Data Diri, setujui Kebijakan Privasi dan Ketentuan Layanan, lalu masukkan kode verifikasi dari email (Bab 2)." },
+            { "title": "Tunaikan iuran pendaftaran", "text": "Bayar sesuai instruksi di aplikasi ke tujuan pembayaran resmi organisasi (transfer bank, dompet digital, atau QRIS bila disediakan), lalu unggah bukti bayar (Bab 3)." },
+            { "title": "Tunggu verifikasi pengurus", "text": "Pengurus memeriksa dana yang masuk. Selama pemeriksaan, pembayaran Anda berstatus **Menunggu Verifikasi**." },
+            { "title": "KTA aktif", "text": "Setelah pengurus memverifikasi iuran, keanggotaan Anda berstatus **KTA Aktif** selama 12 bulan sebagai anggota terverifikasi (Bab 4)." }
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b01-kta-aktif.png", "caption": "KTA digital berstatus KTA Aktif, lengkap dengan nomor anggota, QR, dan masa berlaku" }
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Tentang iuran",
+          "text": "Iuran KAPDH adalah iuran keanggotaan organisasi. Besarnya ditetapkan pengurus dan dapat berubah; nominal selalu tampil di aplikasi sebelum Anda membayar. Aplikasi tidak memproses kartu kredit atau debit dan tidak memiliki fitur saldo."
+        }
+      ]
+    },
+    {
+      "id": "b01-4",
+      "title": "Kebutuhan perangkat dan koneksi",
+      "blocks": [
+        {
+          "type": "table",
+          "columns": ["Kebutuhan", "Ketentuan"],
+          "rows": [
+            ["Ponsel Android", "Android 8.0 atau yang lebih baru."],
+            ["iPhone", "iOS 15 atau yang lebih baru."],
+            ["Web admin", "Peramban komputer Chrome, Edge, Firefox, atau Safari, dua versi stabil terakhir."],
+            ["Situs kapdh.or.id", "Dapat dibuka dari peramban komputer maupun ponsel, termasuk saat QR KTA dipindai dengan kamera ponsel."],
+            ["Koneksi internet", "Wajib untuk mendaftar, masuk, membayar, berkirim pesan, dan menyinkronkan KTA. KTA yang sudah tersinkron dapat ditunjukkan tanpa internet sampai 7 hari."],
+            ["Email aktif", "Untuk menerima kode verifikasi pendaftaran dan pemulihan password. Setelah akun aktif, email akun belum dapat diubah."],
+            ["Izin notifikasi", "Tidak wajib, tetapi dianjurkan agar Anda segera tahu hasil verifikasi pembayaran, pengingat masa aktif, dan kabar event."],
+            ["Kamera dan galeri", "Dipakai hanya saat Anda memotret atau memilih gambar, misalnya bukti bayar atau foto profil. Aplikasi tidak meminta izin lokasi, kontak, atau mikrofon."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Aktifkan tanggal dan jam otomatis di pengaturan ponsel. Bila jam perangkat tidak sesuai, KTA tidak dapat ditampilkan tanpa internet dan aplikasi meminta Anda menyinkronkannya kembali."
+        }
+      ]
+    },
+    {
+      "id": "b01-5",
+      "title": "Peta navigasi aplikasi anggota",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Setelah masuk, Anda berpindah antarmenu melalui lima tab di bagian bawah layar: **Beranda**, **Event**, **KTA**, **Jejaring**, dan **Akun**. Tab **KTA** berada di tengah dan tampil lebih menonjol agar kartu dapat dibuka dengan sekali ketuk."
+        },
+        {
+          "type": "table",
+          "columns": ["Tab", "Isi utama"],
+          "rows": [
+            ["Beranda", "Sapaan, akses cepat **Pesan**, **Notifikasi**, **Tiket Saya**, dan **Berita**, banner pengumuman, **Event Mendatang**, serta berita terbaru."],
+            ["Event", "Daftar kegiatan **Mendatang** dan **Lampau**, pencarian, filter kategori, dan pintasan ke Tiket Saya."],
+            ["KTA", "**Kartu Tanda Anggota**, status keanggotaan, waktu sinkron terakhir, dan tombol sesuai status, misalnya **Perpanjang** atau **Bayar**."],
+            ["Jejaring", "Tiga tab: **Jejaring** (direktori alumni), **Pesan**, dan **Pesan Grup**."],
+            ["Akun", "Antara lain **Ubah profil**, **Privasi profil**, **Riwayat pembayaran**, **Tiket saya**, **Preferensi notifikasi**, **Sesi perangkat**, **Ganti password**, **Bantuan**, **Hapus akun**, dan **Keluar**."]
+          ]
+        },
+        {
+          "type": "screens",
+          "items": [
+            { "img": "mobile/b01-beranda.png", "caption": "Beranda anggota aktif dengan lima tab navigasi di bagian bawah" },
+            { "img": "mobile/b01-tab-bergembok.png", "caption": "KTA belum aktif: tab Event dan Jejaring bergembok" }
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Tanda pada tab",
+          "items": [
+            "Angka pada tab **Jejaring** menunjukkan jumlah percakapan yang belum dibaca ditambah undangan grup yang menunggu jawaban.",
+            "Ikon gembok menandakan layanan khusus anggota aktif. Ketuk tab tersebut untuk membaca penjelasannya beserta tombol **Bayar iuran** (KTA belum aktif) atau **Perpanjang KTA** (keanggotaan berakhir).",
+            "Tab yang sedang dibuka diberi sorotan. Saat tab **KTA** dibuka, tombol tengahnya berubah warna menjadi kuning."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b01-6",
+      "title": "Arti status keanggotaan dan KTA",
+      "blocks": [
+        {
+          "type": "p",
+          "text": "Status keanggotaan selalu tampil sebagai label berwarna dengan ikon, misalnya di tab KTA, di bagian atas menu Akun, dan di halaman perpanjangan. Label **Menunggu Verifikasi** tampil pada pembayaran dan tiket. Status dihitung sistem dari masa berlaku dan keputusan pengurus, sehingga sama di semua perangkat. Sebelum email diverifikasi (**Menunggu Verifikasi Email**), aplikasi hanya menampilkan layar kode verifikasi. Label **Penghapusan Diproses** muncul saat akun sedang dihapus (lihat Bab 8), sedangkan **Nonaktif** berarti akun dinonaktifkan pengurus sehingga tidak dapat dipakai masuk."
+        },
+        {
+          "type": "status",
+          "title": "Legenda status",
+          "items": [
+            { "label": "KTA Aktif", "tone": "success", "text": "Keanggotaan organisasi aktif. Berita, event, jejaring, dan pesan tersedia sebagai layanan anggota. QR pada KTA dapat diperiksa sebagai bukti keanggotaan. Masa berlaku 12 bulan sejak iuran diverifikasi pengurus." },
+            { "label": "Segera Berakhir", "tone": "warning", "text": "Masa aktif tinggal 30 hari atau kurang. Keanggotaan masih aktif dan semua layanan anggota tetap tersedia. Tombol **Perpanjang** sudah dapat dipakai." },
+            { "label": "KTA Kedaluwarsa", "tone": "danger", "text": "Masa keanggotaan sudah berakhir. Berita, event, jejaring, dan pesan adalah layanan untuk anggota aktif; hubungi pengurus atau perpanjang keanggotaan. Tiket event yang sudah lunas tetap berlaku." },
+            { "label": "KTA Tidak Aktif", "tone": "danger", "text": "Email sudah terverifikasi dan nomor anggota sudah dibuat, tetapi iuran pendaftaran belum disetujui. Kartu belum dapat dipakai sebagai bukti keanggotaan." },
+            { "label": "Menunggu Verifikasi", "tone": "info", "text": "Tampil pada pembayaran iuran atau tiket setelah Anda mengirim bukti bayar. Pengurus sedang memeriksa; status KTA berubah setelah pembayaran disetujui." },
+            { "label": "Dibatasi", "tone": "neutral", "text": "Pengurus membatasi akun, misalnya karena pelanggaran Ketentuan Komunitas. KTA, pembayaran baru, dan fitur komunitas tidak dapat dipakai, walaupun masa keanggotaan Anda masih berjalan." }
+          ]
+        },
+        {
+          "type": "table",
+          "title": "Layanan yang tersedia menurut status",
+          "columns": ["Status", "Tetap tersedia", "Tidak tersedia"],
+          "rows": [
+            ["KTA Aktif atau Segera Berakhir", "Semua layanan anggota.", "Tidak ada."],
+            ["KTA Tidak Aktif", "Beranda berisi ajakan menyelesaikan iuran, KTA berlabel KTA Tidak Aktif, Notifikasi, Riwayat pembayaran, dan Akun.", "Berita, Event, Jejaring, dan Pesan."],
+            ["KTA Kedaluwarsa", "Beranda berisi ajakan memperpanjang, KTA, perpanjangan, Riwayat pembayaran, Tiket Saya untuk tiket lunas, Notifikasi, dan Akun.", "Berita, daftar dan pemesanan Event, Jejaring, dan Pesan."],
+            ["Dibatasi", "Halaman pembatasan: Notifikasi, Sesi perangkat, Ganti password, Banding, kontak pengurus, dan Hapus akun.", "KTA, pembayaran baru, Beranda, Event, Jejaring, dan Pesan."]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Label Offline",
+          "text": "Bila ponsel tidak terhubung internet, KTA yang tersimpan tampil dengan label **Offline** dan waktu sinkronisasi terakhir. Tampilan ini bukan bukti status saat ini: pemeriksa yang memindai QR selalu melihat status terbaru dari server."
+        },
+        {
+          "type": "callout",
+          "variant": "warning",
+          "title": "Tidak ada masa tenggang",
+          "text": "Layanan khusus anggota aktif tidak lagi tersedia begitu masa keanggotaan berakhir. Perpanjangan dibuka mulai 30 hari sebelum masa berlaku berakhir dan tetap dapat diajukan setelahnya. Sisa masa aktif tidak hilang bila Anda memperpanjang lebih awal (lihat Bab 3)."
+        }
+      ]
+    },
+    {
+      "id": "b01-7",
+      "title": "Komitmen privasi dan legalitas perkumpulan",
+      "blocks": [
+        {
+          "type": "list",
+          "title": "Komitmen privasi KAPDH",
+          "items": [
+            "KAPDH tidak meminta NIK atau nomor KTP, tanggal lahir, alamat rumah, maupun lokasi perangkat Anda.",
+            "Data pribadi tidak dijual. Aplikasi tidak menampilkan iklan dan tidak memakai layanan analitik pihak ketiga.",
+            "Email, nomor telepon, dan media sosial Anda tersembunyi dari anggota lain sampai Anda sendiri menampilkannya di **Privasi profil**.",
+            "Pesan di aplikasi tidak dienkripsi end-to-end. Jangan bagikan informasi yang sangat rahasia melalui pesan.",
+            "Akun dapat dihapus kapan saja dari menu **Akun**, atau dari situs tanpa memasang aplikasi. Penghapusan selesai paling lambat 7 hari kalender.",
+            "Rincian lengkapnya ada di **Kebijakan privasi**, yang mengacu pada Undang-Undang Nomor 27 Tahun 2022 tentang Pelindungan Data Pribadi."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "penting",
+          "title": "Jaga keamanan akun Anda",
+          "text": "Pengurus KAPDH tidak pernah meminta password atau kode verifikasi (OTP) Anda. Jangan berikan keduanya kepada siapa pun, termasuk kepada orang yang mengaku sebagai pengurus."
+        },
+        {
+          "type": "table",
+          "title": "Identitas hukum perkumpulan",
+          "columns": ["Hal", "Keterangan"],
+          "rows": [
+            ["Nama badan hukum", "Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH)"],
+            ["Bentuk", "Perkumpulan berbadan hukum yang bersifat nirlaba"],
+            ["Akta pendirian", "Akta Nomor 01 tanggal 27 Maret 2023"],
+            ["Pengesahan", "Keputusan Menteri Hukum dan HAM Republik Indonesia Nomor AHU-0002732.AH.01.07.TAHUN 2023 tanggal 11 April 2023"],
+            ["Asas", "Pancasila dan Undang-Undang Dasar 1945"],
+            ["Kedudukan", "Pondok Pesantren Darel Hikmah, Jalan Manyar Sakti, Kelurahan Simpang Baru, Kecamatan Binawidya, Kota Pekanbaru, Riau 28293"],
+            ["Kontak resmi", "bantuan@kapdh.or.id"]
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "text": "KAPDH adalah badan hukum tersendiri yang terpisah dari Pondok Pesantren Darel Hikmah, almamater para anggotanya. KAPDH bukan lembaga pendidikan dan tidak menerima santri. Seluruh kekayaan perkumpulan, termasuk iuran anggota, dipakai untuk maksud dan tujuan perkumpulan sesuai Anggaran Dasar."
+        }
+      ]
+    },
+    {
+      "id": "b01-8",
+      "title": "Cara membaca panduan ini",
+      "blocks": [
+        {
+          "type": "table",
+          "title": "Susunan panduan",
+          "columns": ["Bagian", "Bab", "Untuk siapa"],
+          "rows": [
+            ["Umum", "Bab 1", "Semua pembaca."],
+            ["A. Aplikasi Anggota", "Bab 2 sampai Bab 8", "Alumni yang memakai aplikasi di ponsel."],
+            ["B. Web Admin Pengurus", "Bab 9 sampai Bab 15", "Pengurus yang memegang akun admin."],
+            ["C. Situs Publik", "Bab 16", "Alumni, calon anggota, dan masyarakat umum."],
+            ["D. Bantuan", "Bab 17", "Semua pembaca: tanya jawab, pemecahan masalah, glosarium, dan kontak."]
+          ]
+        },
+        {
+          "type": "list",
+          "title": "Konvensi penulisan",
+          "items": [
+            "Nama tombol, menu, tab, dan label layar dicetak tebal persis seperti di aplikasi, misalnya **Daftar KAPDH Apps** atau **Perpanjang**.",
+            "Ketuk berarti menyentuh tombol di layar ponsel; klik berarti menekan tombol mouse di web admin atau situs.",
+            "Langkah bernomor dikerjakan berurutan. Rujukan seperti (lihat Bab 3) menunjuk bab yang membahas topik itu lebih rinci.",
+            "Kotak tips berisi cara yang memudahkan, kotak info berisi penjelasan tambahan, kotak peringatan menandai hal yang mudah keliru, dan kotak penting memuat aturan keamanan yang wajib dipatuhi.",
+            "Nama, nomor anggota, tanggal, dan nominal pada tangkapan layar adalah data contoh fiktif, misalnya Ahmad Fauzi atau Fikri.",
+            "Tampilan di perangkat Anda dapat sedikit berbeda menurut versi aplikasi, ukuran layar, dan mode terang atau gelap."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "tip",
+          "text": "Nominal iuran dan biaya event ditetapkan pengurus dan dapat berubah. Selalu ikuti angka yang tampil di aplikasi saat Anda membayar, bukan angka pada contoh gambar."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Butuh bantuan?",
+          "text": "Bila panduan ini belum menjawab pertanyaan Anda, buka **Akun** lalu **Bantuan** di aplikasi, atau kirim email ke bantuan@kapdh.or.id. Tanya jawab, pemecahan masalah, dan glosarium lengkap ada di Bab 17."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    "README.md",
+    "docs/reference/PRD_v3.5.txt (bagian 1.1-1.5, 2.1-2.5, 3.5, 3.7; D7 Android 8.0+/iOS 15+)",
+    "docs/reference/Guidelines_KAPDH_v1.0.txt",
+    "kapdh-platform/apps/web/src/lib/organization.ts (nama badan hukum, akta 01 27-03-2023, SK AHU-0002732.AH.01.07.TAHUN 2023 11-04-2023, asas, alamat kedudukan)",
+    "kapdh-platform/apps/web/src/lib/site.ts (OFFICIAL_EMAIL bantuan@kapdh.or.id)",
+    "kapdh-platform/packages/design-tokens/tokens.json (label status keanggotaan)",
+    "kapdh-platform/packages/shared/src/status.ts (MEMBERSHIP_LABEL termasuk Menunggu Verifikasi Email)",
+    "kapdh-mobile/lib/design/status_badge.dart (Menunggu Verifikasi = bukti pembayaran/tiket diperiksa, label Offline)",
+    "kapdh-mobile/lib/app/app_shell.dart (lima tab, gembok, lencana Jejaring, Bayar iuran/Perpanjang KTA)",
+    "kapdh-mobile/lib/app/redirect.dart (matriks akses per status)",
+    "kapdh-mobile/lib/features/home/home_screen.dart (akses cepat, Beranda terkunci unverified/expired)",
+    "kapdh-mobile/lib/features/kta/kta_presentation.dart (keterangan status kartu, jam perangkat, offline 7 hari)",
+    "kapdh-mobile/lib/core/cache/kta_cache_store.dart (maxAge 7 hari)",
+    "kapdh-mobile/lib/features/network/network_screen.dart (tab Jejaring, Pesan, Pesan Grup)",
+    "kapdh-mobile/lib/features/events/events_screen.dart (Mendatang/Lampau, Tiket Saya)",
+    "kapdh-mobile/lib/features/account/account_screen.dart (menu Akun)",
+    "kapdh-mobile/lib/features/status/restricted_screen.dart (portal Dibatasi)",
+    "kapdh-mobile/lib/features/system/welcome_screen.dart (Daftar KAPDH Apps)",
+    "kapdh-mobile/lib/core/ui/profile_lists.dart (5 profesi, 10 pendidikan, 10 tautan)",
+    "kapdh-mobile/android/app/build.gradle.kts (minSdk 26 = Android 8.0)",
+    "kapdh-mobile/ios/Podfile dan Runner.xcodeproj (iOS 15.0)",
+    "docs/qa/device-matrix.md (matriks perangkat dan peramban)",
+    "kapdh-platform/apps/api/src/core/membership/period.ts (12 bulan, expiring 30 hari, jendela perpanjangan 30 hari)",
+    "kapdh-platform/apps/api/src/core/settings/keys.ts (membership period_months 12, expiring_days 30)",
+    "kapdh-platform/apps/api/src/core/guards/auth.guard.ts (ADMIN_IDLE_MS 30 menit)",
+    "kapdh-platform/apps/admin/src/routes/auth/EnrollPage.tsx (kode 6 digit aplikasi autentikator)",
+    "kapdh-platform/apps/api/src/modules/account/deletion-policy.ts (penghapusan maks 7 hari kalender)",
+    "kapdh-platform/packages/contracts/openapi/domains/content.yaml (berita khusus anggota aktif)",
+    "docs/legal/tentang.html (usia 18+, angkatan 1 lulus 1997, terpisah dari pesantren, nirlaba, perpanjangan)",
+    "docs/legal/kebijakan-privasi.html (ringkasan privasi, UU 27/2022, tanpa NIK, tanpa iklan/analitik)",
+    "docs/legal/bantuan.html (Android 8.0 dan iOS 15 ke atas, email tidak dapat diubah setelah aktif, pengurus tidak meminta OTP, metode bayar, QR dipindai kamera ponsel)",
+    "kapdh-mobile/lib/features/payments/payment_presentation.dart (metode Transfer bank, E-wallet, QRIS)",
+    "kapdh-mobile/lib/features/kta/kta_presentation.dart (tombol Bayar, Lanjutkan, Perpanjang menurut status)",
+    "kapdh-mobile/lib/features/account/account_screen.dart (lencana status di bagian atas Akun)",
+    "kapdh-mobile/lib/features/payments/renewal_screen.dart (lencana status di halaman perpanjangan)",
+    "kapdh-mobile/lib/features/status/deletion_status_screen.dart (Nonaktif: akun dinonaktifkan, tidak dapat masuk)",
+    "kapdh-platform/apps/admin/src/lib/labels.ts (daftar izin admin)",
+    "kapdh-platform/apps/api/src/core/guards/auth.guard.ts (Super Admin memegang seluruh izin)",
+    "kapdh-platform/apps/api/src/modules/admin/admins.service.ts (izin kelola admin tidak dapat ditugaskan ke Admin)",
+    "kapdh-platform/apps/web/src/lib/site.ts (menu Beranda, Tentang, Bantuan, Kontak)",
+    "docs/legal/kebijakan-privasi.html bagian 18 (izin kamera, galeri, notifikasi; tanpa lokasi, kontak, mikrofon)"
+  ]
+}

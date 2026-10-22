@@ -1,0 +1,261 @@
+{
+  "title": "Peluncuran KAPDH Apps dan Silaturahmi Alumni",
+  "slides": [
+    {
+      "type": "cover",
+      "title": "Peluncuran KAPDH Apps",
+      "subtitle": "Wadah digital silaturahmi alumni Pondok Pesantren Darel Hikmah di seluruh Indonesia",
+      "meta": "Silaturahmi Alumni · Pertemuan Daring · 2026",
+      "notes": "Assalamu'alaikum warahmatullahi wabarakatuh. Alhamdulillah, segala puji bagi Allah SWT yang telah mempertemukan kita dalam silaturahmi alumni lintas angkatan ini. Bapak, Ibu, dan sahabat alumni Darel Hikmah yang kami hormati, pada kesempatan ini kami memperkenalkan KAPDH Apps, aplikasi resmi Perkumpulan Keluarga Alumni Pesantren Darel Hikmah. Kami akan menunjukkan apa saja yang dapat dilakukan dengan aplikasi ini, bagaimana data Anda dijaga, dan bagaimana cara bergabung hari ini juga. Silakan siapkan ponsel Anda, karena di akhir sesi kita akan membuka halaman unduh bersama-sama."
+    },
+    {
+      "type": "agenda",
+      "title": "Yang akan kita bahas",
+      "items": [
+        "Mengapa KAPDH Apps hadir",
+        "Layanan untuk anggota",
+        "Web admin untuk pengurus",
+        "Legalitas dan pelindungan data",
+        "Cara bergabung hari ini",
+        "Agenda berikutnya dan tanya jawab"
+      ],
+      "notes": "Ada enam hal yang akan kita bahas bersama. Pertama, alasan KAPDH Apps hadir. Kedua, layanan untuk anggota, lengkap dengan contoh tampilan layarnya. Ketiga, sekilas web admin yang dipakai pengurus untuk melayani anggota. Keempat, legalitas perkumpulan dan cara kami menjaga data pribadi Anda. Kelima, langkah bergabung yang dapat Bapak dan Ibu lakukan hari ini. Terakhir, agenda kegiatan setelah peluncuran, lalu kita buka sesi tanya jawab. Bila ada pertanyaan di tengah pemaparan, mohon dicatat dahulu. Insyaallah semuanya kita jawab di akhir acara."
+    },
+    {
+      "type": "statement",
+      "kicker": "Mengapa KAPDH Apps",
+      "title": "Menghubungkan alumni Darel Hikmah di seluruh Indonesia",
+      "text": "Pendaftaran anggota, iuran, KTA, kabar organisasi, kegiatan, dan silaturahmi antaralumni kini tersambung pada satu identitas keanggotaan, langsung dari ponsel Anda.",
+      "notes": "Mengapa aplikasi ini kita perlukan? Keluarga besar alumni Darel Hikmah tumbuh dari angkatan ke angkatan dan kini tinggal di berbagai kota. KAPDH Apps hadir sebagai media komunikasi dan informasi untuk menghubungkan alumni di seluruh Indonesia. Pendaftaran anggota, iuran, Kartu Tanda Anggota, berita organisasi, kegiatan, dan silaturahmi antaralumni sekarang tersambung pada satu identitas keanggotaan. Artinya, dengan satu akun di ponsel, Bapak dan Ibu dapat mengikuti kabar organisasi, memantau status keanggotaan sendiri, dan menyapa kembali sahabat lama."
+    },
+    {
+      "type": "split",
+      "title": "Tantangan kita dan jawabannya",
+      "left": {
+        "title": "Tantangan selama ini",
+        "points": [
+          "Pendaftaran, iuran, kabar, dan kegiatan berjalan sendiri-sendiri",
+          "Anggota sulit memastikan status iuran dan masa berlaku keanggotaan",
+          "Urusan administrasi banyak bergantung pada pesan pribadi",
+          "Sahabat lintas angkatan dan kota tidak mudah saling menemukan"
+        ]
+      },
+      "right": {
+        "title": "Bersama KAPDH Apps",
+        "points": [
+          "Satu identitas anggota untuk iuran, KTA, berita, dan kegiatan",
+          "Status pembayaran dan masa aktif KTA dapat dilihat sendiri kapan saja",
+          "Pengurus memproses iuran secara tertib, dan setiap keputusan tercatat",
+          "Jejaring alumni yang dapat dicari menurut angkatan, kota, dan profesi"
+        ]
+      },
+      "notes": "Mari kita lihat perbedaannya. Selama ini urusan keanggotaan berjalan sendiri-sendiri. Pendaftaran, iuran, dan kabar kegiatan tidak berada di satu tempat. Anggota sulit memastikan apakah iurannya sudah diterima dan sampai kapan keanggotaannya berlaku, sementara pengurus banyak bergantung pada pesan pribadi. Dengan KAPDH Apps, semuanya menyatu. Status pembayaran dan masa aktif KTA dapat Bapak dan Ibu lihat sendiri kapan saja. Pengurus memproses iuran dengan tertib, dan setiap keputusan tercatat. Yang paling kita nantikan, sesama alumni dapat saling menemukan menurut angkatan, kota, atau profesi."
+    },
+    {
+      "type": "section",
+      "number": "01",
+      "title": "Mengenal KAPDH Apps",
+      "subtitle": "Aplikasi anggota untuk Android dan iOS, web admin untuk pengurus, dan situs kapdh.or.id untuk umum",
+      "notes": "Baik, sekarang kita mengenal KAPDH Apps lebih dekat. Platform ini terdiri atas tiga bagian yang saling terhubung. Pertama, aplikasi anggota di ponsel Android dan iPhone, yang akan Bapak dan Ibu pakai sehari-hari. Kedua, web admin di alamat admin.kapdh.or.id, tempat pengurus memverifikasi iuran dan mengelola layanan. Ketiga, situs kapdh.or.id untuk umum, berisi informasi organisasi, halaman unduh, pemeriksaan keaslian KTA, dan pusat bantuan. Perlu diingat, anggota memakai aplikasi di ponsel. Tidak ada versi web untuk anggota."
+    },
+    {
+      "type": "features",
+      "title": "Enam layanan utama untuk anggota",
+      "subtitle": "Satu aplikasi untuk keanggotaan, informasi, kegiatan, dan silaturahmi alumni",
+      "items": [
+        { "icon": "ph-identification-card", "title": "KTA digital", "text": "Kartu anggota berkode QR yang keaslian dan statusnya dapat diperiksa siapa pun." },
+        { "icon": "ph-receipt", "title": "Iuran keanggotaan", "text": "Bayar ke tujuan resmi, unggah bukti, lalu pantau keputusan pengurus." },
+        { "icon": "ph-newspaper-clipping-duotone", "title": "Beranda dan notifikasi", "text": "Berita, pengumuman, dan pemberitahuan resmi organisasi di satu tempat." },
+        { "icon": "ph-ticket", "title": "Event dan tiket", "text": "Daftar kegiatan alumni dan terima tiket digital berkode QR." },
+        { "icon": "ph-users-three", "title": "Jejaring alumni", "text": "Temukan sahabat menurut nama, angkatan, kelas, kota, profesi, atau keahlian." },
+        { "icon": "ph-chat-circle-dots-duotone", "title": "Pesan dan Pesan Grup", "text": "Berkirim teks dan gambar dengan sesama anggota, pribadi maupun berkelompok." }
+      ],
+      "notes": "Inilah enam layanan utama di aplikasi anggota. Pertama, KTA digital berkode QR yang dapat diperiksa keasliannya. Kedua, iuran keanggotaan: bayar ke tujuan resmi organisasi, unggah bukti, lalu pantau keputusan pengurus dari aplikasi. Ketiga, Beranda dan notifikasi, tempat berita, pengumuman, serta pemberitahuan resmi tentang pembayaran, masa keanggotaan, kegiatan, dan keamanan akun. Keempat, Event dan tiket untuk mendaftar kegiatan. Kelima, Jejaring, yaitu direktori sesama anggota. Keenam, Pesan dan Pesan Grup untuk berkirim teks dan gambar. Jejaring, pesan, dan pendaftaran event adalah layanan bagi anggota yang keanggotaannya aktif. Satu per satu kita lihat tampilannya."
+    },
+    {
+      "type": "phone",
+      "kicker": "Langkah pertama",
+      "title": "Daftar dari ponsel, verifikasi lewat email",
+      "text": "Isi data diri, angkatan, serta kelas masuk dan kelas keluar. Tahun masuk, keluar, dan lulus dihitung otomatis. Setelah itu, masukkan kode 6 digit yang dikirim ke email Anda.",
+      "bullets": [
+        "Tidak meminta NIK, nomor KTP, tanggal lahir, atau alamat rumah",
+        "Kode verifikasi berlaku 10 menit",
+        "Setiap alumni, termasuk anggota lama, mendaftar sendiri"
+      ],
+      "screens": ["mobile/deck-welcome.png", "mobile/deck-daftar.png", "mobile/deck-otp.png"],
+      "notes": "Mendaftar cukup dari ponsel. Di layar pembuka, ketuk Daftar KAPDH Apps. Isi nama lengkap, jenis kelamin, email, password, angkatan, serta kelas masuk dan kelas keluar. Mohon pastikan angkatan dan kelas sudah benar, karena data itu dipakai untuk menyusun nomor anggota dan setelahnya hanya dapat dikoreksi pengurus. Setujui Kebijakan Privasi dan Ketentuan Layanan, lalu masukkan kode 6 digit yang dikirim ke email. Kode berlaku 10 menit, dan bila belum masuk, periksa juga folder spam. Data pendataan lama tidak dipindahkan otomatis, sehingga anggota lama pun perlu mendaftar sendiri. Aplikasi ini untuk alumni berusia 18 tahun ke atas."
+    },
+    {
+      "type": "phone",
+      "kicker": "Iuran keanggotaan",
+      "title": "Bayar iuran, unggah bukti, pengurus memverifikasi",
+      "text": "Pembayaran dilakukan di luar aplikasi ke rekening, dompet digital, atau QRIS resmi KAPDH yang tampil di aplikasi. Setelah bukti dikirim, statusnya menjadi Menunggu Verifikasi.",
+      "bullets": [
+        "Nominal iuran ditetapkan pengurus dan selalu tampil sebelum membayar",
+        "Pengurus mencocokkan bukti dengan dana yang benar-benar masuk",
+        "Aplikasi tidak memproses kartu dan tidak menarik dana dari rekening",
+        "Bukti ditolak? Unggah ulang bukti, tanpa perlu transfer ulang"
+      ],
+      "screens": ["mobile/deck-bayar.png", "mobile/deck-menunggu.png"],
+      "notes": "Setelah email terverifikasi, KTA Anda dibuat dengan status Tidak Aktif dan menjadi aktif setelah iuran pendaftaran diverifikasi pengurus. Iuran ini adalah iuran keanggotaan organisasi, bukan pembelian aplikasi. Aplikasinya sendiri diunduh tanpa biaya. Nominal ditetapkan pengurus dan selalu tampil di aplikasi; angka di layar ini hanya contoh. Bayarlah hanya ke tujuan yang tampil di aplikasi, lalu unggah foto bukti atau berkas PDF dan ketuk Kirim bukti pembayaran. Pengurus mencocokkan bukti dengan dana yang benar-benar masuk, lalu hasilnya dikabarkan lewat notifikasi dan email. Mohon waspada: jangan pernah mentransfer ke rekening yang dikirim lewat pesan pribadi, walaupun mengatasnamakan pengurus."
+    },
+    {
+      "type": "phone",
+      "kicker": "KTA digital",
+      "title": "Kartu anggota di genggaman, berlaku 12 bulan",
+      "text": "KTA aktif selama 12 bulan sejak iuran pendaftaran diverifikasi pengurus. Kode QR di kartu dapat dipindai untuk memeriksa keaslian dan status terkini, tanpa menampilkan kontak atau alamat.",
+      "bullets": [
+        "Tetap dapat ditunjukkan tanpa internet sampai 7 hari sejak sinkron terakhir",
+        "Perpanjangan dibuka mulai 30 hari sebelum masa berlaku berakhir",
+        "Sisa masa aktif tidak hilang bila memperpanjang lebih awal"
+      ],
+      "screens": ["mobile/deck-kta-aktif.png", "mobile/deck-kta-offline.png"],
+      "notes": "Inilah Kartu Tanda Anggota digital. Kartu memuat nama, angkatan dan kode angkatan, profesi utama, kota, nomor anggota, kode QR, dan masa berlaku. Siapa pun dapat memeriksa keaslian KTA dengan memindai kode QR-nya. Hasilnya hanya menampilkan status keanggotaan dan identitas terbatas, tanpa email, nomor telepon, maupun alamat. Saat sinyal sulit, KTA yang sudah tersinkron tetap dapat ditunjukkan tanpa internet sampai 7 hari, seperti layar di sebelah kanan. Masa keanggotaan 12 bulan, dan perpanjangan dibuka 30 hari sebelum berakhir. Bila memperpanjang lebih awal, sisa masa aktif tidak hilang. Satu pesan: tunjukkan KTA langsung dari aplikasi, bukan dari tangkapan layar lama."
+    },
+    {
+      "type": "phone",
+      "kicker": "Event dan tiket",
+      "title": "Daftar kegiatan, tiket langsung di aplikasi",
+      "text": "Tab Event memuat jadwal, lokasi, kuota, dan biaya kegiatan bila ada. Untuk acara tatap muka, tunjukkan kode QR tiket kepada petugas check-in di lokasi.",
+      "bullets": [
+        "Event gratis langsung menerbitkan tiket",
+        "Satu tiket berlaku untuk satu orang, yaitu anggota yang mendaftar",
+        "Satu QR hanya dapat dipindai satu kali, jadi jangan dibagikan",
+        "Semua tiket tersimpan di menu Tiket saya"
+      ],
+      "screens": ["mobile/deck-event-detail.png", "mobile/deck-tiket-checkin.png"],
+      "notes": "Kegiatan alumni kini cukup dipantau dari tab Event. Di sana tercantum jadwal, lokasi, kuota, dan biaya bila ada. Ketuk Daftar Sekarang untuk mendaftar. Untuk event gratis, tiket langsung terbit. Untuk event berbayar, tiket terbit setelah pembayaran diverifikasi pengurus. Setiap tiket berlaku untuk satu orang, yaitu anggota yang mendaftar. Pada acara tatap muka, tunjukkan kode QR tiket kepada petugas. Satu QR hanya dapat dipindai satu kali, jadi mohon tidak dibagikan. Setelah dipindai, tiket berstatus Sudah Check-in seperti layar di sebelah kanan. Nama acara, tanggal, dan tempat pada layar ini adalah contoh tampilan; jadwal resmi selalu dilihat di tab Event."
+    },
+    {
+      "type": "phone",
+      "kicker": "Jejaring dan pesan",
+      "title": "Temukan sahabat lama, jalin silaturahmi baru",
+      "text": "Cari sesama anggota menurut nama, angkatan, kelas, kota, profesi, atau keahlian. Buka profilnya, lalu lanjutkan silaturahmi melalui Pesan atau Pesan Grup.",
+      "bullets": [
+        "Direktori hanya dapat dibuka sesama anggota aktif",
+        "Berkirim teks dan gambar, pribadi maupun berkelompok",
+        "Blokir dan laporkan bila ada yang melanggar Ketentuan Komunitas"
+      ],
+      "screens": ["mobile/deck-jejaring.png", "mobile/deck-profil-anggota.png", "mobile/deck-pesan.png"],
+      "notes": "Inilah fitur yang paling dekat dengan semangat silaturahmi kita. Di tab Jejaring, Bapak dan Ibu dapat mencari sesama anggota menurut nama, angkatan, kelas, kota, profesi, atau keahlian. Misalnya, mencari sahabat seangkatan yang kini tinggal di kota yang sama, atau alumni yang berprofesi dokter dan guru. Buka profilnya, lalu ketuk Kirim Pesan. Ada juga Pesan Grup untuk berbincang bersama. Direktori ini hanya dapat dibuka sesama anggota aktif. Bila ada yang berlaku tidak pantas, Anda dapat memblokir dan melaporkannya kepada pengurus. Satu catatan, pesan di aplikasi tidak dienkripsi end-to-end, jadi jangan kirim password, kode OTP, atau data rekening lewat pesan."
+    },
+    {
+      "type": "phone",
+      "kicker": "Profil dan privasi",
+      "title": "Profil lebih lengkap, privasi tetap di tangan Anda",
+      "text": "Cantumkan hingga 5 profesi, 10 riwayat pendidikan, dan 10 tautan media sosial agar sahabat alumni mudah mengenal Anda. Semua isian profil ini tidak wajib.",
+      "bullets": [
+        "Profesi pertama menjadi profesi utama dan tampil di KTA",
+        "Telepon, email, dan media sosial tersembunyi sampai Anda menampilkannya",
+        "Atur tampilannya di menu Akun > Privasi profil"
+      ],
+      "screens": ["mobile/deck-profil-profesi.png", "mobile/deck-profil-medsos.png", "mobile/deck-privasi.png"],
+      "notes": "Profil alumni kini lebih lengkap. Di menu Akun, Ubah profil, Bapak dan Ibu dapat mencantumkan hingga lima profesi, sepuluh keahlian, sepuluh riwayat pendidikan setelah pondok, dan sepuluh tautan media sosial seperti Instagram atau LinkedIn. Profesi pertama menjadi profesi utama dan tampil di KTA. Semua isian ini tidak wajib, silakan diisi sesuai kebutuhan. Yang penting, privasi tetap di tangan Anda. Nomor telepon, email, dan media sosial tersembunyi secara bawaan, dan baru terlihat oleh sesama anggota aktif bila Anda menyalakannya di Privasi profil. Bila tidak ingin tampil di Jejaring sama sekali, cukup matikan satu sakelar."
+    },
+    {
+      "type": "wide",
+      "kicker": "Untuk pengurus",
+      "title": "Web admin: layanan pengurus yang tertib dan tercatat",
+      "text": "Di admin.kapdh.or.id, pengurus memverifikasi pembayaran, mengelola anggota, konten, event dan check-in, serta moderasi, masing-masing sesuai izin tugasnya.",
+      "bullets": [
+        "Akun pengurus terpisah dan wajib autentikasi dua langkah",
+        "Tindakan penting tercatat dalam jejak audit",
+        "Pengurus tidak dapat memutuskan pembayaran miliknya sendiri"
+      ],
+      "img": "admin/deck-admin-verifikasi.png",
+      "notes": "Di balik aplikasi anggota, pengurus bekerja melalui web admin. Layar ini adalah antrean Verifikasi Pembayaran: pengurus membuka bukti, mencocokkannya dengan dana yang masuk ke rekening organisasi, lalu menyetujui atau menolak. Selain itu ada pengelolaan anggota, berita dan banner, event dan check-in, moderasi laporan, notifikasi, serta pengaturan. Untuk menjaga amanah, akun pengurus terpisah dari akun alumninya, wajib autentikasi dua langkah, dan keluar otomatis setelah 30 menit tidak aktif. Setiap pengurus hanya mendapat izin sesuai tugasnya, tindakan penting tercatat dalam jejak audit, dan pengurus tidak dapat memutuskan pembayaran miliknya sendiri. Pengurus juga tidak memiliki fitur untuk membaca percakapan anggota."
+    },
+    {
+      "type": "split",
+      "title": "Amanah: berbadan hukum dan menjaga data Anda",
+      "left": {
+        "title": "Perkumpulan berbadan hukum",
+        "points": [
+          "Disahkan Keputusan Menteri Hukum dan HAM Nomor AHU-0002732.AH.01.07.TAHUN 2023",
+          "Akta pendirian Nomor 01 tanggal 27 Maret 2023",
+          "Berasaskan Pancasila dan Undang-Undang Dasar 1945",
+          "Seluruh kekayaan, termasuk iuran anggota, untuk maksud dan tujuan perkumpulan"
+        ]
+      },
+      "right": {
+        "title": "Pelindungan data pribadi",
+        "points": [
+          "Mengacu pada UU Nomor 27 Tahun 2022 tentang Pelindungan Data Pribadi",
+          "Tanpa NIK dan tanpa iklan; data pribadi tidak dijual",
+          "Izin pengurus sesuai tugas, dan tindakan penting tercatat dalam jejak audit",
+          "Akun dapat dihapus kapan saja, selesai paling lambat 7 hari kalender"
+        ]
+      },
+      "notes": "Bapak dan Ibu tentu ingin tahu, siapa yang mengelola aplikasi ini dan bagaimana data kita dijaga. KAPDH adalah perkumpulan berbadan hukum. Akta pendiriannya Nomor 01 tanggal 27 Maret 2023, dan pendiriannya disahkan Keputusan Menteri Hukum dan HAM tanggal 11 April 2023. Sesuai Anggaran Dasar, seluruh kekayaan perkumpulan, termasuk iuran anggota, dipergunakan untuk mencapai maksud dan tujuan perkumpulan. Tentang data, Kebijakan Privasi kami mengacu pada Undang-Undang Nomor 27 Tahun 2022 tentang Pelindungan Data Pribadi. Kami tidak meminta NIK, tidak menampilkan iklan, dan tidak menjual data pribadi. Basis data dan berkas utama disimpan di Indonesia. Setiap pengurus hanya mendapat izin sesuai tugasnya, dan tindakan penting tercatat. Akun dapat dihapus kapan saja, dan penghapusan selesai paling lambat tujuh hari kalender. Rinciannya ada di halaman Kebijakan Privasi di kapdh.or.id."
+    },
+    {
+      "type": "section",
+      "number": "02",
+      "title": "Mari Bergabung Hari Ini",
+      "subtitle": "Lima langkah dari ponsel Anda menuju KTA digital yang aktif",
+      "notes": "Bapak dan Ibu sudah melihat apa saja yang ditawarkan KAPDH Apps. Sekarang bagian yang paling penting, yaitu bergabung. Kami mengajak seluruh sahabat alumni, baik yang baru maupun anggota lama, untuk mendaftar hari ini juga. Prosesnya hanya lima langkah, dan semuanya dilakukan dari ponsel. Setelah itu, kami juga akan menyampaikan agenda kegiatan yang dapat diikuti setelah peluncuran ini. Mari kita lihat langkah-langkahnya satu per satu."
+    },
+    {
+      "type": "steps",
+      "title": "Cara bergabung hari ini",
+      "steps": [
+        { "title": "Pasang aplikasi", "text": "Buka kapdh.or.id/unduh, lalu pasang aplikasi KAPDH dari tautan resmi di halaman itu." },
+        { "title": "Daftar", "text": "Ketuk Daftar KAPDH Apps, isi data diri, angkatan, serta kelas masuk dan keluar." },
+        { "title": "Verifikasi email", "text": "Setujui Kebijakan Privasi dan Ketentuan Layanan, lalu masukkan kode 6 digit dari email." },
+        { "title": "Tunaikan iuran", "text": "Bayar ke tujuan resmi yang tampil di aplikasi, lalu unggah bukti pembayaran." },
+        { "title": "KTA aktif", "text": "Setelah pengurus memverifikasi iuran, KTA digital Anda aktif selama 12 bulan." }
+      ],
+      "notes": "Mari kita ringkas menjadi lima langkah yang dapat langsung dipraktikkan. Pertama, buka kapdh.or.id/unduh dan pasang aplikasi dari tombol resmi di halaman itu. Kedua, ketuk Daftar KAPDH Apps dan isi data Anda dengan teliti, terutama angkatan dan kelas. Ketiga, setujui Kebijakan Privasi dan Ketentuan Layanan, lalu masukkan kode dari email. Keempat, tunaikan iuran pendaftaran ke tujuan resmi yang tampil di aplikasi, kemudian unggah buktinya. Kelima, tunggu verifikasi pengurus. Kabarnya datang lewat notifikasi dan email, dan sejak itu KTA digital Anda aktif selama 12 bulan. Bila menemui kendala, mohon dicatat dahulu dan sampaikan pada sesi tanya jawab, atau buka halaman Bantuan."
+    },
+    {
+      "type": "timeline",
+      "title": "Agenda silaturahmi setelah peluncuran",
+      "items": [
+        { "date": "Hari ini", "title": "Peluncuran dan Silaturahmi Alumni", "text": "Pertemuan daring lintas angkatan: pengenalan KAPDH Apps, tanya jawab, dan doa." },
+        { "date": "Jadwal di tab Event", "title": "Temu Jejaring Alumni Lintas Profesi", "text": "Daring dan gratis. Berbagi pengalaman profesi dan saling mengenal per bidang." },
+        { "date": "Jadwal di tab Event", "title": "Halal Bihalal dan Silaturahmi Akbar", "text": "Tatap muka di Pekanbaru. Daftar di tab Event, check-in dengan QR tiket." }
+      ],
+      "notes": "Peluncuran hari ini barulah awal. Insyaallah, pengurus telah menyiapkan dua kegiatan berikutnya. Pertama, Temu Jejaring Alumni Lintas Profesi, pertemuan daring yang gratis untuk berbagi pengalaman di bidang profesi masing-masing. Sebelum acara, lengkapi profesi dan keahlian di profil Anda agar mudah ditemukan. Kedua, Halal Bihalal dan Silaturahmi Akbar Alumni secara tatap muka di Pekanbaru, dengan tiket QR dan check-in di lokasi. Jadwal, tempat, dan cara pendaftaran kedua kegiatan ini selalu dapat dilihat di tab Event. Untuk acara daring, tautan pertemuan diumumkan melalui berita di Beranda aplikasi, jadi mohon izinkan notifikasi agar kabarnya tidak terlewat."
+    },
+    {
+      "type": "cta",
+      "title": "Unduh KAPDH Apps sekarang",
+      "text": "Buka kapdh.or.id/unduh atau pindai kode QR di samping. Pasang aplikasi hanya dari tautan resmi di halaman itu. Mendukung Android 8.0 dan iOS 15 ke atas.",
+      "actions": [
+        { "label": "Buka halaman Unduh", "url": "https://kapdh.or.id/unduh" },
+        { "label": "Baca panduan Bantuan", "url": "https://kapdh.or.id/bantuan" }
+      ],
+      "qr": "https://kapdh.or.id/unduh",
+      "notes": "Mari kita mulai sekarang. Silakan arahkan kamera ponsel ke kode QR di layar, atau ketik alamat kapdh.or.id/unduh. Halaman itu memuat tombol Google Play dan App Store, langkah bergabung, dan persyaratan perangkat. Mohon pasang aplikasi hanya melalui tombol resmi di halaman tersebut, bukan dari berkas kiriman orang lain. Aplikasi dapat diunduh tanpa biaya. Setelah terpasang, langsung saja mendaftar. Kami beri waktu sejenak, dan bila ada kendala, silakan sampaikan pada sesi tanya jawab. Bila Bapak dan Ibu ingin membaca panduan lengkap, buka halaman Bantuan di kapdh.or.id/bantuan, yang juga tersedia di menu Akun di dalam aplikasi."
+    },
+    {
+      "type": "closing",
+      "title": "Terima kasih",
+      "text": "Mengabdi untuk Umat, Menjaga Silaturahmi, Meneladani Akhlak Mulia. Mari bergabung hari ini dan ajak sahabat alumni lainnya.",
+      "contact": "bantuan@kapdh.or.id · WhatsApp dukungan di aplikasi · kapdh.or.id/bantuan",
+      "notes": "Jazakumullahu khairan atas perhatian Bapak dan Ibu sekalian. Sesuai semboyan kita, mengabdi untuk umat, menjaga silaturahmi, dan meneladani akhlak mulia, mari jadikan KAPDH Apps sebagai rumah bersama keluarga besar alumni Darel Hikmah. Ajak sahabat seangkatan untuk bergabung. Bila ada pertanyaan, hubungi kami di bantuan@kapdh.or.id atau nomor WhatsApp dukungan yang tercantum di aplikasi. Ingat, pengurus KAPDH tidak pernah meminta password atau kode OTP Anda. Sekarang kita buka sesi tanya jawab. Wassalamu'alaikum warahmatullahi wabarakatuh."
+    }
+  ],
+  "sources": [
+    "docs/konten/konten-peluncuran.md (Event 1 Peluncuran KAPDH Apps dan Silaturahmi Alumni: daring, gratis, susunan acara, tanggal [ISI]; Event 2 Halal Bihalal dan Silaturahmi Akbar Alumni di Pekanbaru, tatap muka, harga [ISI]; Event 3 Temu Jejaring Alumni Lintas Profesi daring gratis; tautan daring diumumkan lewat berita di Beranda; menerbitkan event tidak mengirim notifikasi; prasyarat persetujuan toko belum dicentang)",
+    "README.md (tiga bagian platform: aplikasi anggota, web admin admin.kapdh.or.id, situs kapdh.or.id)",
+    "docs/reference/Guidelines_KAPDH_v1.0.txt (menghubungkan alumni di seluruh Indonesia)",
+    "docs/reference/PRD_v3.5.txt bagian 1.1-1.2 (satu identitas keanggotaan, status pembayaran dan masa aktif KTA, pengurus tanpa mengandalkan pesan pribadi)",
+    "kapdh-platform/apps/web/src/lib/organization.ts (nama badan hukum, akta 01 tanggal 27 Maret 2023, SK AHU-0002732.AH.01.07.TAHUN 2023 tanggal 11 April 2023, asas Pancasila dan UUD 1945, assetsStatement: seluruh kekayaan termasuk iuran anggota untuk maksud dan tujuan perkumpulan)",
+    "kapdh-platform/apps/web/src/lib/site.ts (OFFICIAL_EMAIL bantuan@kapdh.or.id)",
+    "kapdh-platform/apps/web/src/pages/unduh.astro dan components/StoreButtons.astro, scripts/config-page.ts (tombol toko diisi dari pengaturan pengurus, tampil Segera tersedia bila belum diisi; Android 8.0 dan iOS 15 ke atas)",
+    "docs/legal/tentang.html (semboyan, usia 18+, layanan aplikasi, tanpa versi web untuk anggota; klaim legalitas di slide hanya dari organization.ts dan kebijakan-privasi.html)",
+    "docs/legal/kebijakan-privasi.html (UU 27/2022, tanpa NIK/iklan/jual data, izin pengurus sesuai tugas dan tindakan penting tercatat di jejak audit, 2FA, pengurus tidak membaca chat, pengurus tidak dapat memutuskan pembayaran miliknya sendiri, keluar otomatis 30 menit, chat tidak end-to-end, basis data dan berkas utama disimpan di Indonesia (bagian 9), hapus akun maks 7 hari kalender, OTP 10 menit, verifikasi KTA tanpa kontak/alamat)",
+    "docs/legal/bantuan.html (cara daftar, kode 6 digit, 10 menit, iuran dan unggah bukti, unggah ulang tanpa transfer ulang, KTA offline 7 hari, masa 12 bulan, perpanjangan 30 hari, satu QR tiket sekali pindai, profil 5 profesi/10 keahlian/10 pendidikan/10 media sosial, privasi profil bawaan)",
+    "docs/legal/ketentuan.html (iuran bukan pembelian; aplikasi diunduh tanpa biaya; event gratis langsung terkonfirmasi)",
+    "kapdh-platform/apps/api/src/modules/auth/otp-challenge.service.ts (OTP_TTL_MS 10 menit)",
+    "kapdh-mobile/lib/core/ui/profile_lists.dart (maxProfessions 5, maxEducationEntries 10, maxSocialLinks 10)",
+    "kapdh-mobile/lib/core/cache/kta_cache_store.dart (maxAge 7 hari)",
+    "kapdh-mobile/lib/features/account/privacy_settings_screen.dart (teks Privasi profil)",
+    "kapdh-mobile/mockup-html: auth/welcome #1, auth/register #2 digulir, auth/otp #2, kta/payment-detail #1 dan #14, kta/kta #1 dan #7, event/event-detail #1, event/ticket-detail #4, jejaring/network #1 (baris pendidikan disamakan dengan aplikasi: institusi dan strata, sama dengan b07-jejaring), jejaring/member-profile #1, jejaring/chat-room #1, akun/profile-edit #2 digulir (teks bantuan profesi dan keahlian disamakan dengan profile_edit_screen.dart, sama dengan b08-profil-profesi), akun/privacy #1",
+    "kapdh-mobile/lib/features/network/widgets/directory_member_card.dart (kartu Jejaring: profesi dan kota, lalu institusi dan strata pendidikan teratas)",
+    "kapdh-mobile/lib/features/account/profile_edit_screen.dart (Profesi maksimal 5, Keahlian maksimal 10 dari daftar)",
+    "kapdh-mobile/android/app/build.gradle.kts minSdk 26 dan ios Runner IPHONEOS_DEPLOYMENT_TARGET 15.0 (Android 8.0 dan iOS 15)",
+    "web admin mode mock: /payments (Verifikasi Pembayaran, filter Jenis Pendaftaran)"
+  ]
+}
