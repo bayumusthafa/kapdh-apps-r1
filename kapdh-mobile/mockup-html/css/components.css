@@ -515,7 +515,7 @@ a { color: inherit; text-decoration: none; }
 }
 .badge--primary { background: var(--color-primary); color: var(--color-on-primary); }  /* lencana tab Jejaring */
 .badge--accent { background: var(--color-accent); color: var(--color-on-accent); }     /* lonceng HomeHeader */
-.badge--lock { background: var(--color-neutral); padding: 0; width: 16px; } /* tab terkunci: Icons.lock 10 putih, padding 2 (16 x 16, terukur) */
+.badge--lock { background: var(--color-neutral); padding: 0; width: 16px; } /* tab khusus anggota aktif (bergembok): Icons.lock 10 putih, padding 2 (16 x 16, terukur) */
 .badge--lock .ic { --ic-size: 10px; color: #FFFFFF; }
 .badge--dot { min-width: 8px; width: 8px; height: 8px; padding: 0; left: auto; right: 0; top: 0; }  /* Badge(smallSize: 8) tanpa label: pojok kanan atas anak (offset diabaikan, terukur) */
 .badge--dot6 { min-width: 6px; width: 6px; height: 6px; padding: 0; left: auto; right: 0; top: 0; } /* small badge M3 bawaan 6 px */

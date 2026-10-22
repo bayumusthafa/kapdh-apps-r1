@@ -29,7 +29,7 @@
     </nav>
     <h1 class="page-header__title">Akun</h1>
     <dl class="page-header__meta">
-      <dt>Dart</dt><dd><code>lib/features/account/account_screen.dart</code> (AccountScreen, _Header) + <code>widgets/account_section.dart</code> (AccountSection, AccountMenuTile), <code>widgets/profile_avatar.dart</code>; lembar terkunci <code>lib/app/app_shell.dart</code> (showLockedTabSheet)</dd>
+      <dt>Dart</dt><dd><code>lib/features/account/account_screen.dart</code> (AccountScreen, _Header) + <code>widgets/account_section.dart</code> (AccountSection, AccountMenuTile), <code>widgets/profile_avatar.dart</code>; lembar khusus anggota aktif <code>lib/app/app_shell.dart</code> (showLockedTabSheet)</dd>
       <dt>Rute</dt><dd><code>/account</code> (tab Akun di AppShell; status bar di atas pita hijau)</dd>
     </dl>
     <div class="page-header__states">
@@ -37,15 +37,15 @@
       <ol>
         <li>Utama: KTA Aktif</li>
         <li>Gulir penuh: KTA Aktif</li>
-        <li>KTA Tidak Aktif: menu terkunci (gulir penuh)</li>
-        <li>Lembar menu terkunci (ketuk Tiket saya)</li>
+        <li>KTA Tidak Aktif: menu bergembok (gulir penuh)</li>
+        <li>Lembar menu khusus anggota aktif (ketuk Tiket saya)</li>
         <li>Pemeliharaan: pita + menu ditunda (gulir penuh)</li>
         <li>Lembar pemeliharaan (ketuk Ganti password)</li>
         <li>Offline (snapshot terakhir)</li>
         <li>Keluar sedang diproses (digulir ke dasar)</li>
       </ol>
     </div>
-    <p class="page-header__note">Seluruh isi tab bergulir bersama kepala (SingleChildScrollView), navigasi bawah tetap. Pita hijau bermotif berhenti 56 px di atas dasar kartu profil. Menu terkunci/ditunda mengikuti matriks rute lib/app/redirect.dart: KTA Tidak Aktif mengunci Tiket saya dan Anggota diblokir; mode pemeliharaan menahan Ganti password dan Hapus akun. Data fiktif. Dart tidak menetapkan gaya status bar untuk layar ini, sehingga ikon status bar mengikuti layar sebelumnya; mockup memakai ikon terang di atas pita hijau.</p>
+    <p class="page-header__note">Seluruh isi tab bergulir bersama kepala (SingleChildScrollView), navigasi bawah tetap. Pita hijau bermotif berhenti 56 px di atas dasar kartu profil. Menu bergembok/ditunda mengikuti matriks rute lib/app/redirect.dart: saat KTA Tidak Aktif, menu Tiket saya dan Anggota diblokir bergembok dan membuka lembar khusus anggota aktif; mode pemeliharaan menahan Ganti password dan Hapus akun. Data fiktif. Dart tidak menetapkan gaya status bar untuk layar ini, sehingga ikon status bar mengikuti layar sebelumnya; mockup memakai ikon terang di atas pita hijau.</p>
   </header>
 
   <main class="frames">
@@ -236,8 +236,8 @@
     </figure>
 
     <figure class="frame" id="frame-3">
-      <figcaption class="frame__label"><span class="frame__num">3</span> KTA Tidak Aktif: menu terkunci (gulir penuh)</figcaption>
-      <div class="device device--tall" role="group" aria-label="Akun, KTA Tidak Aktif dengan menu terkunci">
+      <figcaption class="frame__label"><span class="frame__num">3</span> KTA Tidak Aktif: menu bergembok (gulir penuh)</figcaption>
+      <div class="device device--tall" role="group" aria-label="Akun, KTA Tidak Aktif dengan menu khusus anggota aktif">
         <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <div class="screen__body">
@@ -269,7 +269,7 @@
                     <div class="account-section__card">
                       <a class="menu-tile" href="#" aria-label="Notifikasi, Kotak masuk resmi, 3 belum dibaca"><span class="ic ph-bell-simple" aria-hidden="true"></span><span class="menu-tile__body col"><span class="menu-tile__label">Notifikasi</span><span class="menu-tile__subtitle">Kotak masuk resmi</span></span><span class="count-pill" aria-hidden="true">3</span><span class="ic ph-caret-right menu-tile__trail" aria-hidden="true"></span></a>
                       <a class="menu-tile" href="#" aria-label="Riwayat pembayaran"><span class="ic ph-receipt" aria-hidden="true"></span><span class="menu-tile__body col"><span class="menu-tile__label">Riwayat pembayaran</span></span><span class="ic ph-caret-right menu-tile__trail" aria-hidden="true"></span></a>
-                      <button class="menu-tile is-locked" type="button" aria-label="Tiket saya, terkunci"><span class="ic ph-ticket" aria-hidden="true"></span><span class="menu-tile__body col"><span class="menu-tile__label">Tiket saya</span></span><span class="ic ph-lock-simple menu-tile__trail" aria-hidden="true"></span></button>
+                      <button class="menu-tile is-locked" type="button" aria-label="Tiket saya, khusus anggota aktif"><span class="ic ph-ticket" aria-hidden="true"></span><span class="menu-tile__body col"><span class="menu-tile__label">Tiket saya</span></span><span class="ic ph-lock-simple menu-tile__trail" aria-hidden="true"></span></button>
                     </div>
                   </section>
                   <section aria-labelledby="sec-15">
@@ -283,7 +283,7 @@
                   <section aria-labelledby="sec-16">
                     <h3 class="account-section__title" id="sec-16">KOMUNITAS</h3>
                     <div class="account-section__card">
-                      <button class="menu-tile is-locked" type="button" aria-label="Anggota diblokir, terkunci"><span class="ic ph-prohibit" aria-hidden="true"></span><span class="menu-tile__body col"><span class="menu-tile__label">Anggota diblokir</span></span><span class="ic ph-lock-simple menu-tile__trail" aria-hidden="true"></span></button>
+                      <button class="menu-tile is-locked" type="button" aria-label="Anggota diblokir, khusus anggota aktif"><span class="ic ph-prohibit" aria-hidden="true"></span><span class="menu-tile__body col"><span class="menu-tile__label">Anggota diblokir</span></span><span class="ic ph-lock-simple menu-tile__trail" aria-hidden="true"></span></button>
                       <a class="menu-tile" href="my-reports.html" aria-label="Laporan saya"><span class="ic ph-flag" aria-hidden="true"></span><span class="menu-tile__body col"><span class="menu-tile__label">Laporan saya</span></span><span class="ic ph-caret-right menu-tile__trail" aria-hidden="true"></span></a>
                     </div>
                   </section>
@@ -314,9 +314,9 @@
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
             <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#" aria-label="Event, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-calendar-dots" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Event</span></a>
+            <a class="bottom-nav__item" href="#" aria-label="Event, khusus anggota aktif"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-calendar-dots" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Event</span></a>
             <a class="bottom-nav__item bottom-nav__item--kta" href="#"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item" href="#" aria-label="Jejaring, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#" aria-label="Jejaring, khusus anggota aktif"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
             <a class="bottom-nav__item is-selected" href="account.html" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ph-user-circle-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
@@ -328,8 +328,8 @@
     <h2 class="frames__group-title">Lembar dan pita</h2>
 
     <figure class="frame" id="frame-4">
-      <figcaption class="frame__label"><span class="frame__num">4</span> Lembar menu terkunci (ketuk Tiket saya)</figcaption>
-      <div class="device" role="group" aria-label="Akun, lembar penjelasan menu terkunci">
+      <figcaption class="frame__label"><span class="frame__num">4</span> Lembar menu khusus anggota aktif (ketuk Tiket saya)</figcaption>
+      <div class="device" role="group" aria-label="Akun, lembar penjelasan menu khusus anggota aktif">
         <div class="statusbar statusbar--on-dark" aria-hidden="true"><span>09.41</span><span class="statusbar__icons"><span class="ic ic-signal_cellular_alt"></span><span class="ic ic-wifi"></span><span class="ic ic-battery_full"></span></span></div>
         <div class="screen">
           <div class="screen__body">
@@ -361,7 +361,7 @@
                     <div class="account-section__card">
                       <a class="menu-tile" href="#" aria-label="Notifikasi, Kotak masuk resmi, 3 belum dibaca"><span class="ic ph-bell-simple" aria-hidden="true"></span><span class="menu-tile__body col"><span class="menu-tile__label">Notifikasi</span><span class="menu-tile__subtitle">Kotak masuk resmi</span></span><span class="count-pill" aria-hidden="true">3</span><span class="ic ph-caret-right menu-tile__trail" aria-hidden="true"></span></a>
                       <a class="menu-tile" href="#" aria-label="Riwayat pembayaran"><span class="ic ph-receipt" aria-hidden="true"></span><span class="menu-tile__body col"><span class="menu-tile__label">Riwayat pembayaran</span></span><span class="ic ph-caret-right menu-tile__trail" aria-hidden="true"></span></a>
-                      <button class="menu-tile is-locked" type="button" aria-label="Tiket saya, terkunci"><span class="ic ph-ticket" aria-hidden="true"></span><span class="menu-tile__body col"><span class="menu-tile__label">Tiket saya</span></span><span class="ic ph-lock-simple menu-tile__trail" aria-hidden="true"></span></button>
+                      <button class="menu-tile is-locked" type="button" aria-label="Tiket saya, khusus anggota aktif"><span class="ic ph-ticket" aria-hidden="true"></span><span class="menu-tile__body col"><span class="menu-tile__label">Tiket saya</span></span><span class="ic ph-lock-simple menu-tile__trail" aria-hidden="true"></span></button>
                     </div>
                   </section>
                   <section aria-labelledby="sec-21">
@@ -375,7 +375,7 @@
                   <section aria-labelledby="sec-22">
                     <h3 class="account-section__title" id="sec-22">KOMUNITAS</h3>
                     <div class="account-section__card">
-                      <button class="menu-tile is-locked" type="button" aria-label="Anggota diblokir, terkunci"><span class="ic ph-prohibit" aria-hidden="true"></span><span class="menu-tile__body col"><span class="menu-tile__label">Anggota diblokir</span></span><span class="ic ph-lock-simple menu-tile__trail" aria-hidden="true"></span></button>
+                      <button class="menu-tile is-locked" type="button" aria-label="Anggota diblokir, khusus anggota aktif"><span class="ic ph-prohibit" aria-hidden="true"></span><span class="menu-tile__body col"><span class="menu-tile__label">Anggota diblokir</span></span><span class="ic ph-lock-simple menu-tile__trail" aria-hidden="true"></span></button>
                       <a class="menu-tile" href="my-reports.html" aria-label="Laporan saya"><span class="ic ph-flag" aria-hidden="true"></span><span class="menu-tile__body col"><span class="menu-tile__label">Laporan saya</span></span><span class="ic ph-caret-right menu-tile__trail" aria-hidden="true"></span></a>
                     </div>
                   </section>
@@ -406,9 +406,9 @@
           </div>
           <nav class="bottom-nav" aria-label="Navigasi utama">
             <a class="bottom-nav__item" href="#"><span class="bottom-nav__indicator"><span class="ic ph-house-simple" aria-hidden="true"></span></span><span class="bottom-nav__label">Beranda</span></a>
-            <a class="bottom-nav__item" href="#" aria-label="Event, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-calendar-dots" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Event</span></a>
+            <a class="bottom-nav__item" href="#" aria-label="Event, khusus anggota aktif"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-calendar-dots" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Event</span></a>
             <a class="bottom-nav__item bottom-nav__item--kta" href="#"><span class="bottom-nav__indicator"><span class="ic ph-identification-card-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">KTA</span></a>
-            <a class="bottom-nav__item" href="#" aria-label="Jejaring, terkunci"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
+            <a class="bottom-nav__item" href="#" aria-label="Jejaring, khusus anggota aktif"><span class="bottom-nav__indicator"><span class="badge-host"><span class="ic ph-graduation-cap" aria-hidden="true"></span><span class="badge badge--lock" aria-hidden="true"><span class="ic ph-lock-simple-fill"></span></span></span></span><span class="bottom-nav__label" aria-hidden="true">Jejaring</span></a>
             <a class="bottom-nav__item is-selected" href="account.html" aria-current="page"><span class="bottom-nav__indicator"><span class="ic ph-user-circle-fill" aria-hidden="true"></span></span><span class="bottom-nav__label">Akun</span></a>
           </nav>
         </div>
@@ -418,8 +418,8 @@
             <div class="status-hero tone-danger">
               <div class="status-hero__icon" aria-hidden="true"><span class="ic ph-lock-simple"></span></div>
               <span class="status-badge status-badge--danger"><span class="ic ph-x-circle-fill" aria-hidden="true"></span>KTA Tidak Aktif</span>
-              <h3 class="status-hero__title" id="acc-locked-title">Tiket saya terkunci</h3>
-              <p class="status-hero__message">Tiket saya terbuka setelah KTA aktif. Selesaikan iuran pendaftaran agar pengurus dapat memverifikasi keanggotaan Anda.</p>
+              <h3 class="status-hero__title" id="acc-locked-title">Tiket saya khusus anggota aktif</h3>
+              <p class="status-hero__message">Tiket saya adalah layanan untuk anggota terverifikasi. Status keanggotaan diperbarui pengurus setelah iuran pendaftaran organisasi diverifikasi.</p>
             </div>
             <div class="mt-5"><button class="btn btn--primary" type="button">Bayar iuran</button></div>
             <div class="mt-2"><button class="btn-text akun-sheet-close" type="button">Tutup</button></div>
@@ -427,7 +427,7 @@
         </div>
         <div class="sysnav" aria-hidden="true"></div>
       </div>
-      <p class="frame__note">showLockedTabSheet dengan label menu. KTA Kedaluwarsa: tombol "Perpanjang KTA" dan pesan "... hanya untuk anggota aktif. Perpanjang KTA untuk membuka kembali fitur ini."</p>
+      <p class="frame__note">showLockedTabSheet dengan label menu. KTA Kedaluwarsa: tombol "Perpanjang KTA" dan pesan "... adalah layanan untuk anggota aktif. Masa keanggotaan Anda berakhir; hubungi pengurus atau perpanjang keanggotaan organisasi."</p>
     </figure>
 
     <figure class="frame" id="frame-5">

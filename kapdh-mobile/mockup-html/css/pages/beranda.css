@@ -11,7 +11,7 @@
    --------------------------------------------------------------------------------------------------------------------- */
 /* "Digulir ke akhir" (.scroll-end) dan .spinner--24 kini ada di components.css. */
 
-/* TextButton yang direntangkan Column(crossAxisAlignment: stretch) (lembar tab terkunci "Tutup") */
+/* TextButton yang direntangkan Column(crossAxisAlignment: stretch) (lembar tab khusus anggota aktif "Tutup") */
 .btn-text--block { display: flex; width: 100%; }
 
 /* Baris kontak SupportContactCard: label dan nilai bertumpuk */

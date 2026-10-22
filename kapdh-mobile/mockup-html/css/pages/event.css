@@ -203,5 +203,5 @@
 /* Kolom pencarian Event (input type=search): tombol hapus bawaan browser disembunyikan; Flutter memakai IconButton close */
 .ev-filter .input__control::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
 
-/* Lembar tab terkunci (app_shell.dart showLockedTabSheet) di halaman Event: latar Beranda disederhanakan */
+/* Lembar tab khusus anggota aktif (app_shell.dart showLockedTabSheet) di halaman Event: latar Beranda disederhanakan */
 .ev-shell-placeholder { flex: 1 1 auto; background: var(--color-background); }

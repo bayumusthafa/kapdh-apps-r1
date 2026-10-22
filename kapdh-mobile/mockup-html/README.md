@@ -90,7 +90,7 @@ didaftarkan di `GROUPS` dalam skrip).
    bersama `.scroll-viewport` (area ListView yang memotong isi), `.scroll-offset` dengan `style="--scroll:240px"`
    (posisi tengah) atau `.scroll-end` (digulir sampai akhir), tanpa JavaScript.
 4. **Keadaan = frame terpisah berlabel** (`.frame` + `.frame__label`), berdampingan: utama, kosong, galat, memuat
-   (skeleton), nonaktif/terkunci, dialog, bottom sheet, snackbar. Tidak ada JavaScript untuk berganti keadaan.
+   (skeleton), nonaktif/khusus anggota aktif, dialog, bottom sheet, snackbar. Tidak ada JavaScript untuk berganti keadaan.
 5. **Teks disalin persis dari Dart** (label, judul, pesan kosong/galat, tombol). Data contoh fiktif dan netral:
    nama "Ahmad Fauzi", "Siti Rahmah", angkatan "KAPDH 12", nomor anggota format `AA.SS.JK.N` seperti `12.01.01.7`,
    nominal seperti `Rp150.000`. Jangan memakai nama atau nomor rekening nyata. QR selalu glyph tiruan `.qr-glyph`
