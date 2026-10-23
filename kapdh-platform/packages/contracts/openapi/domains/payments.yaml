@@ -16,7 +16,7 @@
 #
 # URUTAN KUNCI modul pembayaran (PRD 6.4 "mengunci dalam urutan konsisten", ARCHITECTURE §2 butir 11). Urutan ini
 # memperluas URUTAN KUNCI GLOBAL di kepala events.yaml dan sama dengan penghapusan akun (account.yaml):
-#     (0) baris users pemilik lalu baris alumni-nya (hanya jalur iuran yang mengubah keanggotaan)
+#     (0) baris users pemilik lalu baris alumni-nya (jalur iuran yang memanggil hook handler)
 #  -> (1) baris events -> (2) baris tickets -> (3) baris payments (urut id)
 #  -> sisip payment_events / payment_adjustments, lalu baris payment_adjustments yang sudah ada.
 # Transaksi boleh melewati tingkat yang tidak dibutuhkan, tetapi tidak pernah mengunci tingkat lebih awal sesudah
@@ -27,10 +27,13 @@
 #   - type=ticket (kirim bukti, keputusan, batal oleh pengurus): handler tiket mengunci event lalu tiket. Kirim bukti
 #     ikut mengunci event karena hold yang sudah lewat dikedaluwarsakan oleh request itu sendiri (held_quantity
 #     berubah, AC F09-2).
-#   - registration/renewal, keputusan pengurus dan adminRecordPayment: handler keanggotaan mengunci users lalu
-#     alumni pemilik (bila pemilik masih ada), sehingga tidak bertabrakan dengan penghapusan akun atau suspend.
-#   - registration/renewal, jalur anggota (kirim bukti, ganti metode, batal) dan penyesuaian: hanya payment (lalu
-#     penyesuaiannya); tidak ada kunci lain sesudahnya.
+#   - registration/renewal, kirim bukti, keputusan pengurus, batal oleh pengurus dan adminRecordPayment: handler
+#     keanggotaan mengunci users lalu alumni pemilik (bila pemilik masih ada), sehingga tidak bertabrakan dengan
+#     penghapusan akun atau suspend, juga bila kelak ada hook iuran yang menyentuh keanggotaan.
+#   - registration/renewal, ganti metode, batal oleh anggota dan penyesuaian: hanya payment (lalu penyesuaiannya);
+#     jalur ini tidak memanggil hook handler dan tidak ada kunci lain sesudahnya.
+# Aturan: setiap jalur yang memanggil hook handler (onProofSubmitted/onApproved/onRejected/onCancelled) memanggil
+# hook pra-kunci jenis yang sama lebih dahulu, untuk semua jenis.
 # onProofSubmitted/onApproved/onRejected/onCancelled tidak boleh mengunci baris tingkat lebih awal sesudah payment
 # terkunci. Baris payment_methods hanya dikunci sebagai kunci daun (FOR SHARE/FOR UPDATE, tanpa kunci lain sesudahnya).
 tags:
@@ -322,9 +325,10 @@ paths:
         F03-2). `transfer_note` menggantikan catatan sebelumnya (kosong berarti dihapus). Tanggal transfer yang
         dilaporkan bukan sumber aktivasi (PRD 3.7).
 
-        Kunci (URUTAN KUNCI di kepala berkas, PRD 6.4): iuran hanya mengunci baris payment. Tiket: `ticket_id`
-        dibaca tanpa kunci, handler tiket (`lockRelated`) mengunci baris event lalu tiket, baru kemudian
-        `SELECT payments … FOR UPDATE`; status tiket, hold dan payment diperiksa ulang sesudah semua kunci didapat.
+        Kunci (URUTAN KUNCI di kepala berkas, PRD 6.4): hook pra-kunci (`lockRelated`) jenis payment dipanggil
+        sebelum `SELECT payments … FOR UPDATE`. Iuran: baris users lalu alumni pemilik. Tiket: `ticket_id` dibaca
+        tanpa kunci, handler tiket mengunci baris event lalu tiket. Status tiket, hold dan payment diperiksa ulang
+        sesudah semua kunci didapat.
 
         Transisi:
         - pending -> pending (bukti pertama atau pengganti sebelum keputusan).

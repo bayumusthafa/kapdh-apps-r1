@@ -287,8 +287,9 @@ export class AdminPaymentsService {
   }
 
   /**
-   * Pembatalan atas kebijakan pengurus hanya untuk pending tanpa bukti (PRD 4.3). Tiket: hook pra-kunci mengunci
-   * event lalu tiket sebelum payment, lalu handler melepas hold; iuran hanya mengunci payment.
+   * Pembatalan atas kebijakan pengurus hanya untuk pending tanpa bukti (PRD 4.3). Hook pra-kunci dipanggil untuk
+   * semua jenis sebelum payment (URUTAN KUNCI kontrak C3): tiket mengunci event lalu tiket dan handler melepas hold;
+   * iuran mengunci users lalu alumni pemilik, sehingga hook iuran yang kelak ditambahkan tetap mematuhi urutan kunci.
    */
   async cancel(
     auth: AuthContext,
@@ -300,7 +301,7 @@ export class AdminPaymentsService {
     const unlocked = await this.unlockedTarget(paymentId);
     if (conflictOfInterest(viewer, unlocked.userId)) throw conflictOfInterestError();
     await this.db.transaction(async (tx) => {
-      if (unlocked.type === "ticket") await this.registry.lockRelated(tx, unlocked);
+      await this.registry.lockRelated(tx, unlocked);
       const locked = await this.ledger.lockPayment(tx, paymentId);
       const current = () => this.views.adminDetail(tx, paymentId, viewer);
       if (locked.status !== "pending" || locked.proofVersion > 0)

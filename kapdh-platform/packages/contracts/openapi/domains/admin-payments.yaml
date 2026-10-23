@@ -389,7 +389,8 @@ paths:
 
         Kunci (URUTAN KUNCI di kepala payments.yaml, PRD 6.4): untuk tiket, hook pra-kunci handler tiket mengunci
         event lalu tiket SEBELUM `SELECT payments … FOR UPDATE`, karena pelepasan hold mengubah held_quantity;
-        onCancelled tidak mengunci event/tiket lagi. Untuk iuran hanya baris payment yang dikunci.
+        onCancelled tidak mengunci event/tiket lagi. Untuk iuran, hook pra-kunci keanggotaan mengunci baris users
+        lalu alumni pemilik sebelum payment.
 
         Galat 409 (dengan `current` AdminPaymentDetail): PAYMENT_STATE_CONFLICT bila payment bukan pending atau
         sudah berbukti, VERSION_CONFLICT bila If-Match usang, IDEMPOTENCY_CONFLICT. 403 FORBIDDEN bila tanpa izin
