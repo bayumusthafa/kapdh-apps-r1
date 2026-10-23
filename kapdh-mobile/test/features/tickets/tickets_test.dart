@@ -124,7 +124,7 @@ void main() {
       expect(find.textContaining('Check-in dibuka 20 Okt 2026, 07.00 WIB – 20 Okt 2026, 15.00 WIB'), findsOneWidget);
       await scrollUntil(tester, find.byKey(const ValueKey('ticket-cancel-policy')));
       expect(
-        find.textContaining('Batalkan sampai 17 Okt 2026, 09.00 WIB (H-3) untuk refund penuh Rp200.000'),
+        find.textContaining('Batalkan sampai 17 Okt 2026, 09.00 WIB untuk refund penuh Rp200.000'),
         findsOneWidget,
       );
       await scrollUntil(tester, find.byKey(const ValueKey('ticket-open-event')), delta: -200);
@@ -536,6 +536,10 @@ void main() {
         await settle(tester);
         expect(find.text('Batalkan tiket?'), findsOneWidget);
         expect(
+          find.textContaining('Anda membatalkan sebelum batas refund penuh (17 Okt 2026, 09.00 WIB). Refund penuh'),
+          findsOneWidget,
+        );
+        expect(
           find.textContaining('Refund penuh Rp200.000 diproses bendahara paling lambat 7 hari kerja'),
           findsOneWidget,
         );
@@ -577,10 +581,14 @@ void main() {
         },
       );
       await scrollUntil(tester, find.byKey(const ValueKey('ticket-cancel-policy')));
-      expect(find.textContaining('Batas refund penuh (H-3) sudah lewat pada 17 Okt 2026, 09.00 WIB'), findsOneWidget);
+      expect(find.textContaining('Batas refund penuh sudah lewat pada 17 Okt 2026, 09.00 WIB'), findsOneWidget);
       await scrollUntil(tester, find.byKey(const ValueKey('ticket-cancel')));
       await tester.tap(find.byKey(const ValueKey('ticket-cancel')));
       await settle(tester);
+      expect(
+        find.textContaining('Batas refund penuh (17 Okt 2026, 09.00 WIB) sudah lewat. Pembatalan sekarang TIDAK'),
+        findsOneWidget,
+      );
       expect(find.textContaining('Pembatalan sekarang TIDAK mendapat refund'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('cancel-confirm')));
       await settle(tester);
@@ -613,13 +621,14 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('cancel-confirm')));
       await settle(tester);
       expect(find.text('Data tiket berubah'), findsOneWidget);
+      expect(find.textContaining('Batas refund penuh sudah lewat. Pembatalan sekarang tidak'), findsOneWidget);
       expect(find.textContaining('Pembatalan sekarang tidak mendapat refund'), findsOneWidget);
       await tester.tap(find.text('Tutup'));
       await settle(tester);
       // Tidak ada pengiriman ulang otomatis; layar menampilkan aturan terbaru.
       expect(app.adapter.requestsTo('/me/tickets/ticket-1/cancel'), hasLength(1));
       await scrollUntil(tester, find.byKey(const ValueKey('ticket-cancel-policy')));
-      expect(find.textContaining('Batas refund penuh (H-3) sudah lewat'), findsOneWidget);
+      expect(find.textContaining('Batas refund penuh sudah lewat'), findsOneWidget);
     });
 
     testWidgets('D6 event gratis: tanpa refund, pembatalan melepas kursi', (tester) async {

@@ -340,7 +340,7 @@ class _Warnings extends StatelessWidget {
         return 'Batalkan tiket$until untuk refund penuh sebelum menghapus akun. Setelah akun dihapus tiket hangus '
             'tanpa refund.';
       case AccountDeletionRefundPolicy.noRefund:
-        return 'Tiket hangus tanpa refund (tiket gratis atau batas pembatalan H-3 sudah lewat).';
+        return 'Tiket hangus tanpa refund (tiket gratis atau batas refund penuh sudah lewat).';
       case AccountDeletionRefundPolicy.caseByCase:
         return 'Akun Anda sedang dibatasi; tiket tidak berlaku dan refund diputuskan pengurus per kasus.';
       case AccountDeletionRefundPolicy.paymentPending:

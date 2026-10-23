@@ -346,7 +346,7 @@ class _TicketContent extends ConsumerWidget {
           context,
           'Data tiket berubah',
           refundLost
-              ? 'Batas refund penuh (H-3) sudah lewat. Pembatalan sekarang tidak mendapat refund. Periksa kembali '
+              ? 'Batas refund penuh sudah lewat. Pembatalan sekarang tidak mendapat refund. Periksa kembali '
                     'sebelum membatalkan.'
               : '${error.message} Periksa keadaan terbaru sebelum mencoba lagi.',
         );
@@ -402,9 +402,9 @@ String? _policyText(TicketDetail ticket) {
       if (until == null) return 'Pembatalan sendiri diperbolehkan sebelum acara dimulai, tanpa refund.';
       final date = formatDateTime(until, zone: zone);
       return ticket.refundEligible
-          ? 'Batalkan sampai $date (H-3) untuk refund penuh ${formatRupiah(ticket.total)}; setelah itu pembatalan '
+          ? 'Batalkan sampai $date untuk refund penuh ${formatRupiah(ticket.total)}; setelah itu pembatalan '
                 'tanpa refund. Refund ditransfer bendahara paling lambat $refundBusinessDays hari kerja.'
-          : 'Batas refund penuh (H-3) sudah lewat pada $date. Pembatalan sekarang tetap boleh sebelum acara '
+          : 'Batas refund penuh sudah lewat pada $date. Pembatalan sekarang tetap boleh sebelum acara '
                 'dimulai, tetapi tanpa refund.';
     case TicketStatus.expired:
     case TicketStatus.cancelled:
@@ -797,11 +797,11 @@ class _CancelDialogState extends State<_CancelDialog> {
     final until = ticket.fullRefundUntil;
     final date = until == null ? null : formatDateTime(until, zone: zone);
     if (ticket.refundEligible) {
-      return 'Anda membatalkan sebelum batas refund penuh (H-3${date == null ? '' : ', $date'}). Refund penuh '
+      return 'Anda membatalkan sebelum batas refund penuh${date == null ? '' : ' ($date)'}. Refund penuh '
           '${formatRupiah(ticket.total)} diproses bendahara paling lambat $refundBusinessDays hari kerja; rekening '
           'tujuan diminta saat refund diproses.';
     }
-    return 'Batas refund penuh (H-3${date == null ? '' : ', $date'}) sudah lewat. Pembatalan sekarang TIDAK '
+    return 'Batas refund penuh${date == null ? '' : ' ($date)'} sudah lewat. Pembatalan sekarang TIDAK '
         'mendapat refund. Kursi Anda dilepas untuk anggota lain.';
   }
 

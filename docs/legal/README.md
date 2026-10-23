@@ -59,7 +59,10 @@ platform yang hanya tampil ke sesama anggota bila Tampilkan media sosial (`show_
 - **Bagian yang berubah:** Kebijakan Privasi 4.2, 4.3 (profesi utama di KTA), 7.1, dan 11.3; Ketentuan Layanan 11
   (riwayat pendidikan); Ketentuan Komunitas 1 (riwayat pendidikan, profesi ketikan sendiri); Bantuan bagian Mengubah
   profil, Profesi atau keahlian tidak ada dalam daftar, Data yang hanya dapat dikoreksi pengurus, Privasi profil, Apa
-  yang dapat dilihat anggota lain, Apa isi KTA digital, dan Data yang dihapus. Tentang tidak berubah.
+  yang dapat dilihat anggota lain, Apa isi KTA digital, dan Data yang dihapus. Bantuan juga diselaraskan dengan kode
+  pada bagian Siapa yang dapat saya kirimi pesan? (percakapan langsung baru hanya dari profil anggota yang tampil di
+  direktori) dan Akun saya dibatasi (halaman pembatasan tidak memuat Laporan saya; laporan dibuka dari notifikasinya),
+  begitu pula Ketentuan Komunitas 9 Pembatasan akun. Tentang tidak berubah.
 - **Kapan terbit:** pada hari build aplikasi mobile pertama yang memakai daftar baru dirilis ke pengguna, setelah API
   dan web admin rilis 0009-0010 berjalan di production. Jangan lebih awal: aplikasi 1.0.0 hanya menampilkan satu
   profesi, satu pendidikan, dan empat media sosial. Jangan ditunda: build baru mengumpulkan jurusan, strata, tahun

@@ -134,6 +134,8 @@ void main() {
       await tester.tap(find.text('Coba lagi'));
       await settle(tester);
       expect(find.text('Belum ada event mendatang'), findsOneWidget);
+      // Tidak menjanjikan notifikasi event baru: API tidak mengirimnya saat event diterbitkan.
+      expect(find.text('Event dari pengurus akan tampil di sini.'), findsOneWidget);
       // Tiket Saya selalu dapat dibuka dari tab Event.
       await tester.tap(find.byTooltip('Tiket Saya'));
       await settle(tester);

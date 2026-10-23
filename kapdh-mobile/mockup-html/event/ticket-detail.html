@@ -57,7 +57,7 @@
         <li>Gagal diperbarui (offline)</li>
       </ol>
     </div>
-    <p class="page-header__note">Setiap frame adalah skenario terpisah dengan data contoh fiktif (nomor rekening dan NMID rekaan). Aturan batal D6: refund penuh sampai H-3, refund ditransfer bendahara paling lambat 7 hari kerja. Frame yang "digulir" memotong isi daftar secara statis.</p>
+    <p class="page-header__note">Setiap frame adalah skenario terpisah dengan data contoh fiktif (nomor rekening dan NMID rekaan). Aturan batal D6: refund penuh sampai batas full_refund_until yang dihitung server dari pengaturan self_cancel_days (bawaan H-3); aplikasi hanya menampilkan tanggal batasnya, tanpa label H-n. Refund ditransfer bendahara paling lambat 7 hari kerja. Frame yang "digulir" memotong isi daftar secara statis.</p>
   </header>
 
   <main class="frames">
@@ -102,7 +102,7 @@ a.n. KAPDH Kas Event</span></div>
                 <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
                 <a class="btn-text" href="#">Lihat pembayaran</a>
               </div></div>
-              <div class="ev-gap-4"><div class="info-box"><span class="ic ph-shield-check" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB (H-3) untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ph-shield-check" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
               <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ph-calendar-x" aria-hidden="true"></span>Batalkan Tiket</button></div>
             </div>
             </div>
@@ -151,7 +151,7 @@ a.n. KAPDH Kas Event</span></div>
                 <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
                 <a class="btn-text" href="#">Lihat pembayaran</a>
               </div></div>
-              <div class="ev-gap-4"><div class="info-box"><span class="ic ph-shield-check" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB (H-3) untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ph-shield-check" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
               <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ph-calendar-x" aria-hidden="true"></span>Batalkan Tiket</button></div>
             </div>
             </div>
@@ -853,7 +853,7 @@ a.n. KAPDH Kas Event</span></div>
                 <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
                 <a class="btn-text" href="#">Lihat pembayaran</a>
               </div></div>
-              <div class="ev-gap-4"><div class="info-box"><span class="ic ph-shield-check" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB (H-3) untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ph-shield-check" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
               <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ph-calendar-x" aria-hidden="true"></span>Batalkan Tiket</button></div>
             </div>
             </div>
@@ -861,7 +861,7 @@ a.n. KAPDH Kas Event</span></div>
         </div><div class="scrim"></div>
         <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-1">
           <h3 class="dialog__title" id="dlg-1">Batalkan tiket?</h3>
-          <div class="dialog__content"><div class="info-box info-box--warning"><span class="ic ph-warning" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Anda membatalkan sebelum batas refund penuh (H-3, 18 Mar 2027, 08.00 WIB). Refund penuh Rp150.000 diproses bendahara paling lambat 7 hari kerja; rekening tujuan diminta saat refund diproses.</p></div></div><div class="tk-reason"><textarea class="tk-reason__input" id="reason-1" rows="1" maxlength="500" placeholder=" " aria-describedby="reason-1-count"></textarea><label class="tk-reason__label" for="reason-1">Alasan (opsional)</label></div><p class="tk-reason__counter" id="reason-1-count">0/500</p></div>
+          <div class="dialog__content"><div class="info-box info-box--warning"><span class="ic ph-warning" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Anda membatalkan sebelum batas refund penuh (18 Mar 2027, 08.00 WIB). Refund penuh Rp150.000 diproses bendahara paling lambat 7 hari kerja; rekening tujuan diminta saat refund diproses.</p></div></div><div class="tk-reason"><textarea class="tk-reason__input" id="reason-1" rows="1" maxlength="500" placeholder=" " aria-describedby="reason-1-count"></textarea><label class="tk-reason__label" for="reason-1">Alasan (opsional)</label></div><p class="tk-reason__counter" id="reason-1-count">0/500</p></div>
           <div class="dialog__actions"><button class="btn-text" type="button">Kembali</button><button class="btn-text btn-text--danger" type="button">Batalkan tiket</button></div>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
@@ -907,7 +907,7 @@ a.n. KAPDH Kas Event</span></div>
                 <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
                 <a class="btn-text" href="#">Lihat pembayaran</a>
               </div></div>
-              <div class="ev-gap-4"><div class="info-box"><span class="ic ph-shield-check" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batas refund penuh (H-3) sudah lewat pada 18 Mar 2027, 08.00 WIB. Pembatalan sekarang tetap boleh sebelum acara dimulai, tetapi tanpa refund.</p></div></div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ph-shield-check" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batas refund penuh sudah lewat pada 18 Mar 2027, 08.00 WIB. Pembatalan sekarang tetap boleh sebelum acara dimulai, tetapi tanpa refund.</p></div></div></div>
               <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ph-calendar-x" aria-hidden="true"></span>Batalkan Tiket</button></div>
             </div>
             </div>
@@ -915,7 +915,7 @@ a.n. KAPDH Kas Event</span></div>
         </div><div class="scrim"></div>
         <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-2">
           <h3 class="dialog__title" id="dlg-2">Batalkan tiket?</h3>
-          <div class="dialog__content"><div class="info-box info-box--danger"><span class="ic ph-warning-circle" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Batas refund penuh (H-3, 18 Mar 2027, 08.00 WIB) sudah lewat. Pembatalan sekarang TIDAK mendapat refund. Kursi Anda dilepas untuk anggota lain.</p></div></div><div class="tk-reason"><textarea class="tk-reason__input" id="reason-2" rows="1" maxlength="500" placeholder=" " aria-describedby="reason-2-count"></textarea><label class="tk-reason__label" for="reason-2">Alasan (opsional)</label></div><p class="tk-reason__counter" id="reason-2-count">0/500</p></div>
+          <div class="dialog__content"><div class="info-box info-box--danger"><span class="ic ph-warning-circle" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__message">Batas refund penuh (18 Mar 2027, 08.00 WIB) sudah lewat. Pembatalan sekarang TIDAK mendapat refund. Kursi Anda dilepas untuk anggota lain.</p></div></div><div class="tk-reason"><textarea class="tk-reason__input" id="reason-2" rows="1" maxlength="500" placeholder=" " aria-describedby="reason-2-count"></textarea><label class="tk-reason__label" for="reason-2">Alasan (opsional)</label></div><p class="tk-reason__counter" id="reason-2-count">0/500</p></div>
           <div class="dialog__actions"><button class="btn-text" type="button">Kembali</button><button class="btn-text btn-text--danger" type="button">Batalkan tiket</button></div>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
@@ -1017,7 +1017,7 @@ a.n. KAPDH Kas Event</span></div>
                 <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
                 <a class="btn-text" href="#">Lihat pembayaran</a>
               </div></div>
-              <div class="ev-gap-4"><div class="info-box"><span class="ic ph-shield-check" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB (H-3) untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ph-shield-check" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
               <div class="ev-gap-4"><button class="btn btn--danger-outline tk-cancel-busy" type="button" disabled aria-busy="true"><span class="spinner spinner--18" aria-hidden="true"></span>Membatalkan…</button></div>
             </div>
             </div>
@@ -1118,7 +1118,7 @@ a.n. KAPDH Kas Event</span></div>
                 <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
                 <a class="btn-text" href="#">Lihat pembayaran</a>
               </div></div>
-              <div class="ev-gap-4"><div class="info-box"><span class="ic ph-shield-check" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB (H-3) untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ph-shield-check" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
               <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ph-calendar-x" aria-hidden="true"></span>Batalkan Tiket</button></div>
             </div>
             </div>
@@ -1126,7 +1126,7 @@ a.n. KAPDH Kas Event</span></div>
         </div><div class="scrim"></div>
         <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-4">
           <h3 class="dialog__title" id="dlg-4">Data tiket berubah</h3>
-          <div class="dialog__content"><p class="c-muted">Batas refund penuh (H-3) sudah lewat. Pembatalan sekarang tidak mendapat refund. Periksa kembali sebelum membatalkan.</p></div>
+          <div class="dialog__content"><p class="c-muted">Batas refund penuh sudah lewat. Pembatalan sekarang tidak mendapat refund. Periksa kembali sebelum membatalkan.</p></div>
           <div class="dialog__actions"><button class="btn-text" type="button">Tutup</button></div>
         </div>
         <div class="sysnav" aria-hidden="true"></div>
@@ -1232,7 +1232,7 @@ a.n. KAPDH Kas Event</span></div>
                 <div class="tk-row"><span class="tk-row__label">Diputus</span><span class="tk-row__value">15 Okt 2026, 14.20 WIB</span></div>
                 <a class="btn-text" href="#">Lihat pembayaran</a>
               </div></div>
-              <div class="ev-gap-4"><div class="info-box"><span class="ic ph-shield-check" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB (H-3) untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
+              <div class="ev-gap-4"><div class="info-box"><span class="ic ph-shield-check" aria-hidden="true"></span><div class="info-box__body"><p class="info-box__title">Aturan pembatalan</p><p class="info-box__message">Batalkan sampai 18 Mar 2027, 08.00 WIB untuk refund penuh Rp150.000; setelah itu pembatalan tanpa refund. Refund ditransfer bendahara paling lambat 7 hari kerja.</p></div></div></div>
               <div class="ev-gap-4"><button class="btn btn--danger-outline" type="button"><span class="ic ph-calendar-x" aria-hidden="true"></span>Batalkan Tiket</button></div>
             </div>
             </div>

@@ -10,7 +10,7 @@
     "Mendaftar event gratis dan event berbayar",
     "Memantau tiket di Tiket Saya dan arti setiap status",
     "Menunjukkan QR tiket saat check-in di lokasi acara",
-    "Membatalkan tiket, aturan refund H-3, dan bila event dibatalkan"
+    "Membatalkan tiket, batas refund penuh, dan bila event dibatalkan"
   ],
   "sections": [
     {
@@ -267,7 +267,7 @@
         {
           "type": "steps",
           "items": [
-            { "text": "Buka **Detail Tiket**, lalu baca kotak **Aturan pembatalan** yang menyebutkan batas refund untuk tiket Anda." },
+            { "text": "Buka **Detail Tiket**, lalu baca kotak **Aturan pembatalan** yang menyebutkan tanggal batas refund penuh untuk tiket Anda." },
             { "text": "Ketuk **Batalkan Tiket** atau **Batalkan Reservasi**." },
             { "text": "Baca akibatnya di jendela konfirmasi, terutama apakah Anda mendapat refund." },
             { "text": "Isi **Alasan (opsional)** bila perlu, lalu ketuk **Batalkan tiket** atau **Batalkan reservasi**. Ketuk **Kembali** bila tidak jadi." }
@@ -280,20 +280,20 @@
           "rows": [
             ["**Menunggu Pembayaran** (belum kirim bukti)", "Ya", "Tidak ada dana yang dikembalikan karena belum membayar. Instruksi pembayaran ikut dibatalkan; jangan transfer lagi."],
             ["**Menunggu Verifikasi**", "Tidak, karena dana mungkin sudah ditransfer", "Tunggu keputusan pengurus atau hubungi pengurus."],
-            ["**Terkonfirmasi**, event berbayar, sampai batas H-3", "Ya", "Refund penuh."],
-            ["**Terkonfirmasi**, event berbayar, lewat H-3 sampai acara dimulai", "Ya", "Tanpa refund."],
+            ["**Terkonfirmasi**, event berbayar, sampai batas refund penuh", "Ya", "Refund penuh."],
+            ["**Terkonfirmasi**, event berbayar, setelah batas refund penuh sampai acara dimulai", "Ya", "Tanpa refund."],
             ["**Terkonfirmasi**, event gratis", "Ya, sebelum acara dimulai", "Tidak ada refund. Kursi dilepas untuk anggota lain."],
             ["**Sudah Check-in**, atau acara sudah dimulai", "Tidak", "Tidak berlaku."]
           ]
         },
         {
           "type": "p",
-          "text": "H-3 berarti tiga hari kalender sebelum acara, pada jam yang sama dengan jam mulai, dalam zona waktu acara. Contoh: acara yang dimulai Minggu pukul 08.00 WIB memiliki batas refund penuh Kamis pukul 08.00 WIB. Jumlah harinya ditetapkan pengurus dengan nilai bawaan 3 hari, dan batas yang berlaku selalu tertulis di kotak aturan serta di jendela konfirmasi."
+          "text": "Batas refund penuh bawaannya H-3, yaitu tiga hari kalender sebelum acara pada jam yang sama dengan jam mulai, dalam zona waktu acara. Contoh: acara yang dimulai Minggu pukul 08.00 WIB memiliki batas refund penuh Kamis pukul 08.00 WIB. Jumlah harinya mengikuti pengaturan pengurus, jadi selalu ikuti tanggal batas yang tertulis di kotak **Aturan pembatalan** dan di jendela konfirmasi."
         },
         {
           "type": "screens",
           "items": [
-            { "img": "mobile/b06-dialog-batal-refund.png", "caption": "Konfirmasi pembatalan sebelum batas H-3: refund penuh" },
+            { "img": "mobile/b06-dialog-batal-refund.png", "caption": "Konfirmasi pembatalan sebelum batas refund penuh beserta tanggal batasnya" },
             { "img": "mobile/b06-refund-diproses.png", "caption": "Tiket dibatalkan dengan refund yang sedang diproses" }
           ]
         },
@@ -306,7 +306,7 @@
         {
           "type": "callout",
           "variant": "info",
-          "text": "Bila saat Anda membatalkan ternyata data tiket berubah, misalnya batas H-3 baru saja lewat, aplikasi menampilkan **Data tiket berubah** dan menampilkan keadaan terbaru. Baca kembali sebelum mencoba lagi. Setelah tiket dibatalkan, Anda dapat mendaftar ulang bila pendaftaran masih dibuka dan kuota tersedia."
+          "text": "Bila saat Anda membatalkan ternyata data tiket berubah, misalnya batas refund penuh baru saja lewat, aplikasi menampilkan **Data tiket berubah** dan menampilkan keadaan terbaru. Baca kembali sebelum mencoba lagi. Setelah tiket dibatalkan, Anda dapat mendaftar ulang bila pendaftaran masih dibuka dan kuota tersedia."
         },
         {
           "type": "callout",
