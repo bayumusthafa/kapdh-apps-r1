@@ -190,7 +190,7 @@ void main() {
       ),
     );
     expect(find.textContaining('Event dibatalkan pengurus sehingga Anda berhak refund penuh'), findsOneWidget);
-    expect(find.textContaining('Tiket hangus tanpa refund'), findsOneWidget);
+    expect(find.text('Tiket hangus tanpa refund (tiket gratis atau batas refund penuh sudah lewat).'), findsOneWidget);
     expect(find.textContaining('refund diputuskan pengurus per kasus'), findsOneWidget);
     expect(find.textContaining('Pembayaran tiket belum selesai dan akan dibatalkan'), findsOneWidget);
     expect(find.text('Menunggu verifikasi'), findsOneWidget);

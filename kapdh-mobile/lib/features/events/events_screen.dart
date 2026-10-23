@@ -130,9 +130,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 title: filtered
                     ? 'Event tidak ditemukan'
                     : (_period == EventListPeriod.upcoming ? 'Belum ada event mendatang' : 'Belum ada event lampau'),
-                message: filtered
-                    ? 'Coba kata kunci atau kategori lain.'
-                    : 'Event dari pengurus akan tampil di sini. Anda juga mendapat notifikasi saat event baru dibuka.',
+                message: filtered ? 'Coba kata kunci atau kategori lain.' : 'Event dari pengurus akan tampil di sini.',
                 actionLabel: filtered ? 'Hapus filter' : 'Muat ulang',
                 onAction: filtered
                     ? () {

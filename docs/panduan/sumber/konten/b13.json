@@ -353,7 +353,7 @@
               "text": "Isi **Alasan pembatalan** (minimal 3, maksimal 500 karakter). Alasan disimpan di tiket, catatan audit, dan notifikasi kepada pemegang."
             },
             {
-              "text": "Untuk tiket lunas berbayar, pilih **Refund penuh** atau **Tanpa refund**. Tanpa refund dipakai misalnya untuk pembatalan setelah H-3."
+              "text": "Untuk tiket lunas berbayar, pilih **Refund penuh** atau **Tanpa refund**. Tanpa refund dipakai misalnya untuk pembatalan setelah batas refund penuh (bawaan H-3) lewat."
             },
             {
               "text": "Centang pernyataan, lalu klik **Batalkan tiket**. Tiket dan QR-nya tidak berlaku lagi, kursi dilepas, dan pemegang diberi notifikasi."

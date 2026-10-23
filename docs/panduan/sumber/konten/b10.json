@@ -356,7 +356,7 @@
       "blocks": [
         {
           "type": "p",
-          "text": "Pembayaran yang sudah disetujui tidak pernah diubah. Pengembalian dana (**Refund**) dan catatan keuangan administratif (**Koreksi**) dicatat terpisah sebagai penyesuaian. Refund dibuat otomatis saat event berbayar dibatalkan, saat peserta membatalkan tiket sendiri paling lambat H-3, atau saat pembayaran tiket yang sudah dibatalkan disetujui. Refund juga tercatat bila pengurus membatalkan tiket lunas dengan pilihan refund (Bab 13). Pengurus juga dapat mencatatnya sendiri."
+          "text": "Pembayaran yang sudah disetujui tidak pernah diubah. Pengembalian dana (**Refund**) dan catatan keuangan administratif (**Koreksi**) dicatat terpisah sebagai penyesuaian. Refund dibuat otomatis saat event berbayar dibatalkan, saat peserta membatalkan tiket sendiri sampai batas refund penuh (bawaan H-3), atau saat pembayaran tiket yang sudah dibatalkan disetujui. Refund juga tercatat bila pengurus membatalkan tiket lunas dengan pilihan refund (Bab 13). Pengurus juga dapat mencatatnya sendiri."
         },
         {
           "type": "steps",
