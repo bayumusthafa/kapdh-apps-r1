@@ -242,6 +242,74 @@ describe("AC F04-4 / PRD 9.2: bukti diganti saat pengurus memutus (PostgreSQL 17
   });
 });
 
+describe("URUTAN KUNCI kontrak C3: hook pra-kunci iuran sebelum baris payment (PostgreSQL 17)", () => {
+  /** Instruksi registration pending tanpa bukti lewat API. */
+  async function pendingRegistration(owner: { token: string }) {
+    const methodId = (await createPaymentMethod(fx)).id;
+    const created = await http().post(
+      "/me/payments",
+      { type: "registration", payment_method_id: methodId },
+      { token: owner.token },
+    );
+    expect(created.statusCode, created.body).toBe(201);
+    return { id: created.json().id as string, version: created.json().version as string };
+  }
+
+  /**
+   * Menahan baris users pemilik, menjalankan `fire`, lalu selama request menunggu memeriksa apakah baris payment
+   * masih bebas. Bila hook pra-kunci terlewat, request sudah memegang payment sebelum tertahan di users (mis. lewat
+   * FK), sehingga `paymentFree` bernilai false.
+   */
+  async function underOwnerLock<T>(ownerId: string, paymentId: string, fire: () => Promise<T>) {
+    let pending: Promise<T> | undefined;
+    let observed = false;
+    let paymentFree = false;
+    await sql.begin(async (tx) => {
+      await tx`select id from app.users where id = ${ownerId} for update`;
+      pending = fire();
+      observed = await waitForLockWaiters(1);
+      const free = await probe<{ id: string }[]>`
+        select id from app.payments where id = ${paymentId} for update skip locked`;
+      paymentFree = free.length === 1;
+    });
+    return { result: await pending!, observed, paymentFree };
+  }
+
+  it("kirim bukti iuran menunggu kunci users pemilik tanpa memegang baris payment; selesai 200 setelah dilepas", async () => {
+    const owner = await member();
+    const payment = await pendingRegistration(owner);
+    const fileId = await proofFor(owner.token);
+    const { result, observed, paymentFree } = await underOwnerLock(owner.userId, payment.id, () =>
+      http().put(
+        `/me/payments/${payment.id}/proof`,
+        { file_id: fileId, expected_proof_version: 0 },
+        { token: owner.token },
+      ),
+    );
+    expect(observed, "kirim bukti benar-benar menunggu kunci").toBe(true);
+    expect(paymentFree, "baris payment belum dikunci selama menunggu users").toBe(true);
+    expect(result.statusCode, result.body).toBe(200);
+    expect(result.json()).toMatchObject({ id: payment.id, status: "pending", proof_version: 1 });
+  });
+
+  it("batal oleh pengurus untuk iuran menunggu kunci users pemilik tanpa memegang baris payment; selesai 200", async () => {
+    const owner = await member();
+    const payment = await pendingRegistration(owner);
+    const canceller = await admin();
+    const { result, observed, paymentFree } = await underOwnerLock(owner.userId, payment.id, () =>
+      http().post(
+        `/admin/payments/${payment.id}/cancel`,
+        { reason: "Instruksi ganda" },
+        { token: canceller.token, headers: { "if-match": payment.version } },
+      ),
+    );
+    expect(observed, "pembatalan benar-benar menunggu kunci").toBe(true);
+    expect(paymentFree, "baris payment belum dikunci selama menunggu users").toBe(true);
+    expect(result.statusCode, result.body).toBe(200);
+    expect(result.json()).toMatchObject({ id: payment.id, status: "cancelled" });
+  });
+});
+
 describe("ADR-026 / AC F15-3: gambar QRIS diganti bersamaan dengan instruksi baru (PostgreSQL 17)", () => {
   /** Metode qris lewat API (unggah gambar + buat metode) beserta gambar pengganti yang belum terlampir. */
   async function qrisMethod() {

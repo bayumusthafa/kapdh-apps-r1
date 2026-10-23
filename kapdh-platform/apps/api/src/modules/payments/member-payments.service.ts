@@ -341,9 +341,10 @@ export class MemberPaymentsService {
   }
 
   /**
-   * Kirim/ganti bukti (AC F03-2, F03-3, F03-4, F09-2): urutan galat sesuai kontrak submitPaymentProof. Iuran hanya
-   * mengunci payment; tiket mengunci event lalu tiket lewat hook handler sebelum payment. Hold tiket yang sudah lewat
-   * dikedaluwarsakan handler tiket di transaksi ini lalu DI-COMMIT, kemudian 409 RESERVATION_EXPIRED.
+   * Kirim/ganti bukti (AC F03-2, F03-3, F03-4, F09-2): urutan galat sesuai kontrak submitPaymentProof. Hook pra-kunci
+   * dipanggil untuk semua jenis sebelum payment (URUTAN KUNCI kontrak C3): iuran mengunci users lalu alumni pemilik,
+   * tiket mengunci event lalu tiket. Hold tiket yang sudah lewat dikedaluwarsakan handler tiket di transaksi ini lalu
+   * DI-COMMIT, kemudian 409 RESERVATION_EXPIRED.
    */
   async submitProof(
     auth: AuthContext,
@@ -354,7 +355,7 @@ export class MemberPaymentsService {
     const unlocked = await this.views.ownedPayment(this.db, paymentId, auth.userId);
     await this.assertNotHidden(unlocked);
     const outcome = await this.db.transaction(async (tx): Promise<"expired" | "submitted"> => {
-      if (unlocked.type === "ticket") await this.registry.lockRelated(tx, unlocked);
+      await this.registry.lockRelated(tx, unlocked);
       const locked = await this.ledger.lockPayment(tx, paymentId);
       if (locked.userId !== auth.userId || locked.ticketId !== unlocked.ticketId)
         throw notFound("Pembayaran tidak ditemukan.");
