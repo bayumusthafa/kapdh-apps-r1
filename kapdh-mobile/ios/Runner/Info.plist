@@ -53,11 +53,12 @@
 		<string>mailto</string>
 		<string>https</string>
 	</array>
-	<!-- image_picker: foto bukti transfer dan foto profil (F-03, F-10). -->
+	<!-- image_picker: bukti transfer dan foto profil (F-03, F-10), foto chat dan foto grup (F-11). Kamera tidak
+	     dipakai untuk foto grup (hanya galeri). Perbarui bersama app-store-submission.md bagian 5 dan 10. -->
 	<key>NSCameraUsageDescription</key>
-	<string>Kamera dipakai untuk memotret bukti transfer atau foto profil Anda.</string>
+	<string>Kamera dipakai saat Anda memilih memotret bukti transfer, foto profil, atau foto yang dikirim di chat.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Galeri dipakai untuk memilih bukti transfer atau foto profil Anda.</string>
+	<string>Galeri dipakai saat Anda memilih gambar untuk bukti transfer, foto profil, foto di chat, atau foto grup.</string>
 	<!-- Push FCM/APNs (F-13); notifikasi diterima di latar belakang. -->
 	<key>UIBackgroundModes</key>
 	<array>

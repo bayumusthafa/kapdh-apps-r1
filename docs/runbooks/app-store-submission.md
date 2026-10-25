@@ -385,7 +385,7 @@ hanya pemilik yang dapat mengirim ulang bukti (PRD 4.3); keputusan PP masih terb
 | [R6] 1.2 persetujuan ketentuan | Pengguna menyetujui ketentuan yang menyatakan tidak ada toleransi terhadap konten tidak pantas/pengguna kasar | Registrasi wajib menyetujui `kebijakan-privasi` + `ketentuan` (`accept_policy_version`); naskah `ketentuan` wajib memuat pernyataan itu dan merujuk `ketentuan-komunitas` | |
 | [R6] 3.1 / [R7] | Pembayaran di luar sistem toko hanya untuk layanan/barang di dunia nyata | Bagian 2; tidak ada IAP atau pemrosesan pembayaran di aplikasi; fallback bagian 6 | |
 | D13 mitigasi 1 | Teks aplikasi tidak mengaitkan iuran dengan membuka fitur | Perintah `grep` bagian 2 kosong (atau sisa baris disahkan PP) pada commit build yang diajukan; tangkapan layar toko diperiksa manual. **Lulus sejak 21 Oktober 2026**: `grep` 0 baris (diulang 25 Oktober 2026 pada `7ce1ed8`: 0). Ulangi pada commit build | |
-| [R6] 5.1.1 | Kebijakan privasi, izin dengan alasan jelas, data minimum | Bagian 4; teks izin kamera/galeri di `Info.plist`. **Belum lengkap**: teks belum menyebut gambar chat dan foto grup (bagian 10, tindak lanjut DEV) | |
+| [R6] 5.1.1 | Kebijakan privasi, izin dengan alasan jelas, data minimum | Bagian 4; teks izin kamera/galeri di `Info.plist` menyebut bukti transfer, foto profil, foto chat, dan foto grup (diperbarui 25 Oktober 2026, bagian 10) | |
 | Kebijakan privasi dapat dibaca tanpa JavaScript | URL kebijakan privasi (dan `ketentuan-komunitas` untuk Child safety standards, bagian 9.4) yang diisi di toko menampilkan naskah, bukan hanya kerangka | Naskah tayang kelima halaman informasi/legal ditanam statis saat build dari salinan `apps/web/src/published-pages/` (penjelasan dan pemeriksaan di bawah tabel). **Lulus di kode per 25 Oktober 2026** (gerbang build `assert-published-pages.mjs`, uji `published-pages.test.ts`, uji asap image `smoke-static.sh`); production baru lulus setelah image web dari perubahan ini dideploy, jadi ulangi `curl` di bawah pada URL final | |
 | [R6] 2.1 | Aplikasi lengkap dan backend aktif saat review | Production aktif (go-live langkah 4), akun demo bagian 3 | |
 | Google Play Data safety | Formulir lengkap dan konsisten dengan kebijakan privasi | Bagian 4; keputusan K1, K2, K8 di bagian 10 | |
@@ -572,10 +572,12 @@ alasannya di paket bukti.
 | K7 | Email kontak kuesioner IARC | Alamat organisasi | Alamat organisasi yang dipantau, bukan email pribadi | Bagian 9.2 |
 | K8 | SDK FCM dapat membuat token saat aplikasi dibuka (auto-init aktif), padahal KP:106 menyebut token dibuat setelah login | (a) Matikan auto-init FCM (perubahan kode); (b) revisi kalimat KP:106 | Putuskan setelah DEV memverifikasi perilaku SDK pada build rilis; Data safety tetap mendeklarasikan Device or other IDs sebagai Wajib | Bagian 4.1 (catatan Device or other IDs) |
 
-Tindak lanjut DEV di luar dokumen ini (tidak dikerjakan bersama pembaruan runbook ini):
+Tindak lanjut DEV di luar dokumen ini:
 
-- Teks izin iOS di `kapdh-mobile/ios/Runner/Info.plist:57-60` baru menyebut bukti transfer dan foto profil, padahal
-  kamera dan galeri juga dipakai untuk gambar chat dan foto grup (`mobile/features/chat/chat_room_screen.dart:183-202`,
-  `mobile/features/chat/new_group_screen.dart:67`, `mobile/features/chat/chat_info_screen.dart:96`). Apple 5.1.1
-  meminta alasan izin yang akurat. Perbarui teksnya sebelum build iOS diajukan.
+- Selesai 25 Oktober 2026: teks izin iOS di `kapdh-mobile/ios/Runner/Info.plist:58-61` kini mengikuti pemakaian di
+  aplikasi (Apple 5.1.1). Kamera dipakai untuk bukti transfer, foto profil, dan foto chat
+  (`mobile/features/payments/proof_file.dart:162-176`, `mobile/features/account/avatar_image.dart:29-30`,
+  `mobile/features/chat/chat_room_screen.dart:183-202`). Galeri dipakai untuk keempatnya, termasuk foto grup
+  (`mobile/features/chat/new_group_screen.dart:67`, `mobile/features/chat/chat_info_screen.dart:96`). Bila pemakaian
+  kamera atau galeri berubah, perbarui teks ini dan kalimat izin di templat bagian 5.
 - Perubahan prioritas laporan (K5) dan auto-init FCM (K8) mengikuti keputusan PP, lewat PR terpisah.

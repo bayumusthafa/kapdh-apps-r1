@@ -153,8 +153,6 @@ flutter drive --profile --driver=test_driver/integration_test.dart \
 - Formulir toko: lembar Data safety ada di `../docs/runbooks/app-store-submission.md` bagian 4, deklarasi App content
   Google Play di bagian 9, dan keputusan pemilik produk di bagian 10. Perubahan izin, SDK, atau data yang dikirim
   aplikasi wajib memperbarui lembar itu.
-- Teks izin iOS (`ios/Runner/Info.plist`, `NSCameraUsageDescription` dan `NSPhotoLibraryUsageDescription`) belum
-  menyebut gambar chat dan foto grup; perbarui sebelum build iOS diajukan (`app-store-submission.md` bagian 10).
 - Auto-init FCM tidak dimatikan, dan pada build dengan `PUSH_ENABLED=true` `Firebase.initializeApp` dijalankan saat
   aplikasi dibuka (`lib/bootstrap.dart` → `lib/core/push/push_platform.dart`), sehingga token dapat dibuat sebelum
   login. Keputusan K8 di `app-store-submission.md` bagian 10.
