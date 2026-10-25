@@ -26,6 +26,9 @@ class FakePushPlatform implements PushPlatform {
   PushMessage? initial;
   int deletes = 0;
 
+  /// Semua panggilan deleteToken, termasuk yang gagal.
+  int deleteAttempts = 0;
+
   /// Simulasi FCM tanpa koneksi: deleteToken gagal.
   bool offline = false;
 
@@ -40,6 +43,9 @@ class FakePushPlatform implements PushPlatform {
 
   /// Simulasi kegagalan setAutoInitEnabled.
   Object? autoInitError;
+
+  /// Simulasi kegagalan requestPermission (dihitung di [permissionRequests]).
+  Object? permissionError;
 
   /// Urutan panggilan yang membuat atau menghapus token: `getToken`, `deleteToken`, `autoInit:true|false`, ditambah
   /// `unregister:<token>` dari POST /devices/unregister tiruan yang berhasil.
@@ -61,6 +67,8 @@ class FakePushPlatform implements PushPlatform {
   @override
   Future<PushPermission> requestPermission() async {
     permissionRequests++;
+    final error = permissionError;
+    if (error != null) throw error;
     return permission;
   }
 
@@ -84,6 +92,7 @@ class FakePushPlatform implements PushPlatform {
 
   @override
   Future<void> deleteToken() async {
+    deleteAttempts++;
     if (offline) throw Exception('SERVICE_NOT_AVAILABLE (uji)');
     final error = deleteError;
     if (error != null) throw error;
@@ -137,6 +146,9 @@ void main() {
   late FakePushPlatform platform;
   late List<RegisterDeviceRequest> registered;
 
+  /// Dijalankan sebelum PUT /devices tiruan selesai: melempar berarti request gagal (mis. offline).
+  late Future<void> Function() beforeRegister;
+
   /// Token di body POST /devices/unregister yang berhasil (204).
   late List<String> unregistered;
 
@@ -149,7 +161,10 @@ void main() {
 
   PushService build() => PushService(
     platform: platform,
-    registerDevice: (request) async => registered.add(request),
+    registerDevice: (request) async {
+      await beforeRegister();
+      registered.add(request);
+    },
     unregisterDevice: (request) async {
       await beforeUnregister();
       unregistered.add(request.token);
@@ -165,6 +180,7 @@ void main() {
   void rebuild() {
     platform = FakePushPlatform();
     registered = [];
+    beforeRegister = () async {};
     unregistered = [];
     beforeUnregister = () async {};
     opened = [];
@@ -180,9 +196,11 @@ void main() {
     platform.available = false;
     expect(await service.start(), isFalse);
     await service.onSignedIn('user-1');
+    await service.onResumed();
     await service.onSignedOut();
     expect(registered, isEmpty);
     expect(platform.permissionRequests, 0);
+    expect(platform.permissionReads, 0);
     expect(platform.deletes, 0);
   });
 
@@ -274,6 +292,29 @@ void main() {
         platform.deleteError = null;
         async.elapse(PushService.apnsRetryDelays.first);
         expect(platform.deletes, 1);
+        expect(registered.map((r) => r.token), ['fcm-2']);
+        expect(async.pendingTimers, isEmpty);
+      });
+    });
+
+    test('aplikasi kembali ke latar depan selama jeda percobaan ulang langkah login: langkah login tidak diulang '
+        'dua kali', () {
+      fakeAsync((async) {
+        rebuild();
+        unawaited(PushRegistrationStore(store).write(const PushRegistration(userId: 'user-1')));
+        platform.deleteError = apnsTokenNotSet();
+        unawaited(service.onSignedIn('user-2'));
+        async.flushMicrotasks();
+        expect(platform.deleteAttempts, 1);
+
+        unawaited(service.onResumed());
+        async.flushMicrotasks();
+        expect(platform.deleteAttempts, 1, reason: 'percobaan ulang yang terjadwal mengulang langkah login');
+        expect(platform.permissionReads, 0);
+
+        platform.deleteError = null;
+        async.elapse(PushService.apnsRetryDelays.first);
+        expect(platform.deleteAttempts, 2);
         expect(registered.map((r) => r.token), ['fcm-2']);
         expect(async.pendingTimers, isEmpty);
       });
@@ -548,6 +589,36 @@ void main() {
       },
     );
 
+    test('token baru gagal didaftarkan lalu izin dicabut: token baru dan token yang masih aktif di server sama-sama '
+        'dicabut', () async {
+      await service.onSignedIn('user-1');
+      // FCM memperbarui token, tetapi PUT /devices untuk token baru gagal, jadi server masih memakai fcm-1.
+      beforeRegister = () async => throw networkError();
+      platform.tokenRefresh.add('fcm-baru');
+      await pumpEventQueue();
+      expect(registered.map((r) => r.token), ['fcm-1']);
+      expect(
+        await record(),
+        isA<PushRegistration>()
+            .having((r) => r.token, 'token', 'fcm-baru')
+            .having((r) => r.previousToken, 'previous', 'fcm-1'),
+      );
+
+      // Peluncuran berikutnya: langkah login mempertahankan kedua token, dan PUT /devices masih gagal.
+      await service.dispose();
+      platform.token = 'fcm-baru';
+      service = build();
+      await service.onSignedIn('user-1');
+      expect(registered.map((r) => r.token), ['fcm-1']);
+
+      platform.calls.clear();
+      platform.permission = PushPermission.denied;
+      await service.onResumed();
+      expect(platform.calls, ['unregister:fcm-1', 'unregister:fcm-baru', 'deleteToken', 'autoInit:false']);
+      expect(platform.tokenRequests, 2, reason: 'getToken hanya saat login dan saat aplikasi dibuka');
+      expect(await record(), isNull);
+    });
+
     test('catatan dari pemasangan sebelumnya dengan auto-init mati (iOS dipasang ulang tanpa keluar; catatan di '
         'Keychain bertahan): token tercatat dicabut tanpa getToken', () async {
       await PushRegistrationStore(store).write(const PushRegistration(userId: 'user-1', token: 'fcm-lama'));
@@ -654,6 +725,46 @@ void main() {
       await service.onResumed();
       expect(platform.calls, ['autoInit:true', 'getToken']);
       expect(registered.single.token, 'fcm-1');
+    });
+
+    test('meminta izin gagal saat login: aplikasi kembali ke latar depan mengulang langkah login', () async {
+      platform.permissionError = Exception('uji');
+      await service.onSignedIn('user-1');
+      expect(platform.permissionRequests, 1);
+      expect(service.permission, isNull);
+      expect(platform.calls, isEmpty);
+
+      platform.permissionError = null;
+      await service.onResumed();
+      expect(platform.permissionRequests, 2, reason: 'izin diminta seperti saat login');
+      expect(platform.calls, ['autoInit:true', 'getToken']);
+      expect(registered.single.token, 'fcm-1');
+
+      await service.onResumed();
+      expect(platform.permissionRequests, 2, reason: 'setelah izin diminta, kembali ke latar depan hanya membaca izin');
+      expect(platform.permissionReads, 1);
+    });
+
+    test('meminta izin gagal saat aplikasi dibuka dengan sesi setelah izin dicabut: kembali ke latar depan mengulang '
+        'langkah login lalu token dicabut', () async {
+      await service.onSignedIn('user-1');
+      await service.dispose();
+
+      platform.permission = PushPermission.denied;
+      platform.permissionError = Exception('uji');
+      platform.calls.clear();
+      final next = build();
+      addTearDown(next.dispose);
+      await next.onSignedIn('user-1');
+      expect(platform.calls, isEmpty);
+      expect(unregistered, isEmpty);
+
+      platform.permissionError = null;
+      await next.onResumed();
+      expect(platform.permissionRequests, 3, reason: 'login, peluncuran yang gagal, lalu kembali ke latar depan');
+      expect(platform.calls, released);
+      expect(platform.autoInitEnabled, isFalse);
+      expect(await record(), isNull);
     });
 
     test(
@@ -909,7 +1020,12 @@ void main() {
       expect((await PushRegistrationStore(store).read())?.token, 'fcm-1');
       platform.tokenRefresh.add('fcm-baru');
       await pumpEventQueue();
-      expect((await PushRegistrationStore(store).read())?.token, 'fcm-baru');
+      expect(
+        await PushRegistrationStore(store).read(),
+        isA<PushRegistration>()
+            .having((r) => r.token, 'token', 'fcm-baru')
+            .having((r) => r.previousToken, 'previous (dilepas setelah PUT /devices berhasil)', isNull),
+      );
 
       platform.offline = true;
       await service.onSignedOut();
@@ -919,6 +1035,24 @@ void main() {
             .having((r) => r.pendingUnregister, 'pending', isTrue)
             .having((r) => r.token, 'token', isNull),
       );
+    });
+
+    test('catatan versi sebelumnya tanpa previous_token tetap terbaca; nilai bertipe salah dibaca null', () async {
+      await store.write(
+        PushRegistrationStore.storageKey,
+        '{"user_id":"user-1","token":"fcm-lama","pending_unregister":false}',
+      );
+      expect(
+        await PushRegistrationStore(store).read(),
+        isA<PushRegistration>()
+            .having((r) => r.userId, 'user', 'user-1')
+            .having((r) => r.token, 'token', 'fcm-lama')
+            .having((r) => r.previousToken, 'previous', isNull)
+            .having((r) => r.pendingUnregister, 'pending', isFalse),
+      );
+      expect(PushRegistration.fromJson({'user_id': 'user-1', 'previous_token': 42})?.previousToken, isNull);
+      expect(PushRegistration.fromJson({'user_id': 'user-1', 'previous_token': ''})?.previousToken, isNull);
+      expect(const PushRegistration(userId: 'user-1', token: 'fcm-1').toJson().containsKey('previous_token'), isFalse);
     });
 
     test('tanpa pendaftaran tercatat, akhir sesi tidak menghapus apa pun', () async {
