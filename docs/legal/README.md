@@ -3,12 +3,14 @@
 Folder ini memuat naskah final lima halaman yang diterbitkan pemilik melalui editor web admin. Naskah mengacu pada
 UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP) dan disusun untuk memenuhi persyaratan Google Play
 dan Apple App Store. Setiap pernyataan tentang cara kerja aplikasi sudah dicocokkan dengan kode R1.0 per
-15 Oktober 2026, dan uraian data profil dengan profil berulang (migrasi 0009-0010) per 21 Oktober 2026.
+15 Oktober 2026, uraian data profil dengan profil berulang (migrasi 0009-0010) per 21 Oktober 2026, dan target
+penanganan laporan dengan keputusan PP K5 per 25 Oktober 2026.
 
 - **Tanggal berlaku:** setiap halaman memuat baris "Berlaku sejak ..." sendiri. Kebijakan Privasi, Ketentuan Layanan,
-  Ketentuan Komunitas, dan Bantuan adalah revisi profil berulang yang belum terbit; tanggalnya masih berupa penanda
-  `[tanggal terbit]` (lihat Revisi profil berulang di bawah). Tentang berlaku sejak 18 Oktober 2026; bila diterbitkan
-  pada tanggal lain, ubah baris itu menjadi tanggal terbit sebenarnya sebelum menekan Terbitkan.
+  Ketentuan Komunitas, dan Bantuan adalah revisi profil berulang yang belum terbit; Ketentuan Komunitas dan Bantuan
+  juga memuat perubahan prioritas laporan K5. Tanggalnya masih berupa penanda `[tanggal terbit]` (lihat Revisi profil
+  berulang di bawah). Tentang berlaku sejak 18 Oktober 2026; bila diterbitkan pada tanggal lain, ubah baris itu
+  menjadi tanggal terbit sebenarnya sebelum menekan Terbitkan.
 - **Pratinjau dan cara menyalin:** buka `pratinjau.html` di peramban. Halaman itu memuat kelima naskah, tombol
   "Salin isi" per halaman, kolom tanggal terbit revisi, dan langkah penerbitan.
 
@@ -73,17 +75,28 @@ yang pertama menjadi profesi utama di KTA), riwayat pendidikan paling banyak 10 
 D3/S1/S2/S3/Lainnya, tahun tamat; kota tidak lagi diisi), dan paling banyak 10 tautan media sosial untuk sembilan
 platform yang hanya tampil ke sesama anggota bila Tampilkan media sosial (`show_social`) aktif.
 
+Revisi ini juga memuat keputusan PP K5 (25 Oktober 2026, Opsi A di `docs/runbooks/app-store-submission.md`
+bagian 9.4): laporan kategori Konten seksual, termasuk konten seksual yang melibatkan anak, menjadi mendesak dengan
+target 24 jam seperti Ancaman kekerasan atau keselamatan. Kategori lain dan banding tetap 2 hari kerja. Server
+menghitungnya lewat `priorityFor` di `kapdh-platform/apps/api/src/modules/moderation/due-at.ts` (PR #40).
+
 - **Bagian yang berubah:** Kebijakan Privasi 4.2, 4.3 (profesi utama di KTA), 7.1, dan 11.3; Ketentuan Layanan 11
   (riwayat pendidikan); Ketentuan Komunitas 1 (riwayat pendidikan, profesi ketikan sendiri); Bantuan bagian Mengubah
   profil, Profesi atau keahlian tidak ada dalam daftar, Data yang hanya dapat dikoreksi pengurus, Privasi profil, Apa
   yang dapat dilihat anggota lain, Apa isi KTA digital, dan Data yang dihapus. Bantuan juga diselaraskan dengan kode
   pada bagian Siapa yang dapat saya kirimi pesan? (percakapan langsung baru hanya dari profil anggota yang tampil di
   direktori) dan Akun saya dibatasi (halaman pembatasan tidak memuat Laporan saya; laporan dibuka dari notifikasinya),
-  begitu pula Ketentuan Komunitas 9 Pembatasan akun. Tentang tidak berubah.
+  begitu pula Ketentuan Komunitas 9 Pembatasan akun. Perubahan K5: Ketentuan Komunitas bagian 7 Memilih kategori
+  (Konten seksual mencakup segala konten seksual yang melibatkan atau membahayakan anak dan ditangani dengan
+  prioritas) dan bagian 8 Target waktu penanganan (Konten seksual paling lambat 24 jam), serta paragraf target
+  penanganan laporan di Bantuan bagian Melaporkan pengguna, pesan, atau grup. Tentang tidak berubah.
 - **Kapan terbit:** pada hari build aplikasi mobile pertama yang memakai daftar baru dirilis ke pengguna, setelah API
-  dan web admin rilis 0009-0010 berjalan di production. Jangan lebih awal: aplikasi 1.0.0 hanya menampilkan satu
-  profesi, satu pendidikan, dan empat media sosial. Jangan ditunda: build baru mengumpulkan jurusan, strata, tahun
-  tamat, profesi ketikan sendiri, dan lima platform baru yang tidak disebut naskah sebelumnya.
+  dan web admin rilis 0009-0010 berjalan di production, dan setelah image API yang memuat `priorityFor` sexual =
+  urgent (PR #40) berjalan di production (Syarat sebelum terbit butir 8). Jangan lebih awal: aplikasi 1.0.0 hanya
+  menampilkan satu profesi, satu pendidikan, dan empat media sosial, dan sebelum API K5 berjalan laporan Konten
+  seksual masih mendapat target 2 hari kerja. Jangan ditunda: build baru mengumpulkan jurusan, strata, tahun
+  tamat, profesi ketikan sendiri, dan lima platform baru yang tidak disebut naskah sebelumnya. Urutannya: deploy image
+  API K5, lalu distribusikan build mobile yang membawa petunjuk 24 jam untuk Konten seksual, lalu terbitkan naskah.
 - **Umumkan lebih dahulu.** Revisi menambah jenis data profil opsional, dan Kebijakan Privasi bagian 19 menjanjikan
   pengumuman melalui aplikasi dan situs sebelum perubahan seperti ini berlaku (misalnya berita singkat beberapa hari
   sebelum rilis). Persetujuan ulang tidak diperlukan menurut aturan perubahan di atas: data baru bersifat opsional
@@ -147,5 +160,13 @@ Butir berikut harus benar pada saat naskah diterbitkan. Bila belum, sebagian kal
    pada hari kerja, sedangkan permintaan data pribadi mengikuti jangka waktu Kebijakan Privasi.
 7. **Nomor WhatsApp dukungan diisi** di pengaturan aplikasi. Naskah merujuk ke "nomor WhatsApp dukungan yang
    tercantum di aplikasi dan di halaman Kontak".
+8. **API dengan prioritas laporan K5 sudah berjalan di production.** Ketentuan Komunitas bagian 7 dan 8 serta Bantuan
+   (Melaporkan pengguna, pesan, atau grup) menyatakan laporan Konten seksual ditangani paling lambat 24 jam. Janji itu
+   baru benar setelah image API yang memuat `priorityFor` sexual = urgent (PR #40) berjalan di production; sebelum
+   itu laporan baru kategori ini masih berprioritas normal dengan target 2 hari kerja. Karena itu, naskah revisi baru
+   boleh diterbitkan setelah image API tersebut berjalan, dan build aplikasi mobile yang membawa petunjuk baru pada
+   kategori Konten seksual ("Ditangani paling lambat 24 jam") juga hanya didistribusikan setelah API itu berjalan.
+   Laporan Konten seksual yang dibuat sebelum deploy tetap berprioritas normal (prioritas tidak dihitung ulang), jadi
+   tangani laporan seperti itu yang masih aktif tanpa menunggu targetnya.
 
 Syarat tambahan dan daftar butir terbuka lainnya dikelola pengurus secara internal.

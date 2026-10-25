@@ -36,8 +36,10 @@ String _inputCategoryLabel(ModerationReportInputCategory category) =>
 
 /// Keterangan singkat per kategori agar pelapor memilih dengan tepat.
 /// Konten seksual ikut prioritas 24 jam (keputusan PP K5) agar laporan eksploitasi anak tidak menunggu hari kerja.
+/// Petunjuknya mengikuti Ketentuan Komunitas bagian 7; bahaya non-seksual bagi anak masuk kategori ancaman.
 String _inputCategoryHint(ModerationReportInputCategory category) => switch (category) {
-  ModerationReportInputCategory.sexual => 'Termasuk konten yang membahayakan anak. Ditangani paling lambat 24 jam.',
+  ModerationReportInputCategory.sexual =>
+    'Termasuk konten seksual yang melibatkan anak. Ditangani paling lambat 24 jam.',
   ModerationReportInputCategory.violenceThreat => 'Ditangani paling lambat 24 jam.',
   ModerationReportInputCategory.otherValue => 'Wajib menjelaskan masalahnya.',
   _ => '',
