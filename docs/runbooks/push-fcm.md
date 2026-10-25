@@ -489,17 +489,20 @@ konfigurasi salah, dan dicoba ulang. Galat yang sama juga umum pada peluncuran d
 `push: token APNs belum tersedia setelah N percobaan, menunggu pembaruan token` bila semua percobaan habis. Galat lain
 (mis. konfigurasi `FIREBASE_*` salah) tidak dicoba ulang dan dicatat dengan kodenya.
 
-**Cek K8 di iPhone.** Jalankan pada IPA yang persis akan diajukan (build TestFlight yang sama), dengan koneksi aktif.
-Bila KAPDH pernah terpasang, keluar dari akun lebih dulu (Akun → Keluar) bila masih masuk, lalu hapus aplikasinya: di
-iOS sesi tersimpan di Keychain dan dipulihkan setelah pemasangan ulang. Bukti server memakai kueri `device_tokens` di
-`app-store-submission.md` bagian 4.1. Bukti perangkat diambil dari konsol perangkat (Xcode → Window → Devices and
-Simulators → Open Console, disaring ke proses `Runner`) dan, bila memungkinkan, lalu lintas jaringan lewat `rvictl`.
+**Cek K8 di iPhone.** Jalankan pada IPA yang persis akan diajukan (build yang sama di TestFlight internal), dengan
+koneksi aktif. Bila KAPDH pernah terpasang, keluar dari akun lebih dulu (Akun → Keluar) bila masih masuk, lalu hapus
+aplikasinya; bila setelah dipasang aplikasi langsung terbuka dalam keadaan masuk, keluar, hapus, lalu pasang ulang
+sebelum cek 1. Bukti server memakai kueri `device_tokens` di `app-store-submission.md` bagian 4.1. Bukti perangkat
+diambil dari konsol perangkat (Xcode → Window → Devices and Simulators → Open Console, disaring ke proses `Runner`)
+dan, bila memungkinkan, lalu lintas jaringan lewat `rvictl`.
 
 1. Pasang baru, sebelum login pertama: tidak ada token. Sebelum login tidak muncul dialog izin notifikasi, aplikasi
    tidak menghubungi `firebaseinstallations.googleapis.com` maupun `fcmtoken.googleapis.com`, dan tidak ada baris
    `device_tokens` baru untuk `ios` dan versi build itu.
-2. Logout, lalu mulai ulang aplikasi: tidak ada token. Baris akun uji sudah dicabut, dan setelah aplikasi dibuka lagi
-   tidak ada baris aktif baru maupun permintaan token.
+2. Logout, lalu mulai ulang aplikasi: masuk dengan akun uji dan izinkan notifikasi (harus muncul satu baris aktif
+   `ios` untuk akun itu). Keluar, tutup paksa aplikasi, buka lagi, dan biarkan di layar masuk 2 menit: tidak ada
+   token. Baris akun uji sudah dicabut, dan setelah aplikasi dibuka lagi tidak ada baris aktif baru maupun permintaan
+   token.
 3. Hapus KAPDH lalu pasang ulang dari build TestFlight yang sama (iOS hanya menampilkan dialog izin sekali per
    instalasi), lalu login dengan izin ditolak ("Jangan Izinkan"): tidak ada token. Tidak ada baris `device_tokens` untuk
    akun uji, dan log `push: token APNs belum tersedia ...` tidak muncul karena `getToken` tidak dipanggil.

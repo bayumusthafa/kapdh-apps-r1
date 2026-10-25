@@ -98,6 +98,10 @@ menghitungnya lewat `priorityFor` di `kapdh-platform/apps/api/src/modules/modera
   seksual masih mendapat target 2 hari kerja. Jangan ditunda: build baru mengumpulkan jurusan, strata, tahun
   tamat, profesi ketikan sendiri, dan lima platform baru yang tidak disebut naskah sebelumnya. Urutannya: deploy image
   API K5, lalu distribusikan build mobile yang membawa petunjuk 24 jam untuk Konten seksual, lalu terbitkan naskah.
+  Pada rilis toko pertama, hari rilis ke pengguna adalah hari rilis closed testing Play pertama dikirim ke review
+  Google (iOS: paling lambat hari build pertama dikirim ke Beta App Review TestFlight eksternal, mana yang lebih
+  dulu), dan naskah terbit hari itu sebelum pengiriman; Internal testing Play dan TestFlight internal untuk pemilik dan
+  tim inti tidak dihitung (keputusan PP K5 lanjutan, `docs/runbooks/app-store-submission.md` bagian 10).
 - **Umumkan lebih dahulu.** Revisi menambah jenis data profil opsional, dan Kebijakan Privasi bagian 19 menjanjikan
   pengumuman melalui aplikasi dan situs sebelum perubahan seperti ini berlaku (misalnya berita singkat beberapa hari
   sebelum rilis). Persetujuan ulang tidak diperlukan menurut aturan perubahan di atas: data baru bersifat opsional

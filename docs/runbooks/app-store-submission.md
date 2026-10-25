@@ -183,13 +183,13 @@ dari metrik (PRD 8.3 langkah 3).
 
 ## 4. Formulir privasi: lembar Data safety Google Play (dan App Privacy Apple)
 
-Sumber jawaban: kode `main` `7ce1ed8` (diperiksa 25 Oktober 2026) dan naskah kebijakan privasi. Nomor baris di bagian 4,
-9 dan 10 dicocokkan ulang dengan `main` `e147d24` (setelah PR #40 dan PR #41 digabung, 25 Oktober 2026); periksa ulang
-bila berkasnya berubah sebelum formulir diisi. `KP` dan `KK` merujuk berkas di `docs/legal`. Naskah yang tayang di situs
-adalah salinan di `kapdh-platform/apps/web/src/published-pages/` (bagian 7), dan per 25 Oktober 2026 salinan itu memuat
-butir yang sama untuk semua jawaban di sini (rekening refund, kota domisili, kata kunci pencarian, pengenal instalasi,
-agama, usia 18+, Perlindungan anak). Bila naskah baru terbit, cocokkan ulang lembar ini dengan naskah tayang. Singkatan
-rujukan:
+Sumber jawaban: kode `main` `7ce1ed8` (diperiksa 25 Oktober 2026) ditambah K8 (PR #41) dan K5 (PR #40) sampai
+`e147d24`, serta naskah kebijakan privasi. Nomor baris di bagian 4, 9 dan 10 dicocokkan dengan `main` `3ff9b35`
+(25 Oktober 2026; PR #42 tidak mengubah baris yang dirujuk); periksa ulang bila berkasnya berubah sebelum formulir
+diisi. `KP` dan `KK` merujuk berkas di `docs/legal`. Naskah yang tayang di situs adalah salinan di
+`kapdh-platform/apps/web/src/published-pages/` (bagian 7), dan per 25 Oktober 2026 salinan itu memuat butir yang sama
+untuk semua jawaban di sini (rekening refund, kota domisili, kata kunci pencarian, pengenal instalasi, agama, usia 18+,
+Perlindungan anak). Bila naskah baru terbit, cocokkan ulang lembar ini dengan naskah tayang. Singkatan rujukan:
 
 | Singkatan | Path |
 | --------- | ---- |
@@ -271,10 +271,12 @@ Yang dijamin perubahan ini, tidak lebih:
 **Cek penerimaan K8.** Kesimpulan "KP:106 konsisten tanpa revisi KP" ("hanya dibuat ... setelah Anda masuk dan tidak
 menolak izin notifikasi") baru berlaku setelah ketiga cek di bawah lulus pada AAB dan IPA yang persis akan dikirim,
 dan tetap bergantung pada keputusan lanjutan di bawah. Pakai berkas yang sama, bukan build debug atau build ulang dari
-commit yang sama: Android dipasang dari jalur Internal testing Play yang memuat AAB itu, iOS dari build TestFlight yang
-akan diajukan. Jalankan di satu perangkat Android 13 atau lebih baru dan satu iPhone, dengan koneksi aktif. Bila KAPDH
-pernah terpasang, keluar dari akun lebih dulu (Akun → Keluar) bila masih masuk, lalu hapus aplikasinya: di iOS sesi
-tersimpan di Keychain dan dipulihkan setelah pemasangan ulang. Catat waktu mulai setiap cek.
+commit yang sama: Android dipasang dari jalur Internal testing Play yang memuat AAB itu, iOS dari build yang sama di
+TestFlight internal. Keduanya dibagikan setelah image API K5 berjalan di production (gerbang K8 di bagian 10).
+Jalankan di satu perangkat Android 13 atau lebih baru dan satu iPhone, dengan koneksi aktif. Bila KAPDH pernah
+terpasang, keluar dari akun lebih dulu (Akun → Keluar) bila masih masuk, lalu hapus aplikasinya; bila setelah
+dipasang aplikasi langsung terbuka dalam keadaan masuk, keluar, hapus, lalu pasang ulang sebelum cek 1. Catat waktu
+mulai setiap cek.
 
 | Cek | Langkah | Lulus bila |
 | --- | ------- | ---------- |
@@ -355,12 +357,16 @@ Jawaban umum Apple dan hukum:
 - Kebijakan privasi wajib memuat daftar di atas, pemroses, retensi D2, cara penghapusan, dan kontak. Jawaban K1 tidak
   bertentangan dengan KP: kota domisili diketik sendiri oleh pengguna (KP:49), sedangkan yang dinyatakan tidak
   dikumpulkan di KP:124 adalah lokasi perangkat. Jawaban K2 sesuai KP:124 yang menyatakan agama tidak dikumpulkan.
-- Build pertama yang memakai daftar profil berulang: revisi naskah legal dan Bantuan (`docs/legal/README.md`, Revisi
-  profil berulang) terbit pada hari build itu dirilis ke pengguna (`rilis-dan-gerbang-go-live.md` bagian 5.5
-  langkah 8), dan gerbang K5 (bagian 10) mensyaratkan naskah itu sudah terbit sebelum submit. Untuk rilis toko
-  pertama, usulan K5 lanjutan (**menunggu PP**, bagian 10) menjadikan hari itu hari build production dibagikan ke
-  peserta uji terbatas D16, sebelum submit. Baris profil di lembar ini tetap pada kategori formulir yang sama, jadi
-  Data safety dan App Privacy tidak perlu diubah untuk daftar baru.
+- Build pertama yang memakai daftar profil berulang: keempat revisi naskah (Kebijakan Privasi, Ketentuan Layanan,
+  Ketentuan Komunitas, dan Bantuan; `docs/legal/README.md`, Revisi profil berulang) terbit pada hari yang sama, yaitu
+  hari build itu dirilis ke pengguna (`rilis-dan-gerbang-go-live.md` bagian 5.5 langkah 8). Untuk rilis toko pertama,
+  K5 lanjutan (diputuskan PP 25 Oktober 2026, bagian 10) menetapkan hari itu sebagai hari rilis closed testing Play
+  pertama dikirim ke review Google, atau untuk iOS paling lambat hari build pertama dikirim ke Beta App Review
+  TestFlight eksternal, mana yang lebih dulu; naskah terbit sebelum pengiriman itu. Internal testing Play dan
+  TestFlight internal hanya dipakai pemilik dan tim inti, jadi tidak dihitung sebagai rilis ke pengguna. Review closed
+  testing mensyaratkan App content lengkap, termasuk lembar ini dan URL kebijakan privasi, sehingga kebijakan privasi
+  yang tayang saat itu harus sudah sesuai dengan lembar ini. Baris profil di lembar ini tetap pada kategori formulir
+  yang sama, jadi Data safety dan App Privacy tidak perlu diubah untuk daftar baru.
 
 ## 5. Templat catatan reviewer
 
@@ -394,9 +400,9 @@ User-generated content (Guideline 1.2):
 - Only verified members can chat. Every profile, message and group can be reported (Report) and any user can be
   blocked (Block). Messages with unsafe links or hidden control characters are rejected by the server.
   Community guidelines: https://kapdh.or.id/ketentuan-komunitas
-- Reports are reviewed by the association's moderators in a separate web portal. Urgent reports are handled within
-  24 hours: threats, and sexual content, including any content involving children. Other reports are handled within
-  2 business days. Moderators can remove messages and restrict accounts.
+- Reports are reviewed by the association's moderators in a separate web portal. Urgent reports (threats, and
+  sexual content, including any sexual content involving children) are handled within 24 hours. Other reports are
+  handled within 2 business days. Moderators can remove messages and restrict accounts.
 - Contact: bantuan@kapdh.or.id
 
 Account deletion (Guideline 5.1.1(v)):
@@ -466,8 +472,8 @@ hanya pemilik yang dapat mengirim ulang bukti (PRD 4.3); keputusan PP masih terb
 | [R6] 5.1.1 | Kebijakan privasi, izin dengan alasan jelas, data minimum | Bagian 4; teks izin kamera/galeri di `Info.plist` menyebut bukti transfer, foto profil, foto chat, dan foto grup (diperbarui 25 Oktober 2026, bagian 10) | |
 | Kebijakan privasi dapat dibaca tanpa JavaScript | URL kebijakan privasi (dan `ketentuan-komunitas` untuk Child safety standards, bagian 9.4) yang diisi di toko menampilkan naskah, bukan hanya kerangka | Naskah tayang kelima halaman informasi/legal ditanam statis saat build dari salinan `apps/web/src/published-pages/` (penjelasan dan pemeriksaan di bawah tabel). **Lulus di kode per 25 Oktober 2026** (gerbang build `assert-published-pages.mjs`, uji `published-pages.test.ts`, uji asap image `smoke-static.sh`); production baru lulus setelah image web dari perubahan ini dideploy, jadi ulangi `curl` di bawah pada URL final | |
 | [R6] 2.1 | Aplikasi lengkap dan backend aktif saat review | Production aktif (go-live langkah 4), akun demo bagian 3 | |
-| Google Play Data safety | Formulir lengkap dan konsisten dengan kebijakan privasi | Bagian 4; K1, K2, dan K8 diputuskan PP 25 Oktober 2026 (bagian 10). Gerbang K8 (bagian 10): PR #41 digabung (`0d5967b`, sudah), perubahannya ada di AAB dan IPA yang diajukan, dan cek penerimaan K8 di bagian 4.1 lulus pada berkas itu. K8 lanjutan (izin notifikasi dicabut kemudian) **menunggu PP** | |
-| Google Play App content | App access, Ads, Advertising ID, IARC, target audiens, Financial features, Health, Government, News, Child safety standards | Bagian 9; K3-K7 di bagian 10: K3, K5, dan K7 diputuskan PP 25 Oktober 2026; nama titik kontak K4 dan prosedur K6 menunggu PP dan hanya menahan deklarasi Child safety standards. Gerbang K5 (bagian 10): PR #40 digabung (`e147d24`, sudah), image API-nya berjalan di production, revisi Ketentuan Layanan, Ketentuan Komunitas, dan Bantuan terbit dan salinan `published-pages` diperbarui lewat `pages:sync`, dan petunjuk baru `report_sheet.dart` ada di build yang diajukan; jalur distribusi sebelum submit (K5 lanjutan) **menunggu PP**. Child safety standards juga butuh URL `ketentuan-komunitas` yang terbaca tanpa JavaScript (baris "Kebijakan privasi dapat dibaca tanpa JavaScript") | |
+| Google Play Data safety | Formulir lengkap dan konsisten dengan kebijakan privasi | Bagian 4; K1, K2, dan K8 diputuskan PP 25 Oktober 2026 (bagian 10). Gerbang K8 (bagian 10): PR #41 digabung (`0d5967b`, sudah), perubahannya ada di AAB dan IPA yang diajukan, dan cek penerimaan K8 di bagian 4.1 lulus pada berkas itu di Internal testing Play dan TestFlight internal, setelah image API K5 berjalan di production. K8 lanjutan (izin notifikasi dicabut kemudian) **menunggu PP** | |
+| Google Play App content | App access, Ads, Advertising ID, IARC, target audiens, Financial features, Health, Government, News, Child safety standards | Bagian 9; K3-K7 diputuskan PP 25 Oktober 2026 (bagian 10), sehingga Child safety standards (9.4) juga dapat diisi. Gerbang K5 (bagian 10): PR #40 digabung (`e147d24`, sudah), image API-nya berjalan di production, keempat revisi naskah (Kebijakan Privasi, Ketentuan Layanan, Ketentuan Komunitas, dan Bantuan) terbit pada hari yang sama, salinan `published-pages` diperbarui lewat `pages:sync` dan image web dideploy ulang, dan petunjuk baru `report_sheet.dart` ada di build yang diajukan. Pada rilis toko pertama, naskah terbit pada hari rilis closed testing Play pertama dikirim ke review Google, sebelum pengiriman itu; Internal testing Play dan TestFlight internal untuk pemilik dan tim inti berjalan lebih dulu dan tidak dihitung sebagai rilis ke pengguna (K5 lanjutan, diputuskan PP 25 Oktober 2026). Child safety standards juga butuh URL `ketentuan-komunitas` yang terbaca tanpa JavaScript (baris "Kebijakan privasi dapat dibaca tanpa JavaScript") | |
 | Google Play target API | Target SDK sesuai persyaratan Play saat submit | Ditentukan Flutter 3.47 (`flutter.targetSdkVersion`); periksa saat build | |
 
 Kebijakan privasi tanpa JavaScript. Sampai `7ce1ed8`, `apps/web/src/pages/[slug].astro` hanya membangun kerangka: isi
@@ -607,14 +613,15 @@ berubah (mis. pemutar video atau pembelian), kuesioner wajib diisi ulang.
 | ----------- | ------- | ----- |
 | Standar terbit melawan eksploitasi dan pelecehan seksual anak (CSAE) | `https://kapdh.or.id/ketentuan-komunitas`, bagian "Perlindungan anak" | KK:67-75 (larangan materi eksploitasi seksual anak, grooming, sekstorsi, dan perdagangan anak; penghapusan; pembatasan akun tanpa peringatan; penerusan ke aparat penegak hukum), KK:126-128 (tanpa toleransi), KK:192 (lapor tanpa melampirkan tangkapan layar). Halaman menyebut nama aplikasi "KAPDH" (KK:1) |
 | Mekanisme masukan di dalam aplikasi | Ya: Laporkan pesan, anggota, dan grup tanpa keluar dari aplikasi | Pesan: `mobile/features/chat/chat_room_screen.dart:335-337`. Anggota: `mobile/features/network/member_profile_screen.dart:134` dan `mobile/features/chat/chat_info_screen.dart:440`. Grup: `chat_info_screen.dart:471`. Lembar laporan, kategori, dan petunjuknya: `mobile/features/network/report_sheet.dart:22-31`, `:40-46`, `:139`. Status di Akun → Laporan saya (KK:187-188). Kanal tambahan bagi yang tidak dapat memakai fitur laporan: `bantuan@kapdh.or.id` (KK:190-192) |
-| Penanganan CSAM | Konten dihapus, akun dibatasi tanpa peringatan, bukti tersimpan otomatis. Laporan "Konten seksual", termasuk yang melibatkan anak, berprioritas urgent dengan target 24 jam (K5) | Prioritas: `api/modules/moderation/due-at.ts:21-25`, KK:181, KK:209; berlaku setelah gerbang K5 di bagian 10. KK:74-75; tindakan moderator `removeMessage`, warn, dan suspend (`api/modules/moderation/admin-reports.service.ts:78`, `:849-873`, `:894-895`) |
-| Kepatuhan pada hukum keselamatan anak | Pengurus meneruskan informasi ke aparat penegak hukum sesuai peraturan | KK:74; prosedur rinci **K6: menunggu PP** bersama penasihat hukum (bagian 10) |
-| Titik kontak keselamatan anak | Email: `bantuan@kapdh.or.id` (K4, disetujui PP 25 Oktober 2026); nama: **menunggu PP** (K4). Telepon bila diminta | Kontak publik yang ada: `bantuan@kapdh.or.id` (KP:8) |
+| Penanganan CSAM | Laporan "Konten seksual", termasuk yang melibatkan anak, berprioritas urgent dengan target 24 jam (K5). Dalam 24 jam itu moderator menghapus konten dan membatasi akun pelaku tanpa peringatan (K6 langkah 1). Bukti tersimpan otomatis dan hanya boleh dibuka ketua atau pengurus yang ditunjuk, tanpa dibagikan lebih lanjut (K6 langkah 2) | Prioritas: `api/modules/moderation/due-at.ts:21-25`, KK:181, KK:209; berlaku setelah gerbang K5 di bagian 10. KK:74-75; tindakan moderator `removeMessage`, warn, dan suspend (`api/modules/moderation/admin-reports.service.ts:78`, `:849-873`, `:894-895`); prosedur K6 diputuskan PP 25 Oktober 2026 (bagian 10) |
+| Kepatuhan pada hukum keselamatan anak | Dalam 1 x 24 jam pengurus melaporkan ke Polri (Direktorat Tindak Pidana Siber Bareskrim, portal `patrolisiber.id`) dan ke Komdigi (`aduankonten.id`). Aduan lewat `patrolisiber.id` belum tentu menjadi laporan polisi resmi; bila aparat meminta laporan resmi, ikuti arahannya. Nomor laporan atau tanda terima dicatat di catatan moderasi. Salinan bukti hanya diserahkan ke aparat; salinan yang dibuat khusus untuk diteruskan dihapus setelah diserahkan, sedangkan bukti laporan di sistem tetap disimpan (KP:240) | KK:74; K6 langkah 3-4, diputuskan PP 25 Oktober 2026 (bagian 10); KP:240 |
+| Titik kontak keselamatan anak | Pemegang akun Play Console (PP); namanya diketik langsung di Play Console dan sengaja tidak ditulis di repo publik ini. Email: `bantuan@kapdh.or.id`, diperiksa setiap hari termasuk akhir pekan (K4, diputuskan PP 25 Oktober 2026). Telepon bila diminta, juga diisi langsung di Play Console | Kontak publik yang ada: `bantuan@kapdh.or.id` (KP:8); pemantauan termasuk akhir pekan juga menjadi syarat terbit naskah (`docs/legal/README.md`, Syarat sebelum terbit butir 6) |
 
 Prasyarat sebelum deklarasi dikirim:
 
-- Nama titik kontak (K4) dan prosedur penerusan CSAM (K6) sudah ditetapkan PP (bagian 10). Keduanya hanya menahan
-  deklarasi Child safety standards; deklarasi App content lain dapat diisi.
+- Titik kontak (K4) dan prosedur penerusan CSAM (K6) ditetapkan PP 25 Oktober 2026 (bagian 10). Nama dan telepon
+  titik kontak diisi langsung di Play Console, dan pengurus yang menangani laporan memahami prosedur K6 sebelum
+  deklarasi dikirim.
 - Gerbang K5 (bagian 10) lulus, karena baris Penanganan CSAM menyebut target 24 jam untuk laporan Konten seksual.
 - URL `ketentuan-komunitas` harus terbaca tanpa JavaScript. Google mensyaratkan halaman standar dapat dibuka publik
   tanpa galat. Naskah tayang (Ketentuan Komunitas v2, salinan
@@ -644,44 +651,60 @@ Syarat sebelum terbit butir 8). Gerbang K5 sebelum submit ada di bagian 10. Pili
 
 ## 10. Keputusan pemilik produk (PP) sebelum mengisi App content
 
-PP menyetujui usulan K1-K8 pada 25 Oktober 2026. Kolom Keputusan PP, Tanggal, dan Alasan mencatat hasilnya; salin
-tabel ini ke paket bukti. Dengan keputusan ini, lembar Data safety (bagian 4) dan deklarasi App content (bagian 9) dapat
-diisi tanpa pertanyaan terbuka, kecuali Child safety standards (9.4) yang masih menunggu nama titik kontak (K4) dan
-prosedur K6. K5 diterapkan PR #40 dan K8 diterapkan PR #41, keduanya sudah digabung; sebelum submit, gerbang K5 dan
-K8 di bawah tabel harus lulus. Keputusan yang masih **menunggu PP**: nama titik kontak K4, prosedur K6, K5 lanjutan
-(jalur distribusi sebelum submit, penahan gerbang K5), dan K8 lanjutan.
+PP menyetujui usulan K1-K8 pada 25 Oktober 2026, lalu pada hari yang sama menetapkan titik kontak K4, prosedur K6,
+dan K5 lanjutan. Kolom Keputusan PP, Tanggal, dan Alasan mencatat hasilnya; salin tabel ini ke paket bukti. Dengan
+keputusan ini, lembar Data safety (bagian 4) dan deklarasi App content (bagian 9), termasuk Child safety standards
+(9.4), dapat diisi tanpa pertanyaan terbuka. K5 diterapkan PR #40 dan K8 diterapkan PR #41, keduanya sudah digabung;
+sebelum submit, gerbang K5 dan K8 di bawah tabel harus lulus. Keputusan yang masih **menunggu PP** tinggal K8
+lanjutan.
 
 | No | Pertanyaan | Pilihan | Usulan | Keputusan PP | Tanggal | Alasan | Rujukan |
 | -- | ---------- | ------- | ------ | ------------ | ------- | ------ | ------- |
 | K1 | Kota domisili dideklarasikan sebagai Location → Approximate location? | (a) Ya, Approximate location, opsional; (b) tidak, cukup Personal info → Other info | (a). Google mendefinisikan Approximate location sebagai lokasi dengan luas >= 3 km², misalnya kota tempat pengguna berada; kota domisili tampil di KTA dan Jejaring | **(a)** Location → Approximate location: opsional, App functionality, tidak dibagikan | 25 Oktober 2026 | Kota domisili memenuhi definisi Approximate location dan tampil di KTA dan Jejaring. Tetap sesuai KP karena kota diketik sendiri, bukan lokasi perangkat (KP:49, KP:124) | Bagian 4.1; KP:49 |
 | K2 | Kategori Political or religious beliefs (Google) dan Sensitive Info (Apple) dideklarasikan? | (a) Tidak, karena tidak ada field agama; (b) ya, karena keanggotaan perkumpulan alumni pesantren dapat menunjukkan latar keagamaan | (a), dengan alasan dicatat: KP:124 menyatakan agama tidak dikumpulkan, dan deklarasi "ya" bertentangan dengan naskah itu. Bila PP/hukum memilih (b), KP:124 dan KP:368 harus direvisi lebih dulu | **(a)** Tidak dideklarasikan di Google maupun Apple | 25 Oktober 2026 | Tidak ada field agama; KP:124 menyatakan agama tidak dikumpulkan; keanggotaan alumni adalah riwayat pendidikan, bukan pernyataan keyakinan. KP:124 dan KP:368 tidak perlu direvisi | Bagian 4.1, 4.3 |
 | K3 | Deklarasi News apps | (a) Bukan aplikasi berita; (b) aplikasi berita | (a): berita adalah kabar internal organisasi untuk anggota aktif, bukan penerbitan berita umum | **(a)** Bukan aplikasi berita | 25 Oktober 2026 | Berita adalah kabar internal organisasi untuk anggota aktif, bukan penerbitan berita umum | Bagian 9 |
-| K4 | Titik kontak keselamatan anak (Child safety standards) | Nama orang yang mampu menjelaskan praktik pencegahan CSAM, beserta email (dan telepon bila diminta) | Ketua tim moderasi atau pengurus yang ditunjuk; email boleh `bantuan@kapdh.or.id` bila kotak itu dipantau setiap hari | Email `bantuan@kapdh.or.id` disetujui. Nama orang: **menunggu PP** | 25 Oktober 2026 (email) | Kotak organisasi yang sudah menjadi kontak publik (KP:8), dengan syarat usulan: kotak itu dipantau setiap hari. Nama ditunjuk PP sesuai usulan sebelum deklarasi Child safety standards dikirim | Bagian 9.4 |
+| K4 | Titik kontak keselamatan anak (Child safety standards) | Nama orang yang mampu menjelaskan praktik pencegahan CSAM, beserta email (dan telepon bila diminta) | Ketua tim moderasi atau pengurus yang ditunjuk; email boleh `bantuan@kapdh.or.id` bila kotak itu dipantau setiap hari | Titik kontak: pemegang akun Play Console (PP). Namanya diketik langsung di Play Console dan sengaja tidak ditulis di repo publik ini. Email `bantuan@kapdh.or.id`, diperiksa setiap hari termasuk akhir pekan | 25 Oktober 2026 | Pemegang akun Play Console menjadi orang yang menjelaskan praktik pencegahan CSAM KAPDH bila Google menghubungi. Email adalah kotak organisasi yang sudah menjadi kontak publik (KP:8), dan syarat usulan (dipantau setiap hari) dipertegas hingga akhir pekan | Bagian 9.4; `docs/legal/README.md` (Syarat sebelum terbit butir 6) |
 | K5 | Prioritas laporan konten seksual dan eksploitasi anak | Opsi A atau B di 9.4, atau tetap normal | Opsi A sebelum submit (perubahan kode kecil di PR terpisah) | **Opsi A** disetujui; diterapkan PR #40 (digabung 25 Oktober 2026, `e147d24`) | 25 Oktober 2026 | Pelapor materi eksploitasi anak kemungkinan besar memilih "Konten seksual"; Opsi A menjadikannya urgent tanpa mengubah kontrak enum. Berlaku setelah gerbang K5 di bawah tabel lulus | Bagian 9.4; `api/modules/moderation/due-at.ts:21-25` |
-| K5 lanjutan | Jalur distribusi build sebelum submit pada rilis toko pertama. Gerbang K5 mensyaratkan revisi naskah terbit sebelum review, sedangkan naskah baru boleh terbit pada hari build yang memakai daftar profil berulang dirilis ke pengguna, dan rilis bertahap baru terjadi setelah persetujuan toko | (a) Bagikan AAB dan IPA production yang akan diajukan (bukan build staging; ADR-016 membolehkan keduanya untuk D16) ke peserta uji terbatas D16 lewat closed testing Play dan TestFlight setelah image API K5 berjalan, terbitkan naskah pada hari itu, lalu submit; (b) terbitkan naskah pada hari submit sebelum build tersedia bagi pengguna, setelah aturan "Jangan lebih awal" di `docs/legal/README.md` dan langkah 8 bagian 5.5 `rilis-dan-gerbang-go-live.md` diubah | (a): D16 sudah menetapkan uji terbatas lewat TestFlight dan closed testing, dan peserta uji memakai build yang mengumpulkan data profil baru, sehingga naskah memang harus terbit hari itu ("Jangan ditunda") | **Menunggu PP** | – | Dicatat PR #39. Sampai diputuskan, gerbang K5 tidak dapat dipenuhi untuk rilis toko pertama dan build tidak diajukan | Gerbang K5 di bawah tabel; bagian 4.3; `docs/legal/README.md` (Revisi profil berulang, Kapan terbit); `rilis-dan-gerbang-go-live.md` bagian 5.5 langkah 8; `go-live.md` bagian 3 |
-| K6 | Prosedur penerusan CSAM ke aparat penegak hukum dan penanganan bukti | Siapa yang meneruskan, ke kanal mana, dalam berapa lama; siapa yang boleh membuka salinan bukti, dan kapan salinan itu dihapus setelah diteruskan (bukti laporan tetap disimpan, KP:240) | Ditetapkan PP bersama penasihat hukum sebelum deklarasi dikirim | **Menunggu PP** bersama penasihat hukum | – | Usulan disetujui 25 Oktober 2026: prosedur ditetapkan PP bersama penasihat hukum sebelum deklarasi Child safety standards dikirim | KK:74-75; KP:240 |
+| K5 lanjutan | Hari terbit keempat revisi naskah (Kebijakan Privasi, Ketentuan Layanan, Ketentuan Komunitas, dan Bantuan) pada rilis toko pertama. Naskah baru boleh terbit pada hari build yang memakai daftar profil berulang dirilis ke pengguna, sedangkan gerbang K5 mensyaratkan naskah sudah terbit sebelum build dikirim ke review, termasuk review Google atas rilis closed testing | (a) Hari rilis closed testing Play pertama dikirim ke review Google (iOS: paling lambat hari build pertama dikirim ke Beta App Review TestFlight eksternal, mana yang lebih dulu), naskah terbit sebelum pengiriman itu; Internal testing Play dan TestFlight internal tidak dihitung sebagai rilis ke pengguna; (b) hari build pertama dibagikan lewat Internal testing Play atau TestFlight internal; (c) hari pengajuan akses production setelah closed testing | (a): naskah tayang sudah sesuai saat Google meninjau rilis pertama dan saat anggota pertama memakai build baru, tanpa mendahului rilis ke pengguna | **(a)** Naskah terbit pada hari rilis closed testing Play pertama dikirim ke review Google (iOS: paling lambat hari build pertama dikirim ke Beta App Review TestFlight eksternal, mana yang lebih dulu), setelah image API K5 berjalan di production. Internal testing Play dan TestFlight internal hanya untuk pemilik dan tim inti | 25 Oktober 2026 | Rilis closed testing Play ditinjau Google dan mensyaratkan App content lengkap, termasuk Data safety dan URL kebijakan privasi, jadi kebijakan privasi yang tayang harus sudah sesuai saat itu. Penguji closed testing adalah anggota sungguhan, dan akun developer Play pribadi wajib menjalankan closed testing dengan minimal 12 penguji yang ikut serta selama 14 hari berturut-turut sebelum akses production dapat diajukan, jadi (c) terlambat. Internal testing (tanpa review Google, paling banyak 100 penguji) dipakai untuk cek penerimaan K8 dan uji asap, belum rilis ke pengguna, jadi (b) mendahuluinya | Gerbang K5 di bawah tabel; bagian 4.3; `docs/legal/README.md` (Revisi profil berulang, Kapan terbit; Syarat sebelum terbit butir 8); `rilis-dan-gerbang-go-live.md` bagian 5.5 langkah 8 |
+| K6 | Prosedur penerusan CSAM ke aparat penegak hukum dan penanganan bukti | Siapa yang meneruskan, ke kanal mana, dalam berapa lama; siapa yang boleh membuka salinan bukti, dan kapan salinan itu dihapus setelah diteruskan (bukti laporan tetap disimpan, KP:240) | Ditetapkan PP bersama penasihat hukum sebelum deklarasi dikirim | **Diputuskan 25 Oktober 2026** (draf disetujui PP): (1) moderator menghapus konten dan membatasi akun pelaku dalam 24 jam (prioritas urgent K5); (2) bukti di sistem hanya boleh dibuka ketua atau pengurus yang ditunjuk dan tidak dibagikan lebih lanjut; (3) dalam 1 x 24 jam pengurus melaporkan ke Polri (Direktorat Tindak Pidana Siber Bareskrim, portal `patrolisiber.id`) dan ke Komdigi (`aduankonten.id`); aduan lewat `patrolisiber.id` belum tentu menjadi laporan polisi resmi, jadi bila aparat meminta laporan resmi, ikuti arahannya; (4) nomor laporan atau tanda terima dicatat di catatan moderasi; salinan bukti hanya diserahkan ke aparat, salinan yang dibuat khusus untuk diteruskan dihapus setelah diserahkan, dan bukti laporan di sistem tetap disimpan sesuai KP:240 | 25 Oktober 2026 | Menjawab semua pertanyaan di kolom Pilihan (siapa, kanal, tenggat, akses bukti, penghapusan salinan) sebelum deklarasi Child safety standards dikirim; langkah 1 memakai prioritas urgent dari K5 | Bagian 9.4; KK:74-75; KP:240 |
 | K7 | Email kontak kuesioner IARC | Alamat organisasi | Alamat organisasi yang dipantau, bukan email pribadi | `bantuan@kapdh.or.id` | 25 Oktober 2026 | Alamat organisasi yang dipantau, bukan email pribadi; sama dengan kontak publik di KP:8 | Bagian 9.2 |
 | K8 | SDK FCM dapat membuat token saat aplikasi dibuka (auto-init aktif), padahal KP:106 menyebut token dibuat setelah login | (a) Matikan auto-init FCM (perubahan kode); (b) revisi kalimat KP:106 | Putuskan setelah DEV memverifikasi perilaku SDK pada build rilis; Data safety tetap mendeklarasikan Device or other IDs sebagai Wajib | **(a)** Matikan auto-init FCM sampai login; diterapkan PR #41 (digabung 25 Oktober 2026, `0d5967b`) | 25 Oktober 2026 | SDK tidak lagi membuat token FCM dan Installation ID sebelum login. Catatan K8 di bagian 4.1 dan kalimat KP:106 konsisten tanpa revisi KP hanya setelah cek penerimaan K8 di bagian 4.1 lulus pada build yang diajukan, dan tetap bergantung pada K8 lanjutan. Device or other IDs tetap Wajib | Bagian 4.1 (catatan Device or other IDs, Cek penerimaan K8) |
 | K8 lanjutan | Bila izin notifikasi dicabut kemudian di pengaturan sistem, token yang sudah terdaftar tidak dihapus (keterbatasan yang sudah ada sebelum K8, bagian 4.1) | (a) Hapus token, cabut pendaftarannya di server, dan matikan auto-init setiap kali izin terbaca ditolak saat login atau aplikasi dibuka (perubahan kode, PR terpisah); (b) persempit kalimat KP:106 agar tidak menjanjikan penghapusan saat izin dicabut kemudian | – | **Menunggu PP** | – | Dicatat PR #41. Tidak mengubah jawaban Data safety (Device or other IDs tetap Wajib), tetapi kesimpulan bahwa KP:106 konsisten tanpa revisi bergantung pada keputusan ini | Bagian 4.1 (Keterbatasan yang sudah ada sebelum K8); KP:106; `mobile/core/push/push_service.dart:197` |
 
 Gerbang sebelum submit untuk K5 dan K8. Keduanya sudah digabung ke `main`, tetapi baru terpenuhi bila semua syarat di
-bawah benar pada build yang diajukan dan di production saat review:
+bawah benar pada build yang diajukan dan di production saat review. Pada rilis toko pertama, "submit" di sini sudah
+berlaku untuk rilis closed testing Play pertama yang dikirim ke review Google dan build iOS pertama yang dikirim ke
+Beta App Review TestFlight eksternal, bukan baru pengajuan production:
 
 - **K5** (Child safety standards di 9.4 dan templat catatan reviewer bagian 5): PR #40 digabung (`e147d24`, sudah);
-  image API dari commit itu atau sesudahnya berjalan di production; revisi Ketentuan Layanan, Ketentuan Komunitas, dan
-  Bantuan yang memuat target 24 jam untuk Konten seksual sudah terbit, lalu salinan
-  `kapdh-platform/apps/web/src/published-pages/` diperbarui dengan `pnpm --filter @kapdh/web pages:sync` dan image web
-  dideploy ulang (bagian 7); dan build yang diajukan memuat petunjuk baru di
-  `mobile/features/network/report_sheet.dart:41-42`. Urutannya mengikuti `docs/legal/README.md` (Syarat sebelum terbit
-  butir 8): deploy image API K5, distribusikan build mobile, lalu terbitkan naskah. Pada rilis toko pertama, rilis
-  bertahap baru terjadi setelah persetujuan toko (`go-live.md` bagian 3), jadi distribusi sebelum submit memakai uji
-  terbatas D16: AAB dan IPA production yang akan diajukan dibagikan ke peserta uji (closed testing Play dan
-  TestFlight) setelah image API K5 berjalan, naskah terbit pada hari itu, baru kemudian build diajukan. Jalur ini
-  adalah usulan K5 lanjutan dan **menunggu PP**; sebelum diputuskan, gerbang K5 belum dapat dipenuhi, jadi jangan
-  submit.
+  image API dari commit itu atau sesudahnya berjalan di production (per 25 Oktober 2026 production masih menjalankan
+  `b6a1fc1`); keempat revisi naskah (Kebijakan Privasi, Ketentuan Layanan, Ketentuan Komunitas, dan Bantuan; tiga
+  yang terakhir memuat target 24 jam untuk Konten seksual) terbit pada hari yang sama, lalu salinan
+  `kapdh-platform/apps/web/src/published-pages/` diperbarui dengan `pnpm --filter @kapdh/web pages:sync` lewat PR dan
+  image web dideploy ulang (bagian 7); dan build yang diajukan memuat petunjuk baru di
+  `mobile/features/network/report_sheet.dart:41-42`. Urutan dasarnya mengikuti `docs/legal/README.md` (Revisi profil
+  berulang, Kapan terbit; Syarat sebelum terbit butir 8): deploy image API K5, distribusikan build mobile, lalu
+  terbitkan naskah. Untuk rilis toko pertama, K5 lanjutan (diputuskan PP 25 Oktober 2026, bagian 10) merincinya:
+  1. Deploy image API K5 ke production.
+  2. Bangun AAB dan IPA dari `main` `3ff9b35` atau sesudahnya (tag `contracts-v0.3.0` sudah terbit 25 Oktober 2026).
+  3. Bagikan build itu lewat Internal testing Play dan TestFlight internal, hanya untuk pemilik dan tim inti, lalu
+     jalankan cek penerimaan K8 (di bawah) dan uji asap. Internal testing berjalan tanpa review Google (paling banyak
+     100 penguji) dan tidak dihitung sebagai rilis ke pengguna.
+  4. Pada hari rilis closed testing Play pertama dikirim ke review Google: terbitkan keempat naskah lewat editor web
+     admin, jalankan `pnpm --filter @kapdh/web pages:sync`, gabungkan PR salinannya, lalu deploy image web. Bila build
+     iOS pertama dikirim ke Beta App Review TestFlight eksternal lebih dulu, langkah ini dikerjakan pada hari itu.
+  5. Kirim rilis closed testing ke review Google. Review ini mensyaratkan App content lengkap, termasuk Data safety
+     dan URL kebijakan privasi, dan penguji closed testing adalah anggota sungguhan.
+  6. Ajukan akses production setelah syarat closed testing Play terpenuhi (untuk akun developer pribadi: minimal
+     12 penguji yang ikut serta selama 14 hari berturut-turut).
+
+  Jangan kirim build apa pun ke review sebelum langkah 1-4 selesai.
 - **K8** (Data safety, Device or other IDs): PR #41 digabung (`0d5967b`, sudah); AAB dan IPA yang diajukan dibangun
-  dari commit yang memuatnya; dan ketiga cek penerimaan K8 di bagian 4.1 lulus pada berkas yang persis akan dikirim.
-  Simpan bukti server dan perangkat setiap cek di paket bukti.
+  dari commit yang memuatnya; dan ketiga cek penerimaan K8 di bagian 4.1 (beserta cek iPhone di `push-fcm.md`
+  bagian 8) lulus pada berkas yang persis akan dikirim. Cek dijalankan pada build Internal testing Play dan
+  TestFlight internal (langkah 3 di atas), setelah image API K5 berjalan di production, karena build itu membawa
+  petunjuk 24 jam K5 untuk Konten seksual (`docs/legal/README.md`, Syarat sebelum terbit butir 8). Simpan bukti
+  server dan perangkat setiap cek di paket bukti.
 
 Tindak lanjut DEV di luar dokumen ini:
 
@@ -691,9 +714,10 @@ Tindak lanjut DEV di luar dokumen ini:
   `mobile/features/chat/chat_room_screen.dart:183-202`). Galeri dipakai untuk keempatnya, termasuk foto grup
   (`mobile/features/chat/new_group_screen.dart:67`, `mobile/features/chat/chat_info_screen.dart:96`). Bila pemakaian
   kamera atau galeri berubah, perbarui teks ini dan kalimat izin di templat bagian 5.
-- Selesai 25 Oktober 2026: laporan "Konten seksual" menjadi urgent (K5, Opsi A; PR #40, `e147d24`) dan auto-init FCM
-  dimatikan sampai login (K8 = a; PR #41, `0d5967b`). Yang masih terbuka mengikuti gerbang di atas: keputusan PP
-  K5 lanjutan, deploy image API K5 ke production, distribusi build sebelum submit sesuai keputusan itu, penerbitan
-  revisi naskah beserta `pages:sync` dan deploy ulang image web, build yang diajukan memuat kedua perubahan, dan cek
-  penerimaan K8 pada AAB dan IPA yang diajukan. Bila PP memilih opsi (a) untuk K8 lanjutan, perubahan kodenya
-  dikerjakan lewat PR terpisah.
+- Selesai 25 Oktober 2026: laporan "Konten seksual" menjadi urgent (K5, Opsi A; PR #40, `e147d24`), auto-init FCM
+  dimatikan sampai login (K8 = a; PR #41, `0d5967b`), dan tag `contracts-v0.3.0` terbit lewat workflow Release
+  (versi kontrak 0.3.0 dari PR #42, `3ff9b35`; commit rilis `aea4c35`). Yang masih terbuka mengikuti gerbang di
+  atas: deploy image API K5 ke production, build AAB dan IPA dari `main` `3ff9b35` atau sesudahnya, cek penerimaan K8
+  pada build Internal testing Play dan TestFlight internal, penerbitan keempat revisi naskah beserta `pages:sync` dan
+  deploy ulang image web pada hari rilis closed testing pertama dikirim ke review, serta keputusan PP K8 lanjutan.
+  Bila PP memilih opsi (a) untuk K8 lanjutan, perubahan kodenya dikerjakan lewat PR terpisah.
