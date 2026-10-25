@@ -1,6 +1,8 @@
-# Teks dan kategori listing Google Play (draf)
+# Teks dan kategori listing Google Play
 
-Status: **draf 25 Oktober 2026.** Judul sudah dipilih PP; teks lain wajib disahkan PP sebelum diisi ke Play Console.
+Status: **disahkan PP 25 Oktober 2026** (judul, deskripsi singkat, deskripsi lengkap, teks alternatif feature graphic,
+kategori dan tag; sidik berkas di `README.md` bagian Pengesahan PP). Nama tag dicocokkan dengan daftar resmi di Play
+Console saat mengisi.
 Aplikasi hanya berbahasa Indonesia, jadi listing dibuat untuk bahasa default **Indonesia (id)** saja.
 
 Teks yang diisi ke Play Console ada di `teks/` (satu berkas per kolom, salin apa adanya). Hitungan di bawah berasal dari

@@ -1,17 +1,36 @@
 # Aset listing Google Play: KAPDH (`id.or.kapdh.app`)
 
-Status: **draf 25 Oktober 2026. Semua teks dan gambar wajib disahkan PP sebelum diunggah ke Play Console.** Ringkasan
-dan statusnya juga dicatat di `docs/runbooks/app-store-submission.md` bagian 1.
+Status: **ikon, feature graphic, teks, kategori dan tag disahkan PP 25 Oktober 2026** (bagian Pengesahan PP di
+bawah). Tangkapan layar belum diambil dan wajib disahkan PP setelah dibuat. Ringkasan dan statusnya juga dicatat di
+`docs/runbooks/app-store-submission.md` bagian 1.
 
 | Berkas | Isi | Status |
 | ------ | --- | ------ |
-| `ikon-512.png` | Ikon hi-res 512 x 512 | Siap, menunggu PP |
-| `feature-graphic-1024x500.jpg` | Feature graphic 1024 x 500 | Siap, menunggu PP |
-| `teks/` | Judul, deskripsi singkat, deskripsi lengkap, teks alternatif | Draf, lihat `listing.md` |
-| `listing.md` | Hitungan karakter, alasan isi, pemeriksaan D13, kategori dan tag | Draf |
+| `ikon-512.png` | Ikon hi-res 512 x 512 | Disahkan PP 25 Oktober 2026 |
+| `feature-graphic-1024x500.jpg` | Feature graphic 1024 x 500 | Disahkan PP 25 Oktober 2026 |
+| `teks/` | Judul, deskripsi singkat, deskripsi lengkap, teks alternatif | Disahkan PP 25 Oktober 2026, kecuali `alt-tangkapan.txt` (menunggu tangkapan layar) |
+| `listing.md` | Hitungan karakter, alasan isi, pemeriksaan D13, kategori dan tag | Disahkan PP 25 Oktober 2026 |
 | `tangkapan-layar.md` | Rencana dan prosedur 6 tangkapan layar 1080 x 1920 | Rencana; gambar belum diambil |
 | `tangkapan/` | Hasil tangkapan layar (dibuat skrip) | Belum ada |
 | `sumber/` | `generate.mjs`, `cek.mjs`, `ambil-tangkapan.sh`, `olah-tangkapan.mjs` | |
+
+## Pengesahan PP
+
+Disahkan pemilik produk (PP) pada 25 Oktober 2026: ikon, feature graphic, judul, deskripsi singkat, deskripsi
+lengkap, teks alternatif feature graphic, serta kategori dan tag di `listing.md`. Pengesahan berlaku untuk isi berkas
+dengan sidik SHA-256 di bawah. Bila berkas diubah, sidiknya berubah dan berkas itu wajib disahkan ulang sebelum
+diunggah. Tangkapan layar dan `teks/alt-tangkapan.txt` belum termasuk; keduanya disahkan setelah gambar diambil.
+
+| Berkas | SHA-256 |
+| ------ | ------- |
+| `ikon-512.png` | `0d36ece7dd51e175c01cd0c5fa865471f7f865a2c0f98f8aaf59fffe35abdbbd` |
+| `feature-graphic-1024x500.jpg` | `109a367bcd4502c7094b4a81970872b992020d2d5f151f3875b22dfa4a2f2c57` |
+| `teks/judul.txt` | `e6d8a167b1de2b428f6afaa0ed93a5c71ae89a4bdde1de12b13700fad2f8ce22` |
+| `teks/deskripsi-singkat.txt` | `6be02bab56f95c1625746db28fadb5744faa2f71dd686f1a99de121fd2ce56a1` |
+| `teks/deskripsi-lengkap.txt` | `18580d76befb952a7952ae8e81f5b2b686d8efed7b1b4ee08a9e6e2c091412a8` |
+| `teks/alt-feature-graphic.txt` | `3cbd5f82bb0be9208dc42f04652e110276ce9aa56cb3cf8f155d07b1a625e253` |
+
+Periksa sebelum mengunggah (dari root repo): `sha256sum docs/toko/play/ikon-512.png ...` harus sama dengan tabel ini.
 
 ## Hasil verifikasi
 
