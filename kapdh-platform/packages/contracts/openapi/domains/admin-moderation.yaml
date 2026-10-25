@@ -4,9 +4,10 @@
 # Aturan bersama domain ini (PRD 3.12, 4.2, 4.5, ARCHITECTURE §4.3, §4.5):
 # - Sesi admin (audience admin, MFA selesai). Izin dievaluasi dari DB setiap request (AC F15-1, F16-3); super_admin
 #   memiliki semua izin. Moderasi hanya lewat web admin (v3.2).
-# - Target penanganan (v3.2, D8): urgent (violence_threat) 24 jam; lainnya 2 hari kerja (Senin-Jumat WIB) sejak
-#   laporan dibuat; `overdue` = status open/in_review dan waktu server >= due_at. due_at selalu dihitung dan diisi
-#   server saat laporan/banding dibuat (kolom reports.due_at NOT NULL, lihat CHANGELOG), sehingga tidak pernah null.
+# - Target penanganan (v3.2, D8; keputusan PP K5 25 Oktober 2026): urgent (violence_threat dan sexual, termasuk
+#   eksploitasi seksual anak) 24 jam; lainnya 2 hari kerja (Senin-Jumat WIB) sejak laporan dibuat; `overdue` =
+#   status open/in_review dan waktu server >= due_at. due_at selalu dihitung dan diisi server saat laporan/banding
+#   dibuat (kolom reports.due_at NOT NULL, lihat CHANGELOG), sehingga tidak pernah null.
 # - Konflik kepentingan (AC F12-2, PRD 2.3), dievaluasi per request dari admins.linked_alumni_user_id pemanggil:
 #   a) Pihak terlapor: akun tertaut adalah reports.target_user_id (pihak terlapor, pengirim pesan terlapor, subjek
 #      yang ditetapkan lewat subject_user_id, atau pemohon banding), atau untuk laporan grup tanpa subjek, anggota

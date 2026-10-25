@@ -62,6 +62,12 @@ abstract interface class PushPlatform {
   /// Menghapus token FCM perangkat ini sehingga akun sebelumnya tidak lagi menerima notifikasi (AC F13-5).
   Future<void> deleteToken();
 
+  /// Menyalakan atau mematikan auto-init FCM, yaitu pembuatan dan pembaruan token FCM (beserta Firebase Installation
+  /// ID) oleh SDK tanpa diminta. Bawaannya mati (`firebase_messaging_auto_init_enabled` di AndroidManifest.xml,
+  /// `FirebaseMessagingAutoInitEnabled` di Info.plist), sehingga tidak ada token sebelum login. Nilai yang diset
+  /// tersimpan lintas peluncuran.
+  Future<void> setAutoInitEnabled(bool enabled);
+
   /// Pesan saat aplikasi di latar depan.
   Stream<PushMessage> get onForegroundMessage;
 
@@ -166,7 +172,21 @@ class FirebasePushPlatform implements PushPlatform {
   Stream<String> get onTokenRefresh => _messaging.onTokenRefresh;
 
   @override
-  Future<void> deleteToken() => _messaging.deleteToken();
+  Future<void> deleteToken() async {
+    // iOS: selama auto-init mati, plugin tidak mendaftarkan APNs dan tidak meneruskan token APNs ke FCM, sehingga
+    // deleteToken selalu gagal `apns-token-not-set`. Token FCM hanya diminta setelah auto-init dinyalakan, dan
+    // PushService baru mematikannya setelah token terhapus; jadi auto-init mati tanpa token APNs berarti tidak ada
+    // token untuk dihapus (mis. izin ditolak sejak login).
+    if (defaultTargetPlatform == TargetPlatform.iOS &&
+        !_messaging.isAutoInitEnabled &&
+        await _messaging.getAPNSToken() == null) {
+      return;
+    }
+    await _messaging.deleteToken();
+  }
+
+  @override
+  Future<void> setAutoInitEnabled(bool enabled) => _messaging.setAutoInitEnabled(enabled);
 
   static PushMessage _fromRemote(RemoteMessage message) => PushMessage.fromData(
     title: message.notification?.title,

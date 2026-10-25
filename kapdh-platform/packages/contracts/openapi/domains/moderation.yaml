@@ -133,10 +133,11 @@ paths:
         dihapus atau avatar diganti; hanya dihapus sesuai retensi D2.
         Melaporkan diri sendiri -> 400 (gunakan POST /appeals untuk banding).
 
-        Prioritas dan target penanganan dihitung server (v3.2): violence_threat = urgent, due_at 24 jam; kategori lain
-        normal, due_at 2 hari kerja (Senin-Jumat WIB). Bila pelapor masih memiliki laporan aktif (open/in_review)
-        atas target yang sama, laporan itu dikembalikan (200) tanpa membuat laporan baru. Pihak terlapor tidak diberi
-        tahu (AC F12-2). Idempotency-Key mengembalikan hasil pertama saat diulang; laju pelaporan dibatasi (429).
+        Prioritas dan target penanganan dihitung server (v3.2, keputusan PP K5): violence_threat dan sexual = urgent,
+        due_at 24 jam; kategori lain normal, due_at 2 hari kerja (Senin-Jumat WIB). Bila pelapor masih memiliki
+        laporan aktif (open/in_review) atas target yang sama, laporan itu dikembalikan (200) tanpa membuat laporan
+        baru. Pihak terlapor tidak diberi tahu (AC F12-2). Idempotency-Key mengembalikan hasil pertama saat diulang;
+        laju pelaporan dibatasi (429).
       x-kapdh-access: { audience: mobile, member_access: active, idempotent: true }
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -290,8 +291,9 @@ components:
       type: string
       enum: [spam, harassment, hate, sexual, violence_threat, scam, other, appeal]
       description: |
-        Kategori laporan (reports.category). violence_threat = risiko ancaman/keselamatan, prioritas urgent dengan
-        target 24 jam; appeal = banding pemohon atas dirinya sendiri (hanya lewat POST /appeals).
+        Kategori laporan (reports.category). violence_threat = risiko ancaman/keselamatan dan sexual = konten
+        seksual, termasuk eksploitasi seksual anak (keputusan PP K5): keduanya prioritas urgent dengan target 24 jam;
+        appeal = banding pemohon atas dirinya sendiri (hanya lewat POST /appeals).
 
     ModerationReportInputCategory:
       type: string
@@ -308,7 +310,9 @@ components:
     ModerationReportPriority:
       type: string
       enum: [normal, urgent]
-      description: urgent = risiko ancaman/keselamatan, target 24 jam; normal = 2 hari kerja (v3.2).
+      description: |
+        urgent = risiko ancaman/keselamatan (violence_threat) atau konten seksual (sexual, keputusan PP K5), target
+        24 jam; normal = 2 hari kerja (v3.2).
 
     ModerationOutcome:
       type: string

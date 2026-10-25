@@ -33,7 +33,7 @@
             "**Terbuka**: laporan aktif yang belum diklaim pengurus.",
             "**Sedang ditinjau**: laporan aktif yang sudah diklaim seorang pengurus.",
             "**Lewat target**: laporan aktif yang sudah melewati target penanganan. Barisnya di antrean berlatar kuning dan bertanda **Lewat target**.",
-            "**Mendesak**: laporan aktif berkategori **Ancaman/keselamatan**.",
+            "**Mendesak**: laporan aktif berkategori **Ancaman/keselamatan** atau **Konten seksual**.",
             "Angka pada kartu selalu menghitung seluruh laporan aktif dan tidak berubah mengikuti filter."
           ]
         },
@@ -64,8 +64,8 @@
           "title": "Prioritas dan target penanganan",
           "columns": ["Prioritas", "Kategori", "Target penanganan"],
           "rows": [
-            ["**Mendesak**", "**Ancaman/keselamatan**", "24 jam sejak laporan dibuat, termasuk Sabtu dan Minggu."],
-            ["**Normal**", "**Spam**, **Pelecehan**, **Ujaran kebencian**, **Konten seksual**, **Penipuan**, **Lainnya**, dan **Banding**", "2 hari kerja sejak laporan dibuat. Hari kerja adalah Senin sampai Jumat WIB; laporan yang masuk Sabtu atau Minggu mulai dihitung Senin pukul 00.00 WIB."]
+            ["**Mendesak**", "**Ancaman/keselamatan** dan **Konten seksual**", "24 jam sejak laporan dibuat, termasuk Sabtu dan Minggu."],
+            ["**Normal**", "**Spam**, **Pelecehan**, **Ujaran kebencian**, **Penipuan**, **Lainnya**, dan **Banding**", "2 hari kerja sejak laporan dibuat. Hari kerja adalah Senin sampai Jumat WIB; laporan yang masuk Sabtu atau Minggu mulai dihitung Senin pukul 00.00 WIB."]
           ]
         },
         {

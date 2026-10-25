@@ -514,7 +514,7 @@ Penyiapan staging pertama (VPS, Coolify, Tailscale, secrets GitHub): `docs/runbo
       FCM staging). Seed dev **boleh** di staging hanya bila gladi ini tidak sedang membuktikan "tanpa fixture"; untuk
       U-12 jalankan tanpa seed dev.
 - [ ] Build Flutter yang dipakai gladi/UAT ber-versi >= `min_app_version` lingkungan itu. Seed referensi mengisi
-      `min_app_version` `1.0.0` untuk Android dan iOS dan `kapdh-mobile/pubspec.yaml` saat ini `1.0.0+1`; aplikasi
+      `min_app_version` `1.0.0` untuk Android dan iOS dan `kapdh-mobile/pubspec.yaml` saat ini `1.1.0+2`; aplikasi
       mengirim versi pubspec sebagai `X-App-Version`, dan setiap mutasi dari build di bawah `1.0.0` ditolak 426
       `UPGRADE_REQUIRED`. Bila `min_app_version` lingkungan lebih tinggi dari versi build, naikkan versi build, atau
       (staging saja) turunkan `min_app_version` ke versi build lewat Pengaturan dan catat di laporan gladi.

@@ -65,6 +65,15 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="kapdh_umum" />
+        <!--
+          Auto-init FCM mati: SDK tidak membuat token FCM maupun Firebase Installation ID saat aplikasi dibuka.
+          PushService menyalakannya setelah login bila izin notifikasi tidak ditolak, lalu mematikannya lagi setelah
+          token dihapus saat sesi berakhir (kebijakan privasi 4.10; keputusan K8 di app-store-submission.md).
+          Tanpa SDK Analytics, meta-data ini cukup untuk mencegah pembuatan token otomatis.
+        -->
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="false" />
         <!-- Jangan hapus: dipakai Flutter tool untuk membangkitkan GeneratedPluginRegistrant. -->
         <meta-data
             android:name="flutterEmbedding"

@@ -64,6 +64,11 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<!-- Auto-init FCM mati: token FCM dan Installation ID tidak dibuat saat aplikasi dibuka, dan plugin baru
+	     mendaftarkan APNs setelah PushService menyalakan auto-init (setelah login, bila izin notifikasi tidak
+	     ditolak). Keputusan K8 di app-store-submission.md. -->
+	<key>FirebaseMessagingAutoInitEnabled</key>
+	<false/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

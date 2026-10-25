@@ -6,6 +6,15 @@ Setiap perubahan kontrak yang dapat memutus klien yang masih didukung dicatat di
 
 ## Belum dirilis
 
+### Laporan konten seksual berprioritas urgent (keputusan PP K5, 25 Oktober 2026; hanya deskripsi, tidak memutus)
+
+Laporan kategori `sexual`, termasuk eksploitasi seksual anak, kini dihitung server sebagai `urgent` dengan `due_at`
+24 jam kalender, sama dengan `violence_threat` (Child safety standards Google Play,
+`docs/runbooks/app-store-submission.md` bagian 9.4 Opsi A). Kategori lain dan banding tetap `normal` (2 hari kerja
+WIB). Deskripsi `createReport`, `ModerationReportCategory`, `ModerationReportPriority` dan aturan bersama
+admin-moderation diperbarui; enum dan bentuk tidak berubah, jadi SDK Dart dan tipe TS tidak berubah selain komentar.
+Laporan `sexual` yang dibuat sebelum perubahan ini tetap `normal` dengan `due_at` lamanya.
+
 ### Profil berulang: profesi jamak, riwayat pendidikan, media sosial dinamis (redesain v2; aditif, tidak memutus)
 
 Menyelesaikan bagian Ubah Profil dan Profil Alumni v2 yang sebelumnya hanya berganti tampilan

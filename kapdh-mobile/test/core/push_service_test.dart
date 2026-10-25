@@ -32,6 +32,15 @@ class FakePushPlatform implements PushPlatform {
 
   /// Simulasi iOS sebelum token APNs diterima: deleteToken melempar galat ini.
   Object? deleteError;
+
+  /// Auto-init FCM; bawaannya mati seperti di AndroidManifest.xml dan Info.plist.
+  bool autoInitEnabled = false;
+
+  /// Simulasi kegagalan setAutoInitEnabled.
+  Object? autoInitError;
+
+  /// Urutan panggilan yang membuat atau menghapus token: `getToken`, `deleteToken`, `autoInit:true|false`.
+  final calls = <String>[];
   int tokenRequests = 0;
   int permissionRequests = 0;
   final shown = <PushMessage>[];
@@ -52,6 +61,7 @@ class FakePushPlatform implements PushPlatform {
   @override
   Future<String?> getToken() async {
     tokenRequests++;
+    calls.add('getToken');
     final error = tokenError;
     if (error != null) throw error;
     return token;
@@ -65,8 +75,17 @@ class FakePushPlatform implements PushPlatform {
     if (offline) throw Exception('SERVICE_NOT_AVAILABLE (uji)');
     final error = deleteError;
     if (error != null) throw error;
+    calls.add('deleteToken');
     deletes++;
     token = 'fcm-${deletes + 1}';
+  }
+
+  @override
+  Future<void> setAutoInitEnabled(bool enabled) async {
+    final error = autoInitError;
+    if (error != null) throw error;
+    calls.add('autoInit:$enabled');
+    autoInitEnabled = enabled;
   }
 
   @override
@@ -225,6 +244,7 @@ void main() {
         async.flushMicrotasks();
         expect(platform.tokenRequests, 1);
         expect(registered, isEmpty);
+        expect(platform.autoInitEnabled, isTrue, reason: 'plugin iOS baru mendaftarkan APNs setelah auto-init menyala');
 
         async.elapse(PushService.apnsRetryDelays[0]);
         expect(platform.tokenRequests, 2, reason: 'token APNs masih belum ada');
@@ -316,6 +336,119 @@ void main() {
 
     await service.onSignedIn('user-1');
     expect(registered.last.token, 'fcm-2');
+  });
+
+  group('auto-init FCM: token hanya dibuat setelah login bila izin tidak ditolak (K8, kebijakan privasi 4.10)', () {
+    test('sebelum login: aplikasi dibuka dan sesi anonim tidak meminta token maupun menyalakan auto-init', () async {
+      expect(await service.start(), isTrue);
+      // Sesi anonim saat aplikasi dibuka dan koneksi kembali: tanpa pendaftaran tercatat tidak ada panggilan token.
+      await service.onSignedOut();
+      await service.retryPendingUnregister();
+      expect(platform.calls, isEmpty);
+      expect(platform.autoInitEnabled, isFalse);
+      expect(platform.permissionRequests, 0);
+    });
+
+    test('setelah login dengan izin: auto-init dinyalakan tepat sebelum getToken, lalu token didaftarkan', () async {
+      await service.onSignedIn('user-1');
+      expect(platform.calls, ['autoInit:true', 'getToken']);
+      expect(platform.autoInitEnabled, isTrue);
+      expect(registered.single.token, 'fcm-1');
+    });
+
+    test('izin ditolak: auto-init tetap mati dan token tidak diminta', () async {
+      platform.permission = PushPermission.denied;
+      await service.onSignedIn('user-1');
+      expect(platform.calls, isEmpty);
+      expect(platform.autoInitEnabled, isFalse);
+      expect(await PushRegistrationStore(store).read(), isNull);
+    });
+
+    test('keluar: token dihapus lebih dulu, lalu auto-init dimatikan dan catatan dibersihkan', () async {
+      await service.onSignedIn('user-1');
+      platform.calls.clear();
+      await service.onSignedOut();
+      expect(platform.calls, ['deleteToken', 'autoInit:false']);
+      expect(platform.autoInitEnabled, isFalse);
+      expect(await PushRegistrationStore(store).read(), isNull);
+    });
+
+    test('keluar saat offline: auto-init tetap menyala sampai token benar-benar terhapus', () async {
+      await service.onSignedIn('user-1');
+      platform.offline = true;
+      await service.onSignedOut();
+      expect(
+        platform.autoInitEnabled,
+        isTrue,
+        reason: 'di iOS token APNs yang dibutuhkan deleteToken hanya diteruskan selama auto-init menyala',
+      );
+
+      platform.offline = false;
+      await service.retryPendingUnregister();
+      expect(platform.deletes, 1);
+      expect(platform.autoInitEnabled, isFalse);
+      expect(await PushRegistrationStore(store).read(), isNull);
+    });
+
+    test(
+      'berganti akun: auto-init dimatikan setelah token akun lama terhapus, lalu dinyalakan untuk akun baru',
+      () async {
+        await service.onSignedIn('user-1');
+        await service.dispose();
+
+        final next = build();
+        platform.calls.clear();
+        await next.onSignedIn('user-2');
+        expect(platform.calls, ['deleteToken', 'autoInit:false', 'autoInit:true', 'getToken']);
+        expect(registered.map((r) => r.token), ['fcm-1', 'fcm-2']);
+        await next.dispose();
+      },
+    );
+
+    test('berganti akun lalu izin akun baru ditolak: token akun lama dihapus dan auto-init tetap mati', () async {
+      await service.onSignedIn('user-1');
+      await service.dispose();
+
+      platform.permission = PushPermission.denied;
+      final next = build();
+      platform.calls.clear();
+      await next.onSignedIn('user-2');
+      expect(platform.calls, ['deleteToken', 'autoInit:false']);
+      expect(platform.autoInitEnabled, isFalse);
+      expect(registered.map((r) => r.token), ['fcm-1']);
+      expect(await PushRegistrationStore(store).read(), isNull);
+      await next.dispose();
+    });
+
+    test('getToken gagal setelah auto-init menyala: sesi yang berakhir di peluncuran berikutnya tetap menghapus token '
+        'dan mematikan auto-init', () async {
+      platform.tokenError = FirebaseException(plugin: 'firebase_messaging', code: 'unknown');
+      await service.onSignedIn('user-1');
+      expect(platform.autoInitEnabled, isTrue);
+      expect(registered, isEmpty);
+      await service.dispose();
+
+      // Peluncuran berikutnya: sesi gagal dipulihkan sebelum login lagi (tanpa onSignedIn di proses ini).
+      final next = build();
+      platform.calls.clear();
+      await next.onSignedOut();
+      expect(platform.calls, ['deleteToken', 'autoInit:false']);
+      expect(platform.autoInitEnabled, isFalse);
+      await next.dispose();
+    });
+
+    test('mematikan auto-init gagal: catatan tertunda dipertahankan dan langkahnya diulang', () async {
+      await service.onSignedIn('user-1');
+      platform.autoInitError = Exception('uji');
+      await service.onSignedOut();
+      expect(platform.autoInitEnabled, isTrue);
+      expect((await PushRegistrationStore(store).read())?.pendingUnregister, isTrue);
+
+      platform.autoInitError = null;
+      await service.retryPendingUnregister();
+      expect(platform.autoInitEnabled, isFalse);
+      expect(await PushRegistrationStore(store).read(), isNull);
+    });
   });
 
   test('gagal mendaftarkan perangkat tidak mengganggu sesi', () async {

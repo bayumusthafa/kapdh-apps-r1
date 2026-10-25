@@ -233,6 +233,7 @@ void main() {
     expect(platform.permissionRequests, 1);
     expect(countRequests(app.adapter, '/devices', method: 'PUT'), 1);
     expect(await PushRegistrationStore(store).read(), isNotNull);
+    expect(platform.autoInitEnabled, isTrue, reason: 'auto-init FCM baru dinyalakan setelah login (K8)');
 
     app.router.go('/account');
     await settle(tester);
@@ -247,6 +248,8 @@ void main() {
     // Token FCM dihapus sehingga perangkat tidak lagi menerima notifikasi akun ini.
     expect(platform.deletes, 1);
     expect(await PushRegistrationStore(store).read(), isNull);
+    // SDK tidak membuat token baru sendiri sampai login berikutnya (K8).
+    expect(platform.autoInitEnabled, isFalse);
   });
 
   testWidgets('N-11: teks 200 % tanpa meluap', (tester) async {

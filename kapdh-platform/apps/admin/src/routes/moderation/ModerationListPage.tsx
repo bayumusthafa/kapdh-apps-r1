@@ -66,10 +66,11 @@ export function subjectText(r: Pick<Item, "subject" | "room_name" | "target_type
 }
 
 /**
- * Antrean moderasi (F-12, F-15; izin moderation.read): laporan aktif urut paling mendesak (ancaman/keselamatan 24 jam,
- * lainnya 2 hari kerja, v3.2), ringkasan hitungan, filter status/prioritas/kategori/objek/lewat target dan pencarian
- * pihak terlapor dengan paging server. Antrean tidak memuat bukti maupun identitas pelapor (minimisasi PRD 3.12);
- * laporan yang menyangkut akun alumni tertaut admin sendiri tidak pernah tampil (konflik kepentingan, AC F12-2).
+ * Antrean moderasi (F-12, F-15; izin moderation.read): laporan aktif urut paling mendesak (ancaman/keselamatan dan
+ * konten seksual 24 jam, lainnya 2 hari kerja; v3.2, keputusan PP K5), ringkasan hitungan, filter
+ * status/prioritas/kategori/objek/lewat target dan pencarian pihak terlapor dengan paging server. Antrean tidak
+ * memuat bukti maupun identitas pelapor (minimisasi PRD 3.12); laporan yang menyangkut akun alumni tertaut admin
+ * sendiri tidak pernah tampil (konflik kepentingan, AC F12-2).
  */
 export function ModerationPage() {
   const auth = useAuth();
@@ -77,7 +78,7 @@ export function ModerationPage() {
     <>
       <PageHeader
         title="Moderasi"
-        description="Laporan pengguna, pesan dan grup. Target penanganan: ancaman/keselamatan 24 jam, laporan lain 2 hari kerja."
+        description="Laporan pengguna, pesan dan grup. Target penanganan: ancaman/keselamatan dan konten seksual 24 jam, laporan lain 2 hari kerja."
       />
       {auth.can("moderation.read") ? (
         <ModerationQueue />

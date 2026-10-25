@@ -54,12 +54,12 @@
 <main id="atas">
   <section class="pengantar" aria-labelledby="judul-pengantar">
     <h1 id="judul-pengantar">Pratinjau naskah halaman KAPDH</h1>
-    <p>Berkas ini memuat naskah final lima halaman informasi dan legal KAPDH. Kebijakan Privasi, Ketentuan Layanan, Ketentuan Komunitas, dan Bantuan adalah revisi untuk profil berulang (profesi lebih dari satu, riwayat pendidikan, dan media sosial dinamis) yang wajib terbit bersama rilis aplikasi mobile yang memakai daftar tersebut. Tentang KAPDH tidak berubah (berlaku sejak 18 Oktober 2026). Isi setiap halaman di bawah sama persis dengan berkas <code>docs/legal/&lt;slug&gt;.html</code> dan hanya memakai format yang diterima editor web admin (judul bagian, paragraf, daftar, tebal, miring, kutipan, dan tautan https/mailto).</p>
+    <p>Berkas ini memuat naskah final lima halaman informasi dan legal KAPDH. Kebijakan Privasi, Ketentuan Layanan, Ketentuan Komunitas, dan Bantuan adalah revisi untuk profil berulang (profesi lebih dari satu, riwayat pendidikan, dan media sosial dinamis) yang wajib terbit bersama rilis aplikasi mobile yang memakai daftar tersebut. Ketentuan Layanan, Ketentuan Komunitas, dan Bantuan juga memuat keputusan PP K5: laporan konten seksual, termasuk konten seksual yang melibatkan anak, ditangani paling lambat 24 jam seperti laporan ancaman kekerasan atau keselamatan. Tentang KAPDH tidak berubah (berlaku sejak 18 Oktober 2026). Isi setiap halaman di bawah sama persis dengan berkas <code>docs/legal/&lt;slug&gt;.html</code> dan hanya memakai format yang diterima editor web admin (judul bagian, paragraf, daftar, tebal, miring, kutipan, dan tautan https/mailto).</p>
 
     <div class="catatan">
       <p><strong>Sebelum menerbitkan, baca bagian "Syarat sebelum terbit" di <code>docs/legal/README.md</code>.</strong> Yang paling penting: semua tautan memakai <code>https://kapdh.or.id/...</code>, sehingga naskah baru boleh diterbitkan setelah kapdh.or.id dan www.kapdh.or.id mengarah ke situs baru (terpenuhi sejak 21 Oktober 2026; <code>www</code> dan <code>baru.kapdh.or.id</code> kini dialihkan ke kapdh.or.id).</p>
       <p>Tanggal berlaku setiap naskah tertera pada baris "Berlaku sejak ..." di halaman masing-masing. Pada keempat halaman revisi, baris itu berisi [tanggal terbit]: isi kolom <strong>Tanggal terbit revisi</strong> di bawah sebelum menyalin. Untuk Tentang KAPDH, bila tanggal penerbitan berbeda, ubah baris itu menjadi tanggal terbit sebenarnya, setelah ditempel di editor dan sebelum menekan Terbitkan.</p>
-      <p>Revisi profil berulang menambah jenis data profil opsional. Sesuai bagian 19 Kebijakan Privasi, umumkan perubahan melalui aplikasi dan situs lebih dahulu, lalu terbitkan keempat halaman pada hari build aplikasi yang memakai daftar baru dirilis (<code>docs/legal/README.md</code>, Revisi profil berulang).</p>
+      <p>Revisi profil berulang menambah jenis data profil opsional. Sesuai bagian 19 Kebijakan Privasi, umumkan perubahan melalui aplikasi dan situs lebih dahulu, lalu terbitkan keempat halaman pada hari build aplikasi yang memakai daftar baru dirilis. Perubahan K5 menambah syarat urutan: naskah revisi baru boleh terbit setelah image API yang menjadikan laporan konten seksual mendesak (<code>priorityFor</code> sexual = urgent, PR #40) berjalan di production, dan build aplikasi yang membawa petunjuk 24 jam yang baru untuk Konten seksual hanya didistribusikan setelah API itu berjalan (<code>docs/legal/README.md</code>, Revisi profil berulang dan Syarat sebelum terbit butir 8).</p>
     </div>
 
     <h2>Cara menerbitkan</h2>
@@ -653,7 +653,7 @@
 <h3>Melapor dan memblokir</h3>
 <ul>
 <li>Anda dapat melaporkan profil, pesan, atau grup dari dalam aplikasi. Identitas pelapor tidak diberitahukan kepada pihak yang dilaporkan, dan Anda dapat memantau status laporan Anda di aplikasi.</li>
-<li>Pengurus berizin menangani laporan melalui web admin. Laporan yang menyangkut ancaman atau keselamatan ditargetkan ditangani dalam 24 jam, sedangkan laporan lain dalam 2 hari kerja. Waktu tersebut adalah target layanan kami, bukan jaminan.</li>
+<li>Pengurus berizin menangani laporan melalui web admin. Laporan yang menyangkut ancaman atau keselamatan dan laporan konten seksual ditargetkan ditangani dalam 24 jam, sedangkan laporan lain dalam 2 hari kerja. Waktu tersebut adalah target layanan kami, bukan jaminan.</li>
 <li>Anda dapat memblokir anggota lain. Blokir berlaku dua arah untuk pesan langsung dan undangan grup, dan daftar blokir dapat Anda kelola di aplikasi. Di dalam grup, Anda juga dapat membisukan notifikasi atau keluar dari grup.</li>
 <li>Jangan menyalahgunakan fitur laporan, misalnya membuat laporan palsu dengan sengaja untuk merugikan orang lain.</li>
 </ul>
@@ -974,7 +974,7 @@
 <li><strong>Spam</strong>: pesan massal, berulang, atau promosi yang tidak diminta.</li>
 <li><strong>Pelecehan atau perundungan</strong>: hinaan, intimidasi, atau gangguan yang terus-menerus.</li>
 <li><strong>Ujaran kebencian</strong>: serangan atau hasutan berbasis SARA, jenis kelamin, atau disabilitas.</li>
-<li><strong>Konten seksual</strong>: pornografi, ketelanjangan, atau ajakan seksual.</li>
+<li><strong>Konten seksual</strong>: pornografi, ketelanjangan, atau ajakan seksual, termasuk segala konten seksual yang melibatkan atau membahayakan anak. Laporan kategori ini ditangani dengan prioritas.</li>
 <li><strong>Ancaman kekerasan atau keselamatan</strong>: ancaman terhadap keselamatan seseorang, ajakan menyakiti diri, atau konten yang membahayakan anak. Laporan kategori ini ditangani dengan prioritas.</li>
 <li><strong>Penipuan</strong>: permintaan uang, investasi palsu, atau upaya mencuri data akun.</li>
 <li><strong>Lainnya</strong>: misalnya peniruan identitas, penyebaran data pribadi, atau konten melanggar hukum lainnya. Untuk kategori ini, penjelasan wajib diisi minimal 10 karakter.</li>
@@ -1002,7 +1002,7 @@
 <h3>Target waktu penanganan</h3>
 <p>Pengurus menargetkan penanganan laporan sebagai berikut, dihitung sejak laporan dikirim:</p>
 <ul>
-<li><strong>Ancaman kekerasan atau keselamatan</strong>: paling lambat 24 jam.</li>
+<li><strong>Ancaman kekerasan atau keselamatan</strong> dan <strong>Konten seksual</strong>, termasuk konten yang membahayakan anak: paling lambat 24 jam.</li>
 <li><strong>Kategori lain</strong>: paling lambat 2 hari kerja (Senin sampai Jumat, WIB).</li>
 </ul>
 <p>Target untuk setiap laporan tampil di detail laporan pada <strong>Laporan saya</strong>.</p>
@@ -1333,7 +1333,7 @@
 <li><strong>Grup:</strong> buka info grup, lalu pilih <strong>Laporkan grup</strong>.</li>
 </ul>
 <p>Pilih kategori laporan (spam, pelecehan atau perundungan, ujaran kebencian, konten seksual, ancaman kekerasan atau keselamatan, penipuan, atau lainnya) dan tambahkan penjelasan bila perlu. Laporan Anda tidak dibuka kepada pihak yang dilaporkan. Pantau status laporan di <strong>Akun &gt; Laporan saya</strong>.</p>
-<p>Pengurus menargetkan penanganan laporan ancaman kekerasan atau keselamatan paling lambat 24 jam, dan laporan lain paling lambat 2 hari kerja. Dalam keadaan darurat, segera hubungi pihak berwenang.</p>
+<p>Pengurus menargetkan penanganan laporan ancaman kekerasan atau keselamatan serta laporan konten seksual, termasuk konten yang membahayakan anak, paling lambat 24 jam, dan laporan lain paling lambat 2 hari kerja. Dalam keadaan darurat, segera hubungi pihak berwenang.</p>
 
 <h3>Memblokir anggota</h3>
 <p>Buka profil anggota, lalu pilih <strong>Blokir</strong>, atau gunakan menu di info percakapan langsung. Setelah diblokir:</p>
