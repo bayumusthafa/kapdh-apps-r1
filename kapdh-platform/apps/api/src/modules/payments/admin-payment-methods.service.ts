@@ -188,7 +188,9 @@ export class AdminPaymentMethodsService {
 
   /**
    * Penggantian penuh (AC F15-3, F15-4): identitas rekening metode in_use, termasuk gambar QRIS, tidak dapat diubah
-   * (400 per field). Gambar baru dilampirkan dan gambar lama dibuang di transaksi yang sama (ADR-026).
+   * (400 per field). Gambar baru dilampirkan dan gambar lama dibuang di transaksi yang sama (ADR-026). Respons dibaca
+   * di transaksi itu juga, sehingga in_use menggambarkan keadaan saat penggantian, bukan payment yang dibuat request
+   * lain begitu kunci baris dilepas.
    */
   async update(
     auth: AuthContext,
@@ -196,7 +198,7 @@ export class AdminPaymentMethodsService {
     expectedVersion: number,
     input: PaymentMethodInput,
   ): Promise<AdminPaymentMethod> {
-    await this.db.transaction(async (tx) => {
+    return this.db.transaction(async (tx) => {
       const current = await this.lockMethod(tx, methodId);
       if (current.version !== expectedVersion) throw versionConflict(await this.get(methodId, tx));
       const image = effectiveQrImage(input, current.qrImageFileId);
@@ -248,8 +250,8 @@ export class AdminPaymentMethodsService {
         before: auditView(current, previous),
         after: auditView(updated!, replaced ? attached : previous),
       });
+      return this.get(methodId, tx);
     });
-    return this.get(methodId);
   }
 
   /** Hapus hanya metode yang belum pernah dipakai; selain itu 400 (nonaktifkan saja). Gambar QRIS ikut dibuang. */
