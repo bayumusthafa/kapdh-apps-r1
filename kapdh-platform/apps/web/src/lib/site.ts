@@ -43,7 +43,10 @@ export function resolveApiBase(env: { PUBLIC_API_URL?: string | undefined; DEV: 
   return url.href.replace(/\/+$/, "");
 }
 
-/** Halaman informasi/legal yang isinya dibaca saat runtime dari GET /public/pages/{slug} (F-08, PRD 3.8). */
+/**
+ * Halaman informasi/legal (F-08, PRD 3.8): naskah tayang ditanam statis saat build dari src/published-pages/<slug>.json
+ * (lib/published-pages; wajib ada untuk setiap slug) dan diperbarui saat runtime dari GET /public/pages/{slug}.
+ */
 export const INFO_PAGES = [
   {
     slug: "kebijakan-privasi",

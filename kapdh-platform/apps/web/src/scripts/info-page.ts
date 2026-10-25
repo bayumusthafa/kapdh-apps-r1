@@ -71,13 +71,18 @@ export interface InfoPageOptions {
 }
 
 /**
- * Mengisi shell halaman informasi: loading -> isi tersanitasi beserta versi dan tanggal terbit, atau keadaan
+ * Mengisi halaman informasi: loading -> isi tersanitasi beserta versi dan tanggal terbit, atau keadaan
  * belum terbit / tidak terjangkau dengan coba lagi. Judul dokumen mengikuti judul tayang.
+ *
+ * Naskah yang ditanam statis saat build (`[data-state="static"]` di `root`, [slug].astro) tetap tampil selama memuat,
+ * bila belum terbit, dan bila API tidak terjangkau: pembaca tidak pernah kehilangan naskah yang sudah terbaca. Isi itu
+ * hanya diganti bila versi tayang berbeda dari `data-version`-nya; versi yang sama cukup ditandai siap.
  */
 export function mountInfoPage(options: InfoPageOptions): { load: () => Promise<void> } {
   const { doc, root, apiBase, slug, siteOrigin } = options;
   const title = byId(doc, "info-title");
   const meta = byId(doc, "info-meta");
+  const staticBody = root.querySelector<HTMLElement>(':scope > [data-state="static"]');
   let timer: ReturnType<typeof setInterval> | null = null;
   let loading = false;
 
@@ -111,6 +116,14 @@ export function mountInfoPage(options: InfoPageOptions): { load: () => Promise<v
 
   const render = (view: InfoPageView) => {
     stopTimer();
+    if (
+      staticBody?.isConnected &&
+      (view.kind !== "ready" || view.page.version === staticBody.dataset.version)
+    ) {
+      root.setAttribute("aria-busy", "false");
+      if (view.kind === "ready") staticBody.dataset.state = "ready";
+      return;
+    }
     root.setAttribute("aria-busy", view.kind === "loading" ? "true" : "false");
     switch (view.kind) {
       case "loading":

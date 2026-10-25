@@ -3,19 +3,28 @@ import type { GetStaticPaths } from "astro";
 import OrganizationLegal from "../components/OrganizationLegal.astro";
 import Base from "../layouts/Base.astro";
 import { organizationJsonLd } from "../lib/organization";
+import { publishedPage, renderPublishedBody } from "../lib/published-pages";
 import { INFO_PAGES } from "../lib/site";
+import { pageMetaText } from "../scripts/info-page";
 
 /**
- * Halaman informasi/legal (F-08, PRD 3.8, 4.6): shell statis per slug baku; isi, versi dan tanggal terbit dibaca
- * saat runtime dari GET /public/pages/{slug} sehingga terbitan pengurus langsung tampil tanpa build ulang.
- * Khusus /tentang, bagian Legalitas organisasi dan JSON-LD organisasi ditanam statis saat build sehingga tetap
- * terbaca tanpa JavaScript (peninjau Google for Nonprofits dan perayap). Bagian itu tidak berversi di CMS, jadi
- * baris versi/tanggal terbit (#info-meta) dipindah ke bawahnya, tepat di atas isi CMS yang ia jelaskan.
+ * Halaman informasi/legal (F-08, PRD 3.8, 4.6). Isi, versi dan tanggal terbit naskah TAYANG ditanam statis saat build
+ * dari salinan src/published-pages/<slug>.json (lib/published-pages) sehingga naskah terbaca tanpa JavaScript: URL
+ * kebijakan privasi di Google Play dan App Store, perayap, dan peninjau (gerbang scripts/assert-published-pages.mjs).
+ * Saat JavaScript aktif, GET /public/pages/{slug} tetap dibaca: terbitan pengurus berversi lain langsung menggantikan
+ * isi statis tanpa menunggu build ulang, sedangkan saat memuat, belum terbit, atau API tidak terjangkau isi statis
+ * tetap tampil (scripts/info-page.ts).
+ * Khusus /tentang, bagian Legalitas organisasi dan JSON-LD organisasi ditanam statis dari lib/organization (peninjau
+ * Google for Nonprofits dan perayap). Bagian itu tidak berversi di CMS, jadi baris versi/tanggal terbit (#info-meta)
+ * dipindah ke bawahnya, tepat di atas isi CMS yang ia jelaskan.
  */
 export const getStaticPaths = (() =>
   INFO_PAGES.map((page) => ({ params: { slug: page.slug }, props: { page } }))) satisfies GetStaticPaths;
 
 const { page } = Astro.props;
+const published = publishedPage(page.slug);
+const body = renderPublishedBody(published, new URL("/", Astro.site).origin);
+const meta = pageMetaText(published);
 const isAbout = page.slug === "tentang";
 const metaClass = "min-h-5 text-sm text-text-muted";
 ---
@@ -31,14 +40,16 @@ const metaClass = "min-h-5 text-sm text-text-muted";
         {page.legal ? "Dokumen legal" : "Informasi"}
       </p>
       <h1 id="info-title" class="font-heading text-3xl font-bold text-green-950 sm:text-4xl">{page.title}</h1>
-      {!isAbout && <p id="info-meta" class={metaClass}></p>}
+      {!isAbout && <p id="info-meta" class={metaClass}>{meta}</p>}
     </div>
   </section>
   {
     isAbout && (
       <Fragment>
         <OrganizationLegal />
-        <p id="info-meta" class={`mx-auto w-full max-w-3xl px-4 pt-10 sm:px-6 ${metaClass}`}></p>
+        <p id="info-meta" class={`mx-auto w-full max-w-3xl px-4 pt-10 sm:px-6 ${metaClass}`}>
+          {meta}
+        </p>
       </Fragment>
     )
   }
@@ -48,11 +59,7 @@ const metaClass = "min-h-5 text-sm text-text-muted";
     aria-labelledby="info-title"
     class={`mx-auto w-full max-w-3xl px-4 pb-10 sm:px-6 ${isAbout ? "pt-3" : "pt-10"}`}
   >
-    <noscript>
-      <p class="rounded-lg bg-neutral-bg p-5 text-sm">
-        Aktifkan JavaScript untuk membaca versi terbaru halaman ini, atau hubungi bantuan@kapdh.or.id.
-      </p>
-    </noscript>
+    <div class="prose-kapdh" data-state="static" data-version={published.version} set:html={body} />
   </article>
 </Base>
 
