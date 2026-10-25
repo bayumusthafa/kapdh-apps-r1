@@ -76,18 +76,18 @@ Listing (keduanya):
   organisasi.
 
 Aset dan teks listing Google Play ada di `docs/toko/play/` (`README.md` di sana memuat hasil verifikasi dan cara
-membuat ulang). Status 25 Oktober 2026: **draf, wajib disahkan PP sebelum diunggah**. Aplikasi hanya berbahasa
+membuat ulang). Status 25 Oktober 2026: **ikon, feature graphic, teks, kategori dan tag disahkan PP**; tangkapan layar belum diambil. Aplikasi hanya berbahasa
 Indonesia, jadi listing dibuat untuk bahasa default Indonesia (id) saja.
 
 | Butir Play Console | Berkas di `docs/toko/play/` | Hasil pemeriksaan `sumber/cek.mjs` | Status |
 | ------------------ | --------------------------- | ---------------------------------- | ------ |
 | App name (maks 30) | `teks/judul.txt`: "KAPDH" | 5 karakter | Dipilih PP 25 Oktober 2026 |
-| Short description (maks 80) | `teks/deskripsi-singkat.txt` | 70 karakter | Draf |
-| Full description (maks 4.000) | `teks/deskripsi-lengkap.txt`: nama badan hukum, fitur di `main`, syarat 18+, iuran diverifikasi pengurus, tautan kebijakan privasi dan hapus akun | 2.292 karakter | Draf |
-| App icon (PNG 32-bit, 512 x 512, maks 1.024 KB) | `ikon-512.png`, diturunkan dari ikon iOS 1024 | 512 x 512, RGBA alfa penuh, sRGB, 186 KB | Siap, menunggu PP |
-| Feature graphic (JPEG/PNG 24-bit tanpa alfa, 1024 x 500) | `feature-graphic-1024x500.jpg`, teks alternatif `teks/alt-feature-graphic.txt` | 1024 x 500, RGB sRGB, tanpa alfa, 92 KB; elemen penting di area aman | Siap, menunggu PP |
+| Short description (maks 80) | `teks/deskripsi-singkat.txt` | 70 karakter | Disahkan PP 25 Oktober 2026 |
+| Full description (maks 4.000) | `teks/deskripsi-lengkap.txt`: nama badan hukum, fitur di `main`, syarat 18+, iuran diverifikasi pengurus, tautan kebijakan privasi dan hapus akun | 2.292 karakter | Disahkan PP 25 Oktober 2026 |
+| App icon (PNG 32-bit, 512 x 512, maks 1.024 KB) | `ikon-512.png`, diturunkan dari ikon iOS 1024 | 512 x 512, RGBA alfa penuh, sRGB, 186 KB | Disahkan PP 25 Oktober 2026 |
+| Feature graphic (JPEG/PNG 24-bit tanpa alfa, 1024 x 500) | `feature-graphic-1024x500.jpg`, teks alternatif `teks/alt-feature-graphic.txt` | 1024 x 500, RGB sRGB, tanpa alfa, 92 KB; elemen penting di area aman | Disahkan PP 25 Oktober 2026 |
 | Phone screenshots (2-8; rekomendasi Play minimal 4 gambar 9:16 >= 1080 x 1920) | `tangkapan/01-beranda` sampai `06-pesan`, dibuat `sumber/ambil-tangkapan.sh` sesuai `tangkapan-layar.md` | Belum ada | Belum: butuh build rilis, akun demo aktif, dan data tanpa "[Contoh]" (bagian 3) |
-| Category dan tags | App, Social; 5 tag usulan di `listing.md` | | Draf |
+| Category dan tags | App, Social; 5 tag di `listing.md` | | Disahkan PP 25 Oktober 2026 (nama tag dicocokkan di Console) |
 
 Teks listing, teks feature graphic, dan teks alternatif lolos pola D13 bagian 2 dan pola klaim metadata Play
 (peringkat, harga, promosi) pada 25 Oktober 2026. Tangkapan di `docs/panduan/sumber/gambar/mobile` (720 x 1602,
