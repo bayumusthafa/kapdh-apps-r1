@@ -258,7 +258,10 @@ Yang dijamin perubahan ini, tidak lebih:
    logout, sehingga SDK tidak membuat token baru sampai login berikutnya. Installation ID yang sudah dibuat saat login
    sebelumnya tidak ikut terhapus (`deleteToken` hanya menghapus token FCM), tetapi tidak dikirim ke KAPDH. Bila logout
    terjadi tanpa koneksi, token lama dan auto-init yang masih menyala bertahan sampai penghapusan tertunda berhasil saat
-   aplikasi dibuka atau koneksi kembali.
+   aplikasi dibuka atau koneksi kembali. Di iOS, percobaan ulang saat aplikasi dibuka (`push_service.dart:157`) dapat
+   gagal dengan `apns-token-not-set` karena token APNs sering belum tiba sesaat setelah peluncuran; galat itu hanya
+   dicatat (`push_service.dart:350-356`), sehingga token lama dan auto-init dapat bertahan beberapa peluncuran sampai
+   koneksi berubah atau ada login berikutnya. Perilaku ini sudah ada sebelum K8.
 3. **Login dengan izin notifikasi ditolak**: auto-init tetap mati dan `getToken` tidak dipanggil, sehingga tidak ada
    token FCM dan SDK tidak membuat Installation ID.
 

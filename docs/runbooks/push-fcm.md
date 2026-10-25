@@ -499,17 +499,18 @@ Simulators → Open Console, disaring ke proses `Runner`) dan, bila memungkinkan
    `device_tokens` baru untuk `ios` dan versi build itu.
 2. Logout, lalu mulai ulang aplikasi: tidak ada token. Baris akun uji sudah dicabut, dan setelah aplikasi dibuka lagi
    tidak ada baris aktif baru maupun permintaan token.
-3. Login dengan izin ditolak ("Jangan Izinkan"): tidak ada token. Tidak ada baris `device_tokens` untuk akun uji, dan
-   log `push: token APNs belum tersedia ...` tidak muncul karena `getToken` tidak dipanggil.
-4. Berganti akun setelah izin ditolak: masuk dengan akun A lalu tolak izin, keluar, nyalakan notifikasi KAPDH di
-   Pengaturan iOS → Notifikasi → KAPDH, lalu masuk dengan akun B. Lulus bila dalam sekitar 1 menit muncul baris aktif
-   `ios` untuk akun B, dan tidak ada baris untuk akun A. Cek ini membuktikan logout akun A tidak tertahan menunggu token
-   APNs: selama auto-init mati dan token APNs belum ada, `deleteToken` tidak melakukan apa pun
-   (`kapdh-mobile/lib/core/push/push_platform.dart:175-186`, diuji di
+3. Hapus KAPDH lalu pasang ulang dari build TestFlight yang sama (iOS hanya menampilkan dialog izin sekali per
+   instalasi), lalu login dengan izin ditolak ("Jangan Izinkan"): tidak ada token. Tidak ada baris `device_tokens` untuk
+   akun uji, dan log `push: token APNs belum tersedia ...` tidak muncul karena `getToken` tidak dipanggil.
+4. Berganti akun setelah izin ditolak: hapus KAPDH lalu pasang ulang dari build TestFlight yang sama, masuk dengan akun
+   A lalu tolak izin, keluar, nyalakan notifikasi KAPDH di Pengaturan iOS → Notifikasi → KAPDH, lalu masuk dengan akun
+   B. Lulus bila dalam sekitar 1 menit muncul baris aktif `ios` untuk akun B, dan tidak ada baris untuk akun A. Cek ini
+   membuktikan logout akun A tidak tertahan menunggu token APNs: selama auto-init mati dan token APNs belum ada,
+   `deleteToken` tidak melakukan apa pun (`kapdh-mobile/lib/core/push/push_platform.dart:175-186`, diuji di
    `kapdh-mobile/test/core/push_platform_test.dart`).
-5. Login dengan izin diberikan: log `push: token APNs belum tersedia, dicoba lagi dalam 2 detik` pada percobaan pertama
-   wajar. Lulus bila baris aktif `ios` untuk akun uji muncul dalam sekitar 30 detik, atau segera setelah token APNs
-   tiba lewat pembaruan token.
+5. Hapus KAPDH lalu pasang ulang dari build TestFlight yang sama, lalu login dengan izin diberikan: log
+   `push: token APNs belum tersedia, dicoba lagi dalam 2 detik` pada percobaan pertama wajar. Lulus bila baris aktif
+   `ios` untuk akun uji muncul dalam sekitar 30 detik, atau segera setelah token APNs tiba lewat pembaruan token.
 
 **Urutan aman:** unggah `.p8` **lebih dulu** (langkah 1-2) ke proyek Firebase yang dipakai build itu
 (`FIREBASE_PROJECT_ID` build): `kapdh-prod` untuk build production, proyek Firebase staging untuk build staging yang
