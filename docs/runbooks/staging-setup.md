@@ -884,7 +884,7 @@ bawah `/srv/kapdh/staging/files`; readiness saja tidak membuktikan mount.
 5. **Monitoring** (`monitoring.md` bagian 2.1) dengan nilai staging (`REALTIME_URL`, `PG_EXEC`, `FILES_ROOT`) dan
    kanal alert `[STAGING]`.
 6. **Aplikasi Flutter staging** (`kapdh-mobile/docs/BUILD.md`, `--dart-define-from-file=config/staging.json`): build
-   `1.0.0+1` (pubspec saat ini) lolos `min_app_version` seed `1.0.0`; build di bawah `min_app_version` staging ditolak
+   `1.1.0+2` (pubspec saat ini) lolos `min_app_version` seed `1.0.0`; build di bawah `min_app_version` staging ditolak
    426 `UPGRADE_REQUIRED` pada setiap mutasi sampai versi build dinaikkan atau `min_app_version` staging diturunkan
    (catat di laporan; `production-init.md` langkah 7).
 7. **Gladi** (`production-init.md` langkah 7) dengan gerbang `enforce`: tulis `KAPDH_RELEASE_GATE='enforce'` di

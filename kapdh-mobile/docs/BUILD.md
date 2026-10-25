@@ -92,8 +92,9 @@ flutter build appbundle --release --dart-define-from-file=<berkas gabungan produ
 
 - Versi dari `pubspec.yaml` `version: X.Y.Z+N`: `N` (versionCode) naik setiap unggahan; `X.Y.Z` wajib >=
   `info.x-kapdh-min-app-version` kontrak (saat ini `1.0.0`) dan >= `app_settings.min_app_version` production; versi
-  di bawahnya ditolak API dengan 426 UPGRADE_REQUIRED (PRD 4.5). `pubspec.yaml` saat ini `1.0.0+1` (sama dengan
-  `min_app_version` seed); naikkan `N` untuk setiap unggahan berikutnya.
+  di bawahnya ditolak API dengan 426 UPGRADE_REQUIRED (PRD 4.5). `pubspec.yaml` saat ini `1.1.0+2` (di atas
+  `min_app_version` seed `1.0.0`; build uji `1.0.0+1` bertanda tangan kunci debug); naikkan `N` untuk setiap unggahan
+  berikutnya.
 - Simpan `build/symbols/<versi>` bersama artefak rilis (di luar repo) untuk membaca stack trace.
 - App Links (`https://kapdh.or.id/app` dan `/app/<rute>`, intent-filter `autoVerify` di `AndroidManifest.xml`, dijaga
   `test/platform/app_links_config_test.dart`) baru terverifikasi setelah
