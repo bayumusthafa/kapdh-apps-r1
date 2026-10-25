@@ -357,8 +357,10 @@ Jawaban umum Apple dan hukum:
   dikumpulkan di KP:124 adalah lokasi perangkat. Jawaban K2 sesuai KP:124 yang menyatakan agama tidak dikumpulkan.
 - Build pertama yang memakai daftar profil berulang: revisi naskah legal dan Bantuan (`docs/legal/README.md`, Revisi
   profil berulang) terbit pada hari build itu dirilis ke pengguna (`rilis-dan-gerbang-go-live.md` bagian 5.5
-  langkah 8). Baris profil di lembar ini tetap pada kategori formulir yang sama, jadi Data safety dan App Privacy tidak
-  perlu diubah untuk daftar baru.
+  langkah 8), dan gerbang K5 (bagian 10) mensyaratkan naskah itu sudah terbit sebelum submit. Untuk rilis toko
+  pertama, usulan K5 lanjutan (**menunggu PP**, bagian 10) menjadikan hari itu hari build production dibagikan ke
+  peserta uji terbatas D16, sebelum submit. Baris profil di lembar ini tetap pada kategori formulir yang sama, jadi
+  Data safety dan App Privacy tidak perlu diubah untuk daftar baru.
 
 ## 5. Templat catatan reviewer
 
@@ -465,7 +467,7 @@ hanya pemilik yang dapat mengirim ulang bukti (PRD 4.3); keputusan PP masih terb
 | Kebijakan privasi dapat dibaca tanpa JavaScript | URL kebijakan privasi (dan `ketentuan-komunitas` untuk Child safety standards, bagian 9.4) yang diisi di toko menampilkan naskah, bukan hanya kerangka | Naskah tayang kelima halaman informasi/legal ditanam statis saat build dari salinan `apps/web/src/published-pages/` (penjelasan dan pemeriksaan di bawah tabel). **Lulus di kode per 25 Oktober 2026** (gerbang build `assert-published-pages.mjs`, uji `published-pages.test.ts`, uji asap image `smoke-static.sh`); production baru lulus setelah image web dari perubahan ini dideploy, jadi ulangi `curl` di bawah pada URL final | |
 | [R6] 2.1 | Aplikasi lengkap dan backend aktif saat review | Production aktif (go-live langkah 4), akun demo bagian 3 | |
 | Google Play Data safety | Formulir lengkap dan konsisten dengan kebijakan privasi | Bagian 4; K1, K2, dan K8 diputuskan PP 25 Oktober 2026 (bagian 10). Gerbang K8 (bagian 10): PR #41 digabung (`0d5967b`, sudah), perubahannya ada di AAB dan IPA yang diajukan, dan cek penerimaan K8 di bagian 4.1 lulus pada berkas itu. K8 lanjutan (izin notifikasi dicabut kemudian) **menunggu PP** | |
-| Google Play App content | App access, Ads, Advertising ID, IARC, target audiens, Financial features, Health, Government, News, Child safety standards | Bagian 9; K3-K7 di bagian 10: K3, K5, dan K7 diputuskan PP 25 Oktober 2026; nama titik kontak K4 dan prosedur K6 menunggu PP dan hanya menahan deklarasi Child safety standards. Gerbang K5 (bagian 10): PR #40 digabung (`e147d24`, sudah), image API-nya berjalan di production, revisi Ketentuan Layanan, Ketentuan Komunitas, dan Bantuan terbit dan salinan `published-pages` diperbarui lewat `pages:sync`, dan petunjuk baru `report_sheet.dart` ada di build yang diajukan. Child safety standards juga butuh URL `ketentuan-komunitas` yang terbaca tanpa JavaScript (baris "Kebijakan privasi dapat dibaca tanpa JavaScript") | |
+| Google Play App content | App access, Ads, Advertising ID, IARC, target audiens, Financial features, Health, Government, News, Child safety standards | Bagian 9; K3-K7 di bagian 10: K3, K5, dan K7 diputuskan PP 25 Oktober 2026; nama titik kontak K4 dan prosedur K6 menunggu PP dan hanya menahan deklarasi Child safety standards. Gerbang K5 (bagian 10): PR #40 digabung (`e147d24`, sudah), image API-nya berjalan di production, revisi Ketentuan Layanan, Ketentuan Komunitas, dan Bantuan terbit dan salinan `published-pages` diperbarui lewat `pages:sync`, dan petunjuk baru `report_sheet.dart` ada di build yang diajukan; jalur distribusi sebelum submit (K5 lanjutan) **menunggu PP**. Child safety standards juga butuh URL `ketentuan-komunitas` yang terbaca tanpa JavaScript (baris "Kebijakan privasi dapat dibaca tanpa JavaScript") | |
 | Google Play target API | Target SDK sesuai persyaratan Play saat submit | Ditentukan Flutter 3.47 (`flutter.targetSdkVersion`); periksa saat build | |
 
 Kebijakan privasi tanpa JavaScript. Sampai `7ce1ed8`, `apps/web/src/pages/[slug].astro` hanya membangun kerangka: isi
@@ -646,7 +648,8 @@ PP menyetujui usulan K1-K8 pada 25 Oktober 2026. Kolom Keputusan PP, Tanggal, da
 tabel ini ke paket bukti. Dengan keputusan ini, lembar Data safety (bagian 4) dan deklarasi App content (bagian 9) dapat
 diisi tanpa pertanyaan terbuka, kecuali Child safety standards (9.4) yang masih menunggu nama titik kontak (K4) dan
 prosedur K6. K5 diterapkan PR #40 dan K8 diterapkan PR #41, keduanya sudah digabung; sebelum submit, gerbang K5 dan
-K8 di bawah tabel harus lulus. Keputusan yang masih **menunggu PP**: nama titik kontak K4, prosedur K6, dan K8 lanjutan.
+K8 di bawah tabel harus lulus. Keputusan yang masih **menunggu PP**: nama titik kontak K4, prosedur K6, K5 lanjutan
+(jalur distribusi sebelum submit, penahan gerbang K5), dan K8 lanjutan.
 
 | No | Pertanyaan | Pilihan | Usulan | Keputusan PP | Tanggal | Alasan | Rujukan |
 | -- | ---------- | ------- | ------ | ------------ | ------- | ------ | ------- |
@@ -655,6 +658,7 @@ K8 di bawah tabel harus lulus. Keputusan yang masih **menunggu PP**: nama titik 
 | K3 | Deklarasi News apps | (a) Bukan aplikasi berita; (b) aplikasi berita | (a): berita adalah kabar internal organisasi untuk anggota aktif, bukan penerbitan berita umum | **(a)** Bukan aplikasi berita | 25 Oktober 2026 | Berita adalah kabar internal organisasi untuk anggota aktif, bukan penerbitan berita umum | Bagian 9 |
 | K4 | Titik kontak keselamatan anak (Child safety standards) | Nama orang yang mampu menjelaskan praktik pencegahan CSAM, beserta email (dan telepon bila diminta) | Ketua tim moderasi atau pengurus yang ditunjuk; email boleh `bantuan@kapdh.or.id` bila kotak itu dipantau setiap hari | Email `bantuan@kapdh.or.id` disetujui. Nama orang: **menunggu PP** | 25 Oktober 2026 (email) | Kotak organisasi yang sudah menjadi kontak publik (KP:8), dengan syarat usulan: kotak itu dipantau setiap hari. Nama ditunjuk PP sesuai usulan sebelum deklarasi Child safety standards dikirim | Bagian 9.4 |
 | K5 | Prioritas laporan konten seksual dan eksploitasi anak | Opsi A atau B di 9.4, atau tetap normal | Opsi A sebelum submit (perubahan kode kecil di PR terpisah) | **Opsi A** disetujui; diterapkan PR #40 (digabung 25 Oktober 2026, `e147d24`) | 25 Oktober 2026 | Pelapor materi eksploitasi anak kemungkinan besar memilih "Konten seksual"; Opsi A menjadikannya urgent tanpa mengubah kontrak enum. Berlaku setelah gerbang K5 di bawah tabel lulus | Bagian 9.4; `api/modules/moderation/due-at.ts:21-25` |
+| K5 lanjutan | Jalur distribusi build sebelum submit pada rilis toko pertama. Gerbang K5 mensyaratkan revisi naskah terbit sebelum review, sedangkan naskah baru boleh terbit pada hari build yang memakai daftar profil berulang dirilis ke pengguna, dan rilis bertahap baru terjadi setelah persetujuan toko | (a) Bagikan AAB dan IPA production yang akan diajukan (bukan build staging; ADR-016 membolehkan keduanya untuk D16) ke peserta uji terbatas D16 lewat closed testing Play dan TestFlight setelah image API K5 berjalan, terbitkan naskah pada hari itu, lalu submit; (b) terbitkan naskah pada hari submit sebelum build tersedia bagi pengguna, setelah aturan "Jangan lebih awal" di `docs/legal/README.md` dan langkah 8 bagian 5.5 `rilis-dan-gerbang-go-live.md` diubah | (a): D16 sudah menetapkan uji terbatas lewat TestFlight dan closed testing, dan peserta uji memakai build yang mengumpulkan data profil baru, sehingga naskah memang harus terbit hari itu ("Jangan ditunda") | **Menunggu PP** | – | Dicatat PR #39. Sampai diputuskan, gerbang K5 tidak dapat dipenuhi untuk rilis toko pertama dan build tidak diajukan | Gerbang K5 di bawah tabel; bagian 4.3; `docs/legal/README.md` (Revisi profil berulang, Kapan terbit); `rilis-dan-gerbang-go-live.md` bagian 5.5 langkah 8; `go-live.md` bagian 3 |
 | K6 | Prosedur penerusan CSAM ke aparat penegak hukum dan penanganan bukti | Siapa yang meneruskan, ke kanal mana, dalam berapa lama; siapa yang boleh membuka salinan bukti, dan kapan salinan itu dihapus setelah diteruskan (bukti laporan tetap disimpan, KP:240) | Ditetapkan PP bersama penasihat hukum sebelum deklarasi dikirim | **Menunggu PP** bersama penasihat hukum | – | Usulan disetujui 25 Oktober 2026: prosedur ditetapkan PP bersama penasihat hukum sebelum deklarasi Child safety standards dikirim | KK:74-75; KP:240 |
 | K7 | Email kontak kuesioner IARC | Alamat organisasi | Alamat organisasi yang dipantau, bukan email pribadi | `bantuan@kapdh.or.id` | 25 Oktober 2026 | Alamat organisasi yang dipantau, bukan email pribadi; sama dengan kontak publik di KP:8 | Bagian 9.2 |
 | K8 | SDK FCM dapat membuat token saat aplikasi dibuka (auto-init aktif), padahal KP:106 menyebut token dibuat setelah login | (a) Matikan auto-init FCM (perubahan kode); (b) revisi kalimat KP:106 | Putuskan setelah DEV memverifikasi perilaku SDK pada build rilis; Data safety tetap mendeklarasikan Device or other IDs sebagai Wajib | **(a)** Matikan auto-init FCM sampai login; diterapkan PR #41 (digabung 25 Oktober 2026, `0d5967b`) | 25 Oktober 2026 | SDK tidak lagi membuat token FCM dan Installation ID sebelum login. Catatan K8 di bagian 4.1 dan kalimat KP:106 konsisten tanpa revisi KP hanya setelah cek penerimaan K8 di bagian 4.1 lulus pada build yang diajukan, dan tetap bergantung pada K8 lanjutan. Device or other IDs tetap Wajib | Bagian 4.1 (catatan Device or other IDs, Cek penerimaan K8) |
@@ -669,7 +673,12 @@ bawah benar pada build yang diajukan dan di production saat review:
   `kapdh-platform/apps/web/src/published-pages/` diperbarui dengan `pnpm --filter @kapdh/web pages:sync` dan image web
   dideploy ulang (bagian 7); dan build yang diajukan memuat petunjuk baru di
   `mobile/features/network/report_sheet.dart:41-42`. Urutannya mengikuti `docs/legal/README.md` (Syarat sebelum terbit
-  butir 8): deploy image API K5, distribusikan build mobile, lalu terbitkan naskah.
+  butir 8): deploy image API K5, distribusikan build mobile, lalu terbitkan naskah. Pada rilis toko pertama, rilis
+  bertahap baru terjadi setelah persetujuan toko (`go-live.md` bagian 3), jadi distribusi sebelum submit memakai uji
+  terbatas D16: AAB dan IPA production yang akan diajukan dibagikan ke peserta uji (closed testing Play dan
+  TestFlight) setelah image API K5 berjalan, naskah terbit pada hari itu, baru kemudian build diajukan. Jalur ini
+  adalah usulan K5 lanjutan dan **menunggu PP**; sebelum diputuskan, gerbang K5 belum dapat dipenuhi, jadi jangan
+  submit.
 - **K8** (Data safety, Device or other IDs): PR #41 digabung (`0d5967b`, sudah); AAB dan IPA yang diajukan dibangun
   dari commit yang memuatnya; dan ketiga cek penerimaan K8 di bagian 4.1 lulus pada berkas yang persis akan dikirim.
   Simpan bukti server dan perangkat setiap cek di paket bukti.
@@ -683,7 +692,8 @@ Tindak lanjut DEV di luar dokumen ini:
   (`mobile/features/chat/new_group_screen.dart:67`, `mobile/features/chat/chat_info_screen.dart:96`). Bila pemakaian
   kamera atau galeri berubah, perbarui teks ini dan kalimat izin di templat bagian 5.
 - Selesai 25 Oktober 2026: laporan "Konten seksual" menjadi urgent (K5, Opsi A; PR #40, `e147d24`) dan auto-init FCM
-  dimatikan sampai login (K8 = a; PR #41, `0d5967b`). Yang masih terbuka mengikuti gerbang di atas: deploy image API
-  K5 ke production, penerbitan revisi naskah beserta `pages:sync` dan deploy ulang image web, build yang diajukan
-  memuat kedua perubahan, dan cek penerimaan K8 pada AAB dan IPA yang diajukan. Bila PP memilih opsi (a) untuk K8
-  lanjutan, perubahan kodenya dikerjakan lewat PR terpisah.
+  dimatikan sampai login (K8 = a; PR #41, `0d5967b`). Yang masih terbuka mengikuti gerbang di atas: keputusan PP
+  K5 lanjutan, deploy image API K5 ke production, distribusi build sebelum submit sesuai keputusan itu, penerbitan
+  revisi naskah beserta `pages:sync` dan deploy ulang image web, build yang diajukan memuat kedua perubahan, dan cek
+  penerimaan K8 pada AAB dan IPA yang diajukan. Bila PP memilih opsi (a) untuk K8 lanjutan, perubahan kodenya
+  dikerjakan lewat PR terpisah.
