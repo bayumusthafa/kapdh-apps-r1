@@ -35,7 +35,9 @@ String _inputCategoryLabel(ModerationReportInputCategory category) =>
     reportCategoryLabel(ModerationReportCategory.fromJson(category.value));
 
 /// Keterangan singkat per kategori agar pelapor memilih dengan tepat.
+/// Konten seksual ikut prioritas 24 jam (keputusan PP K5) agar laporan eksploitasi anak tidak menunggu hari kerja.
 String _inputCategoryHint(ModerationReportInputCategory category) => switch (category) {
+  ModerationReportInputCategory.sexual => 'Termasuk konten yang membahayakan anak. Ditangani paling lambat 24 jam.',
   ModerationReportInputCategory.violenceThreat => 'Ditangani paling lambat 24 jam.',
   ModerationReportInputCategory.otherValue => 'Wajib menjelaskan masalahnya.',
   _ => '',
@@ -141,7 +143,8 @@ Future<ModerationReport?> showReportSheet(BuildContext context, ReportTarget tar
       builder: (_) => ReportSheet(target: target),
     );
 
-/// Formulir laporan: kategori (violence_threat = prioritas 24 jam), penjelasan opsional (wajib untuk Lainnya).
+/// Formulir laporan: kategori (violence_threat dan sexual = prioritas 24 jam), penjelasan opsional (wajib untuk
+/// Lainnya).
 /// Laporan tidak dibuka kepada pihak terlapor; statusnya dipantau di Akun > Laporan Saya (AC F12-2).
 class ReportSheet extends ConsumerStatefulWidget {
   const ReportSheet({super.key, required this.target});

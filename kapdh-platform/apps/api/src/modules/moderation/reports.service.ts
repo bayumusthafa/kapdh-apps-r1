@@ -145,10 +145,11 @@ export class ReportsService {
 
   /**
    * POST /reports (AC F12-2, PRD 3.12): target harus dapat diakses pelapor (selain itu 404), bukti terminimalkan
-   * dicatat saat itu juga, prioritas/target penanganan dihitung server (violence_threat urgent 24 jam, lainnya 2 hari
-   * kerja). Laporan aktif yang sama dari pelapor ini dikembalikan (200). Transaksi mengunci baris users pelapor lebih
-   * dulu (dedup per pelapor), lalu baris sumber bukti FOR SHARE (pesan, profil, atau room) sehingga penghapusan pesan /
-   * penggantian avatar bersamaan menunggu laporan commit dan berkas bukti ditahan (retensi core/files).
+   * dicatat saat itu juga, prioritas/target penanganan dihitung server (violence_threat dan sexual urgent 24 jam,
+   * lainnya 2 hari kerja). Laporan aktif yang sama dari pelapor ini dikembalikan (200). Transaksi mengunci baris users
+   * pelapor lebih dulu (dedup per pelapor), lalu baris sumber bukti FOR SHARE (pesan, profil, atau room) sehingga
+   * penghapusan pesan / penggantian avatar bersamaan menunggu laporan commit dan berkas bukti ditahan (retensi
+   * core/files).
    */
   async create(auth: AuthContext, input: CreateReportInput): Promise<ReportResult> {
     if (input.targetType === "user" && input.targetUserId === auth.userId)

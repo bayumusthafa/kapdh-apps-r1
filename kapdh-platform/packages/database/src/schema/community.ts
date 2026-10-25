@@ -41,7 +41,10 @@ export const reportCategory = app.enum("report_category", [
   "other",
   "appeal",
 ]);
-/** urgent = risiko ancaman/keselamatan, target 24 jam; normal 2 hari kerja (F-12, v3.2). */
+/**
+ * urgent = risiko ancaman/keselamatan atau konten seksual (keputusan PP K5), target 24 jam; normal 2 hari kerja
+ * (F-12, v3.2). Prioritas dihitung API saat insert (apps/api moderation/due-at.ts).
+ */
 export const reportPriority = app.enum("report_priority", ["normal", "urgent"]);
 export const reportStatus = app.enum("report_status", ["open", "in_review", "resolved", "dismissed"]);
 export const reportAction = app.enum("report_action", ["dismiss", "warn", "suspend", "unsuspend"]);

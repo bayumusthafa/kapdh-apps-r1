@@ -256,6 +256,9 @@ void main() {
       await tester.tap(find.text('Laporkan'));
       await settle(tester);
       expect(find.text('Laporkan pengguna'), findsOneWidget);
+      // Konten seksual (termasuk yang membahayakan anak) dan ancaman ditangani 24 jam (keputusan PP K5).
+      expect(find.text('Termasuk konten yang membahayakan anak. Ditangani paling lambat 24 jam.'), findsOneWidget);
+      expect(find.text('Ditangani paling lambat 24 jam.'), findsOneWidget);
       // Kategori wajib.
       await scrollAndTap(tester, find.text('Kirim laporan'));
       await settle(tester);
