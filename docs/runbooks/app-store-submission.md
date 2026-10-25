@@ -75,6 +75,25 @@ Listing (keduanya):
 - Sign in with Apple tidak diwajibkan: aplikasi tidak menawarkan login pihak ketiga, hanya email + sandi akun
   organisasi.
 
+Aset dan teks listing Google Play ada di `docs/toko/play/` (`README.md` di sana memuat hasil verifikasi dan cara
+membuat ulang). Status 25 Oktober 2026: **draf, wajib disahkan PP sebelum diunggah**. Aplikasi hanya berbahasa
+Indonesia, jadi listing dibuat untuk bahasa default Indonesia (id) saja.
+
+| Butir Play Console | Berkas di `docs/toko/play/` | Hasil pemeriksaan `sumber/cek.mjs` | Status |
+| ------------------ | --------------------------- | ---------------------------------- | ------ |
+| App name (maks 30) | `teks/judul.txt`: "KAPDH - Alumni Darel Hikmah"; alternatif "KAPDH" | 27 karakter | Draf |
+| Short description (maks 80) | `teks/deskripsi-singkat.txt` | 70 karakter | Draf |
+| Full description (maks 4.000) | `teks/deskripsi-lengkap.txt`: nama badan hukum, fitur di `main`, syarat 18+, iuran diverifikasi pengurus, tautan kebijakan privasi dan hapus akun | 2.306 karakter | Draf |
+| App icon (PNG 32-bit, 512 x 512, maks 1.024 KB) | `ikon-512.png`, diturunkan dari ikon iOS 1024 | 512 x 512, RGBA alfa penuh, sRGB, 186 KB | Siap, menunggu PP |
+| Feature graphic (JPEG/PNG 24-bit tanpa alfa, 1024 x 500) | `feature-graphic-1024x500.jpg`, teks alternatif `teks/alt-feature-graphic.txt` | 1024 x 500, RGB sRGB, tanpa alfa, 92 KB; elemen penting di area aman | Siap, menunggu PP |
+| Phone screenshots (2-8; rekomendasi Play minimal 4 gambar 9:16 >= 1080 x 1920) | `tangkapan/01-beranda` sampai `06-pesan`, dibuat `sumber/ambil-tangkapan.sh` sesuai `tangkapan-layar.md` | Belum ada | Belum: butuh build rilis, akun demo aktif, dan data tanpa "[Contoh]" (bagian 3) |
+| Category dan tags | App, Social; 5 tag usulan di `listing.md` | | Draf |
+
+Teks listing, teks feature graphic, dan teks alternatif lolos pola D13 bagian 2 dan pola klaim metadata Play
+(peringkat, harga, promosi) pada 25 Oktober 2026. Tangkapan di `docs/panduan/sumber/gambar/mobile` (720 x 1602,
+rasio lebih dari 2:1, dari mockup HTML) tidak dipakai untuk toko. Jalankan `node docs/toko/play/sumber/cek.mjs
+--wajib-tangkapan` setelah aset terakhir diubah dan sebelum diunggah.
+
 ## 2. Positioning iuran (D13)
 
 D13: iuran adalah kewajiban keanggotaan organisasi di dunia nyata; tiket adalah layanan acara yang dihadiri secara
@@ -162,7 +181,11 @@ dari metrik (PRD 8.3 langkah 3).
 ## 4. Formulir privasi: lembar Data safety Google Play (dan App Privacy Apple)
 
 Sumber jawaban: kode `main` `7ce1ed8` (diperiksa 25 Oktober 2026) dan naskah kebijakan privasi. Nomor baris di bagian 4,
-9 dan 10 mengikuti commit itu; periksa ulang bila berkasnya berubah sebelum formulir diisi. Singkatan rujukan:
+9 dan 10 mengikuti commit itu; periksa ulang bila berkasnya berubah sebelum formulir diisi. `KP` dan `KK` merujuk berkas
+di `docs/legal`. Naskah yang tayang di situs adalah salinan di `kapdh-platform/apps/web/src/published-pages/` (bagian
+7), dan per 25 Oktober 2026 salinan itu memuat butir yang sama untuk semua jawaban di sini (rekening refund, kota
+domisili, kata kunci pencarian, pengenal instalasi, agama, usia 18+, Perlindungan anak). Bila naskah baru terbit,
+cocokkan ulang lembar ini dengan naskah tayang. Singkatan rujukan:
 
 | Singkatan | Path |
 | --------- | ---- |
@@ -363,25 +386,47 @@ hanya pemilik yang dapat mengirim ulang bukti (PRD 4.3); keputusan PP masih terb
 | [R6] 3.1 / [R7] | Pembayaran di luar sistem toko hanya untuk layanan/barang di dunia nyata | Bagian 2; tidak ada IAP atau pemrosesan pembayaran di aplikasi; fallback bagian 6 | |
 | D13 mitigasi 1 | Teks aplikasi tidak mengaitkan iuran dengan membuka fitur | Perintah `grep` bagian 2 kosong (atau sisa baris disahkan PP) pada commit build yang diajukan; tangkapan layar toko diperiksa manual. **Lulus sejak 21 Oktober 2026**: `grep` 0 baris (diulang 25 Oktober 2026 pada `7ce1ed8`: 0). Ulangi pada commit build | |
 | [R6] 5.1.1 | Kebijakan privasi, izin dengan alasan jelas, data minimum | Bagian 4; teks izin kamera/galeri di `Info.plist`. **Belum lengkap**: teks belum menyebut gambar chat dan foto grup (bagian 10, tindak lanjut DEV) | |
-| Kebijakan privasi dapat dibaca tanpa JavaScript | URL kebijakan privasi (dan `ketentuan-komunitas` untuk Child safety standards) yang diisi di toko menampilkan naskah, bukan hanya kerangka | Lihat pemeriksaan di bawah tabel. **Gagal pada `main`** (masih per 25 Oktober 2026, `7ce1ed8`): halaman legal adalah kerangka statis yang memuat isi lewat JavaScript | |
+| Kebijakan privasi dapat dibaca tanpa JavaScript | URL kebijakan privasi (dan `ketentuan-komunitas` untuk Child safety standards, bagian 9.4) yang diisi di toko menampilkan naskah, bukan hanya kerangka | Naskah tayang kelima halaman informasi/legal ditanam statis saat build dari salinan `apps/web/src/published-pages/` (penjelasan dan pemeriksaan di bawah tabel). **Lulus di kode per 25 Oktober 2026** (gerbang build `assert-published-pages.mjs`, uji `published-pages.test.ts`, uji asap image `smoke-static.sh`); production baru lulus setelah image web dari perubahan ini dideploy, jadi ulangi `curl` di bawah pada URL final | |
 | [R6] 2.1 | Aplikasi lengkap dan backend aktif saat review | Production aktif (go-live langkah 4), akun demo bagian 3 | |
 | Google Play Data safety | Formulir lengkap dan konsisten dengan kebijakan privasi | Bagian 4; keputusan K1, K2, K8 di bagian 10 | |
-| Google Play App content | App access, Ads, Advertising ID, IARC, target audiens, Financial features, Health, Government, News, Child safety standards | Bagian 9; keputusan K3-K7 di bagian 10. Child safety standards butuh URL `ketentuan-komunitas` yang terbaca tanpa JavaScript (sama dengan baris di bawah) | |
+| Google Play App content | App access, Ads, Advertising ID, IARC, target audiens, Financial features, Health, Government, News, Child safety standards | Bagian 9; keputusan K3-K7 di bagian 10. Child safety standards butuh URL `ketentuan-komunitas` yang terbaca tanpa JavaScript (baris "Kebijakan privasi dapat dibaca tanpa JavaScript") | |
 | Google Play target API | Target SDK sesuai persyaratan Play saat submit | Ditentukan Flutter 3.47 (`flutter.targetSdkVersion`); periksa saat build | |
 
-Kebijakan privasi tanpa JavaScript. `apps/web/src/pages/[slug].astro` hanya membangun kerangka halaman; isi dibaca saat
-runtime dari `GET /public/pages/{slug}`, dan tanpa JavaScript halaman hanya menampilkan "Aktifkan JavaScript untuk
-membaca versi terbaru halaman ini". Perayap review atau pemeriksaan otomatis yang tidak menjalankan JavaScript dapat
-menilai URL kebijakan privasi kosong. Periksa dengan kalimat yang pasti ada di naskah yang disahkan:
+Kebijakan privasi tanpa JavaScript. Sampai `7ce1ed8`, `apps/web/src/pages/[slug].astro` hanya membangun kerangka: isi
+dibaca saat runtime dari `GET /public/pages/{slug}`, dan tanpa JavaScript halaman hanya menampilkan "Aktifkan
+JavaScript untuk membaca versi terbaru halaman ini", sehingga perayap review atau pemeriksaan otomatis dapat menilai URL
+kebijakan privasi kosong. Dipilih render statis isi terbit saat build, dengan build ulang setiap kali naskah terbit:
+
+- `[slug].astro` menanam naskah TAYANG `/kebijakan-privasi`, `/ketentuan`, `/ketentuan-komunitas`, `/bantuan`, dan
+  `/tentang` beserta baris "Versi N · Diterbitkan ..." ke HTML hasil build. Sumbernya salinan
+  `apps/web/src/published-pages/<slug>.json`, yaitu respons `GET /public/pages/{slug}` production yang ditarik
+  `pnpm --filter @kapdh/web pages:sync` dan di-commit, sehingga build tidak bergantung pada API dan setiap perubahan
+  naskah di situs ditinjau lewat PR.
+- Sumbernya bukan `docs/legal`: berkas di sana dapat memuat revisi yang belum terbit (penanda `[tanggal terbit]`
+  revisi profil berulang), dan naskah yang tayang per 25 Oktober 2026 (Kebijakan Privasi v4, Ketentuan Layanan v4,
+  Ketentuan Komunitas v2, Bantuan v6, Tentang v3) tidak sama persis dengan berkas mana pun di riwayat `docs/legal`.
+  `pages:sync` dan gerbang build menolak naskah yang memuat `[tanggal terbit]` atau kerangka DRAF seed.
+- Isi statis dirender dengan sanitizer yang sama dengan render runtime (`apps/web/src/scripts/sanitize.ts`), tanpa
+  skrip atau gaya inline (gerbang CSP tetap lulus), dan bagian Legalitas statis `/tentang` tidak berubah. Saat
+  JavaScript aktif halaman tetap membaca API: terbitan berversi lain langsung menggantikan isi statis, sedangkan bila
+  API tidak terjangkau isi statis tetap tampil.
+- Penjaga: gerbang build `apps/web/scripts/assert-published-pages.mjs` (seluruh teks setiap salinan ada di
+  `#info-body` HTML hasil build beserta versinya), uji `apps/web/src/lib/published-pages.test.ts` di lajur `pnpm test`
+  web (merender `[slug].astro` dan membaca HTML-nya tanpa menjalankan skrip), dan `infra/scripts/smoke-static.sh web`
+  pada image di CI (kelima halaman lewat `curl`).
+
+Konsekuensinya, setiap terbitan naskah di web admin harus disusul salinan baru dan deploy ulang image web
+(`docs/legal/README.md`, Setelah menerbitkan); sampai itu terjadi, pembaca tanpa JavaScript melihat versi sebelumnya,
+lengkap dengan nomor versi dan tanggal terbitnya. Sebelum submit, dan setiap kali naskah terbit, pastikan salinan sama
+dengan yang tayang lalu periksa URL final dengan kalimat yang pasti ada di naskah:
 
 ```sh
-curl -s https://kapdh.or.id/kebijakan-privasi | grep -c "<kalimat dari naskah kebijakan privasi>"   # harus >= 1
+pnpm --filter @kapdh/web pages:check   # keluar 1 bila salinan berbeda dari naskah tayang
+curl -s https://kapdh.or.id/kebijakan-privasi | grep -c "Pengendali data pribadi untuk layanan yang dijelaskan dalam kebijakan ini"   # harus >= 1
 ```
 
-Pada `main` hasilnya pasti 0: hasil build `apps/web/dist/kebijakan-privasi/index.html` (diperiksa 14 Oktober 2026)
-hanya memuat judul, kerangka `#info-body`, dan teks `noscript` di atas. Sebelum submit, pemilik situs publik dan PP memilih salah satu: render statis halaman legal saat
-build (build ulang setiap kali naskah terbit), atau salinan statis naskah yang disahkan di URL yang diisi ke toko dan
-diperbarui bersama setiap terbitan. Ulangi pemeriksaan pada URL final.
+Pada image `7ce1ed8` hasil `curl` pasti 0. Pada hasil build perubahan ini hasilnya 1 (diperiksa 25 Oktober 2026 pada
+`apps/web/dist/kebijakan-privasi/index.html`); URL production baru lulus setelah image web itu dideploy.
 
 ## 8. Bila ditolak
 
@@ -399,7 +444,7 @@ path sama dengan bagian 4. Simpan tangkapan layar setiap deklarasi yang dikirim 
 
 | Deklarasi | Jawaban | Bukti |
 | --------- | ------- | ----- |
-| Privacy policy | `https://kapdh.or.id/kebijakan-privasi` | Naskah KP; URL wajib terbaca tanpa JavaScript (bagian 7, masih gagal per 25 Oktober 2026) |
+| Privacy policy | `https://kapdh.or.id/kebijakan-privasi` | Naskah KP; URL wajib terbaca tanpa JavaScript (bagian 7: lulus di kode per 25 Oktober 2026, di production setelah image web dideploy) |
 | App access | All or some functionality is restricted; instruksi di 9.1 | Bagian 3 dan 9.1 |
 | Ads | Tidak, aplikasi tidak memuat iklan | `kapdh-mobile/pubspec.yaml:27-63` tanpa SDK iklan; KP:26, KP:124 |
 | Advertising ID | Tidak memakai advertising ID | `kapdh-mobile/android/app/src/main/AndroidManifest.xml:3-6` tanpa `AD_ID`; Firebase hanya `firebase_core` dan `firebase_messaging` (`kapdh-mobile/pubspec.yaml:36-37`), tanpa Analytics; audit APK 25 Oktober 2026 tanpa `AD_ID` pada manifest gabungan. Periksa ulang pada AAB yang diunggah (di bawah tabel) |
@@ -490,10 +535,13 @@ berubah (mis. pemutar video atau pembelian), kuesioner wajib diisi ulang.
 
 Prasyarat sebelum deklarasi dikirim:
 
-- URL `ketentuan-komunitas` harus terbaca tanpa JavaScript, sama seperti kebijakan privasi (bagian 7). Google
-  mensyaratkan halaman standar dapat dibuka publik tanpa galat. Periksa dengan
-  `curl -s https://kapdh.or.id/ketentuan-komunitas | grep -c "eksploitasi"` (harus >= 1).
-- Naskah sudah terbit dengan tanggal berlaku terisi, bukan `[tanggal terbit]` (KK:2).
+- URL `ketentuan-komunitas` harus terbaca tanpa JavaScript. Google mensyaratkan halaman standar dapat dibuka publik
+  tanpa galat. Naskah tayang (Ketentuan Komunitas v2, salinan
+  `kapdh-platform/apps/web/src/published-pages/ketentuan-komunitas.json`) sudah dirender statis di kode per
+  25 Oktober 2026 (bagian 7) dan memuat bagian Perlindungan anak. Setelah image web itu dideploy, periksa dengan
+  `curl -s https://kapdh.or.id/ketentuan-komunitas | grep -c "Perlindungan anak"` (harus >= 1).
+- Yang diisi ke Play adalah URL naskah tayang. `docs/legal/ketentuan-komunitas.html` masih memuat penanda
+  `[tanggal terbit]` (KK:2) untuk revisi yang belum terbit; penanda itu tidak tampil di situs.
 
 Celah prioritas laporan (usulan, **belum diterapkan**; dokumen ini tidak mengubah kode). Hanya kategori
 `violence_threat` yang urgent dengan target 24 jam. Kategori lain, termasuk "Konten seksual", berprioritas normal

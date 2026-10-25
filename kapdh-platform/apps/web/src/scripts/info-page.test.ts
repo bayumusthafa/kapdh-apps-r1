@@ -147,6 +147,56 @@ describe("F-08: halaman legal/informasi dibaca saat runtime dari GET /public/pag
   });
 });
 
+describe("naskah statis dari build ([slug].astro) tetap terbaca dan hanya diganti versi lain", () => {
+  const STATIC_META = "Versi 3 · Diterbitkan 1 Oktober 2026";
+
+  beforeEach(() => {
+    document.getElementById("info-meta")!.textContent = STATIC_META;
+    root.innerHTML =
+      '<div class="prose-kapdh" data-state="static" data-version="3"><p>Naskah statis versi 3.</p></div>';
+  });
+
+  const staticBody = () => root.querySelector<HTMLElement>("[data-version]");
+
+  it("saat memuat tidak ada kerangka loading; versi tayang yang sama dipertahankan apa adanya", async () => {
+    const before = staticBody();
+    let release: (r: Response) => void = () => {};
+    const { page } = mount(() => new Promise<Response>((resolve) => (release = resolve)));
+    const pending = page.load();
+    expect(state()).toBe("static");
+    expect(root.getAttribute("aria-busy")).toBe("false");
+    expect(document.getElementById("info-meta")!.textContent).toBe(STATIC_META);
+    release(json(200, PAGE));
+    await pending;
+    expect(staticBody()).toBe(before);
+    expect(state()).toBe("ready");
+    expect(root.textContent).toBe("Naskah statis versi 3.");
+  });
+
+  it("terbitan versi lain menggantikan isi statis tanpa menunggu build ulang", async () => {
+    const { page } = mount(() => json(200, { ...PAGE, version: "4", published_at: "2026-10-21T15:59:41Z" }));
+    await page.load();
+    expect(state()).toBe("ready");
+    expect(root.textContent).not.toContain("Naskah statis");
+    expect(root.querySelector("h2")!.textContent).toBe("Ringkasan");
+    expect(document.getElementById("info-meta")!.textContent).toBe("Versi 4 · Diterbitkan 21 Oktober 2026");
+  });
+
+  it.each([
+    ["404 belum diterbitkan", () => apiError(404, "NOT_FOUND", "Tidak ditemukan")],
+    ["jaringan putus", networkError],
+    ["429", () => apiError(429, "RATE_LIMITED", "Terlalu sering", { retry_after_seconds: 30 })],
+  ] as const)("%s: isi statis tetap tampil tanpa pemberitahuan galat", async (_label, handler) => {
+    const { page } = mount(handler);
+    await page.load();
+    expect(state()).toBe("static");
+    expect(root.textContent).toBe("Naskah statis versi 3.");
+    expect(root.querySelector("[role='status'], button")).toBeNull();
+    expect(root.getAttribute("aria-busy")).toBe("false");
+    expect(document.getElementById("info-meta")!.textContent).toBe(STATIC_META);
+  });
+});
+
 describe("guard dan teks meta", () => {
   it("menolak bentuk yang tidak sesuai kontrak PublicPage", () => {
     expect(isPublicPage(PAGE)).toBe(true);

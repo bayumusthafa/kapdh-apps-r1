@@ -194,6 +194,13 @@ case "$kind" in
     expect "KTA noindex" "$(header X-Robots-Tag)" "noindex, nofollow"
     expect "halaman tidak ada" "$(fetch GET /tidak-ada-sama-sekali)" "404"
     expect "halaman tidak ada no-store" "$(header Cache-Control)" "no-store"
+    # Halaman informasi/legal memuat naskah tayang di HTML, terbaca tanpa JavaScript (URL kebijakan privasi Google
+    # Play/App Store), bukan kerangka yang menunggu skrip (apps/web/scripts/assert-published-pages.mjs).
+    for slug in kebijakan-privasi ketentuan ketentuan-komunitas bantuan tentang; do
+      expect "/$slug" "$(fetch GET "/$slug")" "200"
+      expect_contains "/$slug naskah tanpa JavaScript" "$(cat "$work/b")" 'data-state="static"'
+      expect_contains "/$slug baris berlaku" "$(cat "$work/b")" "Berlaku sejak "
+    done
     # Rolling deploy: aset hash yang belum ada di kontainer ini → 404 yang TIDAK pernah disimpan immutable.
     expect "aset /_astro/ hilang 404" "$(fetch GET /_astro/tidak-ada.js)" "404"
     expect "aset /_astro/ hilang no-store" "$(header Cache-Control)" "no-store"
