@@ -258,10 +258,12 @@ Yang dijamin perubahan ini, tidak lebih:
    logout, sehingga SDK tidak membuat token baru sampai login berikutnya. Installation ID yang sudah dibuat saat login
    sebelumnya tidak ikut terhapus (`deleteToken` hanya menghapus token FCM), tetapi tidak dikirim ke KAPDH. Bila logout
    terjadi tanpa koneksi, token lama dan auto-init yang masih menyala bertahan sampai penghapusan tertunda berhasil saat
-   aplikasi dibuka atau koneksi kembali. Di iOS, percobaan ulang saat aplikasi dibuka (`push_service.dart:157`) dapat
-   gagal dengan `apns-token-not-set` karena token APNs sering belum tiba sesaat setelah peluncuran; galat itu hanya
-   dicatat (`push_service.dart:350-356`), sehingga token lama dan auto-init dapat bertahan beberapa peluncuran sampai
-   koneksi berubah atau ada login berikutnya. Perilaku ini sudah ada sebelum K8.
+   aplikasi dibuka atau koneksi kembali. Di iOS, percobaan ulang saat aplikasi dibuka
+   (`mobile/core/push/push_service.dart:157`, juga saat sesi terbaca berakhir dan pada event konektivitas pertama,
+   `mobile/app/app_services.dart:86-89` dan `:110`) dapat gagal dengan `apns-token-not-set` karena token APNs sering
+   belum tiba sesaat setelah peluncuran; galat itu hanya dicatat (`mobile/core/push/push_service.dart:350-356`),
+   sehingga token lama dan auto-init dapat bertahan beberapa peluncuran sampai koneksi berubah atau ada login
+   berikutnya. Perilaku ini sudah ada sebelum K8.
 3. **Login dengan izin notifikasi ditolak**: auto-init tetap mati dan `getToken` tidak dipanggil, sehingga tidak ada
    token FCM dan SDK tidak membuat Installation ID.
 
@@ -269,8 +271,9 @@ Yang dijamin perubahan ini, tidak lebih:
 menolak izin notifikasi") baru berlaku setelah ketiga cek di bawah lulus pada AAB dan IPA yang persis akan dikirim,
 dan tetap bergantung pada keputusan lanjutan di bawah. Pakai berkas yang sama, bukan build debug atau build ulang dari
 commit yang sama: Android dipasang dari jalur Internal testing Play yang memuat AAB itu, iOS dari build TestFlight yang
-akan diajukan. Jalankan di satu perangkat Android 13 atau lebih baru dan satu iPhone, dengan koneksi aktif. Hapus KAPDH
-dari perangkat lebih dulu bila pernah terpasang, lalu catat waktu mulai setiap cek.
+akan diajukan. Jalankan di satu perangkat Android 13 atau lebih baru dan satu iPhone, dengan koneksi aktif. Bila KAPDH
+pernah terpasang, keluar dari akun lebih dulu (Akun → Keluar) bila masih masuk, lalu hapus aplikasinya: di iOS sesi
+tersimpan di Keychain dan dipulihkan setelah pemasangan ulang. Catat waktu mulai setiap cek.
 
 | Cek | Langkah | Lulus bila |
 | --- | ------- | ---------- |
