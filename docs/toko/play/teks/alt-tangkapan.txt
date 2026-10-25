@@ -1,0 +1,6 @@
+01-beranda.png: Beranda KAPDH dengan banner, pintasan KTA, tiket, dan pesan, serta berita dan event mendatang.
+02-kta.png: KTA digital berisi nama, angkatan, nomor anggota, masa berlaku, dan status keanggotaan aktif.
+03-event.png: Detail event alumni dengan jadwal, lokasi, kuota peserta, dan tombol Daftar Sekarang.
+04-berita.png: Berita dari pengurus KAPDH yang dibaca langsung di aplikasi.
+05-jejaring.png: Direktori Jejaring untuk menemukan sesama anggota menurut angkatan, kota, profesi, dan keahlian.
+06-pesan.png: Percakapan antaranggota di Jejaring dengan teks, foto, balasan, dan reaksi.
