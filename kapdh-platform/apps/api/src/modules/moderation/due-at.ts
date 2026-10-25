@@ -1,8 +1,9 @@
 /**
- * Target penanganan laporan (PRD 3.12 "disahkan v3.2", kontrak admin-moderation: aturan domain): risiko
- * ancaman/keselamatan (`violence_threat`) prioritas urgent dengan target 24 jam; kategori lain (termasuk banding)
- * normal dengan target 2 hari kerja Senin-Jumat WIB sejak laporan dibuat. Fungsi murni tanpa Clock; waktu dari
- * pemanggil (ARCHITECTURE §2 butir 6).
+ * Target penanganan laporan (PRD 3.12 "disahkan v3.2", diperluas keputusan PP K5 25 Oktober 2026; kontrak
+ * admin-moderation: aturan domain): risiko ancaman/keselamatan (`violence_threat`) dan konten seksual (`sexual`,
+ * termasuk eksploitasi seksual anak; Child safety standards Google Play) prioritas urgent dengan target 24 jam;
+ * kategori lain (termasuk banding) normal dengan target 2 hari kerja Senin-Jumat WIB sejak laporan dibuat. Fungsi
+ * murni tanpa Clock; waktu dari pemanggil (ARCHITECTURE §2 butir 6).
  */
 
 export type ReportPriority = "normal" | "urgent";
@@ -11,14 +12,16 @@ export type ReportPriority = "normal" | "urgent";
 const JAKARTA_OFFSET_MS = 7 * 3600_000;
 const DAY_MS = 24 * 3600_000;
 
-/** Target urgent: 24 jam kalender (risiko ancaman/keselamatan tidak menunggu hari kerja). */
+/** Target urgent: 24 jam kalender (ancaman/keselamatan dan konten seksual tidak menunggu hari kerja). */
 export const URGENT_SLA_MS = DAY_MS;
 /** Target normal: 2 hari kerja (v3.2, D8). */
 export const NORMAL_SLA_BUSINESS_DAYS = 2;
 
-/** Kategori yang otomatis urgent (kontrak ModerationReportCategory: violence_threat). */
+/** Kategori yang otomatis urgent (kontrak ModerationReportCategory: violence_threat dan sexual, keputusan PP K5). */
+const URGENT_CATEGORIES: ReadonlySet<string> = new Set(["violence_threat", "sexual"]);
+
 export function priorityFor(category: string): ReportPriority {
-  return category === "violence_threat" ? "urgent" : "normal";
+  return URGENT_CATEGORIES.has(category) ? "urgent" : "normal";
 }
 
 /**

@@ -4,11 +4,18 @@ import { addBusinessDaysJakarta, dueAtFor, priorityFor } from "./due-at.js";
 /** Jam dinding WIB → instant UTC (WIB = UTC+7). */
 const wib = (iso: string) => new Date(new Date(`${iso}Z`).getTime() - 7 * 3600_000);
 
-describe("Target penanganan laporan (PRD 3.12 v3.2: urgent 24 jam, lainnya 2 hari kerja WIB)", () => {
-  it("AC F12-2: violence_threat urgent; kategori lain dan banding normal", () => {
+describe("Target penanganan laporan (PRD 3.12 v3.2, keputusan PP K5: urgent 24 jam, lainnya 2 hari kerja WIB)", () => {
+  it("AC F12-2: violence_threat dan sexual urgent; kategori lain dan banding normal", () => {
     expect(priorityFor("violence_threat")).toBe("urgent");
-    for (const category of ["spam", "harassment", "hate", "sexual", "scam", "other", "appeal"])
+    // Keputusan PP K5 (25 Oktober 2026): konten seksual, termasuk eksploitasi seksual anak, ditangani 24 jam.
+    expect(priorityFor("sexual")).toBe("urgent");
+    for (const category of ["spam", "harassment", "hate", "scam", "other", "appeal"])
       expect(priorityFor(category)).toBe("normal");
+  });
+
+  it("laporan konten seksual: due_at 24 jam kalender, bukan 2 hari kerja", () => {
+    const friday = wib("2026-10-23T20:00:00");
+    expect(dueAtFor(priorityFor("sexual"), friday)).toEqual(wib("2026-10-24T20:00:00"));
   });
 
   it("urgent = 24 jam kalender, termasuk akhir pekan", () => {

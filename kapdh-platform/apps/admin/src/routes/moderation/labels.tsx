@@ -37,7 +37,10 @@ export const HISTORY_LABEL: Record<HistoryKind, string> = {
   unsuspend: "Suspend dicabut",
 };
 
-/** Prioritas laporan: mendesak = ancaman/keselamatan, target 24 jam (v3.2); teks selalu tertulis. */
+/**
+ * Prioritas laporan: mendesak = ancaman/keselamatan atau konten seksual, target 24 jam (v3.2, keputusan PP K5);
+ * teks selalu tertulis.
+ */
 export function PriorityBadge({ priority }: { priority: components["schemas"]["ModerationReportPriority"] }) {
   return priority === "urgent" ? (
     <Badge tone="danger" icon={<Siren />}>
