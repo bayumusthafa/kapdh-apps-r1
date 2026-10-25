@@ -130,7 +130,7 @@ flutter drive --profile --driver=test_driver/integration_test.dart \
 ## Rilis
 
 1. Naikkan `version` di `pubspec.yaml` (`x.y.z+build`); `min_app_version` di web admin dinaikkan hanya setelah versi
-   itu dapat diunduh di toko (PRD 8.4). Versi saat ini `1.0.0+1`, sama dengan `min_app_version` seed (`1.0.0`);
+   itu dapat diunduh di toko (PRD 8.4). Versi saat ini `1.1.0+2`, di atas `min_app_version` seed (`1.0.0`);
    build di bawah `1.0.0` ditolak 426 `UPGRADE_REQUIRED` pada setiap mutasi di staging/production. Naikkan nomor
    build (`+n`) untuk setiap unggahan toko.
 2. Build rilis di CI (signing dan secret hanya di CI; rincian di [`docs/BUILD.md`](docs/BUILD.md); IPA perlu macOS +
