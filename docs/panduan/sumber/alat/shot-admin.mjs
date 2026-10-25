@@ -1,7 +1,9 @@
-// Pemakaian: node shot-admin.mjs <rute> <nama-berkas> [--steps '<json>'] [--el '<selector>'] [--full] [--w 1440] [--h 900] [--nologin]
+// Pemakaian: node shot-admin.mjs <rute> <nama-berkas> [--steps '<json>'] [--el '<selector>'] [--full] [--w 1440] [--h 900] [--nologin] [--jam '<ISO>']
 // Masuk ke web admin MODE MOCK (http://localhost:5199) dengan akun uji proyek, buka <rute>, jalankan langkah opsional,
 // lalu simpan tangkapan layar ke docs/panduan/sumber/gambar/admin/<nama>.png (DPR 1.5).
 // steps: [{"click":"text=Detail"},{"fill":["input[name=q]","Ahmad"]},{"press":"Enter"},{"wait":800},{"scroll":"text=..."}]
+// --jam '<ISO>' membekukan jam browser (Date.now). Tanggal data mock dihitung relatif dari sekarang, jadi pakai opsi ini
+// agar tanggal sama dengan tangkapan lain di bab yang sama (mis. bab 14: --jam 2026-10-22T17:07:30Z).
 import { launch, outPath, parseFlags, runSteps, normRoute } from './common.mjs';
 const BASE = 'http://localhost:5199';
 const { pos, flags } = parseFlags(process.argv.slice(2));
@@ -9,6 +11,7 @@ const [rawRoute, name] = pos; const route = normRoute(rawRoute);
 if (!name) { console.error('pakai: <rute> <nama>'); process.exit(2); }
 const b = await launch();
 const p = await b.newPage({ viewport: { width: Number(flags.w || 1440), height: Number(flags.h || 900) }, deviceScaleFactor: 1.5 });
+if (flags.jam) await p.clock.setFixedTime(new Date(String(flags.jam)));
 if (!flags.nologin) {
   await p.goto(BASE + '/login'); await p.waitForTimeout(800);
   await p.fill('input[name=email]', 'admin@kapdh.test');
