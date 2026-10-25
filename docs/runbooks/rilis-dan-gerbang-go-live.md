@@ -479,6 +479,10 @@ sudo docker run --rm -i --network coolify --env-file /etc/kapdh/production/relea
    aplikasi dan situs (Kebijakan Privasi bagian 19), isi `[tanggal terbit]`, terbitkan keempat halaman pada hari yang
    sama, lalu pastikan gerbang `legal_pages` tetap lulus (versi `app_settings.legal` sama dengan versi tayang)
    **[bukti]**. Jangan terbitkan sebelum build itu tersedia: aplikasi 1.0.0 belum menampilkan daftar baru.
+   Pada rilis toko pertama, hari rilis itu adalah hari rilis closed testing Play pertama dikirim ke review Google
+   (iOS: paling lambat hari build pertama dikirim ke Beta App Review TestFlight eksternal, mana yang lebih dulu), jadi
+   naskah terbit hari itu sebelum pengiriman walaupun build baru tersedia bagi penguji setelah review; Internal
+   testing Play dan TestFlight internal tidak dihitung (`app-store-submission.md` bagian 10, K5 lanjutan).
 
 ## 6. Rollback dan pemulihan (PRD 8.4)
 
