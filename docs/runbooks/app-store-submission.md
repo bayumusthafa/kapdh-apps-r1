@@ -81,7 +81,7 @@ Indonesia, jadi listing dibuat untuk bahasa default Indonesia (id) saja.
 
 | Butir Play Console | Berkas di `docs/toko/play/` | Hasil pemeriksaan `sumber/cek.mjs` | Status |
 | ------------------ | --------------------------- | ---------------------------------- | ------ |
-| App name (maks 30) | `teks/judul.txt`: "KAPDH - Alumni Darel Hikmah"; alternatif "KAPDH" | 27 karakter | Draf |
+| App name (maks 30) | `teks/judul.txt`: "KAPDH" | 5 karakter | Dipilih PP 25 Oktober 2026 |
 | Short description (maks 80) | `teks/deskripsi-singkat.txt` | 70 karakter | Draf |
 | Full description (maks 4.000) | `teks/deskripsi-lengkap.txt`: nama badan hukum, fitur di `main`, syarat 18+, iuran diverifikasi pengurus, tautan kebijakan privasi dan hapus akun | 2.306 karakter | Draf |
 | App icon (PNG 32-bit, 512 x 512, maks 1.024 KB) | `ikon-512.png`, diturunkan dari ikon iOS 1024 | 512 x 512, RGBA alfa penuh, sRGB, 186 KB | Siap, menunggu PP |

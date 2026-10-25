@@ -1,7 +1,7 @@
 # Teks dan kategori listing Google Play (draf)
 
-Status: **draf 25 Oktober 2026, wajib disahkan PP sebelum diisi ke Play Console.** Aplikasi hanya berbahasa Indonesia,
-jadi listing dibuat untuk bahasa default **Indonesia (id)** saja.
+Status: **draf 25 Oktober 2026.** Judul sudah dipilih PP; teks lain wajib disahkan PP sebelum diisi ke Play Console.
+Aplikasi hanya berbahasa Indonesia, jadi listing dibuat untuk bahasa default **Indonesia (id)** saja.
 
 Teks yang diisi ke Play Console ada di `teks/` (satu berkas per kolom, salin apa adanya). Hitungan di bawah berasal dari
 `node docs/toko/play/sumber/cek.mjs`: titik kode Unicode, baris baru dihitung satu, tanpa baris baru penutup berkas.
@@ -9,7 +9,7 @@ Jalankan ulang setiap kali teks diubah.
 
 | Kolom Play Console (Grow users → Store presence → Main store listing) | Berkas | Karakter | Batas |
 | --------------------------------------------------------------------- | ------ | -------- | ----- |
-| App name | `teks/judul.txt` | 27 | 30 |
+| App name | `teks/judul.txt` | 5 | 30 |
 | Short description | `teks/deskripsi-singkat.txt` | 70 | 80 |
 | Full description | `teks/deskripsi-lengkap.txt` | 2.306 | 4.000 (target 1.500-2.500) |
 | Alt text feature graphic | `teks/alt-feature-graphic.txt` | 125 | 140 |
@@ -17,11 +17,12 @@ Jalankan ulang setiap kali teks diubah.
 
 ## Judul
 
-Usulan utama: **KAPDH - Alumni Darel Hikmah** (27 karakter). Nama singkat di ikon peluncur tetap "KAPDH"
-(`android:label`), sedangkan judul toko menambahkan siapa penggunanya agar alumni yang mencari "Darel Hikmah" menemukan
-aplikasi ini. Alternatif bila PP ingin judul sama persis dengan nama aplikasi: **KAPDH** (5 karakter).
+Dipilih PP pada 25 Oktober 2026: **KAPDH** (5 karakter), sama dengan nama aplikasi di ikon peluncur
+(`android:label`). Kata "alumni Pesantren Darel Hikmah" tetap muncul di deskripsi singkat dan deskripsi lengkap, jadi
+alumni yang mencari "Darel Hikmah" masih dapat menemukan aplikasi ini.
 
-Nama lengkap "KAPDH - Alumni Pesantren Darel Hikmah" (37 karakter) melebihi batas 30.
+Usulan lain yang tidak dipilih: "KAPDH - Alumni Darel Hikmah" (27 karakter). "KAPDH - Alumni Pesantren Darel Hikmah"
+(37 karakter) melebihi batas 30.
 
 ## Deskripsi singkat
 
