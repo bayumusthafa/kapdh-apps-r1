@@ -243,16 +243,68 @@ pengguna masuk. Nomor baris di baris tabel ini dan di catatan ini mengikuti peru
 build dengan `PUSH_ENABLED=true`, `Firebase.initializeApp` tetap dijalankan saat aplikasi dibuka
 (`mobile/bootstrap.dart:56` → `mobile/core/push/push_platform.dart:104-124`). Namun auto-init dimatikan di
 `kapdh-mobile/android/app/src/main/AndroidManifest.xml:74-76` (`firebase_messaging_auto_init_enabled` = `false`) dan
-`kapdh-mobile/ios/Runner/Info.plist:70-71` (`FirebaseMessagingAutoInitEnabled` = `false`), sehingga SDK tidak membuat
-token FCM maupun Installation ID sebelum login. Aplikasi tidak memakai SDK Analytics, jadi pengaturan FCM ini sudah
-cukup. Setelah login, dan hanya bila izin notifikasi tidak ditolak, aplikasi menyalakan auto-init tepat sebelum
-meminta token (`mobile/core/push/push_service.dart:201-203`), lalu server KAPDH menyimpan token itu
-(`mobile/core/push/push_service.dart:361-362`). Saat sesi berakhir atau berganti akun, token dihapus lebih dulu, lalu
-auto-init dimatikan lagi (`mobile/core/push/push_service.dart:338-346`). Nilai auto-init tersimpan lintas peluncuran,
-sehingga setelah logout SDK tidak membuat token baru sampai login berikutnya. Dengan begitu kalimat KP:106 ("hanya
-dibuat ... setelah Anda masuk dan tidak menolak izin notifikasi") sesuai dengan perilaku aplikasi. Jenis data ini tetap
-dideklarasikan **Wajib** karena platform, versi aplikasi, dan nama perangkat generik pada sesi terkirim otomatis. DEV
-tetap memastikan perilaku ini pada build rilis sebelum formulir dikirim.
+`kapdh-mobile/ios/Runner/Info.plist:70-71` (`FirebaseMessagingAutoInitEnabled` = `false`). Aplikasi tidak memakai SDK
+Analytics, jadi pengaturan FCM ini sudah cukup. Setelah login, dan hanya bila izin notifikasi tidak ditolak, aplikasi
+menyalakan auto-init tepat sebelum meminta token (`mobile/core/push/push_service.dart:197-203`), lalu server KAPDH
+menyimpan token itu (`mobile/core/push/push_service.dart:361-362`). Saat sesi berakhir atau berganti akun, token
+dihapus lebih dulu, lalu auto-init dimatikan lagi (`mobile/core/push/push_service.dart:338-346`). Nilai auto-init
+tersimpan lintas peluncuran. Jenis data ini tetap dideklarasikan **Wajib** karena platform, versi aplikasi, dan nama
+perangkat generik pada sesi terkirim otomatis.
+
+Yang dijamin perubahan ini, tidak lebih:
+
+1. **Sebelum login pertama** (pasang baru): SDK tidak membuat token FCM maupun Installation ID.
+2. **Setelah logout lalu aplikasi dimulai ulang**: tidak ada token FCM. Token dihapus dan auto-init dimatikan saat
+   logout, sehingga SDK tidak membuat token baru sampai login berikutnya. Installation ID yang sudah dibuat saat login
+   sebelumnya tidak ikut terhapus (`deleteToken` hanya menghapus token FCM), tetapi tidak dikirim ke KAPDH. Bila logout
+   terjadi tanpa koneksi, token lama dan auto-init yang masih menyala bertahan sampai penghapusan tertunda berhasil saat
+   aplikasi dibuka atau koneksi kembali.
+3. **Login dengan izin notifikasi ditolak**: auto-init tetap mati dan `getToken` tidak dipanggil, sehingga tidak ada
+   token FCM dan SDK tidak membuat Installation ID.
+
+**Cek penerimaan K8.** Kesimpulan "KP:106 konsisten tanpa revisi KP" ("hanya dibuat ... setelah Anda masuk dan tidak
+menolak izin notifikasi") baru berlaku setelah ketiga cek di bawah lulus pada AAB dan IPA yang persis akan dikirim,
+dan tetap bergantung pada keputusan lanjutan di bawah. Pakai berkas yang sama, bukan build debug atau build ulang dari
+commit yang sama: Android dipasang dari jalur Internal testing Play yang memuat AAB itu, iOS dari build TestFlight yang
+akan diajukan. Jalankan di satu perangkat Android 13 atau lebih baru dan satu iPhone, dengan koneksi aktif. Hapus KAPDH
+dari perangkat lebih dulu bila pernah terpasang, lalu catat waktu mulai setiap cek.
+
+| Cek | Langkah | Lulus bila |
+| --- | ------- | ---------- |
+| 1. Pasang baru, sebelum login pertama | Pasang build, buka aplikasi, dan biarkan di layar masuk minimal 2 menit. Tutup paksa, buka lagi, tunggu 2 menit | Tidak ada permintaan token di perangkat, dan tidak ada baris `device_tokens` baru sejak waktu mulai untuk platform dan versi build itu |
+| 2. Logout, lalu mulai ulang | Masuk dengan akun uji dan izinkan notifikasi (harus muncul satu baris aktif untuk akun itu). Keluar, tutup paksa aplikasi, buka lagi, dan biarkan di layar masuk 2 menit | Baris akun uji sudah dicabut (`revoked_at` terisi), tidak ada baris aktif baru, dan tidak ada permintaan token di perangkat sejak aplikasi dibuka lagi |
+| 3. Login dengan izin ditolak | Hapus dan pasang ulang build, masuk dengan akun uji, lalu tolak dialog izin notifikasi ("Jangan izinkan" di Android, "Jangan Izinkan" di iOS). Tunggu 2 menit | Tidak ada baris `device_tokens` untuk akun uji sejak waktu mulai, dan tidak ada permintaan token di perangkat |
+
+Bukti server, dijalankan di VPS (kontainer PostgreSQL production seperti `push-fcm.md` 5.3; kueri tidak menampilkan
+token):
+
+```sh
+PG=$(docker ps --format '{{.Names}}' | grep -x 2ohiu7mobeihyqhthcqyix6o)        # kontainer PostgreSQL production
+MULAI='2026-10-27 09:00+07'                                                      # ganti dengan waktu mulai cek
+docker exec "$PG" psql -U postgres -d kapdh -XAt -c "select platform, app_version, count(*) from app.device_tokens where created_at >= '$MULAI' group by 1, 2"   # cek 1: tidak ada baris untuk platform dan versi build uji
+docker exec "$PG" psql -U postgres -d kapdh -XAt -c "select t.platform, t.created_at, t.revoked_at is not null from app.device_tokens t join app.users u on u.id = t.user_id where lower(u.email) = lower('<email akun uji>') and t.created_at >= '$MULAI' order by t.created_at"   # cek 2: satu baris berakhiran |t; cek 3: kosong
+```
+
+Bukti perangkat wajib ada untuk setiap cek. Tabel `device_tokens` hanya membuktikan token tidak *didaftarkan* ke
+KAPDH: sebelum login dan sesudah logout aplikasi memang tidak mengirim token ke server, walaupun SDK membuatnya. Rekam
+log perangkat sejak aplikasi dibuka sampai cek selesai: Android dengan `adb logcat` setelah
+`adb shell setprop log.tag.FirebaseMessaging DEBUG`, iOS dengan konsol perangkat di Xcode (Window → Devices and
+Simulators → Open Console) atau Console.app, disaring ke proses `Runner`. Bila memungkinkan, rekam juga lalu lintas
+jaringan perangkat (mis. PCAPdroid di Android, `rvictl` dan Wireshark di iOS). "Tidak ada permintaan token" berarti
+SDK tidak meminta token baru: tidak ada baris log `FirebaseMessaging` tentang pengambilan token, dan aplikasi tidak
+menghubungi `firebaseinstallations.googleapis.com` (pendaftaran Installation ID) maupun `fcmtoken.googleapis.com`
+(token FCM iOS). Di Android token FCM diminta lewat Google Play services, bukan dari proses aplikasi, sehingga untuk
+cek 2 log `FirebaseMessaging` menjadi bukti utamanya. Cek khusus iPhone ada di `push-fcm.md` bagian 8.
+
+**Keterbatasan yang sudah ada sebelum K8 (keputusan lanjutan PP).** Bila pengguna mencabut izin notifikasi di
+pengaturan sistem setelah tokennya terdaftar, token itu tidak dihapus. Saat login atau aplikasi dibuka berikutnya,
+`_connect` langsung berhenti begitu izin terbaca ditolak (`mobile/core/push/push_service.dart:197`), tanpa menghapus
+token dan tanpa mematikan auto-init, sehingga baris `device_tokens` tetap aktif sampai logout. Ini tidak sejalan
+dengan bunyi KP:106 ("hanya dibuat dan kami simpan ... tidak menolak izin notifikasi"). PP memilih salah satu: (a)
+hapus token, cabut pendaftarannya di server, dan matikan auto-init setiap kali izin terbaca ditolak saat login atau
+aplikasi dibuka (perubahan kode, PR terpisah); atau (b) persempit kalimat KP:106 agar tidak menjanjikan penghapusan
+saat izin dicabut kemudian (token tetap tersimpan sampai pengguna keluar). Keputusan ini belum tercantum di tabel
+bagian 10.
 
 ### 4.2 Tidak dideklarasikan, beserta alasannya
 
