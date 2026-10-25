@@ -236,15 +236,23 @@ Aturan pengisian yang berlaku untuk semua baris:
 | App activity → In-app search history | **Baru.** Kata kunci dan kota yang diketik di pencarian Jejaring dan pemilih anggota chat, serta kata kunci pencarian event. Dikirim sebagai query string, dipakai untuk satu permintaan, tidak disimpan di basis data, tidak dicatat di log, dan tidak disimpan di perangkat | `mobile/features/network/network_repository.dart:21-31`; `mobile/features/chat/member_picker.dart:87-100`; `mobile/features/events/events_repository.dart:23-38`; `api/modules/network/directory.service.ts:193-206`; `api/modules/events/member-events.service.ts:48`; `api/core/logging/logger.ts:113-121`; KP:81 | Ya / tidak | **Ya** | Opsional | App functionality | Tidak perlu dideklarasikan (diproses seketika, tidak disimpan) |
 | App activity → Other user-generated content | Laporan dan banding, nama grup | `schema/community.ts:78`, `:214`; KP:87, KP:97-100 | Ya / tidak | Tidak | Opsional | App functionality; Fraud prevention, security, and compliance | User Content → Other User Content |
 | App activity → Other actions | Suka berita, reaksi pesan, daftar blokir, reservasi tiket | `schema/content.ts:92`; `schema/community.ts:50`, `:191`; `schema/events.ts:91`; KP:78, KP:93, KP:99 | Ya / tidak | Tidak | Opsional | App functionality | Usage Data → Product Interaction |
-| Device or other IDs | **Diperluas.** Token FCM dan Firebase Installation ID (dibuat SDK FCM, diterima Google sebagai pemroses), platform dan versi aplikasi pada token dan sesi, serta nama perangkat generik | `schema/notifications.ts:89-99`; `schema/identity.ts:167-169`; `mobile/core/push/push_service.dart:140-144`, `:348`; `mobile/core/push/push_platform.dart:98-118`, `:152-169`; `mobile/bootstrap.dart:56`; KP:106, KP:111, KP:197 | Ya / tidak | Tidak | Wajib (lihat catatan K8) | App functionality, Developer communications (notifikasi berita dan event) | Identifiers → Device ID |
+| Device or other IDs | **Diperluas.** Token FCM dan Firebase Installation ID (dibuat SDK FCM, diterima Google sebagai pemroses), platform dan versi aplikasi pada token dan sesi, serta nama perangkat generik | `schema/notifications.ts:89-99`; `schema/identity.ts:167-169`; `mobile/core/push/push_service.dart:145-149`, `:201-203`, `:338-346`, `:361-362`; `mobile/core/push/push_platform.dart:104-124`, `:158-189`; `kapdh-mobile/android/app/src/main/AndroidManifest.xml:74-76`; `kapdh-mobile/ios/Runner/Info.plist:70-71`; `mobile/bootstrap.dart:56`; KP:106, KP:111, KP:197 | Ya / tidak | Tidak | Wajib (lihat catatan K8) | App functionality, Developer communications (notifikasi berita dan event) | Identifiers → Device ID |
 
-Catatan Device or other IDs (K8): pada build dengan `PUSH_ENABLED=true`, `Firebase.initializeApp` dijalankan saat
-aplikasi dibuka (`mobile/bootstrap.dart:56` → `mobile/core/push/push_platform.dart:98-118`), dan auto-init FCM tidak
-dimatikan di `AndroidManifest.xml` maupun `Info.plist`. Karena itu SDK dapat membuat token dan Installation ID sebelum
-login, walaupun server KAPDH baru menyimpan token setelah login dan selama izin notifikasi tidak ditolak
-(`mobile/core/push/push_service.dart:348`).
-Jenis data ini aman dideklarasikan **Wajib**. DEV memastikan perilaku SDK pada build rilis. Selanjutnya PP memilih:
-mematikan auto-init (perubahan kode) atau menyesuaikan kalimat KP:106 ("hanya dibuat ... setelah Anda masuk").
+Catatan Device or other IDs (K8): PP memilih opsi (a) pada 25 Oktober 2026, dan auto-init FCM kini mati sampai
+pengguna masuk. Nomor baris di baris tabel ini dan di catatan ini mengikuti perubahan tersebut, bukan `7ce1ed8`. Pada
+build dengan `PUSH_ENABLED=true`, `Firebase.initializeApp` tetap dijalankan saat aplikasi dibuka
+(`mobile/bootstrap.dart:56` → `mobile/core/push/push_platform.dart:104-124`). Namun auto-init dimatikan di
+`kapdh-mobile/android/app/src/main/AndroidManifest.xml:74-76` (`firebase_messaging_auto_init_enabled` = `false`) dan
+`kapdh-mobile/ios/Runner/Info.plist:70-71` (`FirebaseMessagingAutoInitEnabled` = `false`), sehingga SDK tidak membuat
+token FCM maupun Installation ID sebelum login. Aplikasi tidak memakai SDK Analytics, jadi pengaturan FCM ini sudah
+cukup. Setelah login, dan hanya bila izin notifikasi tidak ditolak, aplikasi menyalakan auto-init tepat sebelum
+meminta token (`mobile/core/push/push_service.dart:201-203`), lalu server KAPDH menyimpan token itu
+(`mobile/core/push/push_service.dart:361-362`). Saat sesi berakhir atau berganti akun, token dihapus lebih dulu, lalu
+auto-init dimatikan lagi (`mobile/core/push/push_service.dart:338-346`). Nilai auto-init tersimpan lintas peluncuran,
+sehingga setelah logout SDK tidak membuat token baru sampai login berikutnya. Dengan begitu kalimat KP:106 ("hanya
+dibuat ... setelah Anda masuk dan tidak menolak izin notifikasi") sesuai dengan perilaku aplikasi. Jenis data ini tetap
+dideklarasikan **Wajib** karena platform, versi aplikasi, dan nama perangkat generik pada sesi terkirim otomatis. DEV
+tetap memastikan perilaku ini pada build rilis sebelum formulir dikirim.
 
 ### 4.2 Tidak dideklarasikan, beserta alasannya
 

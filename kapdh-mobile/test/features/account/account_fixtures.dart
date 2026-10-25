@@ -281,6 +281,9 @@ class FakePushPlatform implements PushPlatform {
   String? token = 'fcm-1';
   int deletes = 0;
   int permissionRequests = 0;
+
+  /// Auto-init FCM; bawaannya mati seperti di AndroidManifest.xml dan Info.plist.
+  bool autoInitEnabled = false;
   final tokenRefresh = StreamController<String>.broadcast();
   final foreground = StreamController<PushMessage>.broadcast();
   final opened = StreamController<PushMessage>.broadcast();
@@ -307,6 +310,9 @@ class FakePushPlatform implements PushPlatform {
     deletes++;
     token = 'fcm-${deletes + 1}';
   }
+
+  @override
+  Future<void> setAutoInitEnabled(bool enabled) async => autoInitEnabled = enabled;
 
   @override
   Stream<PushMessage> get onForegroundMessage => foreground.stream;

@@ -69,12 +69,17 @@ class PushRegistrationStore {
 /// - Opsional: bila platform tidak tersedia (tanpa PUSH_ENABLED atau konfigurasi Firebase) semua operasi no-op dan
 ///   aplikasi tetap berfungsi; inbox tetap sumber riwayat resmi (AC F13-2).
 /// - Izin diminta setelah login, bukan saat aplikasi pertama dibuka; penolakan izin tidak menghalangi apa pun.
-/// - Token didaftarkan ulang saat diperbarui FCM. Akun pemilik pendaftaran dicatat di secure storage SEBELUM
-///   PUT /devices, sehingga setiap akhir sesi (logout, sesi dicabut, logout saat offline, sesi gagal dipulihkan saat
-///   aplikasi dibuka) menghapus token FCM perangkat walau pendaftarannya terjadi di peluncuran sebelumnya. Penghapusan
-///   yang gagal (offline) ditandai tertunda dan diulang saat aplikasi dibuka/koneksi kembali; setelah token FCM
-///   dihapus, pengiriman server ke token lama ditolak FCM sehingga akun sebelumnya tidak lagi menerima notifikasi
-///   di perangkat ini (AC F13-5). Server juga menonaktifkannya pada POST /auth/logout.
+/// - Auto-init FCM mati sejak aplikasi dipasang (AndroidManifest.xml, Info.plist), sehingga token FCM dan Installation
+///   ID tidak dibuat sebelum login (kebijakan privasi 4.10, keputusan K8). Auto-init dinyalakan tepat sebelum getToken
+///   setelah login bila izin tidak ditolak, dan dimatikan lagi setelah token perangkat terhapus (akhir sesi atau
+///   berganti akun).
+/// - Token didaftarkan ulang saat diperbarui FCM. Akun pemilik pendaftaran dicatat di secure storage SEBELUM auto-init
+///   dinyalakan (jadi juga sebelum PUT /devices), sehingga setiap akhir sesi (logout, sesi dicabut, logout saat
+///   offline, sesi gagal dipulihkan saat aplikasi dibuka) menghapus token FCM perangkat dan mematikan auto-init walau
+///   token dibuat di peluncuran sebelumnya atau getToken gagal. Penghapusan yang gagal (offline) ditandai tertunda
+///   dan diulang saat aplikasi dibuka/koneksi kembali; setelah token FCM dihapus, pengiriman server ke token lama
+///   ditolak FCM sehingga akun sebelumnya tidak lagi menerima notifikasi di perangkat ini (AC F13-5). Server juga
+///   menonaktifkannya pada POST /auth/logout.
 /// - Semua operasi pendaftaran berjalan berurutan, sehingga penghapusan token akun lama selesai sebelum token akun
 ///   baru didaftarkan.
 /// - iOS: token FCM baru tersedia setelah token APNs diterima, dan getToken/deleteToken gagal `apns-token-not-set`
@@ -190,6 +195,11 @@ class PushService {
         _permissionRequested = true;
       }
       if (permission == PushPermission.denied) return;
+      // Sejak auto-init menyala SDK dapat membuat token untuk akun ini, termasuk sendiri saat getToken gagal atau
+      // aplikasi ditutup sebelum token terdaftar. Catatan ditulis lebih dulu agar akhir sesi selalu menghapus token itu
+      // lalu mematikan auto-init lagi.
+      await _registrations.write(PushRegistration(userId: userId));
+      await _platform.setAutoInitEnabled(true);
       final token = await _platform.getToken();
       if (token != null) await _register(userId, token);
     } on Object catch (error) {
@@ -323,11 +333,15 @@ class PushService {
     await _deleteDeviceTokenOrDefer();
   });
 
-  /// Menghapus token FCM perangkat lalu catatan pendaftarannya; hanya dipanggil saat push tersedia. Galat diteruskan
-  /// dan catatan tertunda dipertahankan untuk dicoba lagi.
+  /// Menghapus token FCM perangkat, mematikan auto-init, lalu menghapus catatan pendaftarannya; hanya dipanggil saat
+  /// push tersedia. Galat diteruskan dan catatan tertunda dipertahankan, sehingga ketiga langkah dicoba lagi.
   Future<void> _deleteDeviceToken() async {
     await _platform.deleteToken();
     _tokenDeletions++;
+    // Tanpa sesi (atau sebelum izin akun berikutnya diketahui) SDK tidak boleh membuat token baru sendiri. Dimatikan
+    // sesudah deleteToken, bukan sebelumnya: di iOS token APNs yang dibutuhkan deleteToken hanya diteruskan plugin ke
+    // FCM selama auto-init menyala, sehingga penghapusan yang tertunda tetap dapat diulang di peluncuran berikutnya.
+    await _platform.setAutoInitEnabled(false);
     await _registrations.clear();
   }
 

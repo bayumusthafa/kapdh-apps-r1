@@ -153,9 +153,13 @@ flutter drive --profile --driver=test_driver/integration_test.dart \
 - Formulir toko: lembar Data safety ada di `../docs/runbooks/app-store-submission.md` bagian 4, deklarasi App content
   Google Play di bagian 9, dan keputusan pemilik produk di bagian 10. Perubahan izin, SDK, atau data yang dikirim
   aplikasi wajib memperbarui lembar itu.
-- Auto-init FCM tidak dimatikan, dan pada build dengan `PUSH_ENABLED=true` `Firebase.initializeApp` dijalankan saat
-  aplikasi dibuka (`lib/bootstrap.dart` → `lib/core/push/push_platform.dart`), sehingga token dapat dibuat sebelum
-  login. Keputusan K8 di `app-store-submission.md` bagian 10.
+- Auto-init FCM mati sampai login (keputusan K8 opsi a, `app-store-submission.md` bagian 4.1 dan 10):
+  `firebase_messaging_auto_init_enabled` = `false` di `android/app/src/main/AndroidManifest.xml` dan
+  `FirebaseMessagingAutoInitEnabled` = `false` di `ios/Runner/Info.plist`. `Firebase.initializeApp` tetap dijalankan
+  saat aplikasi dibuka (`lib/bootstrap.dart` → `lib/core/push/push_platform.dart`), tetapi token FCM dan Installation
+  ID baru dibuat setelah `PushService` menyalakan auto-init, yaitu setelah login dan bila izin notifikasi tidak
+  ditolak. Saat sesi berakhir, token dihapus lalu auto-init dimatikan lagi. Jangan menambah SDK Firebase lain (mis.
+  Analytics) tanpa mematikan pengumpulan datanya dan memperbarui lembar Data safety.
 - Android: kunci rilis (`android/key.properties`). App Links butuh SHA-256 kunci penandatanganan aplikasi Play App
   Signing (baru tampil setelah AAB pertama diunggah ke Play Console, jalur pengujian internal cukup; AAB rilis itu
   butuh `android/key.properties`, `docs/BUILD.md` bagian 3.1) di `kapdh-platform/apps/web/app-links.json`
