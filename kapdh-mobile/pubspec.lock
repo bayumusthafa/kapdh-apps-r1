@@ -602,7 +602,7 @@ packages:
       path: "../kapdh-platform/packages/contracts/dart/kapdh_api"
       relative: true
     source: path
-    version: "0.2.0"
+    version: "0.3.0"
   leak_tracker:
     dependency: transitive
     description:

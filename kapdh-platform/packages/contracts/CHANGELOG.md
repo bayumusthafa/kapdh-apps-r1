@@ -6,6 +6,15 @@ Setiap perubahan kontrak yang dapat memutus klien yang masih didukung dicatat di
 
 ## Belum dirilis
 
+Belum ada perubahan sejak 0.3.0.
+
+## 0.3.0 (25 Oktober 2026)
+
+Rilis SDK pertama yang diberi tag git (`contracts-v0.3.0`, workflow Release aksi `contracts-sdk`). Tag ini menjadi
+garis dasar gerbang N-13 dan dipakai build Google Play pertama aplikasi 1.1.0+2; `x-kapdh-min-app-version` tetap
+`1.0.0`. Versi 0.2.0 tidak pernah diberi tag. Semua perubahan sejak 0.2.0 tercantum di bawah; yang bertanda
+**[memutus]** dibuat selama pengembangan, sebelum ada tag pembanding.
+
 ### Laporan konten seksual berprioritas urgent (keputusan PP K5, 25 Oktober 2026; hanya deskripsi, tidak memutus)
 
 Laporan kategori `sexual`, termasuk eksploitasi seksual anak, kini dihitung server sebagai `urgent` dengan `due_at`

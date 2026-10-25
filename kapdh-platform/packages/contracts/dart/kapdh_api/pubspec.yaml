@@ -5,7 +5,7 @@
 # version @kapdh/contracts (packages/contracts/package.json).
 name: kapdh_api
 description: Klien API KAPDH Apps (model, enum, kelas API Dio, katalog galat) yang dibangkitkan dari kontrak OpenAPI.
-version: 0.2.0
+version: 0.3.0
 publish_to: none
 
 environment:
