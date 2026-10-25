@@ -24,7 +24,7 @@ your app".
 | Feature graphic | JPEG atau PNG 24-bit tanpa alfa, 1024 x 500 | JPEG 1024 x 500, 3 kanal (24-bit), sRGB dengan profil ICC, tanpa alfa dan EXIF, 91,5 KB |
 | Judul | maks 30 karakter | 5 ("KAPDH", dipilih PP) |
 | Deskripsi singkat | maks 80 | 70 |
-| Deskripsi lengkap | maks 4.000 (target tugas 1.500-2.500) | 2.306 |
+| Deskripsi lengkap | maks 4.000 (target tugas 1.500-2.500) | 2.292 |
 | Teks alternatif | maks 140 | feature graphic 125; tangkapan 60-96 |
 | Kata D13 dan klaim | tanpa temuan | tanpa temuan |
 
