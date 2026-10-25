@@ -44,6 +44,9 @@ const R = await createRenderer();
 const bg = await backgrounds(R, A);
 const LOGO = WT + '/kapdh-mobile/assets/logo-kapdh.png';
 const LOGO_AR = 350 / 360;
+// Teks alternatif gambar. Tanpa altText, pptxgenjs mengisi descr dengan path berkas di komputer pembangun.
+const ALT_LOGO = 'Logo KAPDH';
+const ALT_PONSEL = 'Tangkapan layar aplikasi KAPDH Apps';
 const pngSize = p => { const b = fs.readFileSync(p); return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) }; };
 async function phoneImg(rel) {
   const out = path.join(A, 'ponsel-' + path.basename(rel));
@@ -51,8 +54,9 @@ async function phoneImg(rel) {
 }
 async function browserImg(rel) {
   const out = path.join(A, 'browser-' + path.basename(rel));
-  await browserFrame(R, path.join(ASSETS, rel), out, rel.startsWith('admin/') ? 'admin.kapdh.or.id' : 'kapdh.or.id');
-  const z = pngSize(out); return { path: out, ar: z.w / z.h };
+  const host = rel.startsWith('admin/') ? 'admin.kapdh.or.id' : 'kapdh.or.id';
+  await browserFrame(R, path.join(ASSETS, rel), out, host);
+  const z = pngSize(out); return { path: out, ar: z.w / z.h, alt: 'Tangkapan layar ' + host };
 }
 async function iconImg(name, color) {
   const out = path.join(A, `ikon-${name}-${color}.png`);
@@ -69,7 +73,7 @@ pres.subject = 'Presentasi peluncuran KAPDH Apps';
 pres.theme = { headFontFace: HEAD, bodyFontFace: BODY };
 
 const footer = (color) => ({ text: { text: 'KAPDH Apps · Peluncuran Resmi', options: { x: 0.6, y: 6.98, w: 6, h: 0.3, fontFace: BODY, fontSize: 10, color, margin: 0 } } });
-const logoObj = { image: { path: LOGO, x: 12.18, y: 0.32, w: 0.56, h: 0.56 * LOGO_AR } };
+const logoObj = { image: { path: LOGO, x: 12.18, y: 0.32, w: 0.56, h: 0.56 * LOGO_AR, altText: ALT_LOGO } };
 const ph = (name, type, o) => ({ placeholder: { options: { name, type, margin: 0, ...o }, text: '' } });
 pres.defineSlideMaster({ title: 'KAPDH Sampul', background: { path: bg.dark },
   objects: [ph('title', 'title', { x: 0.6, y: 2.5, w: 6.9, h: 1.95, fontFace: BLACK, fontSize: 50, color: K.white, align: 'left', valign: 'top', lineSpacingMultiple: 0.95 }),
@@ -122,13 +126,13 @@ function kicker(slide, text, x, y, color = K.g600, w = 8) {
 async function iconCircle(slide, name, x, y, d, fill, iconColor) {
   slide.addShape(pres.shapes.OVAL, { x, y, w: d, h: d, fill: { color: fill }, line: { type: 'none' }, objectName: nm('lingkaran-ikon') });
   const p = await iconImg(name, iconColor); const s = d * 0.54;
-  slide.addImage({ path: p, x: x + (d - s) / 2, y: y + (d - s) / 2, w: s, h: s, objectName: nm('ikon') });
+  slide.addImage({ path: p, x: x + (d - s) / 2, y: y + (d - s) / 2, w: s, h: s, altText: 'Ikon', objectName: nm('ikon') });
 }
 async function bulletRows(slide, items, x, y, w, { pt = 15, color = K.text, iconName = 'ph-check-circle-fill', iconColor = K.g600, gap = 0.14 } = {}) {
   const ic = await iconImg(iconName, iconColor);
   for (const t of items) {
     const n = await est(t, pt, w - 0.42); const h = lineH(pt, n, 1.34) + 0.04;
-    slide.addImage({ path: ic, x, y: y + 0.04, w: 0.26, h: 0.26, objectName: nm('ikon-butir') });
+    slide.addImage({ path: ic, x, y: y + 0.04, w: 0.26, h: 0.26, altText: 'Penanda butir', objectName: nm('ikon-butir') });
     slide.addText(t, { x: x + 0.42, y, w: w - 0.42, h, fontFace: BODY, fontSize: pt, color, margin: 0, valign: 'top', isTextBox: true, objectName: nm('butir') });
     y += h + gap;
   }
@@ -153,7 +157,7 @@ const firstMobile = deck.slides.flatMap(s => s.screens || []).find(Boolean);
 const RENDER = {
   async cover(s) {
     const slide = addSlide('KAPDH Sampul', s);
-    slide.addImage({ path: LOGO, x: 0.6, y: 0.6, w: 0.86, h: 0.86 * LOGO_AR, objectName: 'logo' });
+    slide.addImage({ path: LOGO, x: 0.6, y: 0.6, w: 0.86, h: 0.86 * LOGO_AR, altText: ALT_LOGO, objectName: 'logo' });
     slide.addText('Keluarga Alumni\nPondok Pesantren Darel Hikmah', { x: 1.62, y: 0.66, w: 4.6, h: 0.72, fontFace: HEAD, fontSize: 14, color: K.white, margin: 0, valign: 'middle', isTextBox: true, objectName: 'nama-organisasi' });
     slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 0.6, y: 1.85, w: 3.05, h: 0.46, rectRadius: 0.23, fill: { color: K.gold }, line: { type: 'none' }, objectName: 'pil-label' });
     slide.addText('PELUNCURAN APLIKASI', { x: 0.6, y: 1.85, w: 3.05, h: 0.46, fontFace: HEAD, fontSize: 12, color: K.g950, charSpacing: 1.5, align: 'center', valign: 'middle', margin: 0, isTextBox: true, objectName: 'label' });
@@ -181,7 +185,7 @@ const RENDER = {
       for (const k of [0, 1, 2]) {
         const im = imgs[order[k]]; if (!im) continue;
         const p = pos[k]; const w = p.h * im.ar;
-        slide.addImage({ path: im.path, x: p.x, y: p.y, w, h: p.h, rotate: p.r, objectName: nm('ponsel') });
+        slide.addImage({ path: im.path, x: p.x, y: p.y, w, h: p.h, rotate: p.r, altText: ALT_PONSEL, objectName: nm('ponsel') });
       }
     }
   },
@@ -197,7 +201,7 @@ const RENDER = {
       y += rowH;
     }
     slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 7.25, y: 0.55, w: 5.5, h: 6.25, rectRadius: 0.3, fill: { color: K.g800 }, line: { type: 'none' }, objectName: 'panel' });
-    if (firstMobile) { const im = await phoneImg(firstMobile); const h = 5.85; slide.addImage({ path: im.path, x: 7.25 + (5.5 - h * im.ar) / 2, y: 0.75, w: h * im.ar, h, objectName: 'ponsel' }); }
+    if (firstMobile) { const im = await phoneImg(firstMobile); const h = 5.85; slide.addImage({ path: im.path, x: 7.25 + (5.5 - h * im.ar) / 2, y: 0.75, w: h * im.ar, h, altText: ALT_PONSEL, objectName: 'ponsel' }); }
   },
   async statement(s) {
     const slide = addSlide('KAPDH Pernyataan', s);
@@ -261,17 +265,17 @@ const RENDER = {
     slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 7.0, y: 0.5, w: 5.75, h: 6.3, rectRadius: 0.3, fill: { color: K.g800 }, line: { type: 'none' }, objectName: 'panel' });
     const imgs = await Promise.all(s.screens.map(phoneImg));
     const cx = 7.0 + 5.75 / 2;
-    if (imgs.length === 1) { const h = 5.95; const w = h * imgs[0].ar; slide.addImage({ path: imgs[0].path, x: cx - w / 2, y: 0.68, w, h, objectName: 'ponsel' }); }
+    if (imgs.length === 1) { const h = 5.95; const w = h * imgs[0].ar; slide.addImage({ path: imgs[0].path, x: cx - w / 2, y: 0.68, w, h, altText: ALT_PONSEL, objectName: 'ponsel' }); }
     else if (imgs.length === 2) {
       const h = 5.55, wl = h * imgs[0].ar, wr = h * imgs[1].ar;
-      slide.addImage({ path: imgs[0].path, x: 7.35, y: 1.0, w: wl, h, objectName: nm('ponsel') });
-      slide.addImage({ path: imgs[1].path, x: 12.4 - wr, y: 0.65, w: wr, h, objectName: nm('ponsel') });
+      slide.addImage({ path: imgs[0].path, x: 7.35, y: 1.0, w: wl, h, altText: ALT_PONSEL, objectName: nm('ponsel') });
+      slide.addImage({ path: imgs[1].path, x: 12.4 - wr, y: 0.65, w: wr, h, altText: ALT_PONSEL, objectName: nm('ponsel') });
     }
     else { const hs = 4.9, hc = 5.85;
       const l = imgs[0], c = imgs[1], r = imgs[2];
-      slide.addImage({ path: l.path, x: 7.15, y: 1.2, w: hs * l.ar, h: hs, objectName: nm('ponsel') });
-      slide.addImage({ path: r.path, x: 12.6 - hs * r.ar, y: 1.2, w: hs * r.ar, h: hs, objectName: nm('ponsel') });
-      slide.addImage({ path: c.path, x: cx - (hc * c.ar) / 2, y: 0.7, w: hc * c.ar, h: hc, objectName: nm('ponsel') }); }
+      slide.addImage({ path: l.path, x: 7.15, y: 1.2, w: hs * l.ar, h: hs, altText: ALT_PONSEL, objectName: nm('ponsel') });
+      slide.addImage({ path: r.path, x: 12.6 - hs * r.ar, y: 1.2, w: hs * r.ar, h: hs, altText: ALT_PONSEL, objectName: nm('ponsel') });
+      slide.addImage({ path: c.path, x: cx - (hc * c.ar) / 2, y: 0.7, w: hc * c.ar, h: hc, altText: ALT_PONSEL, objectName: nm('ponsel') }); }
   },
   async wide(s) {
     const slide = addSlide('KAPDH Terang', s);
@@ -282,7 +286,7 @@ const RENDER = {
     if (s.bullets?.length) await bulletRows(slide, s.bullets, 0.6, 2.0 + th + 0.35, 3.75, { pt: 15 });
     const im = await browserImg(s.img);
     let w = 8.15, h = w / im.ar; if (h > 5.0) { h = 5.0; w = h * im.ar; }
-    slide.addImage({ path: im.path, x: 12.75 - w, y: 1.8, w, h, objectName: 'tangkapan-layar' });
+    slide.addImage({ path: im.path, x: 12.75 - w, y: 1.8, w, h, altText: im.alt, objectName: 'tangkapan-layar' });
   },
   async steps(s) {
     const slide = addSlide('KAPDH Terang', s);
@@ -342,13 +346,13 @@ const RENDER = {
     if (s.qr) {
       const q = await qr(s.qr, path.join(A, 'qr.png'));
       slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 8.75, y: 1.2, w: 3.9, h: 4.95, rectRadius: 0.25, fill: { color: K.white }, line: { type: 'none' }, objectName: 'kartu-qr' });
-      slide.addImage({ path: q, x: 9.05, y: 1.5, w: 3.3, h: 3.3, objectName: 'kode-qr' });
+      slide.addImage({ path: q, x: 9.05, y: 1.5, w: 3.3, h: 3.3, altText: 'Kode QR ' + s.qr, objectName: 'kode-qr' });
       slide.addText([{ text: 'Pindai dengan kamera ponsel', options: { fontFace: HEAD, fontSize: 15, color: K.g900, breakLine: true } }, { text: s.qr.replace(/^https?:\/\//, ''), options: { fontFace: BODY, fontSize: 13, color: K.muted } }], { x: 8.95, y: 4.95, w: 3.5, h: 0.95, align: 'center', valign: 'middle', margin: 0, isTextBox: true, objectName: 'keterangan-qr' });
     }
   },
   async closing(s) {
     const slide = addSlide('KAPDH Penutup', s);
-    slide.addImage({ path: LOGO, x: W / 2 - 0.6, y: 0.85, w: 1.2, h: 1.2 * LOGO_AR, objectName: 'logo' });
+    slide.addImage({ path: LOGO, x: W / 2 - 0.6, y: 0.85, w: 1.2, h: 1.2 * LOGO_AR, altText: ALT_LOGO, objectName: 'logo' });
     slide.addText(s.title, { placeholder: 'title' });
     slide.addText(s.text, { placeholder: 'body' });
     const pw = Math.min(11.0, Math.max(6.4, s.contact.length * 16 * 0.5 / 72 + 1.0));
