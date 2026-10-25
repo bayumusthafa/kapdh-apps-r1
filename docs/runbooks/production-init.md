@@ -484,7 +484,9 @@ Ikuti `docs/runbooks/app-store-submission.md` bagian 1-5. Ringkas:
       URL hapus akun `https://kapdh.or.id/delete-account`, kontak moderasi `bantuan@kapdh.or.id`.
 - [ ] Akun demo reviewer (D16): aktif terverifikasi dan belum bayar, dibuat lewat alur resmi.
 - [ ] Pemblokir submit yang diketahui per 14 Oktober 2026: teks aplikasi yang mengaitkan iuran dengan membuka fitur
-      (bagian 2, D13 mitigasi 1) dan kebijakan privasi yang hanya terbaca dengan JavaScript (bagian 7).
+      (bagian 2, D13 mitigasi 1) dan kebijakan privasi yang hanya terbaca dengan JavaScript (bagian 7). Yang kedua
+      sudah diperbaiki di kode per 25 Oktober 2026 (naskah tayang dirender statis saat build); lulus di production
+      setelah image web itu dideploy dan `curl` bagian 7 pada URL final memuat naskah.
 
 ## Langkah 7. Gladi di staging (PRD 8.2 langkah 7; U-12)
 

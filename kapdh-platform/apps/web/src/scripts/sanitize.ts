@@ -260,9 +260,12 @@ function appendClean(source: Node, parent: Node, doc: Document, ctx: CleanContex
   parent.appendChild(target);
 }
 
-/** Mengurai `html` di dokumen inert dan mengembalikan fragmen bersih milik `doc`. */
+/**
+ * Mengurai `html` di dokumen inert dan mengembalikan fragmen bersih milik `doc`. DOMParser diambil dari jendela `doc`
+ * sehingga fungsi yang sama juga merender isi statis saat build dengan dokumen jsdom (lib/published-pages.ts).
+ */
 export function sanitizeRichHtml(html: string, doc: Document, siteOrigin: string): DocumentFragment {
-  const inert = new DOMParser().parseFromString(html, "text/html");
+  const inert = new (doc.defaultView?.DOMParser ?? DOMParser)().parseFromString(html, "text/html");
   const fragment = doc.createDocumentFragment();
   const ctx: CleanContext = { siteOrigin, ids: new Set() };
   for (const child of Array.from(inert.body.childNodes)) appendClean(child, fragment, doc, ctx, 0);

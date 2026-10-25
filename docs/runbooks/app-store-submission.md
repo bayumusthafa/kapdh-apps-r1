@@ -288,24 +288,46 @@ hanya pemilik yang dapat mengirim ulang bukti (PRD 4.3); keputusan PP masih terb
 | [R6] 3.1 / [R7] | Pembayaran di luar sistem toko hanya untuk layanan/barang di dunia nyata | Bagian 2; tidak ada IAP atau pemrosesan pembayaran di aplikasi; fallback bagian 6 | |
 | D13 mitigasi 1 | Teks aplikasi tidak mengaitkan iuran dengan membuka fitur | Perintah `grep` bagian 2 kosong (atau sisa baris disahkan PP) pada commit build yang diajukan; tangkapan layar toko diperiksa manual. **Gagal per 14 Oktober 2026 (13 baris)** | |
 | [R6] 5.1.1 | Kebijakan privasi, izin dengan alasan jelas, data minimum | Bagian 4; teks izin kamera/galeri di `Info.plist` | |
-| Kebijakan privasi dapat dibaca tanpa JavaScript | URL kebijakan privasi yang diisi di kedua toko menampilkan naskah, bukan hanya kerangka | Lihat pemeriksaan di bawah tabel. **Gagal pada `main`**: halaman legal adalah kerangka statis yang memuat isi lewat JavaScript | |
+| Kebijakan privasi dapat dibaca tanpa JavaScript | URL kebijakan privasi yang diisi di kedua toko menampilkan naskah, bukan hanya kerangka | Naskah tayang kelima halaman informasi/legal ditanam statis saat build dari salinan `apps/web/src/published-pages/` (penjelasan dan pemeriksaan di bawah tabel). **Lulus di kode per 25 Oktober 2026** (gerbang build `assert-published-pages.mjs`, uji `published-pages.test.ts`, uji asap image `smoke-static.sh`); production baru lulus setelah image web dari perubahan ini dideploy, jadi ulangi `curl` di bawah pada URL final | |
 | [R6] 2.1 | Aplikasi lengkap dan backend aktif saat review | Production aktif (go-live langkah 4), akun demo bagian 3 | |
 | Google Play Data safety | Formulir lengkap dan konsisten dengan kebijakan privasi | Bagian 4 | |
 | Google Play target API | Target SDK sesuai persyaratan Play saat submit | Ditentukan Flutter 3.47 (`flutter.targetSdkVersion`); periksa saat build | |
 
-Kebijakan privasi tanpa JavaScript. `apps/web/src/pages/[slug].astro` hanya membangun kerangka halaman; isi dibaca saat
-runtime dari `GET /public/pages/{slug}`, dan tanpa JavaScript halaman hanya menampilkan "Aktifkan JavaScript untuk
-membaca versi terbaru halaman ini". Perayap review atau pemeriksaan otomatis yang tidak menjalankan JavaScript dapat
-menilai URL kebijakan privasi kosong. Periksa dengan kalimat yang pasti ada di naskah yang disahkan:
+Kebijakan privasi tanpa JavaScript. Sampai `7ce1ed8`, `apps/web/src/pages/[slug].astro` hanya membangun kerangka: isi
+dibaca saat runtime dari `GET /public/pages/{slug}`, dan tanpa JavaScript halaman hanya menampilkan "Aktifkan
+JavaScript untuk membaca versi terbaru halaman ini", sehingga perayap review atau pemeriksaan otomatis dapat menilai URL
+kebijakan privasi kosong. Dipilih render statis isi terbit saat build, dengan build ulang setiap kali naskah terbit:
+
+- `[slug].astro` menanam naskah TAYANG `/kebijakan-privasi`, `/ketentuan`, `/ketentuan-komunitas`, `/bantuan`, dan
+  `/tentang` beserta baris "Versi N · Diterbitkan ..." ke HTML hasil build. Sumbernya salinan
+  `apps/web/src/published-pages/<slug>.json`, yaitu respons `GET /public/pages/{slug}` production yang ditarik
+  `pnpm --filter @kapdh/web pages:sync` dan di-commit, sehingga build tidak bergantung pada API dan setiap perubahan
+  naskah di situs ditinjau lewat PR.
+- Sumbernya bukan `docs/legal`: berkas di sana dapat memuat revisi yang belum terbit (penanda `[tanggal terbit]`
+  revisi profil berulang), dan naskah yang tayang per 25 Oktober 2026 (Kebijakan Privasi v4, Ketentuan Layanan v4,
+  Ketentuan Komunitas v2, Bantuan v6, Tentang v3) tidak sama persis dengan berkas mana pun di riwayat `docs/legal`.
+  `pages:sync` dan gerbang build menolak naskah yang memuat `[tanggal terbit]` atau kerangka DRAF seed.
+- Isi statis dirender dengan sanitizer yang sama dengan render runtime (`apps/web/src/scripts/sanitize.ts`), tanpa
+  skrip atau gaya inline (gerbang CSP tetap lulus), dan bagian Legalitas statis `/tentang` tidak berubah. Saat
+  JavaScript aktif halaman tetap membaca API: terbitan berversi lain langsung menggantikan isi statis, sedangkan bila
+  API tidak terjangkau isi statis tetap tampil.
+- Penjaga: gerbang build `apps/web/scripts/assert-published-pages.mjs` (seluruh teks setiap salinan ada di
+  `#info-body` HTML hasil build beserta versinya), uji `apps/web/src/lib/published-pages.test.ts` di lajur `pnpm test`
+  web (merender `[slug].astro` dan membaca HTML-nya tanpa menjalankan skrip), dan `infra/scripts/smoke-static.sh web`
+  pada image di CI (kelima halaman lewat `curl`).
+
+Konsekuensinya, setiap terbitan naskah di web admin harus disusul salinan baru dan deploy ulang image web
+(`docs/legal/README.md`, Setelah menerbitkan); sampai itu terjadi, pembaca tanpa JavaScript melihat versi sebelumnya,
+lengkap dengan nomor versi dan tanggal terbitnya. Sebelum submit, dan setiap kali naskah terbit, pastikan salinan sama
+dengan yang tayang lalu periksa URL final dengan kalimat yang pasti ada di naskah:
 
 ```sh
-curl -s https://kapdh.or.id/kebijakan-privasi | grep -c "<kalimat dari naskah kebijakan privasi>"   # harus >= 1
+pnpm --filter @kapdh/web pages:check   # keluar 1 bila salinan berbeda dari naskah tayang
+curl -s https://kapdh.or.id/kebijakan-privasi | grep -c "Pengendali data pribadi untuk layanan yang dijelaskan dalam kebijakan ini"   # harus >= 1
 ```
 
-Pada `main` hasilnya pasti 0: hasil build `apps/web/dist/kebijakan-privasi/index.html` (diperiksa 14 Oktober 2026)
-hanya memuat judul, kerangka `#info-body`, dan teks `noscript` di atas. Sebelum submit, pemilik situs publik dan PP memilih salah satu: render statis halaman legal saat
-build (build ulang setiap kali naskah terbit), atau salinan statis naskah yang disahkan di URL yang diisi ke toko dan
-diperbarui bersama setiap terbitan. Ulangi pemeriksaan pada URL final.
+Pada image `7ce1ed8` hasil `curl` pasti 0. Pada hasil build perubahan ini hasilnya 1 (diperiksa 25 Oktober 2026 pada
+`apps/web/dist/kebijakan-privasi/index.html`); URL production baru lulus setelah image web itu dideploy.
 
 ## 8. Bila ditolak
 

@@ -33,6 +33,23 @@ dan tidak ada yang memuat penanda kerangka DRAF yang ditolak gerbang go-live.
 2. Salin isi dari `pratinjau.html`, kosongkan editor, tempel, periksa judul.
 3. **Simpan draf**, lalu **Terbitkan versi baru**.
 4. Ulangi untuk kelima halaman, lalu periksa hasilnya di situs dan di aplikasi.
+5. Pada hari yang sama, perbarui salinan statis di situs publik (bagian Setelah menerbitkan).
+
+## Setelah menerbitkan: salinan statis di situs publik
+
+Situs publik menanam naskah tayang kelima halaman ke HTML saat build agar terbaca tanpa JavaScript (URL kebijakan
+privasi di Google Play dan App Store wajib berisi naskah; `docs/runbooks/app-store-submission.md` bagian 7). Sumbernya
+`kapdh-platform/apps/web/src/published-pages/<slug>.json`, salinan respons `GET /public/pages/{slug}` production,
+bukan berkas di folder ini. Saat JavaScript aktif situs tetap menampilkan versi terbaru dari API, tetapi pembaca tanpa
+JavaScript (termasuk perayap review toko) melihat salinan itu sampai situs dibangun ulang. Setiap kali naskah terbit:
+
+1. Dari `kapdh-platform/`, jalankan `pnpm --filter @kapdh/web pages:sync`. Skrip menulis ulang salinan dari API
+   production dan menolak naskah yang memuat `[tanggal terbit]` atau kerangka DRAF; bila ditolak, perbaiki naskah di
+   web admin dan terbitkan ulang.
+2. Tinjau diff salinan, commit lewat PR, lalu build dan deploy image web seperti rilis biasa. Build gagal bila halaman
+   hasil build tidak memuat seluruh teks salinan.
+3. Pastikan `pnpm --filter @kapdh/web pages:check` lulus dan `curl` di `app-store-submission.md` bagian 7 memuat
+   naskah pada URL production.
 
 ## Aturan perubahan di kemudian hari
 
@@ -74,13 +91,18 @@ platform yang hanya tampil ke sesama anggota bila Tampilkan media sosial (`show_
 - **Tanggal dan versi:** isi kolom Tanggal terbit revisi di `pratinjau.html` (Salin isi dan Pilih isi menolak selama
   kosong), atau ganti `[tanggal terbit]` di editor sebelum menekan Terbitkan. Terbitkan keempat halaman pada hari yang
   sama. Penerbitan menaikkan `privacy_version`, `terms_version`, dan
-  `community_version` secara otomatis, dan gerbang go-live `legal_pages` tetap harus lulus.
+  `community_version` secara otomatis, dan gerbang go-live `legal_pages` tetap harus lulus. Pada hari yang sama,
+  perbarui salinan statis situs publik dan deploy ulang image web (bagian Setelah menerbitkan).
 - **Kota pendidikan lama:** Kebijakan Privasi 4.2 dan Bantuan menyebutnya karena `last_education_city` dari aplikasi
   1.0.0 masih tersimpan di data production dan dikirim ke aplikasi lama selama masa transisi (dikosongkan saat
   institusi pendidikan teratas berganti). Setelah field lama dihapus dari kontrak dan skema (bagian 5.5 langkah 7),
   hapus kalimat tentang kota pendidikan lama dan versi aplikasi sebelumnya, lalu terbitkan ulang.
 - Naskah yang tayang sebelum revisi ini (Kebijakan Privasi 16 Oktober 2026, lainnya 15 Oktober 2026) tersimpan di
   riwayat git folder ini dan di jejak audit `page.published`.
+- Per 25 Oktober 2026 yang tayang adalah Kebijakan Privasi v4, Ketentuan Layanan v4, Ketentuan Komunitas v2,
+  Bantuan v6, dan Tentang v3 (salinannya di `kapdh-platform/apps/web/src/published-pages/`). Ketentuan Layanan v4 dan
+  Bantuan v6 (terbit 21 Oktober 2026, "Berlaku sejak 21 Oktober 2026") tidak sama persis dengan berkas mana pun di
+  riwayat folder ini; Ketentuan Layanan v4 bagian 11 sudah memakai "riwayat pendidikan" dari revisi ini.
 
 ## Syarat sebelum terbit
 
