@@ -480,11 +480,39 @@ Apple organisasi diharapkan mendaftarkan token push setelah pengguna login, asal
 `PUSH_ENABLED=true` dan nilai `FIREBASE_*` lengkap termasuk `FIREBASE_IOS_APP_ID` (bagian 6). Perilaku ini belum diuji
 di perangkat; buktikan di iPhone nyata (langkah 5, `production-init.md` 5.6).
 
-Bila token APNs belum tiba saat login (galat `apns-token-not-set`, umum pada izin pertama atau peluncuran dingin),
-aplikasi mencoba `getToken` lagi beberapa kali selama sekitar 30 detik dan tetap mendengarkan pembaruan token. Log
-debug-nya: `push: token APNs belum tersedia, dicoba lagi dalam N detik`, lalu
+Bila token APNs belum tiba saat login (galat `apns-token-not-set`), aplikasi mencoba `getToken` lagi beberapa kali
+selama sekitar 30 detik dan tetap mendengarkan pembaruan token. Sejak auto-init FCM mati sampai login (keputusan K8,
+`app-store-submission.md` bagian 4.1), plugin baru mendaftarkan APNs ketika aplikasi menyalakan auto-init setelah
+login. Karena itu `apns-token-not-set` pada percobaan `getToken` pertama tepat setelah login kini wajar, bukan tanda
+konfigurasi salah, dan dicoba ulang. Galat yang sama juga umum pada peluncuran dingin. Log debug-nya:
+`push: token APNs belum tersedia, dicoba lagi dalam N detik`, lalu
 `push: token APNs belum tersedia setelah N percobaan, menunggu pembaruan token` bila semua percobaan habis. Galat lain
 (mis. konfigurasi `FIREBASE_*` salah) tidak dicoba ulang dan dicatat dengan kodenya.
+
+**Cek K8 di iPhone.** Jalankan pada IPA yang persis akan diajukan (build TestFlight yang sama), dengan koneksi aktif.
+Bila KAPDH pernah terpasang, keluar dari akun lebih dulu (Akun → Keluar) bila masih masuk, lalu hapus aplikasinya: di
+iOS sesi tersimpan di Keychain dan dipulihkan setelah pemasangan ulang. Bukti server memakai kueri `device_tokens` di
+`app-store-submission.md` bagian 4.1. Bukti perangkat diambil dari konsol perangkat (Xcode → Window → Devices and
+Simulators → Open Console, disaring ke proses `Runner`) dan, bila memungkinkan, lalu lintas jaringan lewat `rvictl`.
+
+1. Pasang baru, sebelum login pertama: tidak ada token. Sebelum login tidak muncul dialog izin notifikasi, aplikasi
+   tidak menghubungi `firebaseinstallations.googleapis.com` maupun `fcmtoken.googleapis.com`, dan tidak ada baris
+   `device_tokens` baru untuk `ios` dan versi build itu.
+2. Logout, lalu mulai ulang aplikasi: tidak ada token. Baris akun uji sudah dicabut, dan setelah aplikasi dibuka lagi
+   tidak ada baris aktif baru maupun permintaan token.
+3. Hapus KAPDH lalu pasang ulang dari build TestFlight yang sama (iOS hanya menampilkan dialog izin sekali per
+   instalasi), lalu login dengan izin ditolak ("Jangan Izinkan"): tidak ada token. Tidak ada baris `device_tokens` untuk
+   akun uji, dan log `push: token APNs belum tersedia ...` tidak muncul karena `getToken` tidak dipanggil.
+4. Berganti akun setelah izin ditolak: keluar dari akun uji cek 3, hapus KAPDH, lalu pasang ulang dari build TestFlight
+   yang sama, masuk dengan akun A lalu tolak izin, keluar, nyalakan notifikasi KAPDH di Pengaturan iOS → Notifikasi →
+   KAPDH, lalu masuk dengan akun B. Lulus bila dalam sekitar 1 menit muncul baris aktif `ios` untuk akun B, dan tidak
+   ada baris untuk akun A. Cek ini membuktikan logout akun A tidak tertahan menunggu token APNs: selama auto-init mati
+   dan token APNs belum ada, `deleteToken` tidak melakukan apa pun
+   (`kapdh-mobile/lib/core/push/push_platform.dart:175-186`, diuji di `kapdh-mobile/test/core/push_platform_test.dart`).
+5. Keluar dari akun B, hapus KAPDH, lalu pasang ulang dari build TestFlight yang sama, kemudian login dengan izin
+   diberikan: log `push: token APNs belum tersedia, dicoba lagi dalam 2 detik` pada percobaan pertama wajar. Lulus bila
+   baris aktif `ios` untuk akun uji muncul dalam sekitar 30 detik, atau segera setelah token APNs tiba lewat pembaruan
+   token.
 
 **Urutan aman:** unggah `.p8` **lebih dulu** (langkah 1-2) ke proyek Firebase yang dipakai build itu
 (`FIREBASE_PROJECT_ID` build): `kapdh-prod` untuk build production, proyek Firebase staging untuk build staging yang
