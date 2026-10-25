@@ -184,11 +184,12 @@ dari metrik (PRD 8.3 langkah 3).
 ## 4. Formulir privasi: lembar Data safety Google Play (dan App Privacy Apple)
 
 Sumber jawaban: kode `main` `7ce1ed8` (diperiksa 25 Oktober 2026) dan naskah kebijakan privasi. Nomor baris di bagian 4,
-9 dan 10 mengikuti commit itu; periksa ulang bila berkasnya berubah sebelum formulir diisi. `KP` dan `KK` merujuk berkas
-di `docs/legal`. Naskah yang tayang di situs adalah salinan di `kapdh-platform/apps/web/src/published-pages/` (bagian
-7), dan per 25 Oktober 2026 salinan itu memuat butir yang sama untuk semua jawaban di sini (rekening refund, kota
-domisili, kata kunci pencarian, pengenal instalasi, agama, usia 18+, Perlindungan anak). Bila naskah baru terbit,
-cocokkan ulang lembar ini dengan naskah tayang. Singkatan rujukan:
+9 dan 10 dicocokkan ulang dengan `main` `e147d24` (setelah PR #40 dan PR #41 digabung, 25 Oktober 2026); periksa ulang
+bila berkasnya berubah sebelum formulir diisi. `KP` dan `KK` merujuk berkas di `docs/legal`. Naskah yang tayang di situs
+adalah salinan di `kapdh-platform/apps/web/src/published-pages/` (bagian 7), dan per 25 Oktober 2026 salinan itu memuat
+butir yang sama untuk semua jawaban di sini (rekening refund, kota domisili, kata kunci pencarian, pengenal instalasi,
+agama, usia 18+, Perlindungan anak). Bila naskah baru terbit, cocokkan ulang lembar ini dengan naskah tayang. Singkatan
+rujukan:
 
 | Singkatan | Path |
 | --------- | ---- |
@@ -229,13 +230,13 @@ Aturan pengisian yang berlaku untuk semua baris:
 | Financial info → User payment info | **Baru.** Rekening tujuan refund: nama bank atau e-wallet, nomor rekening, nama pemilik. Diisi anggota saat ada refund; dikosongkan saat refund selesai, dibatalkan, atau akun dihapus; tidak pernah diaudit atau dilog | `mobile/features/payments/payments_repository.dart:143-147`; `mobile/features/payments/widgets/adjustment_card.dart:47-76`; `api/modules/payments/member-payments.service.ts:116-120`, `:457-481`; `schema/payments.ts:201-202`, `:237-240`; `api/modules/payments/admin-adjustments.service.ts:350`, `:422`; `api/modules/account/deletion-steps.ts:1238`; KP:74, KP:236 | Ya / tidak | Tidak (disimpan sampai refund selesai) | Opsional (hanya bila ada refund) | App functionality | Financial Info → Payment Info |
 | Financial info → Purchase history | Riwayat iuran dan tiket: jenis, nominal, status, metode tujuan organisasi | `schema/payments.ts:88`, `:158`; `schema/events.ts:91`; KP:71, KP:78 | Ya / tidak | Tidak | Wajib (otomatis) | App functionality | Purchases → Purchase History |
 | Financial info → Other financial info | Isi bukti transfer (nama dan nomor rekening pengirim) dan catatan transfer | `schema/payments.ts:102`, `:104`; KP:72-73, KP:367 | Ya / tidak | Tidak | Wajib (iuran dibayar dengan bukti di aplikasi) | App functionality | Financial Info → Other Financial Info |
-| Messages → Other in-app messages | Pesan chat, balasan, reaksi; salinan pesan dalam bukti laporan | `schema/community.ts:155`, `:191`, `:214`; KP:86-89, KP:97 | Ya / tidak | Tidak | Opsional | App functionality | User Content → Emails or Text Messages |
-| Photos and videos → Photos | Foto profil, gambar chat, foto grup, bukti transfer berbentuk gambar. Video tidak dikumpulkan | `schema/platform.ts:10-19`; `schema/community.ts:79`, `:166`; `mobile/features/account/avatar_image.dart:29-30`; `mobile/features/chat/chat_image_picker.dart:38-39`; `mobile/features/chat/new_group_screen.dart:67`; `mobile/features/payments/proof_file.dart:162-176`; KP:48, KP:72, KP:86-87 | Ya / tidak | Tidak | Opsional (bukti boleh PDF) | App functionality | User Content → Photos or Videos |
+| Messages → Other in-app messages | Pesan chat, balasan, reaksi; salinan pesan dalam bukti laporan | `schema/community.ts:158`, `:194`, `:217`; KP:86-89, KP:97 | Ya / tidak | Tidak | Opsional | App functionality | User Content → Emails or Text Messages |
+| Photos and videos → Photos | Foto profil, gambar chat, foto grup, bukti transfer berbentuk gambar. Video tidak dikumpulkan | `schema/platform.ts:10-19`; `schema/community.ts:82`, `:169`; `mobile/features/account/avatar_image.dart:29-30`; `mobile/features/chat/chat_image_picker.dart:38-39`; `mobile/features/chat/new_group_screen.dart:67`; `mobile/features/payments/proof_file.dart:162-176`; KP:48, KP:72, KP:86-87 | Ya / tidak | Tidak | Opsional (bukti boleh PDF) | App functionality | User Content → Photos or Videos |
 | Files and docs → Files and docs | Bukti transfer berbentuk PDF | `mobile/features/payments/proof_file.dart:191`; KP:72 | Ya / tidak | Tidak | Opsional (bukti boleh gambar) | App functionality | Financial Info → Other Financial Info |
-| App activity → App interactions | Penanda baca, status bisukan, preferensi notifikasi, waktu aktivitas sesi | `schema/community.ts:127-131`; `schema/notifications.ts:65`; KP:88, KP:105, KP:111 | Ya / tidak | Tidak | Wajib (otomatis) | App functionality | Usage Data → Product Interaction |
+| App activity → App interactions | Penanda baca, status bisukan, preferensi notifikasi, waktu aktivitas sesi | `schema/community.ts:130-134`; `schema/notifications.ts:65`; KP:88, KP:105, KP:111 | Ya / tidak | Tidak | Wajib (otomatis) | App functionality | Usage Data → Product Interaction |
 | App activity → In-app search history | **Baru.** Kata kunci dan kota yang diketik di pencarian Jejaring dan pemilih anggota chat, serta kata kunci pencarian event. Dikirim sebagai query string, dipakai untuk satu permintaan, tidak disimpan di basis data, tidak dicatat di log, dan tidak disimpan di perangkat | `mobile/features/network/network_repository.dart:21-31`; `mobile/features/chat/member_picker.dart:87-100`; `mobile/features/events/events_repository.dart:23-38`; `api/modules/network/directory.service.ts:193-206`; `api/modules/events/member-events.service.ts:48`; `api/core/logging/logger.ts:113-121`; KP:81 | Ya / tidak | **Ya** | Opsional | App functionality | Tidak perlu dideklarasikan (diproses seketika, tidak disimpan) |
-| App activity → Other user-generated content | Laporan dan banding, nama grup | `schema/community.ts:78`, `:214`; KP:87, KP:97-100 | Ya / tidak | Tidak | Opsional | App functionality; Fraud prevention, security, and compliance | User Content → Other User Content |
-| App activity → Other actions | Suka berita, reaksi pesan, daftar blokir, reservasi tiket | `schema/content.ts:92`; `schema/community.ts:50`, `:191`; `schema/events.ts:91`; KP:78, KP:93, KP:99 | Ya / tidak | Tidak | Opsional | App functionality | Usage Data → Product Interaction |
+| App activity → Other user-generated content | Laporan dan banding, nama grup | `schema/community.ts:81`, `:217`; KP:87, KP:97-100 | Ya / tidak | Tidak | Opsional | App functionality; Fraud prevention, security, and compliance | User Content → Other User Content |
+| App activity → Other actions | Suka berita, reaksi pesan, daftar blokir, reservasi tiket | `schema/content.ts:92`; `schema/community.ts:53`, `:194`; `schema/events.ts:91`; KP:78, KP:93, KP:99 | Ya / tidak | Tidak | Opsional | App functionality | Usage Data → Product Interaction |
 | Device or other IDs | **Diperluas.** Token FCM dan Firebase Installation ID (dibuat SDK FCM, diterima Google sebagai pemroses), platform dan versi aplikasi pada token dan sesi, serta nama perangkat generik | `schema/notifications.ts:89-99`; `schema/identity.ts:167-169`; `mobile/core/push/push_service.dart:145-149`, `:201-203`, `:338-346`, `:361-362`; `mobile/core/push/push_platform.dart:104-124`, `:158-189`; `kapdh-mobile/android/app/src/main/AndroidManifest.xml:74-76`; `kapdh-mobile/ios/Runner/Info.plist:70-71`; `mobile/bootstrap.dart:56`; KP:106, KP:111, KP:197 | Ya / tidak | Tidak | Wajib (lihat catatan K8) | App functionality, Developer communications (notifikasi berita dan event) | Identifiers → Device ID |
 
 Catatan Device or other IDs (K8): PP memilih opsi (a) pada 25 Oktober 2026, dan auto-init FCM kini mati sampai
@@ -309,8 +310,8 @@ token dan tanpa mematikan auto-init, sehingga baris `device_tokens` tetap aktif 
 dengan bunyi KP:106 ("hanya dibuat dan kami simpan ... tidak menolak izin notifikasi"). PP memilih salah satu: (a)
 hapus token, cabut pendaftarannya di server, dan matikan auto-init setiap kali izin terbaca ditolak saat login atau
 aplikasi dibuka (perubahan kode, PR terpisah); atau (b) persempit kalimat KP:106 agar tidak menjanjikan penghapusan
-saat izin dicabut kemudian (token tetap tersimpan sampai pengguna keluar). Keputusan ini belum tercantum di tabel
-bagian 10.
+saat izin dicabut kemudian (token tetap tersimpan sampai pengguna keluar). Keputusan ini tercatat di tabel bagian 10
+sebagai K8 lanjutan, **menunggu PP**.
 
 ### 4.2 Tidak dideklarasikan, beserta alasannya
 
@@ -351,10 +352,9 @@ Jawaban umum Apple dan hukum:
   agama, KP:124 menyatakan agama tidak dikumpulkan, dan keanggotaan perkumpulan alumni adalah riwayat pendidikan,
   bukan pernyataan keyakinan (KP:368 hanya memberi tahu bahwa keanggotaan itu dapat menunjukkan latar pendidikan
   keagamaan).
-- Kebijakan privasi wajib memuat daftar di atas, pemroses, retensi D2, cara penghapusan, dan kontak. Jawaban K1 dan K2
-  konsisten dengan KP: kota domisili dideklarasikan sebagai Approximate location karena diketik sendiri, bukan lokasi
-  perangkat (KP:49; KP:124 hanya menyatakan lokasi perangkat tidak dikumpulkan), dan agama tidak dideklarasikan sesuai
-  KP:124.
+- Kebijakan privasi wajib memuat daftar di atas, pemroses, retensi D2, cara penghapusan, dan kontak. Jawaban K1 tidak
+  bertentangan dengan KP: kota domisili diketik sendiri oleh pengguna (KP:49), sedangkan yang dinyatakan tidak
+  dikumpulkan di KP:124 adalah lokasi perangkat. Jawaban K2 sesuai KP:124 yang menyatakan agama tidak dikumpulkan.
 - Build pertama yang memakai daftar profil berulang: revisi naskah legal dan Bantuan (`docs/legal/README.md`, Revisi
   profil berulang) terbit pada hari build itu dirilis ke pengguna (`rilis-dan-gerbang-go-live.md` bagian 5.5
   langkah 8). Baris profil di lembar ini tetap pada kategori formulir yang sama, jadi Data safety dan App Privacy tidak
@@ -392,8 +392,9 @@ User-generated content (Guideline 1.2):
 - Only verified members can chat. Every profile, message and group can be reported (Report) and any user can be
   blocked (Block). Messages with unsafe links or hidden control characters are rejected by the server.
   Community guidelines: https://kapdh.or.id/ketentuan-komunitas
-- Reports are reviewed by the association's moderators in a separate web portal; urgent reports (threats) within
-  24 hours, others within 2 business days. Moderators can remove messages and restrict accounts.
+- Reports are reviewed by the association's moderators in a separate web portal. Urgent reports are handled within
+  24 hours: threats, and sexual content, including any content involving children. Other reports are handled within
+  2 business days. Moderators can remove messages and restrict accounts.
 - Contact: bantuan@kapdh.or.id
 
 Account deletion (Guideline 5.1.1(v)):
@@ -416,7 +417,8 @@ foto profil (`kapdh-mobile/lib/features/account/avatar_image.dart:29-30`), foto 
 (`kapdh-mobile/lib/features/chat/chat_room_screen.dart:183-202`), dan foto grup
 (`kapdh-mobile/lib/features/chat/new_group_screen.dart:67`, `kapdh-mobile/lib/features/chat/chat_info_screen.dart:96`).
 Android tanpa izin `CAMERA` maupun `READ_MEDIA_*` (`kapdh-mobile/android/app/src/main/AndroidManifest.xml:3-6`; audit
-APK 25 Oktober 2026).
+APK 25 Oktober 2026). Kalimat laporan urgent 24 jam untuk konten seksual (K5) baru benar setelah gerbang K5 di bagian
+10 lulus; jangan kirim catatan ini sebelum itu.
 
 ## 6. Rencana cadangan iOS (D13, ADR-015)
 
@@ -462,8 +464,8 @@ hanya pemilik yang dapat mengirim ulang bukti (PRD 4.3); keputusan PP masih terb
 | [R6] 5.1.1 | Kebijakan privasi, izin dengan alasan jelas, data minimum | Bagian 4; teks izin kamera/galeri di `Info.plist` menyebut bukti transfer, foto profil, foto chat, dan foto grup (diperbarui 25 Oktober 2026, bagian 10) | |
 | Kebijakan privasi dapat dibaca tanpa JavaScript | URL kebijakan privasi (dan `ketentuan-komunitas` untuk Child safety standards, bagian 9.4) yang diisi di toko menampilkan naskah, bukan hanya kerangka | Naskah tayang kelima halaman informasi/legal ditanam statis saat build dari salinan `apps/web/src/published-pages/` (penjelasan dan pemeriksaan di bawah tabel). **Lulus di kode per 25 Oktober 2026** (gerbang build `assert-published-pages.mjs`, uji `published-pages.test.ts`, uji asap image `smoke-static.sh`); production baru lulus setelah image web dari perubahan ini dideploy, jadi ulangi `curl` di bawah pada URL final | |
 | [R6] 2.1 | Aplikasi lengkap dan backend aktif saat review | Production aktif (go-live langkah 4), akun demo bagian 3 | |
-| Google Play Data safety | Formulir lengkap dan konsisten dengan kebijakan privasi | Bagian 4; K1, K2, dan K8 diputuskan PP 25 Oktober 2026 (bagian 10). K8 baru terpenuhi setelah PR auto-init FCM digabung dan masuk build yang diajukan | |
-| Google Play App content | App access, Ads, Advertising ID, IARC, target audiens, Financial features, Health, Government, News, Child safety standards | Bagian 9; K3-K7 di bagian 10: K3, K5, dan K7 diputuskan PP 25 Oktober 2026 (K5 diterapkan lewat PR terpisah); nama titik kontak K4 dan prosedur K6 menunggu PP dan hanya menahan deklarasi Child safety standards. Child safety standards juga butuh URL `ketentuan-komunitas` yang terbaca tanpa JavaScript (baris "Kebijakan privasi dapat dibaca tanpa JavaScript") | |
+| Google Play Data safety | Formulir lengkap dan konsisten dengan kebijakan privasi | Bagian 4; K1, K2, dan K8 diputuskan PP 25 Oktober 2026 (bagian 10). Gerbang K8 (bagian 10): PR #41 digabung (`0d5967b`, sudah), perubahannya ada di AAB dan IPA yang diajukan, dan cek penerimaan K8 di bagian 4.1 lulus pada berkas itu. K8 lanjutan (izin notifikasi dicabut kemudian) **menunggu PP** | |
+| Google Play App content | App access, Ads, Advertising ID, IARC, target audiens, Financial features, Health, Government, News, Child safety standards | Bagian 9; K3-K7 di bagian 10: K3, K5, dan K7 diputuskan PP 25 Oktober 2026; nama titik kontak K4 dan prosedur K6 menunggu PP dan hanya menahan deklarasi Child safety standards. Gerbang K5 (bagian 10): PR #40 digabung (`e147d24`, sudah), image API-nya berjalan di production, revisi Ketentuan Layanan, Ketentuan Komunitas, dan Bantuan terbit dan salinan `published-pages` diperbarui lewat `pages:sync`, dan petunjuk baru `report_sheet.dart` ada di build yang diajukan. Child safety standards juga butuh URL `ketentuan-komunitas` yang terbaca tanpa JavaScript (baris "Kebijakan privasi dapat dibaca tanpa JavaScript") | |
 | Google Play target API | Target SDK sesuai persyaratan Play saat submit | Ditentukan Flutter 3.47 (`flutter.targetSdkVersion`); periksa saat build | |
 
 Kebijakan privasi tanpa JavaScript. Sampai `7ce1ed8`, `apps/web/src/pages/[slug].astro` hanya membangun kerangka: isi
@@ -568,7 +570,7 @@ dan C harus berstatus aktif, tidak tersuspensi, dan tampil di direktori (bagian 
 | Topik | Jawaban | Bukti dan alasan |
 | ----- | ------- | ---------------- |
 | Email kontak rating | `bantuan@kapdh.or.id` (K7, diputuskan PP 25 Oktober 2026, bagian 10); alamat ini menerima sertifikat IARC | Alamat organisasi yang dipantau, bukan email pribadi; kontak publik di KP:8 |
-| Kategori | Kategori jejaring sosial/komunikasi dengan konten buatan pengguna; bukan Game, bukan Reference/News, bukan hiburan | Inti aplikasi: keanggotaan, Jejaring, chat (`schema/community.ts:72-214`) |
+| Kategori | Kategori jejaring sosial/komunikasi dengan konten buatan pengguna; bukan Game, bukan Reference/News, bukan hiburan | Inti aplikasi: keanggotaan, Jejaring, chat (`schema/community.ts:75-217`) |
 | Kekerasan | Tidak | Konten resmi aplikasi (berita, event, KTA) dibuat pengurus (`schema/content.ts:49`, `schema/events.ts:25`). Ancaman dan kekerasan dalam UGC dilarang (KK:77-83) |
 | Rasa takut / horor | Tidak | Sama dengan baris kekerasan |
 | Seksualitas / ketelanjangan | Tidak | UGC seksual dan eksploitasi anak dilarang (KK:61-75) |
@@ -576,7 +578,7 @@ dan C harus berstatus aktif, tidak tersuspensi, dan tampil di direktori (bagian 
 | Zat terlarang (narkoba, alkohol, rokok) | Tidak | Promosi narkotika dalam UGC dilarang (KK:112) |
 | Perjudian (simulasi atau uang nyata) | Tidak | Promosi judi dilarang (KK:111); tidak ada mekanisme taruhan |
 | Diskriminasi / kebencian | Tidak | KK:55-59 |
-| Pengguna dapat berinteraksi atau bertukar konten (teks, gambar) | **Ya** | Chat langsung dan grup dengan teks dan gambar (`schema/community.ts:72-190`), hanya untuk anggota aktif (`mobile/app/redirect.dart:150-159`); Laporkan dan Blokir (9.4); moderasi (KK:197-212) |
+| Pengguna dapat berinteraksi atau bertukar konten (teks, gambar) | **Ya** | Chat langsung dan grup dengan teks dan gambar (`schema/community.ts:75-193`), hanya untuk anggota aktif (`mobile/app/redirect.dart:150-159`); Laporkan dan Blokir (9.4); moderasi (KK:197-212) |
 | Berbagi informasi pribadi pengguna dengan pengguna lain | **Ya** | Profil di Jejaring: nama, angkatan, foto, kota, profesi. Email, telepon, dan media sosial tampil hanya bila diaktifkan (KP:159-163; `schema/membership.ts:104-107`) |
 | Berbagi lokasi fisik pengguna saat ini | Tidak | Tanpa izin lokasi; EXIF/GPS dibuang; kota diketik (bagian 4.1, baris Location) |
 | Pembelian barang digital | Tidak | Tanpa IAP atau billing; iuran dan tiket untuk keanggotaan dan acara di dunia nyata dibayar di luar aplikasi (bagian 2) |
@@ -602,8 +604,8 @@ berubah (mis. pemutar video atau pembelian), kuesioner wajib diisi ulang.
 | Persyaratan | Jawaban | Bukti |
 | ----------- | ------- | ----- |
 | Standar terbit melawan eksploitasi dan pelecehan seksual anak (CSAE) | `https://kapdh.or.id/ketentuan-komunitas`, bagian "Perlindungan anak" | KK:67-75 (larangan materi eksploitasi seksual anak, grooming, sekstorsi, dan perdagangan anak; penghapusan; pembatasan akun tanpa peringatan; penerusan ke aparat penegak hukum), KK:126-128 (tanpa toleransi), KK:192 (lapor tanpa melampirkan tangkapan layar). Halaman menyebut nama aplikasi "KAPDH" (KK:1) |
-| Mekanisme masukan di dalam aplikasi | Ya: Laporkan pesan, anggota, dan grup tanpa keluar dari aplikasi | Pesan: `mobile/features/chat/chat_room_screen.dart:335-337`. Anggota: `mobile/features/network/member_profile_screen.dart:134` dan `mobile/features/chat/chat_info_screen.dart:440`. Grup: `chat_info_screen.dart:471`. Lembar laporan dan kategori: `mobile/features/network/report_sheet.dart:22-31`, `:135`. Status di Akun → Laporan saya (KK:187-188). Kanal tambahan bagi yang tidak dapat memakai fitur laporan: `bantuan@kapdh.or.id` (KK:190-192) |
-| Penanganan CSAM | Konten dihapus, akun dibatasi tanpa peringatan, bukti tersimpan otomatis | KK:74-75; tindakan moderator `removeMessage`, warn, dan suspend (`api/modules/moderation/admin-reports.service.ts:78`, `:849-873`, `:894-895`) |
+| Mekanisme masukan di dalam aplikasi | Ya: Laporkan pesan, anggota, dan grup tanpa keluar dari aplikasi | Pesan: `mobile/features/chat/chat_room_screen.dart:335-337`. Anggota: `mobile/features/network/member_profile_screen.dart:134` dan `mobile/features/chat/chat_info_screen.dart:440`. Grup: `chat_info_screen.dart:471`. Lembar laporan, kategori, dan petunjuknya: `mobile/features/network/report_sheet.dart:22-31`, `:40-46`, `:139`. Status di Akun → Laporan saya (KK:187-188). Kanal tambahan bagi yang tidak dapat memakai fitur laporan: `bantuan@kapdh.or.id` (KK:190-192) |
+| Penanganan CSAM | Konten dihapus, akun dibatasi tanpa peringatan, bukti tersimpan otomatis. Laporan "Konten seksual", termasuk yang melibatkan anak, berprioritas urgent dengan target 24 jam (K5) | Prioritas: `api/modules/moderation/due-at.ts:21-25`, KK:181, KK:209; berlaku setelah gerbang K5 di bagian 10. KK:74-75; tindakan moderator `removeMessage`, warn, dan suspend (`api/modules/moderation/admin-reports.service.ts:78`, `:849-873`, `:894-895`) |
 | Kepatuhan pada hukum keselamatan anak | Pengurus meneruskan informasi ke aparat penegak hukum sesuai peraturan | KK:74; prosedur rinci **K6: menunggu PP** bersama penasihat hukum (bagian 10) |
 | Titik kontak keselamatan anak | Email: `bantuan@kapdh.or.id` (K4, disetujui PP 25 Oktober 2026); nama: **menunggu PP** (K4). Telepon bila diminta | Kontak publik yang ada: `bantuan@kapdh.or.id` (KP:8) |
 
@@ -611,6 +613,7 @@ Prasyarat sebelum deklarasi dikirim:
 
 - Nama titik kontak (K4) dan prosedur penerusan CSAM (K6) sudah ditetapkan PP (bagian 10). Keduanya hanya menahan
   deklarasi Child safety standards; deklarasi App content lain dapat diisi.
+- Gerbang K5 (bagian 10) lulus, karena baris Penanganan CSAM menyebut target 24 jam untuk laporan Konten seksual.
 - URL `ketentuan-komunitas` harus terbaca tanpa JavaScript. Google mensyaratkan halaman standar dapat dibuka publik
   tanpa galat. Naskah tayang (Ketentuan Komunitas v2, salinan
   `kapdh-platform/apps/web/src/published-pages/ketentuan-komunitas.json`) sudah dirender statis di kode per
@@ -619,17 +622,21 @@ Prasyarat sebelum deklarasi dikirim:
 - Yang diisi ke Play adalah URL naskah tayang. `docs/legal/ketentuan-komunitas.html` masih memuat penanda
   `[tanggal terbit]` (KK:2) untuk revisi yang belum terbit; penanda itu tidak tampil di situs.
 
-Celah prioritas laporan (**Opsi A diputuskan PP 25 Oktober 2026 (K5)**, diterapkan lewat PR terpisah, branch
-`dev/prioritas-laporan-seksual-urgent`; dokumen ini tidak mengubah kode). Sampai PR itu digabung, hanya kategori
-`violence_threat` yang urgent dengan target 24 jam. Kategori lain, termasuk "Konten seksual", berprioritas normal
-dengan target 2 hari kerja (`api/modules/moderation/due-at.ts:19-22`, dipakai
-`api/modules/moderation/reports.service.ts:195`). KK:182 mengarahkan konten yang membahayakan anak ke kategori
-ancaman (urgent), tetapi pelapor materi eksploitasi anak kemungkinan besar memilih "Konten seksual"
-(`mobile/features/network/report_sheet.dart:26`). Pilihan K5:
+Prioritas laporan konten seksual (K5: **Opsi A diputuskan PP 25 Oktober 2026, diterapkan PR #40**, digabung
+`e147d24`). Sebelum PR #40, hanya kategori `violence_threat` yang urgent dengan target 24 jam; "Konten seksual"
+berprioritas normal dengan target 2 hari kerja, padahal pelapor materi eksploitasi anak kemungkinan besar memilih
+kategori itu (`mobile/features/network/report_sheet.dart:26`). Sejak PR #40, `priorityFor` mengembalikan `urgent`
+untuk `violence_threat` dan `sexual` (`api/modules/moderation/due-at.ts:21-25`, dipakai
+`api/modules/moderation/reports.service.ts:196`). Petunjuk kategori "Konten seksual" di lembar laporan menyebut konten
+yang melibatkan anak dan target 24 jam (`mobile/features/network/report_sheet.dart:40-46`), dan naskah revisi memuat
+kategori serta target yang sama (KK:181, KK:209). Bahaya non-seksual bagi anak tetap masuk kategori ancaman (KK:182).
+Kontrak enum tidak berubah, dan PRD 3.12 (v3.2) sengaja tidak diubah karena digantikan keputusan K5. Prioritas
+dihitung saat laporan dibuat, jadi laporan yang masuk baru mendapat target 24 jam setelah image API dari PR #40
+berjalan di production; laporan Konten seksual yang dibuat sebelumnya tidak dihitung ulang (`docs/legal/README.md`,
+Syarat sebelum terbit butir 8). Gerbang K5 sebelum submit ada di bagian 10. Pilihan yang dipertimbangkan:
 
-- **Opsi A (dipilih PP untuk R1.0):** `priorityFor` juga mengembalikan `urgent` untuk `sexual`. Perbarui
-  `due-at.test.ts`, petunjuk kategori di `report_sheet.dart:39`, KK:182 dan KK:206-212, aturan domain kontrak
-  admin-moderation, dan PRD 3.12 (v3.2). Tidak menambah kategori, jadi kontrak enum tetap.
+- **Opsi A (dipilih PP untuk R1.0, diterapkan PR #40):** `priorityFor` juga mengembalikan `urgent` untuk `sexual`.
+  Tidak menambah kategori, jadi kontrak enum tetap.
 - **Opsi B:** kategori baru khusus keselamatan anak (mis. `child_safety`, urgent) di kontrak
   `ModerationReportCategory`, aplikasi, web admin, dan KK. Lebih jelas bagi pelapor, tetapi mengubah kontrak.
 
@@ -638,8 +645,8 @@ ancaman (urgent), tetapi pelapor materi eksploitasi anak kemungkinan besar memil
 PP menyetujui usulan K1-K8 pada 25 Oktober 2026. Kolom Keputusan PP, Tanggal, dan Alasan mencatat hasilnya; salin
 tabel ini ke paket bukti. Dengan keputusan ini, lembar Data safety (bagian 4) dan deklarasi App content (bagian 9) dapat
 diisi tanpa pertanyaan terbuka, kecuali Child safety standards (9.4) yang masih menunggu nama titik kontak (K4) dan
-prosedur K6. K5 dan K8 diterapkan lewat PR terpisah; sebelum submit, pastikan keduanya sudah digabung dan masuk build
-yang diajukan.
+prosedur K6. K5 diterapkan PR #40 dan K8 diterapkan PR #41, keduanya sudah digabung; sebelum submit, gerbang K5 dan
+K8 di bawah tabel harus lulus. Keputusan yang masih **menunggu PP**: nama titik kontak K4, prosedur K6, dan K8 lanjutan.
 
 | No | Pertanyaan | Pilihan | Usulan | Keputusan PP | Tanggal | Alasan | Rujukan |
 | -- | ---------- | ------- | ------ | ------------ | ------- | ------ | ------- |
@@ -647,10 +654,25 @@ yang diajukan.
 | K2 | Kategori Political or religious beliefs (Google) dan Sensitive Info (Apple) dideklarasikan? | (a) Tidak, karena tidak ada field agama; (b) ya, karena keanggotaan perkumpulan alumni pesantren dapat menunjukkan latar keagamaan | (a), dengan alasan dicatat: KP:124 menyatakan agama tidak dikumpulkan, dan deklarasi "ya" bertentangan dengan naskah itu. Bila PP/hukum memilih (b), KP:124 dan KP:368 harus direvisi lebih dulu | **(a)** Tidak dideklarasikan di Google maupun Apple | 25 Oktober 2026 | Tidak ada field agama; KP:124 menyatakan agama tidak dikumpulkan; keanggotaan alumni adalah riwayat pendidikan, bukan pernyataan keyakinan. KP:124 dan KP:368 tidak perlu direvisi | Bagian 4.1, 4.3 |
 | K3 | Deklarasi News apps | (a) Bukan aplikasi berita; (b) aplikasi berita | (a): berita adalah kabar internal organisasi untuk anggota aktif, bukan penerbitan berita umum | **(a)** Bukan aplikasi berita | 25 Oktober 2026 | Berita adalah kabar internal organisasi untuk anggota aktif, bukan penerbitan berita umum | Bagian 9 |
 | K4 | Titik kontak keselamatan anak (Child safety standards) | Nama orang yang mampu menjelaskan praktik pencegahan CSAM, beserta email (dan telepon bila diminta) | Ketua tim moderasi atau pengurus yang ditunjuk; email boleh `bantuan@kapdh.or.id` bila kotak itu dipantau setiap hari | Email `bantuan@kapdh.or.id` disetujui. Nama orang: **menunggu PP** | 25 Oktober 2026 (email) | Kotak organisasi yang sudah menjadi kontak publik (KP:8), dengan syarat usulan: kotak itu dipantau setiap hari. Nama ditunjuk PP sesuai usulan sebelum deklarasi Child safety standards dikirim | Bagian 9.4 |
-| K5 | Prioritas laporan konten seksual dan eksploitasi anak | Opsi A atau B di 9.4, atau tetap normal | Opsi A sebelum submit (perubahan kode kecil di PR terpisah) | **Opsi A** disetujui; implementasi lewat PR terpisah (branch `dev/prioritas-laporan-seksual-urgent`) | 25 Oktober 2026 | Pelapor materi eksploitasi anak kemungkinan besar memilih "Konten seksual"; Opsi A menjadikannya urgent tanpa mengubah kontrak enum | Bagian 9.4; `api/modules/moderation/due-at.ts:19-22` |
+| K5 | Prioritas laporan konten seksual dan eksploitasi anak | Opsi A atau B di 9.4, atau tetap normal | Opsi A sebelum submit (perubahan kode kecil di PR terpisah) | **Opsi A** disetujui; diterapkan PR #40 (digabung 25 Oktober 2026, `e147d24`) | 25 Oktober 2026 | Pelapor materi eksploitasi anak kemungkinan besar memilih "Konten seksual"; Opsi A menjadikannya urgent tanpa mengubah kontrak enum. Berlaku setelah gerbang K5 di bawah tabel lulus | Bagian 9.4; `api/modules/moderation/due-at.ts:21-25` |
 | K6 | Prosedur penerusan CSAM ke aparat penegak hukum dan penanganan bukti | Siapa yang meneruskan, ke kanal mana, dalam berapa lama; siapa yang boleh membuka salinan bukti, dan kapan salinan itu dihapus setelah diteruskan (bukti laporan tetap disimpan, KP:240) | Ditetapkan PP bersama penasihat hukum sebelum deklarasi dikirim | **Menunggu PP** bersama penasihat hukum | – | Usulan disetujui 25 Oktober 2026: prosedur ditetapkan PP bersama penasihat hukum sebelum deklarasi Child safety standards dikirim | KK:74-75; KP:240 |
 | K7 | Email kontak kuesioner IARC | Alamat organisasi | Alamat organisasi yang dipantau, bukan email pribadi | `bantuan@kapdh.or.id` | 25 Oktober 2026 | Alamat organisasi yang dipantau, bukan email pribadi; sama dengan kontak publik di KP:8 | Bagian 9.2 |
-| K8 | SDK FCM dapat membuat token saat aplikasi dibuka (auto-init aktif), padahal KP:106 menyebut token dibuat setelah login | (a) Matikan auto-init FCM (perubahan kode); (b) revisi kalimat KP:106 | Putuskan setelah DEV memverifikasi perilaku SDK pada build rilis; Data safety tetap mendeklarasikan Device or other IDs sebagai Wajib | **(a)** Matikan auto-init FCM sampai login; implementasi lewat PR terpisah (branch `dev/fcm-auto-init-setelah-login`) | 25 Oktober 2026 | Setelah PR itu digabung, catatan K8 di bagian 4.1 dan kalimat KP:106 konsisten tanpa revisi KP. Device or other IDs tetap Wajib | Bagian 4.1 (catatan Device or other IDs) |
+| K8 | SDK FCM dapat membuat token saat aplikasi dibuka (auto-init aktif), padahal KP:106 menyebut token dibuat setelah login | (a) Matikan auto-init FCM (perubahan kode); (b) revisi kalimat KP:106 | Putuskan setelah DEV memverifikasi perilaku SDK pada build rilis; Data safety tetap mendeklarasikan Device or other IDs sebagai Wajib | **(a)** Matikan auto-init FCM sampai login; diterapkan PR #41 (digabung 25 Oktober 2026, `0d5967b`) | 25 Oktober 2026 | SDK tidak lagi membuat token FCM dan Installation ID sebelum login. Catatan K8 di bagian 4.1 dan kalimat KP:106 konsisten tanpa revisi KP hanya setelah cek penerimaan K8 di bagian 4.1 lulus pada build yang diajukan, dan tetap bergantung pada K8 lanjutan. Device or other IDs tetap Wajib | Bagian 4.1 (catatan Device or other IDs, Cek penerimaan K8) |
+| K8 lanjutan | Bila izin notifikasi dicabut kemudian di pengaturan sistem, token yang sudah terdaftar tidak dihapus (keterbatasan yang sudah ada sebelum K8, bagian 4.1) | (a) Hapus token, cabut pendaftarannya di server, dan matikan auto-init setiap kali izin terbaca ditolak saat login atau aplikasi dibuka (perubahan kode, PR terpisah); (b) persempit kalimat KP:106 agar tidak menjanjikan penghapusan saat izin dicabut kemudian | – | **Menunggu PP** | – | Dicatat PR #41. Tidak mengubah jawaban Data safety (Device or other IDs tetap Wajib), tetapi kesimpulan bahwa KP:106 konsisten tanpa revisi bergantung pada keputusan ini | Bagian 4.1 (Keterbatasan yang sudah ada sebelum K8); KP:106; `mobile/core/push/push_service.dart:197` |
+
+Gerbang sebelum submit untuk K5 dan K8. Keduanya sudah digabung ke `main`, tetapi baru terpenuhi bila semua syarat di
+bawah benar pada build yang diajukan dan di production saat review:
+
+- **K5** (Child safety standards di 9.4 dan templat catatan reviewer bagian 5): PR #40 digabung (`e147d24`, sudah);
+  image API dari commit itu atau sesudahnya berjalan di production; revisi Ketentuan Layanan, Ketentuan Komunitas, dan
+  Bantuan yang memuat target 24 jam untuk Konten seksual sudah terbit, lalu salinan
+  `kapdh-platform/apps/web/src/published-pages/` diperbarui dengan `pnpm --filter @kapdh/web pages:sync` dan image web
+  dideploy ulang (bagian 7); dan build yang diajukan memuat petunjuk baru di
+  `mobile/features/network/report_sheet.dart:41-42`. Urutannya mengikuti `docs/legal/README.md` (Syarat sebelum terbit
+  butir 8): deploy image API K5, distribusikan build mobile, lalu terbitkan naskah.
+- **K8** (Data safety, Device or other IDs): PR #41 digabung (`0d5967b`, sudah); AAB dan IPA yang diajukan dibangun
+  dari commit yang memuatnya; dan ketiga cek penerimaan K8 di bagian 4.1 lulus pada berkas yang persis akan dikirim.
+  Simpan bukti server dan perangkat setiap cek di paket bukti.
 
 Tindak lanjut DEV di luar dokumen ini:
 
@@ -660,6 +682,8 @@ Tindak lanjut DEV di luar dokumen ini:
   `mobile/features/chat/chat_room_screen.dart:183-202`). Galeri dipakai untuk keempatnya, termasuk foto grup
   (`mobile/features/chat/new_group_screen.dart:67`, `mobile/features/chat/chat_info_screen.dart:96`). Bila pemakaian
   kamera atau galeri berubah, perbarui teks ini dan kalimat izin di templat bagian 5.
-- Diputuskan PP 25 Oktober 2026, dikerjakan lewat PR terpisah: laporan "Konten seksual" menjadi urgent (K5, Opsi A;
-  branch `dev/prioritas-laporan-seksual-urgent`) dan auto-init FCM dimatikan sampai login (K8 = a; branch
-  `dev/fcm-auto-init-setelah-login`). Setelah keduanya digabung, tandai selesai di sini beserta tanggalnya.
+- Selesai 25 Oktober 2026: laporan "Konten seksual" menjadi urgent (K5, Opsi A; PR #40, `e147d24`) dan auto-init FCM
+  dimatikan sampai login (K8 = a; PR #41, `0d5967b`). Yang masih terbuka mengikuti gerbang di atas: deploy image API
+  K5 ke production, penerbitan revisi naskah beserta `pages:sync` dan deploy ulang image web, build yang diajukan
+  memuat kedua perubahan, dan cek penerimaan K8 pada AAB dan IPA yang diajukan. Bila PP memilih opsi (a) untuk K8
+  lanjutan, perubahan kodenya dikerjakan lewat PR terpisah.
