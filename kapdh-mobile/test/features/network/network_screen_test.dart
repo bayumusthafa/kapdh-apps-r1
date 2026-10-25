@@ -513,6 +513,43 @@ void main() {
       expect(find.byTooltip('Jejaring, khusus anggota aktif'), findsOneWidget);
     });
 
+    testWidgets('F-11: titik belum dibaca di tab Pesan dan Pesan Grup duduk di kanan teks, tidak menimpa huruf', (
+      tester,
+    ) async {
+      await _openNetwork(
+        tester,
+        routes: {
+          '/directory': (_) => FakeResponse.json(200, directoryPageJson(_members)),
+          '/chat/rooms': (options) => FakeResponse.json(
+            200,
+            options.queryParameters['kind'] == 'group'
+                ? roomPageJson(const [], pendingInvitations: 1)
+                : roomPageJson([
+                    roomSummaryJson(
+                      id: 'room-1',
+                      unreadCount: 1,
+                      lastMessage: previewJson(id: 'm-1', preview: 'Assalamualaikum'),
+                      lastMessageAt: testNow,
+                    ),
+                  ]),
+          ),
+        },
+      );
+      for (final label in ['Pesan', 'Pesan Grup']) {
+        final text = tester.getRect(find.text(label));
+        final dot = tester.getRect(
+          find.descendant(
+            of: find.ancestor(of: find.text(label), matching: find.byType(Badge)),
+            matching: find.byType(Container),
+          ),
+        );
+        expect(dot.size, const Size(8, 8), reason: label);
+        expect(dot.left, greaterThan(text.right + 1), reason: '$label: titik di kanan huruf terakhir, berjarak');
+        expect(dot.top, greaterThanOrEqualTo(text.top), reason: label);
+        expect(dot.bottom, lessThanOrEqualTo(text.center.dy), reason: '$label: titik di bagian atas teks');
+      }
+    });
+
     testWidgets('kosong: arahan memulai percakapan dari profil', (tester) async {
       await _openNetwork(tester, routes: {'/directory': (_) => FakeResponse.json(200, directoryPageJson(_members))});
       await tester.tap(find.text('Pesan'));

@@ -109,12 +109,14 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen> with SingleTicker
         if (invitations > 0) '$invitations undangan grup',
       ].join(', '),
       excludeSemantics: true,
+      // Badge kecil tanpa label mengabaikan offset dan duduk di pojok kanan atas anaknya. Ruang 10 (titik 8 + jarak 2)
+      // menaruh titik di kanan teks agar tidak menimpa huruf terakhir; ruang tetap ada saat titik tersembunyi supaya
+      // lebar tab tidak bergeser ketika jumlah belum dibaca berubah.
       child: Badge(
         isLabelVisible: unread > 0 || invitations > 0,
         smallSize: 8,
-        offset: const Offset(10, -2),
         backgroundColor: context.kc.primary,
-        child: Text(label),
+        child: Padding(padding: const EdgeInsetsDirectional.only(end: 10), child: Text(label)),
       ),
     ),
   );
