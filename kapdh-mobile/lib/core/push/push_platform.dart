@@ -55,6 +55,10 @@ abstract interface class PushPlatform {
 
   Future<PushPermission> requestPermission();
 
+  /// Membaca izin notifikasi saat ini tanpa memunculkan dialog OS, untuk mendeteksi izin yang dicabut atau diberikan
+  /// lagi di pengaturan sistem setelah login (K8 lanjutan).
+  Future<PushPermission> getPermission();
+
   Future<String?> getToken();
 
   Stream<String> get onTokenRefresh;
@@ -67,6 +71,11 @@ abstract interface class PushPlatform {
   /// `FirebaseMessagingAutoInitEnabled` di Info.plist), sehingga tidak ada token sebelum login. Nilai yang diset
   /// tersimpan lintas peluncuran.
   Future<void> setAutoInitEnabled(bool enabled);
+
+  /// Auto-init FCM sedang menyala: nilai terakhir [setAutoInitEnabled], atau bawaan AndroidManifest.xml/Info.plist.
+  /// [PushService] baru mematikannya setelah token terhapus, jadi auto-init mati berarti tidak ada token untuk dicabut
+  /// atau dihapus, dan getToken tidak dipanggil (K8 lanjutan).
+  bool get isAutoInitEnabled;
 
   /// Pesan saat aplikasi di latar depan.
   Stream<PushMessage> get onForegroundMessage;
@@ -155,15 +164,19 @@ class FirebasePushPlatform implements PushPlatform {
   }
 
   @override
-  Future<PushPermission> requestPermission() async {
-    final settings = await _messaging.requestPermission();
-    return switch (settings.authorizationStatus) {
-      AuthorizationStatus.authorized => PushPermission.granted,
-      AuthorizationStatus.provisional => PushPermission.provisional,
-      AuthorizationStatus.denied || AuthorizationStatus.deniedPermanently => PushPermission.denied,
-      AuthorizationStatus.notDetermined => PushPermission.notDetermined,
-    };
-  }
+  Future<PushPermission> requestPermission() async => _permissionOf(await _messaging.requestPermission());
+
+  /// getNotificationSettings tidak memunculkan dialog: Android membaca izin POST_NOTIFICATIONS (13+) atau status
+  /// notifikasi aplikasi (12 ke bawah), iOS membaca pengaturan notifikasi aplikasi.
+  @override
+  Future<PushPermission> getPermission() async => _permissionOf(await _messaging.getNotificationSettings());
+
+  static PushPermission _permissionOf(NotificationSettings settings) => switch (settings.authorizationStatus) {
+    AuthorizationStatus.authorized => PushPermission.granted,
+    AuthorizationStatus.provisional => PushPermission.provisional,
+    AuthorizationStatus.denied || AuthorizationStatus.deniedPermanently => PushPermission.denied,
+    AuthorizationStatus.notDetermined => PushPermission.notDetermined,
+  };
 
   @override
   Future<String?> getToken() => _messaging.getToken();
@@ -177,9 +190,7 @@ class FirebasePushPlatform implements PushPlatform {
     // deleteToken selalu gagal `apns-token-not-set`. Token FCM hanya diminta setelah auto-init dinyalakan, dan
     // PushService baru mematikannya setelah token terhapus; jadi auto-init mati tanpa token APNs berarti tidak ada
     // token untuk dihapus (mis. izin ditolak sejak login).
-    if (defaultTargetPlatform == TargetPlatform.iOS &&
-        !_messaging.isAutoInitEnabled &&
-        await _messaging.getAPNSToken() == null) {
+    if (defaultTargetPlatform == TargetPlatform.iOS && !isAutoInitEnabled && await _messaging.getAPNSToken() == null) {
       return;
     }
     await _messaging.deleteToken();
@@ -187,6 +198,11 @@ class FirebasePushPlatform implements PushPlatform {
 
   @override
   Future<void> setAutoInitEnabled(bool enabled) => _messaging.setAutoInitEnabled(enabled);
+
+  /// Dibaca dari plugin tanpa panggilan kanal: nilai awal dari konstanta plugin saat Firebase diinisialisasi, lalu
+  /// diperbarui setiap [setAutoInitEnabled].
+  @override
+  bool get isAutoInitEnabled => _messaging.isAutoInitEnabled;
 
   static PushMessage _fromRemote(RemoteMessage message) => PushMessage.fromData(
     title: message.notification?.title,

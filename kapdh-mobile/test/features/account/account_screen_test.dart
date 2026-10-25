@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kapdh_mobile/app/app_licenses.dart';
 import 'package:kapdh_mobile/app/app_services.dart';
 import 'package:kapdh_mobile/core/api/api_providers.dart';
+import 'package:kapdh_mobile/core/push/push_platform.dart';
 import 'package:kapdh_mobile/core/push/push_service.dart';
 import 'package:kapdh_mobile/core/realtime/realtime_client.dart';
 import 'package:kapdh_mobile/core/realtime/realtime_socket.dart';
@@ -32,6 +34,12 @@ RealtimeSocket _silentSocket({
   required RealtimeAuthProvider auth,
   required RealtimeSocketListener listener,
 }) => _SilentSocket();
+
+/// Mengirim perubahan siklus hidup aplikasi seperti platform (`flutter/lifecycle`); transisi antara dibuat binding.
+Future<void> _lifecycle(WidgetTester tester, AppLifecycleState state) async {
+  final message = const StringCodec().encodeMessage(state.toString());
+  await tester.binding.defaultBinaryMessenger.handlePlatformMessage('flutter/lifecycle', message, (_) {});
+}
 
 void main() {
   Future<AppHarness> openAccount(
@@ -250,6 +258,60 @@ void main() {
     expect(await PushRegistrationStore(store).read(), isNull);
     // SDK tidak membuat token baru sendiri sampai login berikutnya (K8).
     expect(platform.autoInitEnabled, isFalse);
+  });
+
+  testWidgets('K8 lanjutan, AC F13-5: izin notifikasi dicabut di pengaturan lalu aplikasi kembali ke latar depan '
+      'mencabut token di server dan perangkat; izin diberikan lagi mendaftarkan token baru', (tester) async {
+    final platform = FakePushPlatform();
+    final store = MemorySecureStore();
+    final app = await pumpApp(
+      tester,
+      tokens: savedTokens(),
+      store: store,
+      overrides: [
+        pushPlatformProvider.overrideWithValue(platform),
+        connectivityOnlineProvider.overrideWith((ref) => const Stream<bool>.empty()),
+        realtimeClientProvider.overrideWith(
+          (ref) => RealtimeClient(
+            config: ref.watch(apiConfigProvider),
+            coordinator: ref.watch(refreshCoordinatorProvider),
+            socketFactory: _silentSocket,
+          ),
+        ),
+      ],
+      beforeStart: (container) async => container.listen(sessionServicesProvider, (_, _) {}),
+      handler: apiRoutes({
+        '/me': (_) => FakeResponse.json(200, meFullJson()),
+        '/notifications/unread-count': (_) => FakeResponse.json(200, {'unread_count': 0}),
+        '/devices': (_) => FakeResponse.json(204),
+        '/devices/unregister': (_) => FakeResponse.json(204),
+      }),
+    );
+    await drainPushQueue(tester);
+    expect(countRequests(app.adapter, '/devices', method: 'PUT'), 1);
+
+    // Izin dicabut di pengaturan sistem selama aplikasi di latar belakang.
+    await _lifecycle(tester, AppLifecycleState.paused);
+    platform.permission = PushPermission.denied;
+    await _lifecycle(tester, AppLifecycleState.resumed);
+    await drainPushQueue(tester);
+    expect(platform.permissionRequests, 1, reason: 'izin dibaca tanpa dialog');
+    expect(countRequests(app.adapter, '/devices/unregister', method: 'POST'), 1);
+    expectLastBody(app.adapter, '/devices/unregister', {'token': 'fcm-1'});
+    expect(platform.deletes, 1);
+    expect(platform.autoInitEnabled, isFalse);
+    expect(await PushRegistrationStore(store).read(), isNull);
+    expect(app.container.read(sessionProvider).phase, SessionPhase.authenticated, reason: 'sesi tidak terganggu');
+
+    // Izin diberikan lagi: token baru didaftarkan saat aplikasi kembali ke latar depan.
+    await _lifecycle(tester, AppLifecycleState.paused);
+    platform.permission = PushPermission.granted;
+    await _lifecycle(tester, AppLifecycleState.resumed);
+    await drainPushQueue(tester);
+    expect(countRequests(app.adapter, '/devices', method: 'PUT'), 2);
+    expectLastBody(app.adapter, '/devices', containsPair('token', 'fcm-2'), method: 'PUT');
+    expect(platform.autoInitEnabled, isTrue);
+    expect(countRequests(app.adapter, '/devices/unregister', method: 'POST'), 1);
   });
 
   testWidgets('N-11: teks 200 % tanpa meluap', (tester) async {

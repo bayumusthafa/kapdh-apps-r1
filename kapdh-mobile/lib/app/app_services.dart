@@ -23,6 +23,7 @@ final pushServiceProvider = Provider<PushService>((ref) {
   final service = PushService(
     platform: ref.watch(pushPlatformProvider),
     registerDevice: (request) => ref.read(kapdhApiProvider).notifications.registerDevice(request),
+    unregisterDevice: (request) => ref.read(kapdhApiProvider).notifications.unregisterDevice(request),
     info: ref.watch(appInfoProvider),
     openLocation: (location) => ref.read(routerProvider).go(location.toString()),
     store: ref.watch(secureStoreProvider),
@@ -106,7 +107,8 @@ final sessionServicesProvider = Provider<void>((ref) {
   // gagal karena offline. Koneksi hanya petunjuk; request yang gagal tetap sumber kebenaran.
   ref.listen<AsyncValue<bool>>(connectivityOnlineProvider, (previous, next) {
     if (next.value != true || previous?.value == true) return;
-    // Penghapusan token push yang tertunda karena logout saat offline (AC F13-5).
+    // Penghapusan token push yang tertunda karena logout saat offline (AC F13-5), dan pencabutan token yang gagal saat
+    // izin notifikasi dicabut (K8 lanjutan).
     unawaited(push.retryPendingUnregister());
     final session = ref.read(sessionProvider);
     final controller = ref.read(sessionProvider.notifier);

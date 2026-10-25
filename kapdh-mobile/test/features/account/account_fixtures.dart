@@ -299,6 +299,10 @@ class FakePushPlatform implements PushPlatform {
     return permission;
   }
 
+  /// Izin di pengaturan sistem dibaca tanpa dialog (K8 lanjutan).
+  @override
+  Future<PushPermission> getPermission() async => permission;
+
   @override
   Future<String?> getToken() async => token;
 
@@ -313,6 +317,9 @@ class FakePushPlatform implements PushPlatform {
 
   @override
   Future<void> setAutoInitEnabled(bool enabled) async => autoInitEnabled = enabled;
+
+  @override
+  bool get isAutoInitEnabled => autoInitEnabled;
 
   @override
   Stream<PushMessage> get onForegroundMessage => foreground.stream;

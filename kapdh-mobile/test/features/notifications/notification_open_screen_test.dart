@@ -33,6 +33,7 @@ void main() {
       final service = PushService(
         platform: platform,
         registerDevice: (_) async {},
+        unregisterDevice: (_) async {},
         info: testAppInfo,
         openLocation: opened.add,
         store: MemorySecureStore(),

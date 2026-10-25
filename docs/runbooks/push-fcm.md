@@ -505,17 +505,32 @@ dan, bila memungkinkan, lalu lintas jaringan lewat `rvictl`.
    token.
 3. Hapus KAPDH lalu pasang ulang dari build TestFlight yang sama (iOS hanya menampilkan dialog izin sekali per
    instalasi), lalu login dengan izin ditolak ("Jangan Izinkan"): tidak ada token. Tidak ada baris `device_tokens` untuk
-   akun uji, dan log `push: token APNs belum tersedia ...` tidak muncul karena `getToken` tidak dipanggil.
+   akun uji, dan log `push: token APNs belum tersedia ...` tidak muncul karena `getToken` tidak dipanggil. Selama
+   auto-init mati `getToken` juga tidak dipanggil untuk mencabut token, termasuk bila catatan pendaftaran dari
+   pemasangan sebelumnya masih ada di Keychain: token yang tercatat dicabut di server tanpa meminta token.
 4. Berganti akun setelah izin ditolak: keluar dari akun uji cek 3, hapus KAPDH, lalu pasang ulang dari build TestFlight
    yang sama, masuk dengan akun A lalu tolak izin, keluar, nyalakan notifikasi KAPDH di Pengaturan iOS → Notifikasi →
    KAPDH, lalu masuk dengan akun B. Lulus bila dalam sekitar 1 menit muncul baris aktif `ios` untuk akun B, dan tidak
    ada baris untuk akun A. Cek ini membuktikan logout akun A tidak tertahan menunggu token APNs: selama auto-init mati
    dan token APNs belum ada, `deleteToken` tidak melakukan apa pun
-   (`kapdh-mobile/lib/core/push/push_platform.dart:175-186`, diuji di `kapdh-mobile/test/core/push_platform_test.dart`).
+   (`kapdh-mobile/lib/core/push/push_platform.dart:188-197`, diuji di `kapdh-mobile/test/core/push_platform_test.dart`).
 5. Keluar dari akun B, hapus KAPDH, lalu pasang ulang dari build TestFlight yang sama, kemudian login dengan izin
    diberikan: log `push: token APNs belum tersedia, dicoba lagi dalam 2 detik` pada percobaan pertama wajar. Lulus bila
    baris aktif `ios` untuk akun uji muncul dalam sekitar 30 detik, atau segera setelah token APNs tiba lewat pembaruan
    token.
+6. Izin dicabut kemudian (K8 lanjutan, cek 4 di `app-store-submission.md` bagian 4.1): lanjutkan dari cek 5 tanpa
+   keluar. Buka Pengaturan iOS → Notifikasi → KAPDH, matikan Izinkan Notifikasi, lalu kembali ke KAPDH dan biarkan
+   terbuka 2 menit. Lulus bila baris `ios` akun uji sudah dicabut (`revoked_at` terisi), tidak ada baris aktif untuk
+   akun itu, dan sesi tetap masuk. Tepat setelah kembali ke KAPDH, satu penghapusan token memang diharapkan: satu
+   request ke `fcmtoken.googleapis.com` untuk menghapus token, bukan meminta token baru. Setelah penghapusan itu tidak
+   ada lagi kontak ke `fcmtoken.googleapis.com` maupun `firebaseinstallations.googleapis.com`, dan konsol tidak
+   menampilkan log pengambilan token, sampai Izinkan Notifikasi dinyalakan lagi. Saat kembali ke latar depan aplikasi
+   membaca izin tanpa dialog (`kapdh-mobile/lib/app/app.dart:58`), mencabut token yang tercatat lewat
+   `POST /devices/unregister` tanpa meminta token, lalu menghapusnya di perangkat. Bila log
+   `push: token APNs belum tersedia, dicoba lagi dalam 2 detik` muncul sesaat setelah kembali, token sudah dicabut di
+   server dan penghapusan di perangkat diulang berjeda. Setelah bukti diambil, nyalakan lagi Izinkan Notifikasi lalu
+   kembali ke KAPDH: harus muncul baris aktif `ios` **baru**, bukan baris lama yang aktif kembali, sebagai bukti token
+   lama sudah dihapus di perangkat.
 
 **Urutan aman:** unggah `.p8` **lebih dulu** (langkah 1-2) ke proyek Firebase yang dipakai build itu
 (`FIREBASE_PROJECT_ID` build): `kapdh-prod` untuk build production, proyek Firebase staging untuk build staging yang

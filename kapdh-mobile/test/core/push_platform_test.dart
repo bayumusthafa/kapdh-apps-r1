@@ -69,6 +69,11 @@ void main() {
 
   /// Token APNs yang dilaporkan plugin iOS; null = belum diterima perangkat.
   String? apnsToken;
+
+  /// Kode `authorizationStatus` dari plugin native (`convertToAuthorizationStatus` di
+  /// firebase_messaging_platform_interface): -1 notDetermined, 0 denied, 1 authorized, 2 provisional, 3
+  /// deniedPermanently.
+  var authorizationStatus = 1;
   late FirebasePushPlatform platform;
 
   setUpAll(() async {
@@ -81,11 +86,14 @@ void main() {
   setUp(() {
     calls.clear();
     apnsToken = null;
+    authorizationStatus = 1;
     messenger.setMockMethodCallHandler(_messagingChannel, (call) async {
       calls.add(call.method);
       return switch (call.method) {
         'Messaging#setAutoInitEnabled' => {'isAutoInitEnabled': (call.arguments as Map<Object?, Object?>)['enabled']},
         'Messaging#getAPNSToken' => {'token': apnsToken},
+        'Messaging#getNotificationSettings' ||
+        'Messaging#requestPermission' => {'authorizationStatus': authorizationStatus},
         _ => null,
       };
     });
@@ -140,10 +148,42 @@ void main() {
     });
   });
 
+  test('isAutoInitEnabled mengikuti nilai terakhir setAutoInitEnabled tanpa panggilan kanal (K8 lanjutan)', () async {
+    await autoInit(true);
+    expect(platform.isAutoInitEnabled, isTrue);
+    await autoInit(false);
+    expect(platform.isAutoInitEnabled, isFalse);
+    expect(calls, isEmpty);
+  });
+
   test('Android: deleteToken langsung memanggil Messaging#deleteToken walau auto-init mati', () async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     await autoInit(false);
     await platform.deleteToken();
     expect(calls, ['Messaging#deleteToken']);
+  });
+
+  group('getPermission: izin dibaca tanpa dialog (K8 lanjutan)', () {
+    const expected = {
+      -1: PushPermission.notDetermined,
+      0: PushPermission.denied,
+      1: PushPermission.granted,
+      2: PushPermission.provisional,
+      3: PushPermission.denied,
+    };
+
+    for (final target in [TargetPlatform.android, TargetPlatform.iOS]) {
+      test('${target.name}: memakai Messaging#getNotificationSettings, bukan Messaging#requestPermission, dan '
+          'dipetakan sama dengan requestPermission', () async {
+        debugDefaultTargetPlatformOverride = target;
+        for (final MapEntry(key: status, value: permission) in expected.entries) {
+          authorizationStatus = status;
+          calls.clear();
+          expect(await platform.getPermission(), permission, reason: 'authorizationStatus $status');
+          expect(calls, ['Messaging#getNotificationSettings']);
+          expect(await platform.requestPermission(), permission, reason: 'authorizationStatus $status');
+        }
+      });
+    }
   });
 }
