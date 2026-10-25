@@ -160,11 +160,11 @@ flutter drive --profile --driver=test_driver/integration_test.dart \
   ID baru dibuat setelah `PushService` menyalakan auto-init, yaitu setelah login dan bila izin notifikasi tidak
   ditolak. Saat sesi berakhir, token dihapus lalu auto-init dimatikan lagi. Bila izin notifikasi kemudian dicabut di
   pengaturan sistem (K8 lanjutan), `PushService` mencabut token di server (`POST /devices/unregister`) dengan nilai
-  yang dicatat saat token didaftarkan (tanpa `getToken`), menghapusnya di perangkat, dan mematikan auto-init. Saat
-  aplikasi kembali ke latar depan izin dibaca tanpa dialog; saat aplikasi dibuka lagi dengan sesi izin diminta seperti
-  saat login (Android 13+ dapat menampilkan dialog lagi setelah izin dicabut). Bila izin diberikan lagi, token baru
-  didaftarkan. Jangan menambah SDK Firebase lain (mis. Analytics) tanpa mematikan pengumpulan datanya dan memperbarui
-  lembar Data safety.
+  yang dicatat saat token didaftarkan (tanpa `getToken` bila nilainya tercatat), menghapusnya di perangkat, dan
+  mematikan auto-init. Saat aplikasi kembali ke latar depan izin dibaca tanpa dialog; saat aplikasi dibuka lagi dengan
+  sesi izin diminta seperti saat login (Android 13+ dapat menampilkan dialog lagi setelah izin dicabut). Bila izin
+  diberikan lagi, token baru didaftarkan. Jangan menambah SDK Firebase lain (mis. Analytics) tanpa mematikan
+  pengumpulan datanya dan memperbarui lembar Data safety.
 - Android: kunci rilis (`android/key.properties`). App Links butuh SHA-256 kunci penandatanganan aplikasi Play App
   Signing (baru tampil setelah AAB pertama diunggah ke Play Console, jalur pengujian internal cukup; AAB rilis itu
   butuh `android/key.properties`, `docs/BUILD.md` bagian 3.1) di `kapdh-platform/apps/web/app-links.json`

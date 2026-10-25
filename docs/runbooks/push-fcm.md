@@ -521,7 +521,10 @@ dan, bila memungkinkan, lalu lintas jaringan lewat `rvictl`.
 6. Izin dicabut kemudian (K8 lanjutan, cek 4 di `app-store-submission.md` bagian 4.1): lanjutkan dari cek 5 tanpa
    keluar. Buka Pengaturan iOS → Notifikasi → KAPDH, matikan Izinkan Notifikasi, lalu kembali ke KAPDH dan biarkan
    terbuka 2 menit. Lulus bila baris `ios` akun uji sudah dicabut (`revoked_at` terisi), tidak ada baris aktif untuk
-   akun itu, sesi tetap masuk, dan konsol tidak menampilkan permintaan token baru. Saat kembali ke latar depan aplikasi
+   akun itu, dan sesi tetap masuk. Tepat setelah kembali ke KAPDH, satu penghapusan token memang diharapkan: satu
+   request ke `fcmtoken.googleapis.com` untuk menghapus token, bukan meminta token baru. Setelah penghapusan itu tidak
+   ada lagi kontak ke `fcmtoken.googleapis.com` maupun `firebaseinstallations.googleapis.com`, dan konsol tidak
+   menampilkan log pengambilan token, sampai Izinkan Notifikasi dinyalakan lagi. Saat kembali ke latar depan aplikasi
    membaca izin tanpa dialog (`kapdh-mobile/lib/app/app.dart:58`), mencabut token yang tercatat lewat
    `POST /devices/unregister` tanpa meminta token, lalu menghapusnya di perangkat. Bila log
    `push: token APNs belum tersedia, dicoba lagi dalam 2 detik` muncul sesaat setelah kembali, token sudah dicabut di
