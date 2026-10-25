@@ -299,6 +299,10 @@ class FakePushPlatform implements PushPlatform {
     return permission;
   }
 
+  /// Izin di pengaturan sistem dibaca tanpa dialog (K8 lanjutan).
+  @override
+  Future<PushPermission> getPermission() async => permission;
+
   @override
   Future<String?> getToken() async => token;
 

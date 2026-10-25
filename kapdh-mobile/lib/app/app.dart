@@ -15,7 +15,7 @@ import 'router.dart';
 import 'theme/kapdh_theme.dart';
 
 /// Akar aplikasi anggota KAPDH: tema, router, locale Indonesia, ScaffoldMessenger global (ErrorPresenter) dan
-/// pemeriksaan ulang gerbang/sesi saat aplikasi kembali ke latar depan (PRD 4.5, 4.6).
+/// pemeriksaan ulang gerbang/sesi dan izin push saat aplikasi kembali ke latar depan (PRD 4.5, 4.6; K8 lanjutan).
 class KapdhApp extends ConsumerStatefulWidget {
   const KapdhApp({super.key, this.enableSessionServices = true});
 
@@ -53,6 +53,9 @@ class _KapdhAppState extends ConsumerState<KapdhApp> {
     if (session.phase == SessionPhase.authenticated && ref.exists(notificationUnreadCountProvider)) {
       unawaited(ref.read(notificationUnreadCountProvider.notifier).refresh());
     }
+    // Izin notifikasi dapat dicabut atau diberikan lagi di pengaturan sistem selama aplikasi di latar belakang: dibaca
+    // ulang tanpa dialog, lalu token dicabut atau didaftarkan (K8 lanjutan). Hanya bila layanan push sedang dipakai.
+    if (ref.exists(pushServiceProvider)) unawaited(ref.read(pushServiceProvider).onResumed());
   }
 
   @override

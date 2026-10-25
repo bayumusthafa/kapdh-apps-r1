@@ -55,6 +55,10 @@ abstract interface class PushPlatform {
 
   Future<PushPermission> requestPermission();
 
+  /// Membaca izin notifikasi saat ini tanpa memunculkan dialog OS, untuk mendeteksi izin yang dicabut atau diberikan
+  /// lagi di pengaturan sistem setelah login (K8 lanjutan).
+  Future<PushPermission> getPermission();
+
   Future<String?> getToken();
 
   Stream<String> get onTokenRefresh;
@@ -155,15 +159,19 @@ class FirebasePushPlatform implements PushPlatform {
   }
 
   @override
-  Future<PushPermission> requestPermission() async {
-    final settings = await _messaging.requestPermission();
-    return switch (settings.authorizationStatus) {
-      AuthorizationStatus.authorized => PushPermission.granted,
-      AuthorizationStatus.provisional => PushPermission.provisional,
-      AuthorizationStatus.denied || AuthorizationStatus.deniedPermanently => PushPermission.denied,
-      AuthorizationStatus.notDetermined => PushPermission.notDetermined,
-    };
-  }
+  Future<PushPermission> requestPermission() async => _permissionOf(await _messaging.requestPermission());
+
+  /// getNotificationSettings tidak memunculkan dialog: Android membaca izin POST_NOTIFICATIONS (13+) atau status
+  /// notifikasi aplikasi (12 ke bawah), iOS membaca pengaturan notifikasi aplikasi.
+  @override
+  Future<PushPermission> getPermission() async => _permissionOf(await _messaging.getNotificationSettings());
+
+  static PushPermission _permissionOf(NotificationSettings settings) => switch (settings.authorizationStatus) {
+    AuthorizationStatus.authorized => PushPermission.granted,
+    AuthorizationStatus.provisional => PushPermission.provisional,
+    AuthorizationStatus.denied || AuthorizationStatus.deniedPermanently => PushPermission.denied,
+    AuthorizationStatus.notDetermined => PushPermission.notDetermined,
+  };
 
   @override
   Future<String?> getToken() => _messaging.getToken();
