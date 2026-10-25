@@ -83,7 +83,7 @@ Indonesia, jadi listing dibuat untuk bahasa default Indonesia (id) saja.
 | ------------------ | --------------------------- | ---------------------------------- | ------ |
 | App name (maks 30) | `teks/judul.txt`: "KAPDH" | 5 karakter | Dipilih PP 25 Oktober 2026 |
 | Short description (maks 80) | `teks/deskripsi-singkat.txt` | 70 karakter | Draf |
-| Full description (maks 4.000) | `teks/deskripsi-lengkap.txt`: nama badan hukum, fitur di `main`, syarat 18+, iuran diverifikasi pengurus, tautan kebijakan privasi dan hapus akun | 2.306 karakter | Draf |
+| Full description (maks 4.000) | `teks/deskripsi-lengkap.txt`: nama badan hukum, fitur di `main`, syarat 18+, iuran diverifikasi pengurus, tautan kebijakan privasi dan hapus akun | 2.292 karakter | Draf |
 | App icon (PNG 32-bit, 512 x 512, maks 1.024 KB) | `ikon-512.png`, diturunkan dari ikon iOS 1024 | 512 x 512, RGBA alfa penuh, sRGB, 186 KB | Siap, menunggu PP |
 | Feature graphic (JPEG/PNG 24-bit tanpa alfa, 1024 x 500) | `feature-graphic-1024x500.jpg`, teks alternatif `teks/alt-feature-graphic.txt` | 1024 x 500, RGB sRGB, tanpa alfa, 92 KB; elemen penting di area aman | Siap, menunggu PP |
 | Phone screenshots (2-8; rekomendasi Play minimal 4 gambar 9:16 >= 1080 x 1920) | `tangkapan/01-beranda` sampai `06-pesan`, dibuat `sumber/ambil-tangkapan.sh` sesuai `tangkapan-layar.md` | Belum ada | Belum: butuh build rilis, akun demo aktif, dan data tanpa "[Contoh]" (bagian 3) |
@@ -146,10 +146,13 @@ layar toko dan teks listing secara manual.
 
 Deskripsi listing (draf, Bahasa Indonesia; disahkan PP):
 
-> KAPDH adalah aplikasi resmi Keluarga Alumni Pondok Pesantren Darel Hikmah. Alumni dapat mendaftar keanggotaan,
+> KAPDH adalah aplikasi resmi Perkumpulan Keluarga Alumni Pesantren Darel Hikmah. Alumni dapat mendaftar keanggotaan,
 > menyimpan Kartu Tanda Anggota (KTA) digital yang dapat diverifikasi lewat QR, membaca kabar organisasi, mendaftar
 > acara alumni, dan terhubung dengan sesama anggota lewat direktori dan pesan. Iuran keanggotaan organisasi dan tiket
 > acara dibayar melalui transfer ke rekening resmi organisasi dan diverifikasi pengurus.
+
+Nama perkumpulan memakai nama badan hukum tanpa kata "Pondok" (keputusan PP 25 Oktober 2026). Deskripsi lengkap
+Google Play ada di `docs/toko/play/teks/deskripsi-lengkap.txt`.
 
 ## 3. Akun demo reviewer (D16; PRD 8.2 langkah 6)
 
@@ -292,8 +295,8 @@ Isi di App Store Connect (App Review Information → Notes) dan Play Console (Ap
 Inggris untuk reviewer; versi Indonesia disimpan di paket bukti.
 
 ```text
-KAPDH is the official member app of Keluarga Alumni Pondok Pesantren Darel Hikmah (KAPDH), an alumni association
-of an Indonesian boarding school. Only alumni can register. The backend at api.kapdh.or.id is live.
+KAPDH is the official member app of Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH), an alumni
+association of an Indonesian boarding school. Only alumni can register. The backend at api.kapdh.or.id is live.
 
 Demo accounts (email / password):
 - Active member: <demo-a-email> / <password>   (membership card, news, events, directory, chat, notifications)

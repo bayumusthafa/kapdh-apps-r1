@@ -1,4 +1,4 @@
-KAPDH adalah aplikasi keanggotaan Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH), perkumpulan berbadan hukum yang menghimpun alumni Pondok Pesantren Darel Hikmah di Pekanbaru, Riau. Aplikasi ini menjadi sarana silaturahmi dan komunikasi alumni: KTA digital, kabar organisasi, event alumni, dan jejaring sesama anggota dalam satu tempat.
+KAPDH adalah aplikasi keanggotaan Perkumpulan Keluarga Alumni Pesantren Darel Hikmah (KAPDH), perkumpulan berbadan hukum yang menghimpun alumni Pesantren Darel Hikmah di Pekanbaru, Riau. Aplikasi ini menjadi sarana silaturahmi dan komunikasi alumni: KTA digital, kabar organisasi, event alumni, dan jejaring sesama anggota dalam satu tempat.
 
 Fitur utama
 • KTA digital: Kartu Tanda Anggota memuat nomor anggota, masa berlaku, status keanggotaan, dan kode QR yang dapat dipindai pihak lain untuk memeriksa status terkini. KTA yang sudah tersinkron tetap dapat ditunjukkan tanpa internet hingga 7 hari.
@@ -10,7 +10,7 @@ Fitur utama
 • Profil dan privasi: atur foto, profesi, keahlian, riwayat pendidikan, dan media sosial, lalu pilih data yang terlihat oleh anggota lain.
 
 Keanggotaan dan iuran
-KAPDH diperuntukkan bagi alumni Pondok Pesantren Darel Hikmah yang berusia 18 tahun atau lebih. Setelah mendaftar dan memverifikasi email, alumni menyelesaikan iuran pendaftaran organisasi. Iuran keanggotaan dan tiket event berbayar dibayar melalui transfer ke tujuan pembayaran resmi perkumpulan di luar aplikasi, lalu bukti transfer diunggah untuk diperiksa pengurus. Status keanggotaan diperbarui pengurus setelah iuran organisasi diverifikasi. Direktori, pesan, dan pendaftaran event adalah layanan perkumpulan bagi anggota yang keanggotaannya aktif. Aplikasi tidak memproses pembayaran kartu dan tidak menarik dana dari rekening Anda.
+KAPDH diperuntukkan bagi alumni Pesantren Darel Hikmah yang berusia 18 tahun atau lebih. Setelah mendaftar dan memverifikasi email, alumni menyelesaikan iuran pendaftaran organisasi. Iuran keanggotaan dan tiket event berbayar dibayar melalui transfer ke tujuan pembayaran resmi perkumpulan di luar aplikasi, lalu bukti transfer diunggah untuk diperiksa pengurus. Status keanggotaan diperbarui pengurus setelah iuran organisasi diverifikasi. Direktori, pesan, dan pendaftaran event adalah layanan perkumpulan bagi anggota yang keanggotaannya aktif. Aplikasi tidak memproses pembayaran kartu dan tidak menarik dana dari rekening Anda.
 
 Keamanan dan komunitas
 • Laporkan pesan, pengguna, atau grup yang melanggar Ketentuan Komunitas, dan blokir anggota bila perlu. Laporan ditinjau pengurus.

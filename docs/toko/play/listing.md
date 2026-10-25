@@ -11,7 +11,7 @@ Jalankan ulang setiap kali teks diubah.
 | --------------------------------------------------------------------- | ------ | -------- | ----- |
 | App name | `teks/judul.txt` | 5 | 30 |
 | Short description | `teks/deskripsi-singkat.txt` | 70 | 80 |
-| Full description | `teks/deskripsi-lengkap.txt` | 2.306 | 4.000 (target 1.500-2.500) |
+| Full description | `teks/deskripsi-lengkap.txt` | 2.292 | 4.000 (target 1.500-2.500) |
 | Alt text feature graphic | `teks/alt-feature-graphic.txt` | 125 | 140 |
 | Alt text tangkapan layar | `teks/alt-tangkapan.txt` (satu baris per gambar) | 60-96 | 140 |
 
@@ -51,9 +51,10 @@ Isi lengkap: `teks/deskripsi-lengkap.txt`. Susunannya:
 Hal yang sengaja tidak disebut: nominal iuran (dapat berubah dan tampil di aplikasi), nama bank atau rekening, fitur
 yang belum ada (video call, versi web anggota), dan klaim jumlah anggota.
 
-Perbedaan nama untuk diputuskan PP: draf deskripsi 4 kalimat yang sudah disahkan di
-`docs/runbooks/app-store-submission.md` bagian 2 menulis "Keluarga Alumni Pondok Pesantren Darel Hikmah", sedangkan
-draf ini memakai nama badan hukum seperti situs. Draf ini tidak mengubah teks bagian 2.
+Nama perkumpulan (keputusan PP 25 Oktober 2026): semua teks toko memakai nama badan hukum **Perkumpulan Keluarga
+Alumni Pesantren Darel Hikmah** tanpa kata "Pondok", dan pesantrennya disebut "Pesantren Darel Hikmah" seperti AD
+Pasal 3. Draf deskripsi bagian 2 dan templat catatan reviewer bagian 5 di `docs/runbooks/app-store-submission.md`
+ikut disesuaikan.
 
 ## Pemeriksaan kebijakan teks
 
