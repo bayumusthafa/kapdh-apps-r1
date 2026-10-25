@@ -7,10 +7,10 @@ dan Apple App Store. Setiap pernyataan tentang cara kerja aplikasi sudah dicocok
 penanganan laporan dengan keputusan PP K5 per 25 Oktober 2026.
 
 - **Tanggal berlaku:** setiap halaman memuat baris "Berlaku sejak ..." sendiri. Kebijakan Privasi, Ketentuan Layanan,
-  Ketentuan Komunitas, dan Bantuan adalah revisi profil berulang yang belum terbit; Ketentuan Komunitas dan Bantuan
-  juga memuat perubahan prioritas laporan K5. Tanggalnya masih berupa penanda `[tanggal terbit]` (lihat Revisi profil
-  berulang di bawah). Tentang berlaku sejak 18 Oktober 2026; bila diterbitkan pada tanggal lain, ubah baris itu
-  menjadi tanggal terbit sebenarnya sebelum menekan Terbitkan.
+  Ketentuan Komunitas, dan Bantuan adalah revisi profil berulang yang belum terbit; Ketentuan Layanan, Ketentuan
+  Komunitas, dan Bantuan juga memuat perubahan prioritas laporan K5. Tanggalnya masih berupa penanda `[tanggal terbit]`
+  (lihat Revisi profil berulang di bawah). Tentang berlaku sejak 18 Oktober 2026; bila diterbitkan pada tanggal lain,
+  ubah baris itu menjadi tanggal terbit sebenarnya sebelum menekan Terbitkan.
 - **Pratinjau dan cara menyalin:** buka `pratinjau.html` di peramban. Halaman itu memuat kelima naskah, tombol
   "Salin isi" per halaman, kolom tanggal terbit revisi, dan langkah penerbitan.
 
@@ -86,8 +86,9 @@ menghitungnya lewat `priorityFor` di `kapdh-platform/apps/api/src/modules/modera
   yang dapat dilihat anggota lain, Apa isi KTA digital, dan Data yang dihapus. Bantuan juga diselaraskan dengan kode
   pada bagian Siapa yang dapat saya kirimi pesan? (percakapan langsung baru hanya dari profil anggota yang tampil di
   direktori) dan Akun saya dibatasi (halaman pembatasan tidak memuat Laporan saya; laporan dibuka dari notifikasinya),
-  begitu pula Ketentuan Komunitas 9 Pembatasan akun. Perubahan K5: Ketentuan Komunitas bagian 7 Memilih kategori
-  (Konten seksual mencakup segala konten seksual yang melibatkan atau membahayakan anak dan ditangani dengan
+  begitu pula Ketentuan Komunitas 9 Pembatasan akun. Perubahan K5: Ketentuan Layanan bagian 7 Melapor dan memblokir
+  (laporan konten seksual ditargetkan 24 jam seperti ancaman atau keselamatan), Ketentuan Komunitas bagian 7 Memilih
+  kategori (Konten seksual mencakup segala konten seksual yang melibatkan atau membahayakan anak dan ditangani dengan
   prioritas) dan bagian 8 Target waktu penanganan (Konten seksual paling lambat 24 jam), serta paragraf target
   penanganan laporan di Bantuan bagian Melaporkan pengguna, pesan, atau grup. Tentang tidak berubah.
 - **Kapan terbit:** pada hari build aplikasi mobile pertama yang memakai daftar baru dirilis ke pengguna, setelah API
@@ -160,13 +161,13 @@ Butir berikut harus benar pada saat naskah diterbitkan. Bila belum, sebagian kal
    pada hari kerja, sedangkan permintaan data pribadi mengikuti jangka waktu Kebijakan Privasi.
 7. **Nomor WhatsApp dukungan diisi** di pengaturan aplikasi. Naskah merujuk ke "nomor WhatsApp dukungan yang
    tercantum di aplikasi dan di halaman Kontak".
-8. **API dengan prioritas laporan K5 sudah berjalan di production.** Ketentuan Komunitas bagian 7 dan 8 serta Bantuan
-   (Melaporkan pengguna, pesan, atau grup) menyatakan laporan Konten seksual ditangani paling lambat 24 jam. Janji itu
-   baru benar setelah image API yang memuat `priorityFor` sexual = urgent (PR #40) berjalan di production; sebelum
-   itu laporan baru kategori ini masih berprioritas normal dengan target 2 hari kerja. Karena itu, naskah revisi baru
-   boleh diterbitkan setelah image API tersebut berjalan, dan build aplikasi mobile yang membawa petunjuk baru pada
-   kategori Konten seksual ("Ditangani paling lambat 24 jam") juga hanya didistribusikan setelah API itu berjalan.
-   Laporan Konten seksual yang dibuat sebelum deploy tetap berprioritas normal (prioritas tidak dihitung ulang), jadi
-   tangani laporan seperti itu yang masih aktif tanpa menunggu targetnya.
+8. **API dengan prioritas laporan K5 sudah berjalan di production.** Ketentuan Layanan bagian 7 (Melapor dan memblokir),
+   Ketentuan Komunitas bagian 7 dan 8, serta Bantuan (Melaporkan pengguna, pesan, atau grup) menyatakan laporan Konten
+   seksual ditangani paling lambat 24 jam. Janji itu baru benar setelah image API yang memuat `priorityFor` sexual =
+   urgent (PR #40) berjalan di production; sebelum itu laporan baru kategori ini masih berprioritas normal dengan target
+   2 hari kerja. Karena itu, naskah revisi baru boleh diterbitkan setelah image API tersebut berjalan, dan build
+   aplikasi mobile yang membawa petunjuk baru pada kategori Konten seksual ("Ditangani paling lambat 24 jam") juga hanya
+   didistribusikan setelah API itu berjalan. Laporan Konten seksual yang dibuat sebelum deploy tetap berprioritas normal
+   (prioritas tidak dihitung ulang), jadi tangani laporan seperti itu yang masih aktif tanpa menunggu targetnya.
 
 Syarat tambahan dan daftar butir terbuka lainnya dikelola pengurus secara internal.
