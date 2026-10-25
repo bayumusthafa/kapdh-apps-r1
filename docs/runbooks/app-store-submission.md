@@ -238,18 +238,18 @@ Aturan pengisian yang berlaku untuk semua baris:
 | App activity → In-app search history | **Baru.** Kata kunci dan kota yang diketik di pencarian Jejaring dan pemilih anggota chat, serta kata kunci pencarian event. Dikirim sebagai query string, dipakai untuk satu permintaan, tidak disimpan di basis data, tidak dicatat di log, dan tidak disimpan di perangkat | `mobile/features/network/network_repository.dart:21-31`; `mobile/features/chat/member_picker.dart:87-100`; `mobile/features/events/events_repository.dart:23-38`; `api/modules/network/directory.service.ts:193-206`; `api/modules/events/member-events.service.ts:48`; `api/core/logging/logger.ts:113-121`; KP:81 | Ya / tidak | **Ya** | Opsional | App functionality | Tidak perlu dideklarasikan (diproses seketika, tidak disimpan) |
 | App activity → Other user-generated content | Laporan dan banding, nama grup | `schema/community.ts:81`, `:217`; KP:87, KP:97-100 | Ya / tidak | Tidak | Opsional | App functionality; Fraud prevention, security, and compliance | User Content → Other User Content |
 | App activity → Other actions | Suka berita, reaksi pesan, daftar blokir, reservasi tiket | `schema/content.ts:92`; `schema/community.ts:53`, `:194`; `schema/events.ts:91`; KP:78, KP:93, KP:99 | Ya / tidak | Tidak | Opsional | App functionality | Usage Data → Product Interaction |
-| Device or other IDs | **Diperluas.** Token FCM dan Firebase Installation ID (dibuat SDK FCM, diterima Google sebagai pemroses), platform dan versi aplikasi pada token dan sesi, serta nama perangkat generik | `schema/notifications.ts:89-99`; `schema/identity.ts:167-169`; `mobile/core/push/push_service.dart:157-161`, `:209-219`, `:254-283`, `:396-417`, `:421-430`, `:445-446`; `mobile/core/push/push_platform.dart:108-128`, `:162-197`; `kapdh-mobile/android/app/src/main/AndroidManifest.xml:74-76`; `kapdh-mobile/ios/Runner/Info.plist:70-71`; `mobile/bootstrap.dart:56`; KP:106, KP:111, KP:197 | Ya / tidak | Tidak | Wajib (lihat catatan K8) | App functionality, Developer communications (notifikasi berita dan event) | Identifiers → Device ID |
+| Device or other IDs | **Diperluas.** Token FCM dan Firebase Installation ID (dibuat SDK FCM, diterima Google sebagai pemroses), platform dan versi aplikasi pada token dan sesi, serta nama perangkat generik | `schema/notifications.ts:89-99`; `schema/identity.ts:167-169`; `mobile/core/push/push_service.dart:172-176`, `:226-237`, `:272-309`, `:420-443`, `:447-456`, `:472-473`; `mobile/core/push/push_platform.dart:113-133`, `:167-205`; `kapdh-mobile/android/app/src/main/AndroidManifest.xml:74-76`; `kapdh-mobile/ios/Runner/Info.plist:70-71`; `mobile/bootstrap.dart:56`; KP:106, KP:111, KP:197 | Ya / tidak | Tidak | Wajib (lihat catatan K8) | App functionality, Developer communications (notifikasi berita dan event) | Identifiers → Device ID |
 
 Catatan Device or other IDs (K8): PP memilih opsi (a) pada 25 Oktober 2026, dan auto-init FCM kini mati sampai
 pengguna masuk. Nomor baris di baris tabel ini dan di catatan ini mengikuti perubahan tersebut dan K8 lanjutan
 (PR #44), bukan `7ce1ed8`. Pada build dengan `PUSH_ENABLED=true`, `Firebase.initializeApp` tetap dijalankan saat
-aplikasi dibuka (`mobile/bootstrap.dart:56` → `mobile/core/push/push_platform.dart:108-128`). Namun auto-init
+aplikasi dibuka (`mobile/bootstrap.dart:56` → `mobile/core/push/push_platform.dart:113-133`). Namun auto-init
 dimatikan di `kapdh-mobile/android/app/src/main/AndroidManifest.xml:74-76` (`firebase_messaging_auto_init_enabled` =
 `false`) dan `kapdh-mobile/ios/Runner/Info.plist:70-71` (`FirebaseMessagingAutoInitEnabled` = `false`). Aplikasi tidak
 memakai SDK Analytics, jadi pengaturan FCM ini sudah cukup. Setelah login, dan hanya bila izin notifikasi tidak
-ditolak, aplikasi menyalakan auto-init tepat sebelum meminta token (`mobile/core/push/push_service.dart:209-219`), lalu
-server KAPDH menyimpan token itu (`mobile/core/push/push_service.dart:445-446`). Saat sesi berakhir atau berganti akun,
-token dihapus lebih dulu, lalu auto-init dimatikan lagi (`mobile/core/push/push_service.dart:421-430`). Bila izin
+ditolak, aplikasi menyalakan auto-init tepat sebelum meminta token (`mobile/core/push/push_service.dart:226-237`), lalu
+server KAPDH menyimpan token itu (`mobile/core/push/push_service.dart:472-473`). Saat sesi berakhir atau berganti akun,
+token dihapus lebih dulu, lalu auto-init dimatikan lagi (`mobile/core/push/push_service.dart:447-456`). Bila izin
 notifikasi kemudian terbaca ditolak, token juga dicabut di server sebelum dihapus (K8 lanjutan, paragraf di bawah cek
 penerimaan). Nilai auto-init tersimpan lintas peluncuran. Jenis data ini tetap dideklarasikan **Wajib** karena
 platform, versi aplikasi, dan nama perangkat generik pada sesi terkirim otomatis.
@@ -262,13 +262,15 @@ Yang dijamin perubahan ini, tidak lebih:
    sebelumnya tidak ikut terhapus (`deleteToken` hanya menghapus token FCM), tetapi tidak dikirim ke KAPDH. Bila logout
    terjadi tanpa koneksi, token lama dan auto-init yang masih menyala bertahan sampai penghapusan tertunda berhasil saat
    aplikasi dibuka atau koneksi kembali. Di iOS, percobaan ulang saat aplikasi dibuka
-   (`mobile/core/push/push_service.dart:169`, juga saat sesi terbaca berakhir dan pada event konektivitas pertama,
+   (`mobile/core/push/push_service.dart:184`, juga saat sesi terbaca berakhir dan pada event konektivitas pertama,
    `mobile/app/app_services.dart:87-90` dan `:112`) dapat gagal dengan `apns-token-not-set` karena token APNs sering
-   belum tiba sesaat setelah peluncuran; galat itu hanya dicatat (`mobile/core/push/push_service.dart:434-440`),
+   belum tiba sesaat setelah peluncuran; galat itu hanya dicatat (`mobile/core/push/push_service.dart:460-466`),
    sehingga token lama dan auto-init dapat bertahan beberapa peluncuran sampai koneksi berubah atau ada login
    berikutnya. Perilaku ini sudah ada sebelum K8.
 3. **Login dengan izin notifikasi ditolak**: auto-init tetap mati dan `getToken` tidak dipanggil, sehingga tidak ada
-   token FCM dan SDK tidak membuat Installation ID.
+   token FCM dan SDK tidak membuat Installation ID. Ini juga berlaku bila catatan pendaftaran dari pemasangan
+   sebelumnya masih ada (di iOS catatan di Keychain bertahan bila aplikasi dihapus tanpa keluar): token yang tercatat
+   dicabut di server tanpa `getToken`, dan selama auto-init mati `getToken` tidak dipanggil sama sekali.
 4. **Izin notifikasi dicabut kemudian di pengaturan sistem** (K8 lanjutan, PR #44): saat aplikasi kembali ke latar
    depan atau dibuka lagi dengan sesi, token dicabut di server lalu dihapus di perangkat, dan auto-init dimatikan.
    Rinciannya ada di paragraf "Izin notifikasi dicabut kemudian" di bawah cek penerimaan.
@@ -314,25 +316,41 @@ membuktikan token lama sudah dihapus di perangkat. Cek khusus iPhone ada di `pus
 
 **Izin notifikasi dicabut kemudian (K8 lanjutan, opsi a diputuskan PP 25 Oktober 2026, PR #44).** Sistem operasi
 tidak memberi tahu aplikasi saat izin notifikasi dicabut di pengaturan. Karena itu aplikasi membaca ulang izin tanpa
-dialog setiap kali kembali ke latar depan (`mobile/app/app.dart:58`, `mobile/core/push/push_service.dart:396-417`),
-dan langkah yang sama berjalan saat aplikasi dibuka lagi dengan sesi (`mobile/core/push/push_service.dart:209-213`).
-Di Android 13 ke atas, mencabut izin di pengaturan menghentikan proses aplikasi, jadi kembali ke aplikasi berarti
-membukanya lagi. Yang dijamin, tidak lebih:
+dialog setiap kali kembali ke latar depan (`mobile/app/app.dart:58`, `mobile/core/push/push_service.dart:420-443`).
+Saat aplikasi dibuka lagi dengan sesi, izin diminta seperti saat login (`mobile/core/push/push_service.dart:226-230`):
+iOS tidak menampilkan dialog lagi untuk izin yang sudah diputuskan, sedangkan Android 13 ke atas dapat menampilkannya
+lagi setelah izin dicabut di pengaturan. Di Android 13 ke atas, mencabut izin di pengaturan juga menghentikan proses
+aplikasi, jadi kembali ke aplikasi berarti membukanya lagi. Yang dijamin, tidak lebih:
 
 1. Begitu izin terbaca ditolak sementara pendaftaran akun yang masuk masih tercatat, token dicabut di server lewat
-   `POST /devices/unregister` (`revoked_at` terisi, pengiriman `pending` dibatalkan). Setelah itu token dihapus di
-   perangkat dan auto-init dimatikan (`mobile/core/push/push_service.dart:254-283`). Server lebih dulu, karena setelah
-   token dihapus di perangkat nilainya tidak dapat dicabut lagi lewat API.
-2. Sebelum aplikasi kembali ke latar depan atau dibuka lagi, baris `device_tokens` tetap aktif. Push yang terkirim
+   `POST /devices/unregister` (`revoked_at` terisi, tidak dipakai lagi untuk pengiriman, pengiriman `pending`
+   dibatalkan). Setelah itu token dihapus di perangkat dan auto-init dimatikan
+   (`mobile/core/push/push_service.dart:272-309`). Yang dicabut adalah nilai token yang dicatat aplikasi di
+   penyimpanan aman perangkat saat token itu dikirim ke `PUT /devices` (`mobile/core/push/push_service.dart:30-35`),
+   jadi `getToken` tidak dipanggil, juga bila token berotasi saat aplikasi tertutup atau aplikasi iOS dipasang ulang
+   tanpa keluar. Server lebih dulu, karena catatan itu dihapus bersama token di perangkat.
+2. Pencabutan tidak menghapus baris di server. Baris `device_tokens` beserta nilai tokennya tetap ada sampai akun
+   dihapus, sama seperti token yang dicabut saat keluar (KP:234), tetapi tidak dipakai lagi untuk pengiriman.
+3. Sebelum aplikasi kembali ke latar depan atau dibuka lagi, baris `device_tokens` tetap aktif. Push yang terkirim
    dalam rentang itu tidak tampil karena izinnya dicabut, dan notifikasinya tetap ada di kotak masuk.
-3. Bila pencabutan gagal (tanpa koneksi, server sibuk, atau di iOS token APNs belum tiba), catatan pendaftaran, token,
-   dan auto-init dipertahankan. Pencabutan diulang saat koneksi kembali, aplikasi kembali ke latar depan, atau
-   aplikasi dibuka lagi, tanpa mengganggu sesi. Bila pengguna keluar lebih dulu, logout menghapus token seperti biasa
-   dan server mencabut token sesi itu.
-4. Bila izin diberikan lagi, token baru didaftarkan saat aplikasi kembali ke latar depan.
+4. Bila request gagal (tanpa koneksi atau server sibuk), catatan pendaftaran, token, dan auto-init dipertahankan, dan
+   baris tetap aktif sampai pencabutan berhasil. Bila hanya penghapusan di perangkat yang gagal (di iOS token APNs
+   belum tiba), token sudah dicabut di server, sedangkan catatan, token di perangkat, dan auto-init dipertahankan.
+   Langkahnya diulang saat koneksi kembali, aplikasi kembali ke latar depan, atau aplikasi dibuka lagi, tanpa
+   mengganggu sesi. Bila pengguna keluar lebih dulu, logout menghapus token seperti biasa dan server mencabut token
+   sesi itu.
+5. Bila izin diberikan lagi, token baru didaftarkan saat aplikasi kembali ke latar depan atau dibuka lagi.
 
 Dengan perubahan ini, kesimpulan "KP:106 konsisten tanpa revisi KP" tidak lagi bergantung pada keputusan lanjutan PP,
-tetapi tetap baru berlaku setelah keempat cek penerimaan K8 di atas lulus.
+tetapi tetap baru berlaku setelah keempat cek penerimaan K8 di atas lulus. Konsistensi itu membaca "kami simpan" di
+KP:106 sebagai token yang aktif dipakai untuk pengiriman, sama seperti token yang dicabut saat keluar: baris yang
+dicabut tetap tersimpan sampai akun dihapus (butir 2), dan baris tetap aktif sampai izin terbaca ditolak dan
+pencabutan berhasil (butir 3 dan 4).
+
+Catatan untuk PP, bukan syarat gerbang: daftar retensi KP:234 ("dicabut saat Anda keluar atau sesi diakhiri, dan
+dihapus saat akun dihapus") belum menyebut pencabutan karena izin notifikasi dicabut. Perlakuannya sama (dicabut,
+lalu dihapus saat akun dihapus), hanya pemicunya yang belum tercantum. Naskah di `docs/legal` tidak diubah untuk
+K8 lanjutan; bila PP ingin menyebutkannya, masukkan ke revisi naskah berikutnya.
 
 ### 4.2 Tidak dideklarasikan, beserta alasannya
 
@@ -687,7 +705,7 @@ keputusan yang menunggu PP.
 | K6 | Prosedur penerusan CSAM ke aparat penegak hukum dan penanganan bukti | Siapa yang meneruskan, ke kanal mana, dalam berapa lama; siapa yang boleh membuka salinan bukti, dan kapan salinan itu dihapus setelah diteruskan (bukti laporan tetap disimpan, KP:240) | Ditetapkan PP bersama penasihat hukum sebelum deklarasi dikirim | **Diputuskan 25 Oktober 2026** (draf disetujui PP): (1) moderator menghapus konten dan membatasi akun pelaku dalam 24 jam (prioritas urgent K5); (2) bukti di sistem hanya boleh dibuka ketua atau pengurus yang ditunjuk dan tidak dibagikan lebih lanjut; (3) dalam 1 x 24 jam pengurus melaporkan ke Polri (Direktorat Tindak Pidana Siber Bareskrim, portal `patrolisiber.id`) dan ke Komdigi (`aduankonten.id`); aduan lewat `patrolisiber.id` belum tentu menjadi laporan polisi resmi, jadi bila aparat meminta laporan resmi, ikuti arahannya; (4) nomor laporan atau tanda terima dicatat di catatan moderasi; salinan bukti hanya diserahkan ke aparat, salinan yang dibuat khusus untuk diteruskan dihapus setelah diserahkan, dan bukti laporan di sistem tetap disimpan sesuai KP:240 | 25 Oktober 2026 | Menjawab semua pertanyaan di kolom Pilihan (siapa, kanal, tenggat, akses bukti, penghapusan salinan) sebelum deklarasi Child safety standards dikirim; langkah 1 memakai prioritas urgent dari K5 | Bagian 9.4; KK:74-75; KP:240 |
 | K7 | Email kontak kuesioner IARC | Alamat organisasi | Alamat organisasi yang dipantau, bukan email pribadi | `bantuan@kapdh.or.id` | 25 Oktober 2026 | Alamat organisasi yang dipantau, bukan email pribadi; sama dengan kontak publik di KP:8 | Bagian 9.2 |
 | K8 | SDK FCM dapat membuat token saat aplikasi dibuka (auto-init aktif), padahal KP:106 menyebut token dibuat setelah login | (a) Matikan auto-init FCM (perubahan kode); (b) revisi kalimat KP:106 | Putuskan setelah DEV memverifikasi perilaku SDK pada build rilis; Data safety tetap mendeklarasikan Device or other IDs sebagai Wajib | **(a)** Matikan auto-init FCM sampai login; diterapkan PR #41 (digabung 25 Oktober 2026, `0d5967b`) | 25 Oktober 2026 | SDK tidak lagi membuat token FCM dan Installation ID sebelum login. Catatan K8 di bagian 4.1 dan kalimat KP:106 konsisten tanpa revisi KP hanya setelah keempat cek penerimaan K8 di bagian 4.1 lulus pada build yang diajukan; cek keempat berasal dari K8 lanjutan. Device or other IDs tetap Wajib | Bagian 4.1 (catatan Device or other IDs, Cek penerimaan K8) |
-| K8 lanjutan | Bila izin notifikasi dicabut kemudian di pengaturan sistem, token yang sudah terdaftar tidak dihapus (keterbatasan sebelum PR #44, dicatat PR #41) | (a) Hapus token, cabut pendaftarannya di server, dan matikan auto-init setiap kali izin terbaca ditolak saat login atau aplikasi dibuka (perubahan kode, PR terpisah); (b) persempit kalimat KP:106 agar tidak menjanjikan penghapusan saat izin dicabut kemudian | – | **(a)** Cabut token di server (`POST /devices/unregister`), hapus di perangkat, dan matikan auto-init setiap kali izin terbaca ditolak sementara pendaftaran masih tercatat: saat login, saat aplikasi dibuka dengan sesi, dan saat aplikasi kembali ke latar depan (izin dibaca tanpa dialog). Token didaftarkan lagi bila izin diberikan lagi. Diterapkan PR #44 | 25 Oktober 2026 | KP:106 ("hanya dibuat dan kami simpan ... tidak menolak izin notifikasi") tetap tanpa revisi, karena token yang izinnya dicabut tidak lagi disimpan begitu aplikasi dibuka lagi. Tidak mengubah jawaban Data safety (Device or other IDs tetap Wajib). Berlaku setelah gerbang K8 di bawah tabel lulus, termasuk cek penerimaan K8 keempat | Bagian 4.1 (Izin notifikasi dicabut kemudian, Cek penerimaan K8 nomor 4); KP:106; `mobile/core/push/push_service.dart:254-283`, `:396-417`; `mobile/app/app.dart:58` |
+| K8 lanjutan | Bila izin notifikasi dicabut kemudian di pengaturan sistem, token yang sudah terdaftar tidak dihapus (keterbatasan sebelum PR #44, dicatat PR #41) | (a) Hapus token, cabut pendaftarannya di server, dan matikan auto-init setiap kali izin terbaca ditolak saat login atau aplikasi dibuka (perubahan kode, PR terpisah); (b) persempit kalimat KP:106 agar tidak menjanjikan penghapusan saat izin dicabut kemudian | – | **(a)** sesuai Pilihan; diterapkan PR #44 | 25 Oktober 2026 | KP:106 ("hanya dibuat dan kami simpan ... tidak menolak izin notifikasi") tetap tanpa revisi, dengan "kami simpan" dibaca sebagai token yang aktif dipakai untuk pengiriman, sama seperti token yang dicabut saat keluar. Begitu izin terbaca ditolak saat aplikasi kembali ke latar depan atau dibuka lagi, token dicabut di server (`revoked_at` terisi, tidak dipakai lagi untuk pengiriman, pengiriman `pending` dibatalkan); baris dan nilai tokennya tetap ada sampai akun dihapus (KP:234). Sebelum itu, dan selama pencabutan gagal, baris tetap aktif (bagian 4.1, Izin notifikasi dicabut kemudian, butir 3 dan 4). Cakupan penerapan DEV di PR #44: pencabutan berjalan setiap kali izin terbaca ditolak sementara pendaftaran masih tercatat (saat login, saat aplikasi dibuka dengan sesi, dan saat aplikasi kembali ke latar depan, dengan izin dibaca tanpa dialog), lalu token didaftarkan lagi bila izin diberikan lagi. Tidak mengubah jawaban Data safety (Device or other IDs tetap Wajib). Berlaku setelah gerbang K8 di bawah tabel lulus, termasuk cek penerimaan K8 keempat | Bagian 4.1 (Izin notifikasi dicabut kemudian, Cek penerimaan K8 nomor 4); KP:106; KP:234; `mobile/core/push/push_service.dart:272-309`, `:420-443`; `mobile/app/app.dart:58` |
 
 Gerbang sebelum submit untuk K5 dan K8. PR #40 (K5) dan PR #41 (K8) sudah digabung ke `main`, dan K8 lanjutan ada di
 PR #44; gerbang baru terpenuhi bila semua syarat di bawah benar pada build yang diajukan dan di production saat
