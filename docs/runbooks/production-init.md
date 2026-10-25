@@ -476,15 +476,25 @@ setelah langkah 4.
 
 ## Langkah 6. Toko aplikasi (PRD 8.2 langkah 6; D10, D13, D16)
 
-Ikuti `docs/runbooks/app-store-submission.md` bagian 1-5. Ringkas:
+Ikuti `docs/runbooks/app-store-submission.md` bagian 1-5 dan 9; keputusan PP untuk formulir toko ada di bagian 10.
+Ringkas:
 
 - [ ] Apple Developer Program dan Google Play Console atas nama organisasi (nomor D-U-N-S).
 - [ ] Signing key Android (`android/key.properties`, tidak di-commit; Play App Signing) dan sertifikat/profil iOS.
-- [ ] Listing, URL kebijakan privasi `https://kapdh.or.id/kebijakan-privasi`, formulir privasi/keamanan data,
-      URL hapus akun `https://kapdh.or.id/delete-account`, kontak moderasi `bantuan@kapdh.or.id`.
-- [ ] Akun demo reviewer (D16): aktif terverifikasi dan belum bayar, dibuat lewat alur resmi.
-- [ ] Pemblokir submit yang diketahui per 14 Oktober 2026: teks aplikasi yang mengaitkan iuran dengan membuka fitur
-      (bagian 2, D13 mitigasi 1) dan kebijakan privasi yang hanya terbaca dengan JavaScript (bagian 7).
+- [ ] Listing, URL kebijakan privasi `https://kapdh.or.id/kebijakan-privasi`, URL hapus akun
+      `https://kapdh.or.id/delete-account`, kontak moderasi `bantuan@kapdh.or.id`.
+- [ ] Aset listing Google Play: ikon 512 x 512 PNG, feature graphic 1024 x 500 (JPEG atau PNG tanpa alfa), deskripsi
+      singkat paling banyak 80 karakter, deskripsi lengkap (draf `app-store-submission.md` bagian 2), dan minimal dua
+      tangkapan layar ponsel dengan sisi panjang paling banyak dua kali sisi pendek. Tangkapan di `docs/panduan`
+      (720 x 1602, rasio di atas 2:1) tidak dapat dipakai langsung. Aset mengikuti aturan teks D13 (bagian 2).
+- [ ] Data safety (bagian 4) dan deklarasi App content Google Play (bagian 9) diisi setelah keputusan PP K1-K8
+      (bagian 10) diambil.
+- [ ] Akun demo reviewer (D16): aktif terverifikasi (Demo A dan C) **dan** belum bayar (Demo B), dibuat lewat alur
+      resmi. Akun belum bayar saja tidak cukup karena tidak dapat membuka berita, event, direktori, dan chat
+      (bagian 9.1).
+- [ ] Pemblokir submit yang diketahui per 25 Oktober 2026: kebijakan privasi dan Ketentuan Komunitas yang hanya
+      terbaca dengan JavaScript (bagian 7). Teks aplikasi D13 mitigasi 1 sudah lulus sejak 21 Oktober 2026 (`grep`
+      bagian 2 kosong); ulangi pemeriksaan itu pada commit build yang diajukan.
 
 ## Langkah 7. Gladi di staging (PRD 8.2 langkah 7; U-12)
 

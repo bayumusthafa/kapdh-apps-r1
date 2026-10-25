@@ -146,10 +146,18 @@ flutter drive --profile --driver=test_driver/integration_test.dart \
 
 ## Tindak lanjut rilis
 
-- **Pemblokir submit (D13 mitigasi 1):** beberapa teks masih mengaitkan iuran/perpanjangan dengan membuka fitur
-  ("`<tab>` terkunci", "Perpanjang KTA untuk membuka kembali fitur ini", "mengaktifkan KTA dan fitur alumni"). Daftar
-  berkas, arah penulisan ulang, dan perintah pemeriksaan ada di `../docs/runbooks/app-store-submission.md` bagian 2;
-  uji widget yang memeriksa teks itu ikut diperbarui.
+- **D13 mitigasi 1 (teks iuran): selesai sejak 21 Oktober 2026.** Teks yang mengaitkan iuran/perpanjangan dengan
+  membuka fitur sudah ditulis ulang sebagai status keanggotaan organisasi, dan perintah `grep` di
+  `../docs/runbooks/app-store-submission.md` bagian 2 kosong (diulang 25 Oktober 2026 pada `7ce1ed8`). Jalankan ulang
+  sebelum setiap submit; teks baru tidak boleh memakai kata yang dilarang di bagian itu.
+- Formulir toko: lembar Data safety ada di `../docs/runbooks/app-store-submission.md` bagian 4, deklarasi App content
+  Google Play di bagian 9, dan keputusan pemilik produk di bagian 10. Perubahan izin, SDK, atau data yang dikirim
+  aplikasi wajib memperbarui lembar itu.
+- Teks izin iOS (`ios/Runner/Info.plist`, `NSCameraUsageDescription` dan `NSPhotoLibraryUsageDescription`) belum
+  menyebut gambar chat dan foto grup; perbarui sebelum build iOS diajukan (`app-store-submission.md` bagian 10).
+- Auto-init FCM tidak dimatikan, dan pada build dengan `PUSH_ENABLED=true` `Firebase.initializeApp` dijalankan saat
+  aplikasi dibuka (`lib/bootstrap.dart` → `lib/core/push/push_platform.dart`), sehingga token dapat dibuat sebelum
+  login. Keputusan K8 di `app-store-submission.md` bagian 10.
 - Android: kunci rilis (`android/key.properties`). App Links butuh SHA-256 kunci penandatanganan aplikasi Play App
   Signing (baru tampil setelah AAB pertama diunggah ke Play Console, jalur pengujian internal cukup; AAB rilis itu
   butuh `android/key.properties`, `docs/BUILD.md` bagian 3.1) di `kapdh-platform/apps/web/app-links.json`
