@@ -158,7 +158,10 @@ flutter drive --profile --driver=test_driver/integration_test.dart \
   `FirebaseMessagingAutoInitEnabled` = `false` di `ios/Runner/Info.plist`. `Firebase.initializeApp` tetap dijalankan
   saat aplikasi dibuka (`lib/bootstrap.dart` → `lib/core/push/push_platform.dart`), tetapi token FCM dan Installation
   ID baru dibuat setelah `PushService` menyalakan auto-init, yaitu setelah login dan bila izin notifikasi tidak
-  ditolak. Saat sesi berakhir, token dihapus lalu auto-init dimatikan lagi. Jangan menambah SDK Firebase lain (mis.
+  ditolak. Saat sesi berakhir, token dihapus lalu auto-init dimatikan lagi. Bila izin notifikasi kemudian dicabut di
+  pengaturan sistem (K8 lanjutan), izin yang dibaca ulang tanpa dialog saat aplikasi kembali ke latar depan atau dibuka
+  lagi membuat `PushService` mencabut token di server (`POST /devices/unregister`), menghapusnya di perangkat, dan
+  mematikan auto-init; bila izin diberikan lagi, token baru didaftarkan. Jangan menambah SDK Firebase lain (mis.
   Analytics) tanpa mematikan pengumpulan datanya dan memperbarui lembar Data safety.
 - Android: kunci rilis (`android/key.properties`). App Links butuh SHA-256 kunci penandatanganan aplikasi Play App
   Signing (baru tampil setelah AAB pertama diunggah ke Play Console, jalur pengujian internal cukup; AAB rilis itu

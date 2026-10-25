@@ -184,9 +184,10 @@ dari metrik (PRD 8.3 langkah 3).
 ## 4. Formulir privasi: lembar Data safety Google Play (dan App Privacy Apple)
 
 Sumber jawaban: kode `main` `7ce1ed8` (diperiksa 25 Oktober 2026) ditambah K8 (PR #41) dan K5 (PR #40) sampai
-`e147d24`, serta naskah kebijakan privasi. Nomor baris di bagian 4, 9 dan 10 dicocokkan dengan `main` `3ff9b35`
-(25 Oktober 2026; PR #42 tidak mengubah baris yang dirujuk); periksa ulang bila berkasnya berubah sebelum formulir
-diisi. `KP` dan `KK` merujuk berkas di `docs/legal`. Naskah yang tayang di situs adalah salinan di
+`e147d24`, K8 lanjutan (PR #44), serta naskah kebijakan privasi. Nomor baris di bagian 4, 9 dan 10 dicocokkan dengan
+`main` `3ff9b35` (25 Oktober 2026; PR #42 tidak mengubah baris yang dirujuk), kecuali rujukan `mobile/core/push/` dan
+`mobile/app/` yang mengikuti PR #44; periksa ulang bila berkasnya berubah sebelum formulir diisi. `KP` dan `KK` merujuk
+berkas di `docs/legal`. Naskah yang tayang di situs adalah salinan di
 `kapdh-platform/apps/web/src/published-pages/` (bagian 7), dan per 25 Oktober 2026 salinan itu memuat butir yang sama
 untuk semua jawaban di sini (rekening refund, kota domisili, kata kunci pencarian, pengenal instalasi, agama, usia 18+,
 Perlindungan anak). Bila naskah baru terbit, cocokkan ulang lembar ini dengan naskah tayang. Singkatan rujukan:
@@ -237,20 +238,21 @@ Aturan pengisian yang berlaku untuk semua baris:
 | App activity → In-app search history | **Baru.** Kata kunci dan kota yang diketik di pencarian Jejaring dan pemilih anggota chat, serta kata kunci pencarian event. Dikirim sebagai query string, dipakai untuk satu permintaan, tidak disimpan di basis data, tidak dicatat di log, dan tidak disimpan di perangkat | `mobile/features/network/network_repository.dart:21-31`; `mobile/features/chat/member_picker.dart:87-100`; `mobile/features/events/events_repository.dart:23-38`; `api/modules/network/directory.service.ts:193-206`; `api/modules/events/member-events.service.ts:48`; `api/core/logging/logger.ts:113-121`; KP:81 | Ya / tidak | **Ya** | Opsional | App functionality | Tidak perlu dideklarasikan (diproses seketika, tidak disimpan) |
 | App activity → Other user-generated content | Laporan dan banding, nama grup | `schema/community.ts:81`, `:217`; KP:87, KP:97-100 | Ya / tidak | Tidak | Opsional | App functionality; Fraud prevention, security, and compliance | User Content → Other User Content |
 | App activity → Other actions | Suka berita, reaksi pesan, daftar blokir, reservasi tiket | `schema/content.ts:92`; `schema/community.ts:53`, `:194`; `schema/events.ts:91`; KP:78, KP:93, KP:99 | Ya / tidak | Tidak | Opsional | App functionality | Usage Data → Product Interaction |
-| Device or other IDs | **Diperluas.** Token FCM dan Firebase Installation ID (dibuat SDK FCM, diterima Google sebagai pemroses), platform dan versi aplikasi pada token dan sesi, serta nama perangkat generik | `schema/notifications.ts:89-99`; `schema/identity.ts:167-169`; `mobile/core/push/push_service.dart:145-149`, `:201-203`, `:338-346`, `:361-362`; `mobile/core/push/push_platform.dart:104-124`, `:158-189`; `kapdh-mobile/android/app/src/main/AndroidManifest.xml:74-76`; `kapdh-mobile/ios/Runner/Info.plist:70-71`; `mobile/bootstrap.dart:56`; KP:106, KP:111, KP:197 | Ya / tidak | Tidak | Wajib (lihat catatan K8) | App functionality, Developer communications (notifikasi berita dan event) | Identifiers → Device ID |
+| Device or other IDs | **Diperluas.** Token FCM dan Firebase Installation ID (dibuat SDK FCM, diterima Google sebagai pemroses), platform dan versi aplikasi pada token dan sesi, serta nama perangkat generik | `schema/notifications.ts:89-99`; `schema/identity.ts:167-169`; `mobile/core/push/push_service.dart:157-161`, `:209-219`, `:254-283`, `:396-417`, `:421-430`, `:445-446`; `mobile/core/push/push_platform.dart:108-128`, `:162-197`; `kapdh-mobile/android/app/src/main/AndroidManifest.xml:74-76`; `kapdh-mobile/ios/Runner/Info.plist:70-71`; `mobile/bootstrap.dart:56`; KP:106, KP:111, KP:197 | Ya / tidak | Tidak | Wajib (lihat catatan K8) | App functionality, Developer communications (notifikasi berita dan event) | Identifiers → Device ID |
 
 Catatan Device or other IDs (K8): PP memilih opsi (a) pada 25 Oktober 2026, dan auto-init FCM kini mati sampai
-pengguna masuk. Nomor baris di baris tabel ini dan di catatan ini mengikuti perubahan tersebut, bukan `7ce1ed8`. Pada
-build dengan `PUSH_ENABLED=true`, `Firebase.initializeApp` tetap dijalankan saat aplikasi dibuka
-(`mobile/bootstrap.dart:56` → `mobile/core/push/push_platform.dart:104-124`). Namun auto-init dimatikan di
-`kapdh-mobile/android/app/src/main/AndroidManifest.xml:74-76` (`firebase_messaging_auto_init_enabled` = `false`) dan
-`kapdh-mobile/ios/Runner/Info.plist:70-71` (`FirebaseMessagingAutoInitEnabled` = `false`). Aplikasi tidak memakai SDK
-Analytics, jadi pengaturan FCM ini sudah cukup. Setelah login, dan hanya bila izin notifikasi tidak ditolak, aplikasi
-menyalakan auto-init tepat sebelum meminta token (`mobile/core/push/push_service.dart:197-203`), lalu server KAPDH
-menyimpan token itu (`mobile/core/push/push_service.dart:361-362`). Saat sesi berakhir atau berganti akun, token
-dihapus lebih dulu, lalu auto-init dimatikan lagi (`mobile/core/push/push_service.dart:338-346`). Nilai auto-init
-tersimpan lintas peluncuran. Jenis data ini tetap dideklarasikan **Wajib** karena platform, versi aplikasi, dan nama
-perangkat generik pada sesi terkirim otomatis.
+pengguna masuk. Nomor baris di baris tabel ini dan di catatan ini mengikuti perubahan tersebut dan K8 lanjutan
+(PR #44), bukan `7ce1ed8`. Pada build dengan `PUSH_ENABLED=true`, `Firebase.initializeApp` tetap dijalankan saat
+aplikasi dibuka (`mobile/bootstrap.dart:56` → `mobile/core/push/push_platform.dart:108-128`). Namun auto-init
+dimatikan di `kapdh-mobile/android/app/src/main/AndroidManifest.xml:74-76` (`firebase_messaging_auto_init_enabled` =
+`false`) dan `kapdh-mobile/ios/Runner/Info.plist:70-71` (`FirebaseMessagingAutoInitEnabled` = `false`). Aplikasi tidak
+memakai SDK Analytics, jadi pengaturan FCM ini sudah cukup. Setelah login, dan hanya bila izin notifikasi tidak
+ditolak, aplikasi menyalakan auto-init tepat sebelum meminta token (`mobile/core/push/push_service.dart:209-219`), lalu
+server KAPDH menyimpan token itu (`mobile/core/push/push_service.dart:445-446`). Saat sesi berakhir atau berganti akun,
+token dihapus lebih dulu, lalu auto-init dimatikan lagi (`mobile/core/push/push_service.dart:421-430`). Bila izin
+notifikasi kemudian terbaca ditolak, token juga dicabut di server sebelum dihapus (K8 lanjutan, paragraf di bawah cek
+penerimaan). Nilai auto-init tersimpan lintas peluncuran. Jenis data ini tetap dideklarasikan **Wajib** karena
+platform, versi aplikasi, dan nama perangkat generik pada sesi terkirim otomatis.
 
 Yang dijamin perubahan ini, tidak lebih:
 
@@ -260,19 +262,22 @@ Yang dijamin perubahan ini, tidak lebih:
    sebelumnya tidak ikut terhapus (`deleteToken` hanya menghapus token FCM), tetapi tidak dikirim ke KAPDH. Bila logout
    terjadi tanpa koneksi, token lama dan auto-init yang masih menyala bertahan sampai penghapusan tertunda berhasil saat
    aplikasi dibuka atau koneksi kembali. Di iOS, percobaan ulang saat aplikasi dibuka
-   (`mobile/core/push/push_service.dart:157`, juga saat sesi terbaca berakhir dan pada event konektivitas pertama,
-   `mobile/app/app_services.dart:86-89` dan `:110`) dapat gagal dengan `apns-token-not-set` karena token APNs sering
-   belum tiba sesaat setelah peluncuran; galat itu hanya dicatat (`mobile/core/push/push_service.dart:350-356`),
+   (`mobile/core/push/push_service.dart:169`, juga saat sesi terbaca berakhir dan pada event konektivitas pertama,
+   `mobile/app/app_services.dart:87-90` dan `:112`) dapat gagal dengan `apns-token-not-set` karena token APNs sering
+   belum tiba sesaat setelah peluncuran; galat itu hanya dicatat (`mobile/core/push/push_service.dart:434-440`),
    sehingga token lama dan auto-init dapat bertahan beberapa peluncuran sampai koneksi berubah atau ada login
    berikutnya. Perilaku ini sudah ada sebelum K8.
 3. **Login dengan izin notifikasi ditolak**: auto-init tetap mati dan `getToken` tidak dipanggil, sehingga tidak ada
    token FCM dan SDK tidak membuat Installation ID.
+4. **Izin notifikasi dicabut kemudian di pengaturan sistem** (K8 lanjutan, PR #44): saat aplikasi kembali ke latar
+   depan atau dibuka lagi dengan sesi, token dicabut di server lalu dihapus di perangkat, dan auto-init dimatikan.
+   Rinciannya ada di paragraf "Izin notifikasi dicabut kemudian" di bawah cek penerimaan.
 
 **Cek penerimaan K8.** Kesimpulan "KP:106 konsisten tanpa revisi KP" ("hanya dibuat ... setelah Anda masuk dan tidak
-menolak izin notifikasi") baru berlaku setelah ketiga cek di bawah lulus pada AAB dan IPA yang persis akan dikirim,
-dan tetap bergantung pada keputusan lanjutan di bawah. Pakai berkas yang sama, bukan build debug atau build ulang dari
-commit yang sama: Android dipasang dari jalur Internal testing Play yang memuat AAB itu, iOS dari build yang sama di
-TestFlight internal. Keduanya dibagikan setelah image API K5 berjalan di production (gerbang K8 di bagian 10).
+menolak izin notifikasi") baru berlaku setelah keempat cek di bawah lulus pada AAB dan IPA yang persis akan dikirim.
+Pakai berkas yang sama, bukan build debug atau build ulang dari commit yang sama: Android dipasang dari jalur Internal
+testing Play yang memuat AAB itu, iOS dari build yang sama di TestFlight internal. Keduanya dibagikan setelah image API
+K5 berjalan di production (gerbang K8 di bagian 10).
 Jalankan di satu perangkat Android 13 atau lebih baru dan satu iPhone, dengan koneksi aktif. Bila KAPDH pernah
 terpasang, keluar dari akun lebih dulu (Akun → Keluar) bila masih masuk, lalu hapus aplikasinya; bila setelah
 dipasang aplikasi langsung terbuka dalam keadaan masuk, keluar, hapus, lalu pasang ulang sebelum cek 1. Catat waktu
@@ -283,6 +288,7 @@ mulai setiap cek.
 | 1. Pasang baru, sebelum login pertama | Pasang build, buka aplikasi, dan biarkan di layar masuk minimal 2 menit. Tutup paksa, buka lagi, tunggu 2 menit | Tidak ada permintaan token di perangkat, dan tidak ada baris `device_tokens` baru sejak waktu mulai untuk platform dan versi build itu |
 | 2. Logout, lalu mulai ulang | Masuk dengan akun uji dan izinkan notifikasi (harus muncul satu baris aktif untuk akun itu). Keluar, tutup paksa aplikasi, buka lagi, dan biarkan di layar masuk 2 menit | Baris akun uji sudah dicabut (`revoked_at` terisi), tidak ada baris aktif baru, dan tidak ada permintaan token di perangkat sejak aplikasi dibuka lagi |
 | 3. Login dengan izin ditolak | Hapus dan pasang ulang build, masuk dengan akun uji, lalu tolak dialog izin notifikasi ("Jangan izinkan" di Android, "Jangan Izinkan" di iOS). Tunggu 2 menit | Tidak ada baris `device_tokens` untuk akun uji sejak waktu mulai, dan tidak ada permintaan token di perangkat |
+| 4. Izin dicabut kemudian | Keluar dari akun uji (Akun → Keluar), hapus dan pasang ulang build, masuk lagi, dan izinkan notifikasi (harus muncul satu baris aktif untuk akun itu). Tanpa keluar, buka pengaturan sistem dan matikan notifikasi KAPDH (Android: Setelan → Aplikasi → KAPDH → Notifikasi; iOS: Pengaturan → Notifikasi → KAPDH → Izinkan Notifikasi), lalu kembali ke aplikasi dan biarkan terbuka 2 menit. Android menghentikan proses aplikasi saat izin dicabut, jadi aplikasi dibuka ulang; bila dialog izin muncul lagi, pilih "Jangan izinkan". Setelah bukti diambil, nyalakan lagi notifikasi KAPDH lalu kembali ke aplikasi | Setelah izin dicabut: baris akun uji sudah dicabut (`revoked_at` terisi), tidak ada baris aktif untuk akun itu, sesi tetap masuk, dan tidak ada permintaan token baru di perangkat. Setelah izin dinyalakan lagi: muncul baris aktif **baru** (kueri di bawah menampilkan dua baris, berakhiran `\|t` lalu `\|f`), bukti token lama sudah dihapus di perangkat. Bila baris lama yang aktif kembali, token lama tidak terhapus dan cek gagal |
 
 Bukti server, dijalankan di VPS (kontainer PostgreSQL production seperti `push-fcm.md` 5.3; kueri tidak menampilkan
 token):
@@ -291,7 +297,7 @@ token):
 PG=$(docker ps --format '{{.Names}}' | grep -x 2ohiu7mobeihyqhthcqyix6o)        # kontainer PostgreSQL production
 MULAI='2026-10-27 09:00+07'                                                      # ganti dengan waktu mulai cek
 docker exec "$PG" psql -U postgres -d kapdh -XAt -c "select platform, app_version, count(*) from app.device_tokens where created_at >= '$MULAI' group by 1, 2"   # cek 1: tidak ada baris untuk platform dan versi build uji
-docker exec "$PG" psql -U postgres -d kapdh -XAt -c "select t.platform, t.created_at, t.revoked_at is not null from app.device_tokens t join app.users u on u.id = t.user_id where lower(u.email) = lower('<email akun uji>') and t.created_at >= '$MULAI' order by t.created_at"   # cek 2: satu baris berakhiran |t; cek 3: kosong
+docker exec "$PG" psql -U postgres -d kapdh -XAt -c "select t.platform, t.created_at, t.revoked_at is not null from app.device_tokens t join app.users u on u.id = t.user_id where lower(u.email) = lower('<email akun uji>') and t.created_at >= '$MULAI' order by t.created_at"   # cek 2: satu baris berakhiran |t; cek 3: kosong; cek 4: |t, lalu |t dan |f setelah izin dinyalakan lagi
 ```
 
 Bukti perangkat wajib ada untuk setiap cek. Tabel `device_tokens` hanya membuktikan token tidak *didaftarkan* ke
@@ -303,17 +309,30 @@ jaringan perangkat (mis. PCAPdroid di Android, `rvictl` dan Wireshark di iOS). "
 SDK tidak meminta token baru: tidak ada baris log `FirebaseMessaging` tentang pengambilan token, dan aplikasi tidak
 menghubungi `firebaseinstallations.googleapis.com` (pendaftaran Installation ID) maupun `fcmtoken.googleapis.com`
 (token FCM iOS). Di Android token FCM diminta lewat Google Play services, bukan dari proses aplikasi, sehingga untuk
-cek 2 log `FirebaseMessaging` menjadi bukti utamanya. Cek khusus iPhone ada di `push-fcm.md` bagian 8.
+cek 2 dan 4 log `FirebaseMessaging` menjadi bukti utamanya; pada cek 4, baris aktif baru setelah izin dinyalakan lagi
+membuktikan token lama sudah dihapus di perangkat. Cek khusus iPhone ada di `push-fcm.md` bagian 8.
 
-**Keterbatasan yang sudah ada sebelum K8 (keputusan lanjutan PP).** Bila pengguna mencabut izin notifikasi di
-pengaturan sistem setelah tokennya terdaftar, token itu tidak dihapus. Saat login atau aplikasi dibuka berikutnya,
-`_connect` langsung berhenti begitu izin terbaca ditolak (`mobile/core/push/push_service.dart:197`), tanpa menghapus
-token dan tanpa mematikan auto-init, sehingga baris `device_tokens` tetap aktif sampai logout. Ini tidak sejalan
-dengan bunyi KP:106 ("hanya dibuat dan kami simpan ... tidak menolak izin notifikasi"). PP memilih salah satu: (a)
-hapus token, cabut pendaftarannya di server, dan matikan auto-init setiap kali izin terbaca ditolak saat login atau
-aplikasi dibuka (perubahan kode, PR terpisah); atau (b) persempit kalimat KP:106 agar tidak menjanjikan penghapusan
-saat izin dicabut kemudian (token tetap tersimpan sampai pengguna keluar). Keputusan ini tercatat di tabel bagian 10
-sebagai K8 lanjutan, **menunggu PP**.
+**Izin notifikasi dicabut kemudian (K8 lanjutan, opsi a diputuskan PP 25 Oktober 2026, PR #44).** Sistem operasi
+tidak memberi tahu aplikasi saat izin notifikasi dicabut di pengaturan. Karena itu aplikasi membaca ulang izin tanpa
+dialog setiap kali kembali ke latar depan (`mobile/app/app.dart:58`, `mobile/core/push/push_service.dart:396-417`),
+dan langkah yang sama berjalan saat aplikasi dibuka lagi dengan sesi (`mobile/core/push/push_service.dart:209-213`).
+Di Android 13 ke atas, mencabut izin di pengaturan menghentikan proses aplikasi, jadi kembali ke aplikasi berarti
+membukanya lagi. Yang dijamin, tidak lebih:
+
+1. Begitu izin terbaca ditolak sementara pendaftaran akun yang masuk masih tercatat, token dicabut di server lewat
+   `POST /devices/unregister` (`revoked_at` terisi, pengiriman `pending` dibatalkan). Setelah itu token dihapus di
+   perangkat dan auto-init dimatikan (`mobile/core/push/push_service.dart:254-283`). Server lebih dulu, karena setelah
+   token dihapus di perangkat nilainya tidak dapat dicabut lagi lewat API.
+2. Sebelum aplikasi kembali ke latar depan atau dibuka lagi, baris `device_tokens` tetap aktif. Push yang terkirim
+   dalam rentang itu tidak tampil karena izinnya dicabut, dan notifikasinya tetap ada di kotak masuk.
+3. Bila pencabutan gagal (tanpa koneksi, server sibuk, atau di iOS token APNs belum tiba), catatan pendaftaran, token,
+   dan auto-init dipertahankan. Pencabutan diulang saat koneksi kembali, aplikasi kembali ke latar depan, atau
+   aplikasi dibuka lagi, tanpa mengganggu sesi. Bila pengguna keluar lebih dulu, logout menghapus token seperti biasa
+   dan server mencabut token sesi itu.
+4. Bila izin diberikan lagi, token baru didaftarkan saat aplikasi kembali ke latar depan.
+
+Dengan perubahan ini, kesimpulan "KP:106 konsisten tanpa revisi KP" tidak lagi bergantung pada keputusan lanjutan PP,
+tetapi tetap baru berlaku setelah keempat cek penerimaan K8 di atas lulus.
 
 ### 4.2 Tidak dideklarasikan, beserta alasannya
 
@@ -472,7 +491,7 @@ hanya pemilik yang dapat mengirim ulang bukti (PRD 4.3); keputusan PP masih terb
 | [R6] 5.1.1 | Kebijakan privasi, izin dengan alasan jelas, data minimum | Bagian 4; teks izin kamera/galeri di `Info.plist` menyebut bukti transfer, foto profil, foto chat, dan foto grup (diperbarui 25 Oktober 2026, bagian 10) | |
 | Kebijakan privasi dapat dibaca tanpa JavaScript | URL kebijakan privasi (dan `ketentuan-komunitas` untuk Child safety standards, bagian 9.4) yang diisi di toko menampilkan naskah, bukan hanya kerangka | Naskah tayang kelima halaman informasi/legal ditanam statis saat build dari salinan `apps/web/src/published-pages/` (penjelasan dan pemeriksaan di bawah tabel). **Lulus di kode per 25 Oktober 2026** (gerbang build `assert-published-pages.mjs`, uji `published-pages.test.ts`, uji asap image `smoke-static.sh`); production baru lulus setelah image web dari perubahan ini dideploy, jadi ulangi `curl` di bawah pada URL final | |
 | [R6] 2.1 | Aplikasi lengkap dan backend aktif saat review | Production aktif (go-live langkah 4), akun demo bagian 3 | |
-| Google Play Data safety | Formulir lengkap dan konsisten dengan kebijakan privasi | Bagian 4; K1, K2, dan K8 diputuskan PP 25 Oktober 2026 (bagian 10). Gerbang K8 (bagian 10): PR #41 digabung (`0d5967b`, sudah), perubahannya ada di AAB dan IPA yang diajukan, dan cek penerimaan K8 di bagian 4.1 lulus pada berkas itu di Internal testing Play dan TestFlight internal, setelah image API K5 berjalan di production. K8 lanjutan (izin notifikasi dicabut kemudian) **menunggu PP** dan diputuskan sebelum AAB dan IPA dibangun (gerbang K8) | |
+| Google Play Data safety | Formulir lengkap dan konsisten dengan kebijakan privasi | Bagian 4; K1, K2, K8, dan K8 lanjutan diputuskan PP 25 Oktober 2026 (bagian 10). Gerbang K8 (bagian 10): PR #41 (`0d5967b`, sudah) dan PR #44 (K8 lanjutan, izin notifikasi dicabut kemudian) digabung, perubahan keduanya ada di AAB dan IPA yang diajukan, dan keempat cek penerimaan K8 di bagian 4.1 lulus pada berkas itu di Internal testing Play dan TestFlight internal, setelah image API K5 berjalan di production | |
 | Google Play App content | App access, Ads, Advertising ID, IARC, target audiens, Financial features, Health, Government, News, Child safety standards | Bagian 9; K3-K7 diputuskan PP 25 Oktober 2026 (bagian 10), sehingga Child safety standards (9.4) juga dapat diisi. Gerbang K5 (bagian 10): PR #40 digabung (`e147d24`, sudah), image API-nya berjalan di production, keempat revisi naskah (Kebijakan Privasi, Ketentuan Layanan, Ketentuan Komunitas, dan Bantuan) terbit pada hari yang sama, salinan `published-pages` diperbarui lewat `pages:sync` dan image web dideploy ulang, dan petunjuk baru `report_sheet.dart` ada di build yang diajukan. Pada rilis toko pertama, naskah terbit pada hari rilis closed testing Play pertama dikirim ke review Google (iOS: paling lambat hari build pertama dikirim ke Beta App Review TestFlight eksternal, mana yang lebih dulu), sebelum pengiriman itu; Internal testing Play dan TestFlight internal untuk pemilik dan tim inti berjalan lebih dulu dan tidak dihitung sebagai rilis ke pengguna (K5 lanjutan, diputuskan PP 25 Oktober 2026). Child safety standards juga butuh URL `ketentuan-komunitas` yang terbaca tanpa JavaScript (baris "Kebijakan privasi dapat dibaca tanpa JavaScript") | |
 | Google Play target API | Target SDK sesuai persyaratan Play saat submit | Ditentukan Flutter 3.47 (`flutter.targetSdkVersion`); periksa saat build | |
 
@@ -651,11 +670,11 @@ Syarat sebelum terbit butir 8). Gerbang K5 sebelum submit ada di bagian 10. Pili
 ## 10. Keputusan pemilik produk (PP) sebelum mengisi App content
 
 PP menyetujui usulan K1-K8 pada 25 Oktober 2026, lalu pada hari yang sama menetapkan titik kontak K4, prosedur K6,
-dan K5 lanjutan. Kolom Keputusan PP, Tanggal, dan Alasan mencatat hasilnya; salin tabel ini ke paket bukti. Dengan
-keputusan ini, lembar Data safety (bagian 4) dan deklarasi App content (bagian 9), termasuk Child safety standards
-(9.4), dapat diisi tanpa pertanyaan terbuka. K5 diterapkan PR #40 dan K8 diterapkan PR #41, keduanya sudah digabung;
-sebelum submit, gerbang K5 dan K8 di bawah tabel harus lulus. Keputusan yang masih **menunggu PP** tinggal K8
-lanjutan.
+K5 lanjutan, dan K8 lanjutan. Kolom Keputusan PP, Tanggal, dan Alasan mencatat hasilnya; salin tabel ini ke paket
+bukti. Dengan keputusan ini, lembar Data safety (bagian 4) dan deklarasi App content (bagian 9), termasuk Child safety
+standards (9.4), dapat diisi tanpa pertanyaan terbuka. K5 diterapkan PR #40 dan K8 diterapkan PR #41, keduanya sudah
+digabung; K8 lanjutan diterapkan PR #44. Sebelum submit, gerbang K5 dan K8 di bawah tabel harus lulus. Tidak ada lagi
+keputusan yang menunggu PP.
 
 | No | Pertanyaan | Pilihan | Usulan | Keputusan PP | Tanggal | Alasan | Rujukan |
 | -- | ---------- | ------- | ------ | ------------ | ------- | ------ | ------- |
@@ -667,13 +686,14 @@ lanjutan.
 | K5 lanjutan | Hari terbit keempat revisi naskah (Kebijakan Privasi, Ketentuan Layanan, Ketentuan Komunitas, dan Bantuan) pada rilis toko pertama. Naskah baru boleh terbit pada hari build yang memakai daftar profil berulang dirilis ke pengguna, sedangkan gerbang K5 mensyaratkan naskah sudah terbit sebelum build dikirim ke review, termasuk review Google atas rilis closed testing | (a) Hari rilis closed testing Play pertama dikirim ke review Google (iOS: paling lambat hari build pertama dikirim ke Beta App Review TestFlight eksternal, mana yang lebih dulu), naskah terbit sebelum pengiriman itu; Internal testing Play dan TestFlight internal tidak dihitung sebagai rilis ke pengguna; (b) hari build pertama dibagikan lewat Internal testing Play atau TestFlight internal; (c) hari pengajuan akses production setelah closed testing | (a): naskah tayang sudah sesuai saat Google meninjau rilis pertama dan saat anggota pertama memakai build baru, tanpa mendahului rilis ke pengguna | **(a)** Naskah terbit pada hari rilis closed testing Play pertama dikirim ke review Google (iOS: paling lambat hari build pertama dikirim ke Beta App Review TestFlight eksternal, mana yang lebih dulu), setelah image API K5 berjalan di production. Internal testing Play dan TestFlight internal hanya untuk pemilik dan tim inti | 25 Oktober 2026 | Rilis closed testing Play ditinjau Google dan mensyaratkan App content lengkap, termasuk Data safety dan URL kebijakan privasi, jadi kebijakan privasi yang tayang harus sudah sesuai saat itu. Penguji closed testing adalah anggota sungguhan yang sudah memakai build baru sebelum akses production diajukan, jadi (c) terlambat. Bila akun developer Play berjenis pribadi, akses production baru dapat diajukan setelah closed testing berjalan dengan minimal 12 penguji yang ikut serta selama 14 hari berturut-turut. Internal testing (tanpa review Google, paling banyak 100 penguji) dipakai untuk cek penerimaan K8 dan uji asap, belum rilis ke pengguna, jadi (b) mendahuluinya | Gerbang K5 di bawah tabel; bagian 4.3; `docs/legal/README.md` (Revisi profil berulang, Kapan terbit; Syarat sebelum terbit butir 8); `rilis-dan-gerbang-go-live.md` bagian 5.5 langkah 8 |
 | K6 | Prosedur penerusan CSAM ke aparat penegak hukum dan penanganan bukti | Siapa yang meneruskan, ke kanal mana, dalam berapa lama; siapa yang boleh membuka salinan bukti, dan kapan salinan itu dihapus setelah diteruskan (bukti laporan tetap disimpan, KP:240) | Ditetapkan PP bersama penasihat hukum sebelum deklarasi dikirim | **Diputuskan 25 Oktober 2026** (draf disetujui PP): (1) moderator menghapus konten dan membatasi akun pelaku dalam 24 jam (prioritas urgent K5); (2) bukti di sistem hanya boleh dibuka ketua atau pengurus yang ditunjuk dan tidak dibagikan lebih lanjut; (3) dalam 1 x 24 jam pengurus melaporkan ke Polri (Direktorat Tindak Pidana Siber Bareskrim, portal `patrolisiber.id`) dan ke Komdigi (`aduankonten.id`); aduan lewat `patrolisiber.id` belum tentu menjadi laporan polisi resmi, jadi bila aparat meminta laporan resmi, ikuti arahannya; (4) nomor laporan atau tanda terima dicatat di catatan moderasi; salinan bukti hanya diserahkan ke aparat, salinan yang dibuat khusus untuk diteruskan dihapus setelah diserahkan, dan bukti laporan di sistem tetap disimpan sesuai KP:240 | 25 Oktober 2026 | Menjawab semua pertanyaan di kolom Pilihan (siapa, kanal, tenggat, akses bukti, penghapusan salinan) sebelum deklarasi Child safety standards dikirim; langkah 1 memakai prioritas urgent dari K5 | Bagian 9.4; KK:74-75; KP:240 |
 | K7 | Email kontak kuesioner IARC | Alamat organisasi | Alamat organisasi yang dipantau, bukan email pribadi | `bantuan@kapdh.or.id` | 25 Oktober 2026 | Alamat organisasi yang dipantau, bukan email pribadi; sama dengan kontak publik di KP:8 | Bagian 9.2 |
-| K8 | SDK FCM dapat membuat token saat aplikasi dibuka (auto-init aktif), padahal KP:106 menyebut token dibuat setelah login | (a) Matikan auto-init FCM (perubahan kode); (b) revisi kalimat KP:106 | Putuskan setelah DEV memverifikasi perilaku SDK pada build rilis; Data safety tetap mendeklarasikan Device or other IDs sebagai Wajib | **(a)** Matikan auto-init FCM sampai login; diterapkan PR #41 (digabung 25 Oktober 2026, `0d5967b`) | 25 Oktober 2026 | SDK tidak lagi membuat token FCM dan Installation ID sebelum login. Catatan K8 di bagian 4.1 dan kalimat KP:106 konsisten tanpa revisi KP hanya setelah cek penerimaan K8 di bagian 4.1 lulus pada build yang diajukan, dan tetap bergantung pada K8 lanjutan. Device or other IDs tetap Wajib | Bagian 4.1 (catatan Device or other IDs, Cek penerimaan K8) |
-| K8 lanjutan | Bila izin notifikasi dicabut kemudian di pengaturan sistem, token yang sudah terdaftar tidak dihapus (keterbatasan yang sudah ada sebelum K8, bagian 4.1) | (a) Hapus token, cabut pendaftarannya di server, dan matikan auto-init setiap kali izin terbaca ditolak saat login atau aplikasi dibuka (perubahan kode, PR terpisah); (b) persempit kalimat KP:106 agar tidak menjanjikan penghapusan saat izin dicabut kemudian | – | **Menunggu PP** | – | Dicatat PR #41. Tidak mengubah jawaban Data safety (Device or other IDs tetap Wajib), tetapi kesimpulan bahwa KP:106 konsisten tanpa revisi bergantung pada keputusan ini | Bagian 4.1 (Keterbatasan yang sudah ada sebelum K8); KP:106; `mobile/core/push/push_service.dart:197` |
+| K8 | SDK FCM dapat membuat token saat aplikasi dibuka (auto-init aktif), padahal KP:106 menyebut token dibuat setelah login | (a) Matikan auto-init FCM (perubahan kode); (b) revisi kalimat KP:106 | Putuskan setelah DEV memverifikasi perilaku SDK pada build rilis; Data safety tetap mendeklarasikan Device or other IDs sebagai Wajib | **(a)** Matikan auto-init FCM sampai login; diterapkan PR #41 (digabung 25 Oktober 2026, `0d5967b`) | 25 Oktober 2026 | SDK tidak lagi membuat token FCM dan Installation ID sebelum login. Catatan K8 di bagian 4.1 dan kalimat KP:106 konsisten tanpa revisi KP hanya setelah keempat cek penerimaan K8 di bagian 4.1 lulus pada build yang diajukan; cek keempat berasal dari K8 lanjutan. Device or other IDs tetap Wajib | Bagian 4.1 (catatan Device or other IDs, Cek penerimaan K8) |
+| K8 lanjutan | Bila izin notifikasi dicabut kemudian di pengaturan sistem, token yang sudah terdaftar tidak dihapus (keterbatasan sebelum PR #44, dicatat PR #41) | (a) Hapus token, cabut pendaftarannya di server, dan matikan auto-init setiap kali izin terbaca ditolak saat login atau aplikasi dibuka (perubahan kode, PR terpisah); (b) persempit kalimat KP:106 agar tidak menjanjikan penghapusan saat izin dicabut kemudian | – | **(a)** Cabut token di server (`POST /devices/unregister`), hapus di perangkat, dan matikan auto-init setiap kali izin terbaca ditolak sementara pendaftaran masih tercatat: saat login, saat aplikasi dibuka dengan sesi, dan saat aplikasi kembali ke latar depan (izin dibaca tanpa dialog). Token didaftarkan lagi bila izin diberikan lagi. Diterapkan PR #44 | 25 Oktober 2026 | KP:106 ("hanya dibuat dan kami simpan ... tidak menolak izin notifikasi") tetap tanpa revisi, karena token yang izinnya dicabut tidak lagi disimpan begitu aplikasi dibuka lagi. Tidak mengubah jawaban Data safety (Device or other IDs tetap Wajib). Berlaku setelah gerbang K8 di bawah tabel lulus, termasuk cek penerimaan K8 keempat | Bagian 4.1 (Izin notifikasi dicabut kemudian, Cek penerimaan K8 nomor 4); KP:106; `mobile/core/push/push_service.dart:254-283`, `:396-417`; `mobile/app/app.dart:58` |
 
-Gerbang sebelum submit untuk K5 dan K8. Keduanya sudah digabung ke `main`, tetapi baru terpenuhi bila semua syarat di
-bawah benar pada build yang diajukan dan di production saat review. Pada rilis toko pertama, "submit" di sini sudah
-berlaku untuk rilis closed testing Play pertama yang dikirim ke review Google dan build iOS pertama yang dikirim ke
-Beta App Review TestFlight eksternal, bukan baru pengajuan production:
+Gerbang sebelum submit untuk K5 dan K8. PR #40 (K5) dan PR #41 (K8) sudah digabung ke `main`, dan K8 lanjutan ada di
+PR #44; gerbang baru terpenuhi bila semua syarat di bawah benar pada build yang diajukan dan di production saat
+review. Pada rilis toko pertama, "submit" di sini sudah berlaku untuk rilis closed testing Play pertama yang dikirim ke
+review Google dan build iOS pertama yang dikirim ke Beta App Review TestFlight eksternal, bukan baru pengajuan
+production:
 
 - **K5** (Child safety standards di 9.4 dan templat catatan reviewer bagian 5): PR #40 digabung (`e147d24`, sudah);
   image API dari commit itu atau sesudahnya berjalan di production (per 25 Oktober 2026 production masih menjalankan
@@ -685,8 +705,8 @@ Beta App Review TestFlight eksternal, bukan baru pengajuan production:
   berulang, Kapan terbit; Syarat sebelum terbit butir 8): deploy image API K5, distribusikan build mobile, lalu
   terbitkan naskah. Untuk rilis toko pertama, K5 lanjutan (diputuskan PP 25 Oktober 2026, bagian 10) merincinya:
   1. Deploy image API K5 ke production.
-  2. Bangun AAB dan IPA dari `main` `3ff9b35` atau sesudahnya (tag `contracts-v0.3.0` sudah terbit 25 Oktober 2026),
-     setelah K8 lanjutan diputuskan (gerbang K8 di bawah).
+  2. Bangun AAB dan IPA dari `main` setelah PR #44 (K8 lanjutan) digabung (tag `contracts-v0.3.0` sudah terbit
+     25 Oktober 2026; gerbang K8 di bawah).
   3. Bagikan build itu lewat Internal testing Play dan TestFlight internal, hanya untuk pemilik dan tim inti, lalu
      jalankan cek penerimaan K8 (di bawah) dan uji asap. Internal testing berjalan tanpa review Google (paling banyak
      100 penguji) dan tidak dihitung sebagai rilis ke pengguna.
@@ -702,15 +722,14 @@ Beta App Review TestFlight eksternal, bukan baru pengajuan production:
      12 penguji yang ikut serta selama 14 hari berturut-turut).
 
   Jangan kirim build apa pun ke review sebelum langkah 1-4 selesai.
-- **K8** (Data safety, Device or other IDs): PR #41 digabung (`0d5967b`, sudah); AAB dan IPA yang diajukan dibangun
-  dari commit yang memuatnya; dan ketiga cek penerimaan K8 di bagian 4.1 (beserta cek iPhone di `push-fcm.md`
-  bagian 8) lulus pada berkas yang persis akan dikirim. Cek dijalankan pada build Internal testing Play dan
-  TestFlight internal (langkah 3 di atas), setelah image API K5 berjalan di production, karena build itu membawa
-  petunjuk 24 jam K5 untuk Konten seksual (`docs/legal/README.md`, Syarat sebelum terbit butir 8). Simpan bukti
-  server dan perangkat setiap cek di paket bukti. K8 lanjutan (bagian 10, **menunggu PP**) diputuskan sebelum
-  langkah 2: bila (a), AAB dan IPA dibangun dari commit yang juga memuat PR perubahan kodenya, dan ketiga cek
-  dijalankan pada build itu; bila (b), kalimat KP:106 yang dipersempit ikut dalam Kebijakan Privasi yang diumumkan
-  dan terbit di langkah 4.
+- **K8** (Data safety, Device or other IDs): PR #41 digabung (`0d5967b`, sudah) dan PR #44 digabung (K8 lanjutan:
+  token dicabut di server dan dihapus di perangkat saat izin notifikasi dicabut kemudian); AAB dan IPA yang diajukan
+  dibangun dari commit yang memuat keduanya; dan keempat cek penerimaan K8 di bagian 4.1, termasuk cek 4 (izin
+  dicabut kemudian), beserta cek iPhone di `push-fcm.md` bagian 8, lulus pada berkas yang persis akan dikirim. Cek
+  dijalankan pada build Internal testing Play dan TestFlight internal (langkah 3 di atas), setelah image API K5
+  berjalan di production, karena build itu membawa petunjuk 24 jam K5 untuk Konten seksual (`docs/legal/README.md`,
+  Syarat sebelum terbit butir 8). Simpan bukti server dan perangkat setiap cek di paket bukti. K8 lanjutan diputuskan
+  PP 25 Oktober 2026 (opsi a, bagian 10), jadi kalimat KP:106 tidak direvisi.
 
 Tindak lanjut DEV di luar dokumen ini:
 
@@ -722,9 +741,8 @@ Tindak lanjut DEV di luar dokumen ini:
   kamera atau galeri berubah, perbarui teks ini dan kalimat izin di templat bagian 5.
 - Selesai 25 Oktober 2026: laporan "Konten seksual" menjadi urgent (K5, Opsi A; PR #40, `e147d24`), auto-init FCM
   dimatikan sampai login (K8 = a; PR #41, `0d5967b`), dan tag `contracts-v0.3.0` terbit lewat workflow Release
-  (versi kontrak 0.3.0 dari PR #42, `3ff9b35`; commit rilis `aea4c35`). Yang masih terbuka mengikuti gerbang di
-  atas: deploy image API K5 ke production, build AAB dan IPA dari `main` `3ff9b35` atau sesudahnya, cek penerimaan K8
-  pada build Internal testing Play dan TestFlight internal, penerbitan keempat revisi naskah beserta `pages:sync` dan
-  deploy ulang image web pada hari rilis closed testing pertama dikirim ke review, serta keputusan PP K8 lanjutan
-  sebelum AAB dan IPA dibangun (gerbang K8 di atas). Bila PP memilih opsi (a) untuk K8 lanjutan, perubahan kodenya
-  dikerjakan lewat PR terpisah dan ikut dalam build itu.
+  (versi kontrak 0.3.0 dari PR #42, `3ff9b35`; commit rilis `aea4c35`). PP memutuskan K8 lanjutan (opsi a) pada hari
+  yang sama, dan perubahan kodenya ada di PR #44. Yang masih terbuka mengikuti gerbang di atas: penggabungan PR #44,
+  deploy image API K5 ke production, build AAB dan IPA dari `main` yang memuat PR #44, keempat cek penerimaan K8 pada
+  build Internal testing Play dan TestFlight internal, serta penerbitan keempat revisi naskah beserta `pages:sync` dan
+  deploy ulang image web pada hari rilis closed testing pertama dikirim ke review.
