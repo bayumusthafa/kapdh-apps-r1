@@ -148,6 +148,14 @@ void main() {
     });
   });
 
+  test('isAutoInitEnabled mengikuti nilai terakhir setAutoInitEnabled tanpa panggilan kanal (K8 lanjutan)', () async {
+    await autoInit(true);
+    expect(platform.isAutoInitEnabled, isTrue);
+    await autoInit(false);
+    expect(platform.isAutoInitEnabled, isFalse);
+    expect(calls, isEmpty);
+  });
+
   test('Android: deleteToken langsung memanggil Messaging#deleteToken walau auto-init mati', () async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     await autoInit(false);

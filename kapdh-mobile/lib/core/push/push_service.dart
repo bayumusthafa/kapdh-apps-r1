@@ -26,20 +26,34 @@ typedef LocationOpener = void Function(Uri location);
 /// diulang saat aplikasi dibuka atau koneksi kembali (AC F13-5). Catatan akun yang sedang masuk tanpa
 /// [pendingUnregister] sementara izin notifikasi terbaca ditolak berarti token belum berhasil dicabut (K8 lanjutan);
 /// pencabutan diulang selama catatan itu ada.
+///
+/// [token] adalah token FCM terakhir yang dikirim ke PUT /devices untuk [userId], dicatat sebelum request. Saat izin
+/// notifikasi dicabut, nilai inilah yang dicabut di server, tanpa getToken, sehingga tetap benar walau token berotasi
+/// saat aplikasi tertutup atau aplikasi iOS dipasang ulang tanpa keluar (catatan di Keychain bertahan). null bila belum
+/// ada token yang dikirim, atau catatan ditulis versi aplikasi sebelumnya. Catatan tertunda tidak menyimpan token:
+/// penghapusan di perangkat tidak memerlukan nilainya, dan server mencabut token sesi itu saat logout atau
+/// menonaktifkannya begitu FCM menolaknya.
 @immutable
 class PushRegistration {
-  const PushRegistration({required this.userId, this.pendingUnregister = false});
+  const PushRegistration({required this.userId, this.token, this.pendingUnregister = false});
 
   final String? userId;
+  final String? token;
   final bool pendingUnregister;
 
-  Map<String, Object?> toJson() => {'user_id': userId, 'pending_unregister': pendingUnregister};
+  Map<String, Object?> toJson() => {
+    'user_id': userId,
+    if (token != null) 'token': token,
+    'pending_unregister': pendingUnregister,
+  };
 
   static PushRegistration? fromJson(Object? json) {
     if (json is! Map) return null;
     final userId = json['user_id'];
+    final token = json['token'];
     return PushRegistration(
       userId: userId is String ? userId : null,
+      token: token is String && token.isNotEmpty ? token : null,
       pendingUnregister: json['pending_unregister'] == true,
     );
   }
@@ -80,8 +94,9 @@ class PushRegistrationStore {
 ///   akun, atau izin dicabut).
 /// - Izin yang dicabut kemudian di pengaturan sistem (K8 lanjutan): setiap kali izin terbaca ditolak sementara
 ///   pendaftaran akun yang masuk masih tercatat (langkah login, aplikasi kembali ke latar depan, koneksi kembali),
-///   token dicabut di server (POST /devices/unregister), lalu dihapus di perangkat dan auto-init dimatikan. Saat
-///   aplikasi kembali ke latar depan izin dibaca ulang tanpa dialog; bila izin diberikan lagi, token didaftarkan.
+///   token yang tercatat dicabut di server (POST /devices/unregister), lalu token dihapus di perangkat dan auto-init
+///   dimatikan. Saat aplikasi kembali ke latar depan izin dibaca ulang tanpa dialog; saat aplikasi dibuka dengan sesi
+///   izin diminta seperti saat login. Bila izin diberikan lagi, token didaftarkan.
 /// - Token didaftarkan ulang saat diperbarui FCM. Akun pemilik pendaftaran dicatat di secure storage SEBELUM auto-init
 ///   dinyalakan (jadi juga sebelum PUT /devices), sehingga setiap akhir sesi (logout, sesi dicabut, logout saat
 ///   offline, sesi gagal dipulihkan saat aplikasi dibuka) menghapus token FCM perangkat dan mematikan auto-init walau
@@ -193,7 +208,9 @@ class PushService {
       // Token yang masih terhubung dengan akun lain (berganti akun, atau logout sebelumnya belum tuntas) dihapus
       // dulu agar FCM menerbitkan token baru untuk akun ini. Selama gagal, catatan tertunda dipertahankan dan token
       // tidak didaftarkan.
-      if (_needsRelease(await _registrations.read(), userId)) {
+      final record = await _registrations.read();
+      final release = _needsRelease(record, userId);
+      if (release) {
         try {
           await _deleteDeviceToken();
         } on Object catch (error) {
@@ -213,8 +230,9 @@ class PushService {
       }
       // Sejak auto-init menyala SDK dapat membuat token untuk akun ini, termasuk sendiri saat getToken gagal atau
       // aplikasi ditutup sebelum token terdaftar. Catatan ditulis lebih dulu agar akhir sesi selalu menghapus token itu
-      // lalu mematikan auto-init lagi.
-      await _registrations.write(PushRegistration(userId: userId));
+      // lalu mematikan auto-init lagi. Token yang sudah tercatat untuk akun ini dipertahankan, agar tetap dapat dicabut
+      // bila izin dicabut kemudian.
+      await _registrations.write(PushRegistration(userId: userId, token: release ? null : record?.token));
       await _platform.setAutoInitEnabled(true);
       final token = await _platform.getToken();
       if (token != null) await _register(userId, token);
@@ -255,23 +273,31 @@ class PushService {
   /// di server, lalu dihapus di perangkat dan auto-init dimatikan ([_deleteDeviceToken]). Tanpa catatan pendaftaran
   /// (izin ditolak sejak login) tidak ada token, sehingga tidak ada token yang diminta maupun request yang dikirim.
   ///
-  /// - Token diambil lewat getToken. Catatan ada berarti auto-init sudah dinyalakan untuk akun ini, sehingga getToken
-  ///   mengembalikan token yang sudah ada, bukan membuat token baru.
-  /// - Server lebih dulu: setelah deleteToken nilai token hilang dan tidak dapat dicabut lagi lewat API.
+  /// - Yang dicabut adalah token di catatan, yaitu token terakhir yang dikirim ke PUT /devices, tanpa getToken. Token
+  ///   saat ini yang berbeda (berotasi saat aplikasi tertutup) belum pernah dikirim ke server, jadi cukup dihapus di
+  ///   perangkat. Catatan tanpa token (belum ada token yang dikirim, atau catatan versi sebelumnya): token saat ini
+  ///   hanya diambil bila auto-init menyala. Auto-init mati berarti tidak ada token untuk dicabut, karena auto-init
+  ///   baru dimatikan setelah token terhapus dan aplikasi iOS yang dipasang ulang tidak membawa token lama. Lagi pula
+  ///   getToken dengan auto-init mati membuat token baru di Android dan selalu gagal `apns-token-not-set` di iOS.
+  /// - Server lebih dulu: catatan beserta nilai token dihapus bersama token di perangkat, dan setelah itu token tidak
+  ///   dapat dicabut lagi lewat API.
+  /// - Token terdaftar di memori dikosongkan sebelum request: begitu request dikirim status token di server tidak
+  ///   diketahui (respons dapat hilang setelah server mencabutnya), jadi izin yang diberikan lagi sebelum pencabutan
+  ///   tuntas mendaftarkan token lagi (PUT /devices idempoten).
   /// - Kegagalan (offline, server sibuk, penghapusan di perangkat gagal) hanya dicatat. Catatan pendaftaran dan
   ///   auto-init dipertahankan, begitu pula token selama belum terhapus, lalu seluruh langkah diulang setiap kali izin
   ///   terbaca ditolak lagi: saat aplikasi kembali ke latar depan, koneksi kembali, atau peluncuran berikutnya.
-  ///   Request berulang aman karena server tetap menjawab 204. Galat `apns-token-not-set` (iOS) diteruskan ke
-  ///   [_connect] dan diulang berjeda seperti pendaftaran.
+  ///   Request berulang aman karena server tetap menjawab 204. Galat `apns-token-not-set` (iOS, saat deleteToken
+  ///   setelah token dicabut di server) diteruskan ke [_connect] dan diulang berjeda seperti pendaftaran.
   /// - Berjalan di antrean, jadi akhir sesi atau berganti akun menunggu sampai langkah ini selesai lalu menghapus token
   ///   yang masih ada. Bila sesi sudah berganti saat request berjalan, server mengabaikan token milik akun lain (N-09).
   Future<void> _releaseDenied(String userId) async {
     final record = await _registrations.read();
     if (record == null || record.userId != userId) return;
+    _registeredToken = null;
     try {
-      final token = await _platform.getToken();
+      final token = record.token ?? (_platform.isAutoInitEnabled ? await _platform.getToken() : null);
       if (token != null) await _unregisterDevice(UnregisterDeviceRequest(token: token));
-      _registeredToken = null;
       await _deleteDeviceToken();
     } on Object catch (error) {
       if (_isApnsTokenNotSet(error)) rethrow;
@@ -441,8 +467,9 @@ class PushService {
 
   Future<void> _register(String userId, String token) async {
     if (_userId != userId || token == _registeredToken) return;
-    // Dicatat sebelum request: bila respons hilang di jaringan, token tetap dihapus saat sesi berakhir.
-    await _registrations.write(PushRegistration(userId: userId));
+    // Dicatat sebelum request: bila respons hilang di jaringan, token tetap dihapus saat sesi berakhir, dan tetap dapat
+    // dicabut di server bila izin dicabut kemudian.
+    await _registrations.write(PushRegistration(userId: userId, token: token));
     await _registerDevice(RegisterDeviceRequest(platform: _info.platform, token: token, appVersion: _info.version));
     _registeredToken = token;
     // Token sudah terdaftar (termasuk lewat onTokenRefresh): percobaan ulang APNs tidak diperlukan lagi.

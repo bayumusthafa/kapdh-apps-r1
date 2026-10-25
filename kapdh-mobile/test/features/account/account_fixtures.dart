@@ -319,6 +319,9 @@ class FakePushPlatform implements PushPlatform {
   Future<void> setAutoInitEnabled(bool enabled) async => autoInitEnabled = enabled;
 
   @override
+  bool get isAutoInitEnabled => autoInitEnabled;
+
+  @override
   Stream<PushMessage> get onForegroundMessage => foreground.stream;
 
   @override
