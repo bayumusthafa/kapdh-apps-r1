@@ -986,6 +986,14 @@ describe("POST /admin/members/{userId}/member-seq (ADR-028)", () => {
     });
     const [row] = await t.db.select().from(alumni).where(eq(alumni.userId, member.userId));
     expect(row).toMatchObject({ memberSeq: target, memberNumber: `${prefix}${target}` });
+
+    // nextval berikutnya = target (terpakai), jadi anggota baru mendapat target + 1. Diperiksa segera agar nilai
+    // sequence target sudah terlewati sebelum fixture lain menarik nextval.
+    const fresh = await createAlumni(t, { status: "unverified" });
+    await approveMembershipPayment(t, fresh.userId, "registration");
+    const [allocated] = await t.db.select().from(alumni).where(eq(alumni.userId, fresh.userId));
+    expect(allocated!.memberSeq).toBe(target + 1);
+
     const [event] = await t.db
       .select()
       .from(membershipEvents)
@@ -1007,18 +1015,12 @@ describe("POST /admin/members/{userId}/member-seq (ADR-028)", () => {
       .from(notifications)
       .where(and(eq(notifications.userId, member.userId), eq(notifications.category, "membership")))
       .orderBy(desc(notifications.createdAt));
-    expect(notice).toMatchObject({ title: "Nomor anggota diperbarui", route: "/kta" });
+    expect(notice).toMatchObject({ title: "Nomor anggota diperbarui", data: { route: "/kta" } });
 
     expect((await verifyKta(t, oldQr.memberNumber, oldQr.token)).body.result).toBe("invalid_token");
     const newQr = parseQr((await getCard(t, session.accessToken)).qr!.url);
     expect(newQr.memberNumber).toBe(`${prefix}${target}`);
     expect((await verifyKta(t, newQr.memberNumber, newQr.token)).body.result).toBe("active");
-
-    // nextval berikutnya = target (terpakai), jadi anggota baru mendapat target + 1.
-    const fresh = await createAlumni(t, { status: "unverified" });
-    await approveMembershipPayment(t, fresh.userId, "registration");
-    const [allocated] = await t.db.select().from(alumni).where(eq(alumni.userId, fresh.userId));
-    expect(allocated!.memberSeq).toBe(target + 1);
 
     // N bekas (dilepas anggota tadi) boleh dipakai lagi oleh anggota lain.
     const other = await createAlumni(t, { status: "verified" });
