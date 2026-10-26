@@ -1978,6 +1978,70 @@ const memberRoutes: MockRoute[] = [
     },
   },
   {
+    method: "POST",
+    path: "/admin/members/{userId}/member-seq",
+    handler: (req) => {
+      log(req);
+      const unauth = requireAdmin(req);
+      if (unauth) return unauth;
+      // Hanya Super Admin (x-kapdh-access role super_admin, tanpa reautentikasi, ADR-025/028).
+      if (mockAdminRole() !== "super_admin")
+        return error(403, "FORBIDDEN", "Hanya Super Admin yang dapat mengubah nomor urut anggota.");
+      const m = findMember(req);
+      if (!m) return notFound();
+      if (linkedToCaller(m)) return conflictOfInterest();
+      const { key, payload, hit } = replayOf(req, "member-seq");
+      if (hit) return hit;
+      const body = req.body ?? {};
+      const fieldErrors: FieldErrors = {};
+      unknownKeys(body, new Set(["member_seq", "reason", "confirm"]), fieldErrors);
+      const seq = body.member_seq;
+      if (typeof seq !== "number" || !Number.isSafeInteger(seq) || seq < 1)
+        fieldErrors.member_seq = ["Nomor urut harus bilangan bulat positif."];
+      const reason = textError(body.reason, "Alasan", 3, 1000);
+      if (reason) fieldErrors.reason = [reason];
+      if (body.confirm !== true) fieldErrors.confirm = ["Konfirmasi tindakan wajib."];
+      if (Object.keys(fieldErrors).length > 0) return validationError(fieldErrors);
+      if (req.headers.get("If-Match") !== String(m.version)) return versionConflict(m);
+      // Prasyarat MembershipKernel.changeMemberSeq (urutan dan bentuk sama dengan server).
+      if (m.account_status === "deletion_pending")
+        return preconditionFailed(m, "Akun sedang dalam proses penghapusan dan tidak dapat diubah.");
+      if (m.seq === null)
+        return preconditionFailed(
+          m,
+          "Anggota belum bernomor. Nomor urut diterbitkan otomatis saat iuran pendaftaran disetujui.",
+        );
+      if (m.seq === seq)
+        return validationError({ member_seq: ["Nomor urut baru sama dengan nomor urut saat ini."] });
+      const holder = [...members.values()].find((o) => o.seq === seq && o.account_status !== "deleted");
+      if (holder)
+        return validationError({
+          member_seq: [`Nomor urut ${seq} sedang dipakai anggota lain (${memberNumber(holder)}).`],
+        });
+      const before = memberNumber(m);
+      m.seq = seq as number;
+      m.events.push({
+        id: nextEventId(),
+        kind: "number_correction",
+        created_at: new Date().toISOString(),
+        actor: mockAdminRef(),
+        payment_id: null,
+        reason: (body.reason as string).trim(),
+        reason_redacted: false,
+        before_starts_at: null,
+        after_starts_at: null,
+        before_expires_at: null,
+        after_expires_at: null,
+        before_member_number: before,
+        after_member_number: memberNumber(m),
+      });
+      m.version += 1;
+      const result = present(m);
+      remember(key, payload, 200, result);
+      return json(200, result);
+    },
+  },
+  {
     method: "GET",
     path: "/admin/members/{userId}/membership-events",
     handler: (req) => {

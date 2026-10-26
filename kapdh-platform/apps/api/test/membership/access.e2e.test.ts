@@ -36,6 +36,7 @@ const OPERATIONS: Record<string, [method: string, path: string, operationId: str
     ["post", "/admin/members/{userId}/suspend", "adminSuspendMember"],
     ["post", "/admin/members/{userId}/unsuspend", "adminUnsuspendMember"],
     ["post", "/admin/members/{userId}/password-reset", "adminInitiateMemberPasswordReset"],
+    ["post", "/admin/members/{userId}/member-seq", "adminChangeMemberSeq"],
     ["get", "/admin/members/{userId}/membership-events", "adminListMemberMembershipEvents"],
   ],
 };

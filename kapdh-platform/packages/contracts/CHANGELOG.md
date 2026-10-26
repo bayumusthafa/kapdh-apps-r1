@@ -6,7 +6,13 @@ Setiap perubahan kontrak yang dapat memutus klien yang masih didukung dicatat di
 
 ## Belum dirilis
 
-Belum ada perubahan sejak 0.3.0.
+### Super Admin mengubah nomor urut N (ADR-028; aditif, tidak memutus)
+
+Operasi baru `adminChangeMemberSeq` (POST /admin/members/{userId}/member-seq) dengan skema
+`AdminMemberSeqChangeRequest` (`member_seq`, `reason`, `confirm`). Hanya Super Admin, dengan If-Match dan
+Idempotency-Key (tanpa reautentikasi, ADR-025); respons `AdminMemberDetail`. N yang sedang dipakai anggota lain ditolak 400 pada `member_seq`;
+N bekas akun terhapus boleh dipakai. Deskripsi `adminUpdateMember` menunjuk operasi ini. SDK Dart mendapat
+operasi dan model baru di `AdminMembersApi` tanpa mengubah yang lama; aplikasi tidak memakainya.
 
 ## 0.3.0 (25 Oktober 2026)
 

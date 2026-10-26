@@ -1311,6 +1311,28 @@ describe("tiruan anggota dan master (admin-members, admin-masters)", () => {
     expect(ok.status).toBe(202);
   });
 
+  route("POST /admin/members/{userId}/member-seq", async () => {
+    let d: S["AdminMemberDetail"] | undefined;
+    for (const m of await members()) {
+      const candidate = await member(m.user_id);
+      if (candidate.account_status === "active" && !candidate.linked_admin && candidate.member_number) {
+        d = candidate;
+        break;
+      }
+    }
+    if (!d) throw new Error("tidak ada anggota bernomor yang dapat diubah");
+    const ok = await call("POST", `/admin/members/${d.user_id}/member-seq`, {
+      headers: { ...ifMatch(d.version), ...idem() },
+      body: { member_seq: 4242, reason: "Penomoran ulang", confirm: true },
+    });
+    expect(ok.status).toBe(200);
+    const taken = await call("POST", `/admin/members/${d.user_id}/member-seq`, {
+      headers: { ...ifMatch(Number(d.version) + 1), ...idem() },
+      body: { member_seq: 4242, reason: "Penomoran ulang", confirm: true },
+    });
+    expect(taken.status).toBe(400);
+  });
+
   route("GET /admin/members/{userId}/membership-events", async () => {
     for (const m of await members())
       expect(

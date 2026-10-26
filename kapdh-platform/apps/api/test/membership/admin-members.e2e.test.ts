@@ -16,9 +16,10 @@ import {
   tickets,
   users,
 } from "@kapdh/database";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { rows } from "../../src/core/db/rows.js";
 import { otpHmac } from "../../src/core/identity/crypto.js";
 import { addCalendarMonthsJakarta } from "../../src/core/membership/period.js";
 import { expectOperation, expectSchema } from "../support/contract.js";
@@ -949,6 +950,133 @@ describe("POST /admin/members/{userId}/password-reset (F-16, AC F16-4)", () => {
       code: "RATE_LIMITED",
     });
     expect((await t.db.select().from(users).where(eq(users.id, member.userId)))[0]!.status).toBe("active");
+  });
+});
+
+describe("POST /admin/members/{userId}/member-seq (ADR-028)", () => {
+  async function changeSeq(actor: AdminActor, userId: string, body: unknown, key = uuidv7()) {
+    const version = (await detailOf(actor.token, userId)).version;
+    return api().post(`/admin/members/${userId}/member-seq`, body, {
+      token: actor.token,
+      headers: { "if-match": version, "idempotency-key": key },
+    });
+  }
+  const nextSeq = async () =>
+    Number(
+      rows<{ seq: string }>(await t.db.execute(sql`select nextval('app.membership_no_seq')::text as seq`))[0]!
+        .seq,
+    );
+
+  it("ADR-028: N diganti dengan prefix tetap, histori/audit/notifikasi tercatat, QR lama tidak berlaku, nomor otomatis berikutnya melewati N terpakai", async () => {
+    const member = await createAlumni(t, { status: "verified", cohort: 12, classIn: 1, classOut: 4 });
+    const session = await signInAlumni(t, member);
+    const oldQr = parseQr((await getCard(t, session.accessToken)).qr!.url);
+    const superAdmin = await adminWith(t, [], { role: "super_admin" });
+    const target = (await nextSeq()) + 1;
+    const prefix = member.memberNumber!.slice(0, 9);
+
+    const res = await changeSeq(superAdmin, member.userId, {
+      member_seq: target,
+      reason: "Penomoran ulang setelah uji tertutup",
+      confirm: true,
+    });
+    expect(res.statusCode, res.body).toBe(200);
+    expect(expectOperation("post", "/admin/members/{userId}/member-seq", res)).toMatchObject({
+      member_number: `${prefix}${target}`,
+    });
+    const [row] = await t.db.select().from(alumni).where(eq(alumni.userId, member.userId));
+    expect(row).toMatchObject({ memberSeq: target, memberNumber: `${prefix}${target}` });
+    const [event] = await t.db
+      .select()
+      .from(membershipEvents)
+      .where(and(eq(membershipEvents.userId, member.userId), eq(membershipEvents.kind, "number_correction")));
+    expect(event).toMatchObject({
+      beforeMemberNumber: member.memberNumber,
+      afterMemberNumber: `${prefix}${target}`,
+      actorAdminId: superAdmin.admin.adminId,
+      reason: "Penomoran ulang setelah uji tertutup",
+    });
+    const [audit] = await t.db
+      .select()
+      .from(auditLogs)
+      .where(and(eq(auditLogs.entityId, member.userId), eq(auditLogs.action, "member.number_corrected")));
+    expect(audit!.before).toMatchObject({ member_seq: member.memberSeq, member_number: member.memberNumber });
+    expect(audit!.after).toMatchObject({ member_seq: target, member_number: `${prefix}${target}` });
+    const [notice] = await t.db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.userId, member.userId), eq(notifications.category, "membership")))
+      .orderBy(desc(notifications.createdAt));
+    expect(notice).toMatchObject({ title: "Nomor anggota diperbarui", route: "/kta" });
+
+    expect((await verifyKta(t, oldQr.memberNumber, oldQr.token)).body.result).toBe("invalid_token");
+    const newQr = parseQr((await getCard(t, session.accessToken)).qr!.url);
+    expect(newQr.memberNumber).toBe(`${prefix}${target}`);
+    expect((await verifyKta(t, newQr.memberNumber, newQr.token)).body.result).toBe("active");
+
+    // nextval berikutnya = target (terpakai), jadi anggota baru mendapat target + 1.
+    const fresh = await createAlumni(t, { status: "unverified" });
+    await approveMembershipPayment(t, fresh.userId, "registration");
+    const [allocated] = await t.db.select().from(alumni).where(eq(alumni.userId, fresh.userId));
+    expect(allocated!.memberSeq).toBe(target + 1);
+
+    // N bekas (dilepas anggota tadi) boleh dipakai lagi oleh anggota lain.
+    const other = await createAlumni(t, { status: "verified" });
+    const reuse = await changeSeq(superAdmin, other.userId, {
+      member_seq: member.memberSeq,
+      reason: "Memakai nomor yang dilepas",
+      confirm: true,
+    });
+    expect(reuse.statusCode, reuse.body).toBe(200);
+    expect(reuse.json().member_number).toBe(`${other.memberNumber!.slice(0, 9)}${member.memberSeq}`);
+  });
+
+  it("ADR-028 negatif: hanya Super Admin; N terpakai, sama, belum bernomor dan deletion_pending 400; tertaut sendiri 403; If-Match lama 409; replay idempoten", async () => {
+    const member = await createAlumni(t, { status: "verified" });
+    const taken = await createAlumni(t, { status: "verified" });
+    const body = (memberSeq: unknown) => ({ member_seq: memberSeq, reason: "Uji negatif", confirm: true });
+    const manager = await adminWith(t, ["members.read", "members.manage", "admins.manage"]);
+    const denied = await changeSeq(manager, member.userId, body(999_999));
+    expect(denied.statusCode).toBe(403);
+    expect(denied.json().code).toBe("FORBIDDEN");
+
+    const superAdmin = await adminWith(t, [], { role: "super_admin" });
+    for (const [value, field] of [
+      [taken.memberSeq, "member_seq"],
+      [member.memberSeq, "member_seq"],
+      [0, "member_seq"],
+      [1.5, "member_seq"],
+      ["12", "member_seq"],
+    ] as const) {
+      const res = await changeSeq(superAdmin, member.userId, body(value));
+      expect(res.statusCode, String(value)).toBe(400);
+      expect(res.json().field_errors, String(value)).toHaveProperty([field]);
+    }
+    const noConfirm = await changeSeq(superAdmin, member.userId, { member_seq: 999_998, reason: "Uji" });
+    expect(noConfirm.statusCode).toBe(400);
+
+    const unnumbered = await createAlumni(t, { status: "unverified" });
+    expect((await changeSeq(superAdmin, unnumbered.userId, body(999_997))).statusCode).toBe(400);
+    const deleting = await createAlumni(t, { status: "verified", accountStatus: "deletion_pending" });
+    expect((await changeSeq(superAdmin, deleting.userId, body(999_996))).statusCode).toBe(400);
+    const linkedSuper = await adminWith(t, [], { role: "super_admin", linkedAlumniUserId: member.userId });
+    expect((await changeSeq(linkedSuper, member.userId, body(999_995))).statusCode).toBe(403);
+
+    const version = (await detailOf(superAdmin.token, member.userId)).version;
+    const post = (seq: number, key: string) =>
+      api().post(`/admin/members/${member.userId}/member-seq`, body(seq), {
+        token: superAdmin.token,
+        headers: { "if-match": version, "idempotency-key": key },
+      });
+    const key = uuidv7();
+    const first = await post(999_994, key);
+    expect(first.statusCode, first.body).toBe(200);
+    const replay = await post(999_994, key);
+    expect(replay.statusCode).toBe(200);
+    expect(replay.headers["idempotent-replayed"]).toBe("true");
+    const conflict = await post(999_993, uuidv7());
+    expect(conflict.statusCode).toBe(409);
+    expect(conflict.json().code).toBe("VERSION_CONFLICT");
   });
 });
 

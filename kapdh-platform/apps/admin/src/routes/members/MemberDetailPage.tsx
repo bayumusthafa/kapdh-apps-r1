@@ -1,7 +1,7 @@
 import type { components } from "@kapdh/contracts";
 import { membershipLabelFor } from "@kapdh/shared";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { ExternalLink, KeyRound, Pencil, ShieldAlert, ShieldCheck, ShieldOff } from "lucide-react";
+import { ExternalLink, Hash, KeyRound, Pencil, ShieldAlert, ShieldCheck, ShieldOff } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../auth/session";
 import {
@@ -33,7 +33,7 @@ import {
   SOCIAL_PLATFORM_LABEL,
 } from "./labels";
 import { lastMembersSearch } from "./listMemory";
-import { PasswordResetDialog, SuspendDialog, UnsuspendDialog } from "./MemberActionDialogs";
+import { MemberSeqDialog, PasswordResetDialog, SuspendDialog, UnsuspendDialog } from "./MemberActionDialogs";
 import { MemberEditDialog } from "./MemberEditDialog";
 import { MembershipHistory } from "./MembershipHistory";
 import { type MemberDetail, professionEntries, useMemberDetail } from "./queries";
@@ -49,7 +49,7 @@ export interface MemberNotice {
   numberChange?: { before: string | null; after: string | null };
 }
 
-type ActionDialog = "edit" | "suspend" | "unsuspend" | "reset" | null;
+type ActionDialog = "edit" | "suspend" | "unsuspend" | "reset" | "seq" | null;
 
 /** Breadcrumb kembali ke daftar dengan pencarian/filter terakhir yang dipakai (F-15, guideline hal. 16). */
 function breadcrumbs(): Breadcrumb[] {
@@ -100,6 +100,8 @@ function MemberDetailView() {
   // Pemulihan sandi hanya Super Admin (x-kapdh-access role super_admin) untuk akun aktif (AC F16-4).
   const isSuperAdmin = auth.profile?.role === "super_admin";
   const canReset = isSuperAdmin && !selfLinked && m?.account_status === "active";
+  // Nomor urut N hanya diubah Super Admin untuk anggota yang sudah bernomor (ADR-028).
+  const canChangeSeq = isSuperAdmin && !selfLinked && !closed && Boolean(m?.member_number);
 
   function announce(next: MemberNotice) {
     setNotice((n) => ({ ...next, seq: (n?.seq ?? 0) + 1 }));
@@ -215,6 +217,16 @@ function MemberDetailView() {
                 Reset sandi
               </Button>
             ) : null}
+            {canChangeSeq ? (
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Hash aria-hidden="true" className="size-4" />}
+                onClick={() => setDialog("seq")}
+              >
+                Ubah nomor urut
+              </Button>
+            ) : null}
           </>
         }
       />
@@ -308,6 +320,12 @@ function MemberDetailView() {
       <PasswordResetDialog
         member={member}
         open={dialog === "reset"}
+        onClose={() => setDialog(null)}
+        onDone={announce}
+      />
+      <MemberSeqDialog
+        member={member}
+        open={dialog === "seq"}
         onClose={() => setDialog(null)}
         onDone={announce}
       />
