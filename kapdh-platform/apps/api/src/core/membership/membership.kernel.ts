@@ -847,7 +847,7 @@ export class MembershipKernel {
       throw preconditionFailed("Akun sedang dalam proses penghapusan dan tidak dapat diubah.", member);
     if (member.memberSeq === null || member.memberNumber === null)
       throw preconditionFailed(
-        "Anggota belum bernomor. Nomor urut diterbitkan otomatis saat iuran pendaftaran disetujui.",
+        "Anggota belum bernomor. Nomor urut diterbitkan otomatis saat akun diaktifkan.",
         member,
       );
     if (member.memberSeq === seq)

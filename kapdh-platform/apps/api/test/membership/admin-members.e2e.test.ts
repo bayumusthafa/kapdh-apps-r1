@@ -19,8 +19,11 @@ import {
 import { and, desc, eq, sql } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { runAsSystem } from "../../src/core/context/request-context.js";
 import { rows } from "../../src/core/db/rows.js";
+import { withTx } from "../../src/core/db/tx.js";
 import { otpHmac } from "../../src/core/identity/crypto.js";
+import { MembershipKernel } from "../../src/core/membership/membership.kernel.js";
 import { addCalendarMonthsJakarta } from "../../src/core/membership/period.js";
 import { expectOperation, expectSchema } from "../support/contract.js";
 import { type AlumniFixture, createAlumni, signInAlumni } from "../support/factories.js";
@@ -987,10 +990,14 @@ describe("POST /admin/members/{userId}/member-seq (ADR-028)", () => {
     const [row] = await t.db.select().from(alumni).where(eq(alumni.userId, member.userId));
     expect(row).toMatchObject({ memberSeq: target, memberNumber: `${prefix}${target}` });
 
-    // nextval berikutnya = target (terpakai), jadi anggota baru mendapat target + 1. Diperiksa segera agar nilai
-    // sequence target sudah terlewati sebelum fixture lain menarik nextval.
-    const fresh = await createAlumni(t, { status: "unverified" });
-    await approveMembershipPayment(t, fresh.userId, "registration");
+    // nextval berikutnya = target (terpakai), jadi akun yang diaktifkan berikutnya mendapat target + 1. Diperiksa
+    // segera, karena factory fixture bernomor menarik nextval langsung tanpa melewati N terpakai. Fixture
+    // pending_otp belum bernomor; nomor diterbitkan seperti aktivasi OTP (AuthService.verifyOtp).
+    const fresh = await createAlumni(t, { status: "pending_otp" });
+    const allocatedNumber = await runAsSystem(() =>
+      withTx(t.db, (tx) => t.app.get(MembershipKernel).allocateMemberNumber(tx, fresh.userId)),
+    );
+    expect(allocatedNumber).toMatch(new RegExp(`\\.${target + 1}$`));
     const [allocated] = await t.db.select().from(alumni).where(eq(alumni.userId, fresh.userId));
     expect(allocated!.memberSeq).toBe(target + 1);
 
@@ -1057,7 +1064,7 @@ describe("POST /admin/members/{userId}/member-seq (ADR-028)", () => {
     const noConfirm = await changeSeq(superAdmin, member.userId, { member_seq: 999_998, reason: "Uji" });
     expect(noConfirm.statusCode).toBe(400);
 
-    const unnumbered = await createAlumni(t, { status: "unverified" });
+    const unnumbered = await createAlumni(t, { status: "pending_otp" });
     expect((await changeSeq(superAdmin, unnumbered.userId, body(999_997))).statusCode).toBe(400);
     const deleting = await createAlumni(t, { status: "verified", accountStatus: "deletion_pending" });
     expect((await changeSeq(superAdmin, deleting.userId, body(999_996))).statusCode).toBe(400);

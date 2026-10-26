@@ -2009,7 +2009,7 @@ const memberRoutes: MockRoute[] = [
       if (m.seq === null)
         return preconditionFailed(
           m,
-          "Anggota belum bernomor. Nomor urut diterbitkan otomatis saat iuran pendaftaran disetujui.",
+          "Anggota belum bernomor. Nomor urut diterbitkan otomatis saat akun diaktifkan.",
         );
       if (m.seq === seq)
         return validationError({ member_seq: ["Nomor urut baru sama dengan nomor urut saat ini."] });
