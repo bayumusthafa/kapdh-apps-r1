@@ -78,6 +78,13 @@
       "when": 1792591540265,
       "tag": "0010_profile_lists_bridge",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793023648023,
+      "tag": "0011_member_seq_admin_change",
+      "breakpoints": true
     }
   ]
 }

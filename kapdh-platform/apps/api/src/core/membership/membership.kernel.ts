@@ -239,7 +239,8 @@ export class MembershipKernel {
    * N tidak pernah dipakai ulang (PRD 3.5, 6.4) termasuk setelah restore backup: penerapan ulang deletion ledger
    * (AC F14-6) menyimpan floor N (`account_deletions.ledger.member_seq_floor`) untuk penghapusan setelah titik backup.
    * Bila `nextval` belum melewati floor itu (sequence pulihan lebih tua), sequence dimajukan dengan `nextval` berulang
-   * sampai di atas floor (API memegang USAGE, bukan UPDATE/setval); `currval` sesi tetap N yang ditulis.
+   * sampai di atas floor (API memegang USAGE, bukan UPDATE/setval); `currval` sesi tetap N yang ditulis. N yang
+   * sudah dipasang Super Admin ke anggota lain (changeMemberSeq, ADR-028) dilewati dengan cara yang sama.
    */
   async allocateMemberNumber(tx: Tx, userId: string): Promise<string | null> {
     const [profile] = await tx.select().from(alumni).where(eq(alumni.userId, userId)).for("update");
@@ -265,6 +266,17 @@ export class MembershipKernel {
         ),
       );
       seq = Number(jumped!.seq);
+    }
+    for (;;) {
+      const [taken] = await tx
+        .select({ userId: alumni.userId })
+        .from(alumni)
+        .where(eq(alumni.memberSeq, seq));
+      if (!taken) break;
+      const [skipped] = rows<{ seq: string }>(
+        await tx.execute(sql`select nextval('app.membership_no_seq')::text as seq`),
+      );
+      seq = Number(skipped!.seq);
     }
     const number = memberNumber({
       cohort: profile.cohort,
@@ -793,6 +805,97 @@ export class MembershipKernel {
         : "Pengurus mengoreksi data angkatan/kelas Anda.",
       route: "/kta",
       dedupKey: `membership.identity_corrected:${auditId}`,
+    });
+    return {
+      changed: true,
+      previousMemberNumber: member.memberNumber,
+      memberNumber: number,
+      version: updated!.version,
+    };
+  }
+
+  /**
+   * Super Admin mengubah nomor urut N anggota yang sudah bernomor (ADR-028; kontrak adminChangeMemberSeq). N bekas
+   * akun terhapus boleh dipakai lagi; N yang sedang dipakai anggota lain ditolak (400 pada `member_seq`, indeks
+   * alumni_member_seq_key menjaga balapan). Segmen AA.SS.JK tetap; seq dan nomor ditulis dalam SATU UPDATE setelah
+   * flag transaksi `kapdh.member_seq` = admin (trigger alumni_guard_member_seq, migrasi 0011). Histori
+   * `number_correction`, audit `member.number_corrected`, notifikasi /kta; QR lama menjadi "perlu diperbarui".
+   */
+  async changeMemberSeq(
+    tx: Tx,
+    userId: string,
+    seq: number,
+    actor: { adminId: string | null },
+    reason: string,
+    options: { expectedVersion?: number } = {},
+  ): Promise<IdentityCorrection> {
+    assertCommitAware(tx, "MembershipKernel.changeMemberSeq");
+    const trimmed = reason.trim();
+    if (trimmed.length === 0 || trimmed.length > 1000)
+      throw fieldError("reason", "Alasan perubahan wajib diisi (maksimal 1.000 karakter).");
+    if (!Number.isSafeInteger(seq) || seq < 1)
+      throw fieldError("member_seq", "Nomor urut harus bilangan bulat positif.");
+    const member = await this.lockMember(tx, userId);
+    if (!member || member.accountStatus === "deleted") throw notFound("Anggota tidak ditemukan.");
+    const snapshot = (m: Pick<AlumniRow, "memberSeq" | "memberNumber">) => ({
+      member_seq: m.memberSeq,
+      member_number: m.memberNumber,
+    });
+    if (options.expectedVersion !== undefined && options.expectedVersion !== member.version)
+      throw versionConflict({ ...snapshot(member), version: String(member.version) });
+    if (member.accountStatus === "deletion_pending")
+      throw preconditionFailed("Akun sedang dalam proses penghapusan dan tidak dapat diubah.", member);
+    if (member.memberSeq === null || member.memberNumber === null)
+      throw preconditionFailed(
+        "Anggota belum bernomor. Nomor urut diterbitkan otomatis saat akun diaktifkan.",
+        member,
+      );
+    if (member.memberSeq === seq)
+      throw fieldError("member_seq", "Nomor urut baru sama dengan nomor urut saat ini.");
+    const [holder] = await tx
+      .select({ memberNumber: alumni.memberNumber })
+      .from(alumni)
+      .where(eq(alumni.memberSeq, seq));
+    if (holder)
+      throw fieldError(
+        "member_seq",
+        `Nomor urut ${seq} sedang dipakai anggota lain (${holder.memberNumber}).`,
+      );
+
+    const number = memberNumber({ ...member, seq });
+    const now = this.clock.now();
+    await tx.execute(sql`select set_config('kapdh.member_seq', 'admin', true)`);
+    const [updated] = await tx
+      .update(alumni)
+      .set({ memberSeq: seq, memberNumber: number, version: sql`${alumni.version} + 1`, updatedAt: now })
+      .where(eq(alumni.userId, userId))
+      .returning({ version: alumni.version });
+    await tx.execute(sql`select set_config('kapdh.member_seq', '', true)`);
+    await tx.insert(membershipEvents).values({
+      id: uuidv7(),
+      userId,
+      kind: "number_correction",
+      actorAdminId: actor.adminId,
+      reason: trimmed,
+      beforeMemberNumber: member.memberNumber,
+      afterMemberNumber: number,
+      createdAt: now,
+    });
+    const auditId = await this.audit.write(tx, {
+      action: "member.number_corrected",
+      entityType: "alumni",
+      entityId: userId,
+      reason: trimmed,
+      before: snapshot(member),
+      after: snapshot({ memberSeq: seq, memberNumber: number }),
+    });
+    await this.notifications.notify(tx, {
+      userId,
+      category: "membership",
+      title: "Nomor anggota diperbarui",
+      body: `Pengurus mengubah nomor anggota Anda menjadi ${number}. Buka KTA untuk memuat QR terbaru.`,
+      route: "/kta",
+      dedupKey: `membership.number_changed:${auditId}`,
     });
     return {
       changed: true,

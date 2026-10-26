@@ -356,8 +356,10 @@ describe("migrasi journal pada PGlite", () => {
 
   it("pembatalan darurat 0009-0010 (infra/db/rollback): bentuk 0008 kembali, kolom lama utuh, migrasi dapat diulang", async () => {
     const existing = new PGlite();
+    // Skrip pembatalan hanya berlaku sebelum migrasi sesudah 0010 diterapkan: database berhenti di 0010.
+    const upTo0010 = migrationsUpTo("0010_profile_lists_bridge");
     try {
-      await migrate(drizzle(existing), { migrationsFolder: MIGRATIONS_FOLDER });
+      await migrate(drizzle(existing), { migrationsFolder: upTo0010 });
       const userId = uuidv7();
       await existing.query(
         "insert into app.users (id, email, password_hash, kind) values ($1, $2, 'hash', 'alumni')",
@@ -393,7 +395,8 @@ describe("migrasi journal pada PGlite", () => {
       const recorded = await existing.query<{ n: number }>(
         "select count(*)::int as n from drizzle.__drizzle_migrations",
       );
-      expect(recorded.rows[0]!.n).toBe(journal.entries.length - 2);
+      const through0010 = journal.entries.findIndex((e) => e.tag === "0010_profile_lists_bridge") + 1;
+      expect(recorded.rows[0]!.n).toBe(through0010 - 2);
       const legacy = await existing.query(
         "select social_instagram, last_education_institution from app.alumni where user_id = $1",
         [userId],
@@ -411,6 +414,7 @@ describe("migrasi journal pada PGlite", () => {
       expect(links.rows).toEqual([{ platform: "instagram", value: "ahmad.uji" }]);
     } finally {
       await existing.close();
+      rmSync(upTo0010, { recursive: true, force: true });
     }
   });
 
@@ -633,6 +637,61 @@ describe("trigger skema pada PGlite", () => {
       userB,
       number12(seqB, "01"),
     ]);
+  });
+
+  it("ADR-028: N diubah hanya dalam transaksi berflag kapdh.member_seq = admin; N bekas boleh, kosong dan INSERT tetap ditolak", async () => {
+    const immutable = { code: "23514", constraint: "alumni_member_seq_immutable_chk" };
+    const userA = await insertUser();
+    const seqA = await nextMemberSeq();
+    await insertAlumni(userA, seqA);
+    const userB = await insertUser();
+    const seqB = await nextMemberSeq();
+    await insertAlumni(userB, seqB);
+    await pg.query("delete from app.users where id = $1", [userA]);
+
+    const asAdmin = async (statement: string, params: unknown[]) => {
+      await pg.query("begin");
+      try {
+        await pg.query("select set_config('kapdh.member_seq', 'admin', true)");
+        await pg.query(statement, params);
+        await pg.query("commit");
+      } catch (error) {
+        await pg.query("rollback");
+        throw error;
+      }
+    };
+    // Dengan flag: N bekas akun A dipasang ke B.
+    await asAdmin("update app.alumni set member_seq = $2, member_number = $3 where user_id = $1", [
+      userB,
+      seqA,
+      number12(seqA),
+    ]);
+    expect(
+      await count("select count(*)::int as n from app.alumni where user_id = $1 and member_seq = $2", [
+        userB,
+        seqA,
+      ]),
+    ).toBe(1);
+    // Flag hanya berlaku di transaksinya: UPDATE berikutnya tanpa flag tetap ditolak.
+    expect(
+      await errorOf("update app.alumni set member_seq = $2, member_number = $3 where user_id = $1", [
+        userB,
+        seqB,
+        number12(seqB),
+      ]),
+    ).toMatchObject(immutable);
+    // Dengan flag pun N tidak dapat dikosongkan, dan INSERT tetap wajib dari nextval.
+    await expect(
+      asAdmin("update app.alumni set member_seq = null, member_number = null where user_id = $1", [userB]),
+    ).rejects.toMatchObject(immutable);
+    const userC = await insertUser();
+    await expect(
+      asAdmin(
+        `insert into app.alumni (user_id, full_name, gender, cohort, class_in, class_out, member_seq, member_number)
+         values ($1, 'Alumni Uji', 'male', 12, 1, 3, $2, $3)`,
+        [userC, seqB + 500, number12(seqB + 500)],
+      ),
+    ).rejects.toMatchObject({ code: "23514", constraint: "alumni_member_seq_source_chk" });
   });
 
   it("AC F08-3: like_count selalu sama dengan jumlah post_likes, termasuk saat akun dihapus", async () => {

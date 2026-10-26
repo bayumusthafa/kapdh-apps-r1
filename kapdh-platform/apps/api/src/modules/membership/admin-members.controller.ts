@@ -65,6 +65,18 @@ const unsuspendSchema = z
 
 const passwordResetSchema = z.object({ reason: reason(500), confirm }).strict();
 
+const memberSeqSchema = z
+  .object({
+    member_seq: z
+      .number({ message: "Nomor urut wajib berupa angka" })
+      .int("Nomor urut harus bilangan bulat")
+      .min(1, "Nomor urut minimal 1")
+      .max(Number.MAX_SAFE_INTEGER, "Nomor urut terlalu besar"),
+    reason: reason(1000),
+    confirm,
+  })
+  .strict();
+
 /**
  * Anggota untuk pengurus (kontrak admin-members.yaml; F-15, F-16; PRD 2.3, 3.5, 4.2). Semua rute: sesi admin
  * ber-TOTP (AC F02-2), izin dievaluasi dari DB setiap request (AC F15-1, F16-3).
@@ -115,6 +127,23 @@ export class AdminMembersController {
     assertHasChange(input, ["reason"]);
     assertNoLegacyMix(input);
     return this.members.update(auth, userId, expectedVersion, input);
+  }
+
+  /** Super Admin mengubah nomor urut N; prefix AA.SS.JK tetap, N terpakai ditolak (ADR-028). */
+  @Post(":userId/member-seq")
+  @HttpCode(200)
+  @Audience("admin")
+  @RequireRole("super_admin")
+  @Idempotent()
+  changeMemberSeq(
+    @CurrentAuth() auth: AuthContext,
+    @Param("userId", UuidParam) userId: string,
+    @Headers("if-match") ifMatch: string | undefined,
+    @Body() body: unknown,
+  ): Promise<AdminMemberDetail> {
+    const expectedVersion = parseIfMatch(ifMatch);
+    const input = validate(memberSeqSchema, body);
+    return this.members.changeMemberSeq(auth, userId, expectedVersion, input);
   }
 
   /** Suspend dari halaman anggota; izin sama dengan jalur moderasi (PRD 2.3, 4.2; AC F12-3, F12-4). */

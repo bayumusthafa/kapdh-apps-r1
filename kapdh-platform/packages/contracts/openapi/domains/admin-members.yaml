@@ -130,7 +130,8 @@ paths:
         dengan nomor lama dan baru, audit `member.number_corrected`, menerbitkan ulang QR (QR lama menjadi
         "perlu diperbarui"), dan memberi notifikasi kategori membership ke anggota (rute /kta), semuanya dalam
         satu transaksi (AC F05-6, F17-1). Contoh: 12.02.01.7 dengan kelas keluar dikoreksi menjadi 6 menjadi
-        12.01.01.7. Kelas keluar tidak boleh lebih rendah dari kelas masuk (400).
+        12.01.01.7. Kelas keluar tidak boleh lebih rendah dari kelas masuk (400). N sendiri hanya dapat diganti
+        Super Admin lewat POST /admin/members/{userId}/member-seq (ADR-028).
 
         `professions`, `education`, `social_links` dan skill_ids mengikuti aturan yang sama dengan PATCH /me/profile
         (daftar pengganti, master aktif AC F10-4, SocialHandle: nama pengguna atau URL https, skema lain 400),
@@ -331,6 +332,50 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/RateLimited" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /admin/members/{userId}/member-seq:
+    post:
+      tags: [Admin Members]
+      operationId: adminChangeMemberSeq
+      summary: Super Admin mengubah nomor urut N anggota (ADR-028).
+      description: |
+        Hanya Super Admin (admin dengan izin apa pun -> 403 FORBIDDEN) dengan sesi ber-TOTP; tanpa reautentikasi
+        karena bukan tindakan kredensial (ADR-025). Body `confirm` harus true dan `reason` wajib. ADR-028
+        menggantikan sebagian PRD 3.5: N tetap tidak pernah diketik saat nomor PERTAMA terbit, tetapi Super Admin
+        boleh mengganti N anggota yang sudah bernomor, termasuk dengan N bekas akun yang sudah dihapus.
+
+        Prasyarat (400 VALIDATION_ERROR): anggota sudah bernomor; akun tidak deletion_pending; `member_seq` berbeda
+        dari N saat ini dan tidak sedang dipakai anggota lain (galat field `member_seq`). Akun alumni yang tertaut
+        ke Super Admin pelaku ditolak 403 FORBIDDEN (konflik kepentingan, PRD 2.3). If-Match wajib (409
+        VERSION_CONFLICT dengan `current`).
+
+        Dalam SATU transaksi: segmen AA.SS.JK tetap dan `member_seq` serta nomor lengkap ditulis bersama;
+        membership_event `number_correction` dengan nomor lama dan baru serta alasan; audit `member.number_corrected`
+        (member_seq dan member_number lama/baru); notifikasi kategori membership dengan rute /kta. QR lama menjadi
+        "perlu diperbarui" karena verifikasi publik mensyaratkan nomor terkini. Nomor berikutnya yang diterbitkan
+        otomatis melewati N yang sudah dipakai. Pengulangan dengan Idempotency-Key sama mengembalikan hasil pertama.
+      x-kapdh-access: { audience: admin, role: super_admin, idempotent: true }
+      parameters:
+        - $ref: "#/components/parameters/AdminMemberUserId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminMemberSeqChangeRequest" }
+      responses:
+        "200":
+          description: Nomor urut diubah; detail terbaru.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminMemberDetail" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
         default: { $ref: "#/components/responses/Error" }
 
   /admin/members/{userId}/membership-events:
@@ -839,6 +884,27 @@ components:
           type: boolean
           const: true
           description: Konfirmasi eksplisit bahwa seluruh sesi anggota akan dicabut (PRD 4.5).
+
+    AdminMemberSeqChangeRequest:
+      type: object
+      required: [member_seq, reason, confirm]
+      additionalProperties: false
+      properties:
+        member_seq:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 9007199254740991
+          description: Nomor urut N baru (tanpa nol di depan); segmen AA.SS.JK tidak berubah.
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 1000
+          description: Alasan perubahan untuk histori dan audit.
+        confirm:
+          type: boolean
+          const: true
+          description: Konfirmasi eksplisit bahwa nomor anggota dan QR KTA anggota berubah (PRD 4.5).
 
     AdminMemberPasswordResetResult:
       type: object

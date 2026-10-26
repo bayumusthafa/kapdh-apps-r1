@@ -10,7 +10,7 @@ import type { ApiError } from "../../api/errors";
 import { useApiMutation } from "../../api/query";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { FormError, FormField } from "../../components/ui/FormField";
-import { Textarea } from "../../components/ui/Input";
+import { Input, Textarea } from "../../components/ui/Input";
 import { formatDateTime } from "../../lib/format";
 import type { MemberNotice } from "./MemberDetailPage";
 import {
@@ -270,6 +270,119 @@ export function UnsuspendDialog({ member, open, onClose, onDone }: DialogProps) 
             hint={`Bila kosong, anggota menerima: "${DEFAULT_UNSUSPEND_MESSAGE}".`}
           >
             {(field, a11y) => <Textarea {...field} {...a11y} rows={2} maxLength={500} />}
+          </FormField>
+        </div>
+      </FormProvider>
+    </ConfirmDialog>
+  );
+}
+
+const memberSeqSchema = z.object({
+  member_seq: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d{0,15}$/, "Nomor urut harus bilangan bulat positif tanpa nol di depan.")
+    .refine((v) => Number.isSafeInteger(Number(v)), "Nomor urut terlalu besar."),
+  reason: z
+    .string()
+    .trim()
+    .min(3, "Alasan minimal 3 karakter dan tidak boleh hanya spasi.")
+    .max(1000, "Alasan maksimal 1000 karakter."),
+});
+type MemberSeqValues = z.input<typeof memberSeqSchema>;
+
+/** Awalan AA.SS.JK. dari nomor lengkap AA.SS.JK.N. */
+const numberPrefix = (memberNumber: string) => memberNumber.slice(0, memberNumber.lastIndexOf(".") + 1);
+
+/**
+ * Super Admin mengubah nomor urut N anggota yang sudah bernomor (ADR-028): awalan AA.SS.JK tetap, N yang sedang
+ * dipakai anggota lain ditolak server pada field `member_seq`, N bekas akun terhapus boleh dipakai. Konfirmasi dua
+ * langkah, If-Match dan Idempotency-Key per niat; tanpa reautentikasi karena bukan tindakan kredensial (ADR-025).
+ */
+export function MemberSeqDialog({ member, open, onClose, onDone }: DialogProps) {
+  const queryClient = useQueryClient();
+  const form = useForm<MemberSeqValues>({
+    resolver: zodResolver(memberSeqSchema),
+    defaultValues: { member_seq: "", reason: "" },
+  });
+  const { reset } = form;
+  useEffect(() => {
+    if (open) reset({ member_seq: "", reason: "" });
+  }, [open, reset]);
+  const onConflict = useConflictHandler(member, onClose, onDone);
+  const onPrecondition = usePreconditionHandler(member, onClose, onDone);
+  const prefix = numberPrefix(member.member_number ?? "");
+  const typed = form.watch("member_seq").trim();
+
+  const change = useApiMutation<MemberDetail, ActionVars<MemberSeqValues>, MemberSeqValues>({
+    intent: (v) => v,
+    setError: form.setError,
+    request: (v, ctx) =>
+      api.POST("/admin/members/{userId}/member-seq", {
+        params: {
+          path: { userId: v.userId },
+          header: { "If-Match": v.version, "Idempotency-Key": ctx.idempotencyKey },
+        },
+        body: { member_seq: Number(v.values.member_seq), reason: v.values.reason, confirm: true },
+      }),
+    onReloadLatest: (error) => onConflict(error),
+    onError: onPrecondition,
+    onSuccess: (data) => {
+      storeMember(queryClient, data);
+      onClose();
+      onDone({
+        tone: "success",
+        message: `Nomor anggota ${data.full_name} diubah dari ${member.member_number} menjadi ${data.member_number}. QR lama tidak berlaku; anggota cukup membuka KTA di aplikasi untuk memuat QR baru.`,
+      });
+    },
+  });
+
+  const submit = form.handleSubmit((values) =>
+    change.mutate({ userId: member.user_id, version: member.version, values }),
+  );
+
+  return (
+    <ConfirmDialog
+      open={open}
+      onCancel={onClose}
+      onConfirm={() => submit()}
+      pending={change.isPending}
+      title={`Ubah nomor urut ${member.full_name}?`}
+      description="Hanya Super Admin. Awalan angkatan, status pendidikan dan jenis kelamin (AA.SS.JK) tidak berubah."
+      confirmLabel="Ubah nomor urut"
+      acknowledgement="Saya memahami nomor anggota dan QR KTA anggota berubah, dan QR lama tidak lagi berlaku."
+    >
+      <ul className="list-inside list-disc text-sm text-text">
+        <li>
+          Nomor saat ini: <span className="font-mono">{member.member_number}</span>
+        </li>
+        <li>Nomor urut yang sedang dipakai anggota lain ditolak; nomor bekas akun terhapus boleh dipakai.</li>
+        <li>Anggota menerima notifikasi dan perubahan tercatat di histori serta audit.</li>
+      </ul>
+      <FormProvider {...form}>
+        <div className="flex flex-col gap-3">
+          <FormError message={form.formState.errors.root?.server?.message} />
+          <FormField<MemberSeqValues, "member_seq">
+            name="member_seq"
+            label="Nomor urut baru (N)"
+            required
+            hint={
+              /^[1-9]\d*$/.test(typed)
+                ? `Nomor anggota menjadi ${prefix}${typed}.`
+                : `Nomor anggota menjadi ${prefix}N.`
+            }
+          >
+            {(field, a11y) => (
+              <Input {...field} {...a11y} inputMode="numeric" autoComplete="off" maxLength={16} />
+            )}
+          </FormField>
+          <FormField<MemberSeqValues, "reason">
+            name="reason"
+            label="Alasan perubahan"
+            required
+            hint="Untuk histori dan audit, mis. penomoran ulang setelah uji tertutup."
+          >
+            {(field, a11y) => <Textarea {...field} {...a11y} rows={3} maxLength={1000} />}
           </FormField>
         </div>
       </FormProvider>

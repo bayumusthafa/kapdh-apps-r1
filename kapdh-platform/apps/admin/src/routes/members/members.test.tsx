@@ -1092,3 +1092,79 @@ async function reauthenticate(user: User) {
   await user.type(within(reauth).getByLabelText(/^Kode autentikator/), MOCK_CREDENTIALS.totp);
   await user.click(within(reauth).getByRole("button", { name: "Konfirmasi" }));
 }
+
+describe("ubah nomor urut N oleh Super Admin (ADR-028)", () => {
+  const seqRequests = () => memberRequests.filter((r) => r.path.endsWith("/member-seq"));
+
+  async function openSeqDialog(user: User) {
+    await open(user, `/members/${MOCK_MEMBER.umar}`, "Umar Faruq");
+    await user.click(screen.getByRole("button", { name: "Ubah nomor urut" }));
+    return screen.findByRole("alertdialog", { name: /Ubah nomor urut Umar Faruq/ });
+  }
+
+  it("ADR-028: N diganti dengan awalan tetap, alasan dan konfirmasi; nomor dari server dan tercatat di histori", async () => {
+    const user = userEvent.setup();
+    const dialog = await openSeqDialog(user);
+    expect(dialog).toHaveTextContent("12.02.01.7");
+    const seq = within(dialog).getByRole("textbox", { name: /Nomor urut baru/ });
+    await user.type(seq, "1");
+    expect(seq).toHaveAccessibleDescription(/12\.02\.01\.1/);
+    await user.type(within(dialog).getByRole("textbox", { name: /Alasan/ }), "Penomoran ulang setelah uji");
+    await confirmWithAck(dialog, user, "Ubah nomor urut");
+
+    const status = await screen.findByText(
+      /Nomor anggota Umar Faruq diubah dari 12\.02\.01\.7 menjadi 12\.02\.01\.1/,
+    );
+    expect(status).toHaveTextContent("QR lama tidak berlaku");
+    expect(seqRequests()).toHaveLength(1);
+    expect(seqRequests()[0]?.body).toEqual({
+      member_seq: 1,
+      reason: "Penomoran ulang setelah uji",
+      confirm: true,
+    });
+    expect(seqRequests()[0]?.ifMatch).toBe("1");
+    expect(seqRequests()[0]?.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
+    expect(mockMembers.get(MOCK_MEMBER.umar)?.member_number).toBe("12.02.01.1");
+    const history = screen.getByRole("region", { name: "Histori keanggotaan dan moderasi" });
+    expect(await within(history).findByText(/Nomor 12\.02\.01\.7 → 12\.02\.01\.1/)).toBeInTheDocument();
+  });
+
+  it("ADR-028: N yang dipakai anggota lain ditolak server pada isian nomor urut; dialog tetap terbuka", async () => {
+    const user = userEvent.setup();
+    const dialog = await openSeqDialog(user);
+    const seq = within(dialog).getByRole("textbox", { name: /Nomor urut baru/ });
+    await user.type(seq, "8");
+    await user.type(within(dialog).getByRole("textbox", { name: /Alasan/ }), "Coba nomor terpakai");
+    await confirmWithAck(dialog, user, "Ubah nomor urut");
+
+    await waitFor(() => expect(seq).toHaveAttribute("aria-invalid", "true"));
+    expect(seq).toHaveAccessibleDescription(/sedang dipakai anggota lain/);
+    expect(mockMembers.get(MOCK_MEMBER.umar)?.member_number).toBe("12.02.01.7");
+  });
+
+  it("ADR-028: nomor urut tidak valid ditolak sebelum dikirim", async () => {
+    const user = userEvent.setup();
+    const dialog = await openSeqDialog(user);
+    const seq = within(dialog).getByRole("textbox", { name: /Nomor urut baru/ });
+    await user.type(seq, "007");
+    await user.type(within(dialog).getByRole("textbox", { name: /Alasan/ }), "Format salah");
+    await confirmWithAck(dialog, user, "Ubah nomor urut");
+    await waitFor(() => expect(seq).toHaveAttribute("aria-invalid", "true"));
+    expect(seq).toHaveAccessibleDescription(/tanpa nol di depan/);
+    expect(seqRequests()).toHaveLength(0);
+  });
+
+  it("ADR-028: anggota yang belum bernomor tidak ditawari ubah nomor urut", async () => {
+    const user = userEvent.setup();
+    await open(user, `/members/${MOCK_MEMBER.fatimah}`, "Fatimah Zahra");
+    expect(screen.queryByRole("button", { name: "Ubah nomor urut" })).toBeNull();
+  });
+
+  it("ADR-028: admin dengan semua izin tetapi bukan Super Admin tidak melihat tombol ubah nomor urut", async () => {
+    mockAuth.setAdmin({ role: "admin", permissions: [...PERMISSION_VALUES] });
+    const user = userEvent.setup();
+    await open(user, `/members/${MOCK_MEMBER.umar}`, "Umar Faruq");
+    expect(screen.getByRole("button", { name: "Ubah data" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ubah nomor urut" })).toBeNull();
+  });
+});

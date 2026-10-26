@@ -36,8 +36,15 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { Clock } from "../../core/adapters/clock.js";
 import { AuditService } from "../../core/audit/audit.service.js";
+import { isUniqueViolation } from "../../core/db/errors.js";
 import type { Db, DbOrTx, Tx } from "../../core/db/types.js";
-import { AppException, forbidden, notFound, versionConflict } from "../../core/errors/app-exception.js";
+import {
+  AppException,
+  fieldError,
+  forbidden,
+  notFound,
+  versionConflict,
+} from "../../core/errors/app-exception.js";
 import { FilesService } from "../../core/files/files.service.js";
 import type { AuthContext } from "../../core/guards/auth-context.js";
 import { type AccountStatus, effectiveStatus } from "../../core/membership/effective-status.js";
@@ -893,6 +900,36 @@ export class AdminMembersService {
         },
       });
     });
+    return this.detail(auth, userId);
+  }
+
+  /**
+   * POST /admin/members/{userId}/member-seq (ADR-028): Super Admin mengubah nomor urut N lewat
+   * MembershipKernel.changeMemberSeq dengan kunci, konflik kepentingan dan If-Match yang sama dengan koreksi data.
+   * Balapan dengan anggota lain yang mengambil N yang sama berakhir di indeks unik dan dijawab seperti N terpakai.
+   */
+  async changeMemberSeq(
+    auth: AuthContext,
+    userId: string,
+    expectedVersion: number,
+    input: { member_seq: number; reason: string },
+  ): Promise<AdminMemberDetail> {
+    try {
+      await this.db.transaction(async (tx) => {
+        await this.lockForAdmin(tx, auth, userId, expectedVersion);
+        await this.kernel.changeMemberSeq(
+          tx,
+          userId,
+          input.member_seq,
+          { adminId: auth.adminId },
+          input.reason,
+        );
+      });
+    } catch (error) {
+      if (isUniqueViolation(error, "alumni_member_seq_key"))
+        throw fieldError("member_seq", `Nomor urut ${input.member_seq} sedang dipakai anggota lain.`);
+      throw error;
+    }
     return this.detail(auth, userId);
   }
 
